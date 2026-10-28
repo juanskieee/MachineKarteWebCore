@@ -2,10 +2,11 @@
 @model MachineKarte.Web.Pages.McdMonitoringModel
 @{
     ViewData["Title"] = "MCD Monitoring";
+    Layout = "_Layout";
 }
 
 @section Styles {
-    <link rel="stylesheet" href="~/Assets/css/McdMonitoring.css" />
+    <link rel="stylesheet" href="~/Assets/css/McdMonitoring.css" asp-append-version="true" />
 }
 
 <div class="mcd-page">
@@ -29,9 +30,12 @@
                 </select>
             </div>
             <div class="filter-group filter-btn-group">
-                <button id="btnSearch" class="btn btn-primary">
+                <button id="btnSearch" class="btn btn-primary" type="button">
                     <span class="btn-icon">&#128269;</span> Search
                 </button>
+            </div>
+            <div class="filter-group filter-status-group">
+                <span id="lblStatus" class="mcd-status"></span>
             </div>
         </div>
         <!-- Progress indicator -->
@@ -40,42 +44,10 @@
         </div>
     </div>
 
-    <!-- ── Dashboard grid ─────────────────────────────────────────────── -->
+    <!-- ── Dashboard grid (header, rows and totals are rendered by JS) ── -->
     <div class="mcd-grid-wrapper card" id="dashboardWrapper">
-
-        <!-- Column headers -->
-        <div class="mcd-grid">
-            <div class="mcd-header-row">
-                <div class="mcd-process-col mcd-header">Process</div>
-                <div class="mcd-loc-col mcd-header">LSI1-1F</div>
-                <div class="mcd-loc-col mcd-header">LSI1-2F</div>
-                <div class="mcd-loc-col mcd-header">LSI2-1F</div>
-                <div class="mcd-loc-col mcd-header">LSI2-2F</div>
-                <div class="mcd-loc-col mcd-header">LSI2-3F</div>
-                <div class="mcd-loc-col mcd-header">LSI3-1F</div>
-                <div class="mcd-loc-col mcd-header">LSI3-2F</div>
-                <div class="mcd-loc-col mcd-header">LSI3-3F</div>
-                <div class="mcd-loc-col mcd-header">LSI3-4F</div>
-                <div class="mcd-total-col mcd-header">Total</div>
-            </div>
-
-            <!-- Process rows – filled dynamically by JS -->
-            <div id="gridBody"></div>
-
-            <!-- Floor totals -->
-            <div class="mcd-total-row" id="totalRow" style="display:none;">
-                <div class="mcd-process-col mcd-total-label">TOTAL</div>
-                <div class="mcd-loc-col mcd-total-cell" id="tot_LSI1_1F">0</div>
-                <div class="mcd-loc-col mcd-total-cell" id="tot_LSI1_2F">0</div>
-                <div class="mcd-loc-col mcd-total-cell" id="tot_LSI2_1F">0</div>
-                <div class="mcd-loc-col mcd-total-cell" id="tot_LSI2_2F">0</div>
-                <div class="mcd-loc-col mcd-total-cell" id="tot_LSI2_3F">0</div>
-                <div class="mcd-loc-col mcd-total-cell" id="tot_LSI3_1F">0</div>
-                <div class="mcd-loc-col mcd-total-cell" id="tot_LSI3_2F">0</div>
-                <div class="mcd-loc-col mcd-total-cell" id="tot_LSI3_3F">0</div>
-                <div class="mcd-loc-col mcd-total-cell" id="tot_LSI3_4F">0</div>
-                <div class="mcd-total-col mcd-total-cell" id="tot_Grand">0</div>
-            </div>
+        <div class="mcd-grid" id="gridContainer">
+            <div class="mcd-grid-empty">Select a date range and click Search.</div>
         </div>
     </div>
 
@@ -96,5 +68,5 @@
 </div>
 
 @section Scripts {
-    <script src="~/Assets/js/McdMonitoring.js"></script>
+    <script src="~/Assets/js/McdMonitoring.js" asp-append-version="true"></script>
 }

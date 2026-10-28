@@ -59,6 +59,23 @@
     justify-content: flex-end;
 }
 
+.filter-status-group {
+    margin-left: auto;
+    align-self: center;
+    padding-bottom: .25rem;
+}
+
+.mcd-status {
+    font-size: .8rem;
+    color: #6c757d;
+    white-space: nowrap;
+}
+
+.mcd-status-error {
+    color: #dc3545;
+    font-weight: 600;
+}
+
 .btn {
     padding: .4rem .9rem;
     border-radius: 4px;
@@ -184,6 +201,13 @@
     padding-left: .75rem;
 }
 
+.mcd-grid-empty {
+    padding: 2rem 1rem;
+    text-align: center;
+    color: #6c757d;
+    font-style: italic;
+}
+
 /* ── Cells – state variants ─────────────────────────────────────────────── */
 .mcd-cell {
     transition: background .15s, color .15s;
@@ -193,6 +217,10 @@
     background: #f0f0f0;
     color: #adb5bd;
     cursor: default;
+}
+
+.mcd-cell-zero {
+    color: #adb5bd;
 }
 
 .mcd-cell-hot {

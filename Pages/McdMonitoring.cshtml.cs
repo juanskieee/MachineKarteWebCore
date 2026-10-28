@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Linq;
+using System.Globalization;
 using System.Threading.Tasks;
 using MachineKarte.Web.Models;
 using MachineKarte.Web.Services;
@@ -20,8 +20,8 @@ namespace MachineKarte.Web.Pages
         public void OnGet() { }
 
         // ─────────────────────────────────────────────────────────────────────
-        // GET /McdMonitoring?handler=Dashboard&DateFrom=...&DateTo=...&UserRole=...
-        // Returns McdDashboardResult
+        // GET /McdMonitoring?handler=Dashboard&dateFrom=...&dateTo=...&userRole=...
+        // Returns the complete process × location grid.
         // ─────────────────────────────────────────────────────────────────────
 
         public async Task<IActionResult> OnGetDashboardAsync(
@@ -32,15 +32,10 @@ namespace MachineKarte.Web.Pages
                 if (string.IsNullOrWhiteSpace(dateFrom) || string.IsNullOrWhiteSpace(dateTo))
                     return new JsonResult(AjaxResult.Fail("Date range is required."));
 
-                // Normalize datetime strings coming from datetime-local input
-                // (format: "yyyy-MM-ddTHH:mm" → "MM/dd/yyyy HH:mm:ss")
-                string from = NormalizeDate(dateFrom);
-                string to = NormalizeDate(dateTo);
-
                 var filter = new McdMonitoringFilter
                 {
-                    DateFrom = from,
-                    DateTo = to,
+                    DateFrom = NormalizeDate(dateFrom),
+                    DateTo = NormalizeDate(dateTo),
                     UserRole = userRole ?? string.Empty
                 };
 
@@ -54,8 +49,8 @@ namespace MachineKarte.Web.Pages
         }
 
         // ─────────────────────────────────────────────────────────────────────
-        // GET /McdMonitoring?handler=MachineList&cellKey=DC_1&DateFrom=...&...
-        // Returns machine list for a clicked cell
+        // GET /McdMonitoring?handler=MachineList&cellKey=DC_1&dateFrom=...&...
+        // Returns the machine list for one clicked cell.
         // ─────────────────────────────────────────────────────────────────────
 
         public async Task<IActionResult> OnGetMachineListAsync(
@@ -66,36 +61,20 @@ namespace MachineKarte.Web.Pages
                 if (string.IsNullOrWhiteSpace(cellKey))
                     return new JsonResult(AjaxResult.Fail("Cell key is required."));
 
-                var (process, location) = McdMonitoringService.ResolveProcessLocation(cellKey);
+                var (process, location) = McdMonitoringService.ResolveCellKey(cellKey);
 
                 if (string.IsNullOrWhiteSpace(process) || string.IsNullOrWhiteSpace(location))
                     return new JsonResult(AjaxResult.Fail("Unknown cell key."));
 
-                string from = NormalizeDate(dateFrom);
-                string to = NormalizeDate(dateTo);
-                bool isTe = userRole == "TE";
-
-                // Re-run the query + analysis for just this one cell
                 var filter = new McdMonitoringFilter
                 {
-                    DateFrom = from,
-                    DateTo = to,
+                    DateFrom = NormalizeDate(dateFrom),
+                    DateTo = NormalizeDate(dateTo),
                     UserRole = userRole ?? string.Empty
                 };
 
-                // Use the full dashboard result and pick the matching cell
-                var dashboard = await _service.BuildDashboardAsync(filter);
-                var cell = dashboard.Cells
-                    .FirstOrDefault(c => c.Process == process && c.Location == location);
-
-                var res = new McdMachineListResult
-                {
-                    Process = process,
-                    Location = location,
-                    Machines = cell?.Machines ?? new System.Collections.Generic.List<string>()
-                };
-
-                return new JsonResult(AjaxResult.Ok(res));
+                var result = await _service.GetCellAsync(process, location, filter);
+                return new JsonResult(AjaxResult.Ok(result));
             }
             catch (Exception ex)
             {
@@ -109,11 +88,23 @@ namespace MachineKarte.Web.Pages
 
         private static string NormalizeDate(string raw)
         {
-            // datetime-local gives "yyyy-MM-ddTHH:mm" or "yyyy-MM-ddTHH:mm:ss"
-            if (DateTime.TryParse(raw, out var dt))
-                return dt.ToString("MM/dd/yyyy HH:mm:ss");
+            string[] formats =
+            {
+                "yyyy-MM-ddTHH:mm:ss",
+                "yyyy-MM-ddTHH:mm",
+                "MM/dd/yyyy HH:mm:ss",
+                "MM/dd/yyyy HH:mm",
+                "yyyy-MM-dd HH:mm:ss",
+                "yyyy-MM-dd"
+            };
 
-            return raw; // pass through if already formatted
+            if (DateTime.TryParseExact(raw, formats, CultureInfo.InvariantCulture,
+                    DateTimeStyles.None, out var dt))
+            {
+                return dt.ToString("MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture);
+            }
+
+            return raw;
         }
     }
 }

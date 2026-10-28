@@ -2,48 +2,32 @@
  * McdMonitoring.js
  * Handles the MCD Monitoring dashboard (Form7 → McdMonitoring.cshtml).
  *
+ * The grid is fully server-driven: the Dashboard handler returns the columns,
+ * the process rows, each cell's count/key and all row/column/grand totals.
+ * This file only renders that response and wires the machine-list panel.
+ *
  * Conventions:
  *   - fetch() AJAX only
  *   - AjaxResult<T> envelope: { success, message, data }
- *   - Anti-forgery token in RequestVerificationToken header for POSTs (none here – read-only page)
+ *   - Read-only page, so no anti-forgery POST is needed
  */
 
 (function () {
     'use strict';
 
-    // ── Process / location layout (mirrors VB grid design) ──────────────────
-    const GRID_ROWS = [
-        // { process, cells: [ { cellKey, loc } ] }
-        { process: 'ATC', cells: [{ k: 'ATC_1', loc: 'LSI1-1F' }, { k: 'ATC_2', loc: 'LSI1-2F' }, { k: 'ATC_3', loc: 'LSI2-1F' }, { k: 'ATC_4', loc: 'LSI2-2F' }, { k: 'ATC_5', loc: 'LSI2-3F' }, { k: 'ATC_65', loc: 'LSI3-1F' }, { k: 'ATC_6', loc: 'LSI3-3F' }] },
-        { process: 'SING', cells: [{ k: null, loc: 'LSI1-1F' }, { k: 'SING_1', loc: 'LSI1-2F' }, { k: 'SING_2', loc: 'LSI2-1F' }, { k: 'SING_3', loc: 'LSI2-2F' }, { k: 'SING_4', loc: 'LSI2-3F' }, { k: 'SING_5', loc: 'LSI3-3F' }] },
-        { process: 'DC', cells: [{ k: 'DC_1', loc: 'LSI1-1F' }, { k: null, loc: 'LSI1-2F' }, { k: 'DC_2', loc: 'LSI2-1F' }, { k: 'DC_3', loc: 'LSI2-2F' }, { k: 'DC_4', loc: 'LSI2-3F' }, { k: null, loc: 'LSI3-2F' }, { k: null, loc: 'LSI3-4F' }] },
-        { process: 'DB', cells: [{ k: 'DB_1', loc: 'LSI1-1F' }, { k: null, loc: 'LSI1-2F' }, { k: 'DB_2', loc: 'LSI2-1F' }, { k: 'DB_3', loc: 'LSI2-2F' }, { k: 'DB_4', loc: 'LSI2-3F' }, { k: null, loc: 'LSI3-2F' }, { k: null, loc: 'LSI3-4F' }] },
-        { process: 'WB', cells: [{ k: 'WB_1', loc: 'LSI1-1F' }, { k: null, loc: 'LSI1-2F' }, { k: 'WB_2', loc: 'LSI2-1F' }, { k: 'WB_3', loc: 'LSI2-2F' }, { k: 'WB_4', loc: 'LSI2-3F' }, { k: null, loc: 'LSI3-2F' }, { k: null, loc: 'LSI3-4F' }] },
-        { process: 'MP', cells: [{ k: 'MP_1', loc: 'LSI1-1F' }, { k: null, loc: 'LSI1-2F' }, { k: 'MP_2', loc: 'LSI2-1F' }, { k: 'MP_3', loc: 'LSI2-2F' }, { k: 'MP_4', loc: 'LSI2-3F' }, { k: null, loc: 'LSI3-2F' }, { k: null, loc: 'LSI3-4F' }] },
-        { process: 'PL', cells: [{ k: 'PL_1', loc: 'LSI1-1F' }, { k: null, loc: 'LSI1-2F' }, { k: 'PL_2', loc: 'LSI2-1F' }, { k: null, loc: 'LSI2-2F' }, { k: null, loc: 'LSI2-3F' }, { k: null, loc: 'LSI3-2F' }, { k: null, loc: 'LSI3-4F' }] },
-        { process: 'FL', cells: [{ k: null, loc: 'LSI1-1F' }, { k: 'FL_1', loc: 'LSI1-2F' }, { k: 'FL_2', loc: 'LSI2-1F' }, { k: 'FL_3', loc: 'LSI2-2F' }, { k: 'FL_4', loc: 'LSI2-3F' }, { k: null, loc: 'LSI3-2F' }, { k: null, loc: 'LSI3-4F' }] },
-        { process: 'FT', cells: [{ k: null, loc: 'LSI1-1F' }, { k: 'FT_1', loc: 'LSI1-2F' }, { k: 'FT_2', loc: 'LSI2-1F' }, { k: 'FT_3', loc: 'LSI2-2F' }, { k: 'FT_4', loc: 'LSI2-3F' }, { k: null, loc: 'LSI3-2F' }, { k: null, loc: 'LSI3-4F' }] },
-        { process: 'TP', cells: [{ k: null, loc: 'LSI1-1F' }, { k: 'TP_1', loc: 'LSI1-2F' }, { k: 'TP_2', loc: 'LSI2-1F' }, { k: 'TP_3', loc: 'LSI2-2F' }, { k: 'TP_4', loc: 'LSI2-3F' }, { k: null, loc: 'LSI3-2F' }, { k: null, loc: 'LSI3-4F' }] },
-        { process: 'MEMS', cells: [{ k: null, loc: 'LSI1-1F' }, { k: null, loc: 'LSI1-2F' }, { k: null, loc: 'LSI2-1F' }, { k: null, loc: 'LSI2-2F' }, { k: null, loc: 'LSI2-3F' }, { k: 'MEMS_1', loc: 'LSI3-2F' }, { k: null, loc: 'LSI3-4F' }] },
-        { process: 'EDS', cells: [{ k: null, loc: 'LSI1-1F' }, { k: null, loc: 'LSI1-2F' }, { k: null, loc: 'LSI2-1F' }, { k: null, loc: 'LSI2-2F' }, { k: null, loc: 'LSI2-3F' }, { k: null, loc: 'LSI3-2F' }, { k: 'EDS_1', loc: 'LSI3-4F' }] },
-    ];
-
-    const LOCATION_COLUMNS = [
-        'LSI1-1F', 'LSI1-2F', 'LSI2-1F', 'LSI2-2F', 'LSI2-3F',
-        'LSI3-1F', 'LSI3-2F', 'LSI3-3F', 'LSI3-4F'
-    ];
-
     // ── State ────────────────────────────────────────────────────────────────
     let lastFilter = { dateFrom: '', dateTo: '', userRole: '' };
-    let currentCellKey = null;
+    let currentCell = null;
+    let loadSeq = 0;
+    let cellSeq = 0;
 
     // ── DOM refs ─────────────────────────────────────────────────────────────
     const dtFrom = () => document.getElementById('dtFrom');
     const dtTo = () => document.getElementById('dtTo');
     const selUser = () => document.getElementById('selUser');
     const btnSearch = () => document.getElementById('btnSearch');
-    const gridBody = () => document.getElementById('gridBody');
-    const totalRow = () => document.getElementById('totalRow');
+    const gridContainer = () => document.getElementById('gridContainer');
+    const lblStatus = () => document.getElementById('lblStatus');
     const progressBar = () => document.getElementById('progressBar');
     const progressInner = () => document.getElementById('progressInner');
     const machinePanel = () => document.getElementById('machinePanel');
@@ -53,71 +37,45 @@
 
     // ── Init ─────────────────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
-        // Default dates: last 30 days
         const now = new Date();
         const past = new Date(now);
         past.setDate(past.getDate() - 30);
         dtFrom().value = toLocalIso(past);
         dtTo().value = toLocalIso(now);
 
-        buildGridShell();
+        btnSearch().addEventListener('click', () => loadDashboard(false));
+        selUser().addEventListener('change', () => loadDashboard(false));
 
-        btnSearch().addEventListener('click', loadDashboard);
         document.getElementById('btnPanelClose').addEventListener('click', closePanel);
         document.getElementById('btnPanelCancel').addEventListener('click', closePanel);
         document.getElementById('btnGoToMonitoring').addEventListener('click', goToMonitoring);
         panelOverlay().addEventListener('click', closePanel);
 
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape' && machinePanel().style.display !== 'none') closePanel();
+            if (e.key === 'Enter' && document.activeElement === dtFrom()) loadDashboard();
+            if (e.key === 'Enter' && document.activeElement === dtTo()) loadDashboard();
+        });
+
         loadDashboard();
-            setInterval(() => {
-                if (lastFilter.dateFrom && lastFilter.dateTo) loadDashboard();
-            }, 60000);
+
+        setInterval(() => {
+            if (lastFilter.dateFrom && lastFilter.dateTo) loadDashboard(true);
+        }, 60000);
     });
 
-    // ── Build static grid shell (process rows with empty cells) ─────────────
-    function buildGridShell() {
-        const body = gridBody();
-        body.innerHTML = '';
-        GRID_ROWS.forEach(row => {
-            const div = document.createElement('div');
-            div.className = 'mcd-grid-row';
-            div.dataset.process = row.process;
-
-            let html = `<div class="mcd-process-col mcd-proc-label">${row.process}</div>`;
-            const cellsByLocation = new Map(row.cells.map(cell => [cell.loc, cell]));
-            LOCATION_COLUMNS.forEach(location => {
-                const cell = cellsByLocation.get(location) || { k: null, loc: location };
-                if (cell.k) {
-                    html += `<div class="mcd-loc-col mcd-cell" 
-                                  id="cell_${cell.k}" 
-                                  data-key="${cell.k}"
-                                  data-loc="${cell.loc}"
-                                  title="${row.process} @ ${cell.loc}">0</div>`;
-                } else {
-                    html += `<div class="mcd-loc-col mcd-cell mcd-cell-na">–</div>`;
-                }
-            });
-
-            // Process row total
-            html += `<div class="mcd-total-col mcd-proc-total" id="ptot_${row.process}">0</div>`;
-            div.innerHTML = html;
-            body.appendChild(div);
-        });
-
-        // Wire cell clicks after DOM insertion
-        document.querySelectorAll('.mcd-cell[data-key]').forEach(el => {
-            el.addEventListener('click', onCellClick);
-        });
-    }
-
     // ── Load dashboard data ──────────────────────────────────────────────────
-    async function loadDashboard() {
+    async function loadDashboard(background) {
         const from = dtFrom().value;
         const to = dtTo().value;
         const userRole = selUser().value;
 
-        if (!from || !to) { alert('Please select a date range.'); return; }
+        if (!from || !to) {
+            if (!background) setStatus('Please select a date range.', true);
+            return;
+        }
 
+        const seq = ++loadSeq;
         lastFilter = { dateFrom: from, dateTo: to, userRole };
 
         showProgress(true);
@@ -134,125 +92,139 @@
             const res = await fetch(`/McdMonitoring?${params}`);
             const json = await res.json();
 
-            if (!json.success) { showError(json.message); return; }
+            if (seq !== loadSeq) return;
+            if (!json.success) { setStatus(json.message, true); return; }
 
-            renderDashboard(json.data);
+            renderGrid(json.data);
         } catch (err) {
-            showError(err.message);
+            if (seq === loadSeq) setStatus(err.message, true);
         } finally {
-            showProgress(false);
-            btnSearch().disabled = false;
+            if (seq === loadSeq) {
+                showProgress(false);
+                btnSearch().disabled = false;
+            }
         }
     }
 
-    // ── Render dashboard response ────────────────────────────────────────────
-    function renderDashboard(data) {
-        // Reset all cells to 0 / default style
-        document.querySelectorAll('.mcd-cell[data-key]').forEach(el => {
-            el.textContent = '0';
-            el.classList.remove('mcd-cell-hot', 'mcd-cell-clickable');
+    // ── Render the complete grid from the server result ──────────────────────
+    function renderGrid(data) {
+        const columns = data.columns || [];
+        const rows = data.rows || [];
+        const locationTotals = data.locationTotals || {};
+
+        let html = '<div class="mcd-header-row">'
+            + '<div class="mcd-process-col mcd-header">Process</div>';
+
+        columns.forEach(col => {
+            html += `<div class="mcd-loc-col mcd-header">${esc(col)}</div>`;
         });
-        GRID_ROWS.forEach(r => {
-            const el = document.getElementById(`ptot_${r.process}`);
-            if (el) el.textContent = '0';
+        html += '<div class="mcd-total-col mcd-header">Total</div></div>';
+
+        if (rows.length === 0) {
+            html += '<div class="mcd-grid-empty">No processes found for this mode.</div>';
+            gridContainer().innerHTML = html;
+            setStatus('No data.', false);
+            return;
+        }
+
+        rows.forEach(row => {
+            const cells = row.cells || {};
+            html += `<div class="mcd-grid-row" data-process="${esc(row.process)}">`;
+            html += `<div class="mcd-process-col mcd-proc-label">${esc(row.process)}</div>`;
+
+            columns.forEach(loc => {
+                const cell = cells[loc];
+
+                if (!cell || cell.notApplicable) {
+                    html += '<div class="mcd-loc-col mcd-cell mcd-cell-na">–</div>';
+                    return;
+                }
+
+                const count = cell.count || 0;
+                const cls = count > 0
+                    ? 'mcd-cell mcd-cell-hot mcd-cell-clickable'
+                    : 'mcd-cell mcd-cell-zero';
+                const title = `${esc(row.process)} @ ${esc(loc)}: ${count} machine(s)`;
+
+                html += `<div class="${cls}" data-key="${esc(cell.key)}" data-loc="${esc(loc)}" title="${title}">${count}</div>`;
+            });
+
+            const rowTotal = row.rowTotal || 0;
+            const totalCls = rowTotal > 0 ? 'mcd-proc-total mcd-total-hot' : 'mcd-proc-total';
+            html += `<div class="mcd-total-col ${totalCls}">${rowTotal}</div>`;
+            html += '</div>';
         });
 
-        // Fill cells from server data
-        const processTotals = {};
-        (data.cells || []).forEach(cell => {
-            const key = cellKey(cell.process, cell.location);
-            const el = document.getElementById(`cell_${key}`);
-            if (!el) return;
+        // Column totals row
+        html += '<div class="mcd-total-row">'
+            + '<div class="mcd-process-col mcd-total-label">TOTAL</div>';
 
-            el.textContent = cell.count;
-            if (cell.count > 0) {
-                el.classList.add('mcd-cell-hot', 'mcd-cell-clickable');
-            }
-
-            processTotals[cell.process] = (processTotals[cell.process] || 0) + cell.count;
+        columns.forEach(col => {
+            const value = locationTotals[col] || 0;
+            const cls = value > 0 ? 'mcd-total-cell mcd-total-hot' : 'mcd-total-cell';
+            html += `<div class="mcd-loc-col ${cls}">${value}</div>`;
         });
 
-        // Process totals
-        Object.entries(processTotals).forEach(([proc, cnt]) => {
-            const el = document.getElementById(`ptot_${proc}`);
-            if (el) el.textContent = cnt;
-        });
+        const grand = data.grandTotal || 0;
+        const grandCls = grand > 0 ? 'mcd-total-cell mcd-total-hot' : 'mcd-total-cell';
+        html += `<div class="mcd-total-col ${grandCls}">${grand}</div></div>`;
 
-        // Floor totals
-        setTotCell('tot_LSI1_1F', data.totalLsi1_1F);
-        setTotCell('tot_LSI1_2F', data.totalLsi1_2F);
-        setTotCell('tot_LSI2_1F', data.totalLsi2_1F);
-        setTotCell('tot_LSI2_2F', data.totalLsi2_2F);
-        setTotCell('tot_LSI2_3F', data.totalLsi2_3F);
-        setTotCell('tot_LSI3_1F', data.totalLsi3_1F);
-        setTotCell('tot_LSI3_2F', data.totalLsi3);
-        setTotCell('tot_LSI3_3F', data.totalLsi3_3F);
-        setTotCell('tot_LSI3_4F', data.totalLsi3_4F);
-        setTotCell('tot_Grand', data.grandTotal);
+        gridContainer().innerHTML = html;
+        wireCellClicks();
 
-        totalRow().style.display = '';
+        const mode = data.mode === 'TE' ? 'TE' : 'Standard';
+        setStatus(`Updated ${new Date().toLocaleTimeString()} · ${mode}`, false);
     }
 
-    function setTotCell(id, val) {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.textContent = val || 0;
-        el.classList.toggle('mcd-total-hot', (val || 0) > 0);
-    }
-
-    // ── Map (process, location) → cellKey used in GRID_ROWS ─────────────────
-    function cellKey(process, location) {
-        const map = {
-            'DC|LSI1-1F': 'DC_1', 'DC|LSI2-1F': 'DC_2', 'DC|LSI2-2F': 'DC_3', 'DC|LSI2-3F': 'DC_4',
-            'DB|LSI1-1F': 'DB_1', 'DB|LSI2-1F': 'DB_2', 'DB|LSI2-2F': 'DB_3', 'DB|LSI2-3F': 'DB_4',
-            'WB|LSI1-1F': 'WB_1', 'WB|LSI2-1F': 'WB_2', 'WB|LSI2-2F': 'WB_3', 'WB|LSI2-3F': 'WB_4',
-            'MP|LSI1-1F': 'MP_1', 'MP|LSI2-1F': 'MP_2', 'MP|LSI2-2F': 'MP_3', 'MP|LSI2-3F': 'MP_4', 'MP|LSI3-2F': 'MP_5',
-            'PL|LSI1-1F': 'PL_1', 'PL|LSI2-1F': 'PL_2',
-            'FL|LSI1-2F': 'FL_1', 'FL|LSI2-1F': 'FL_2', 'FL|LSI2-2F': 'FL_3', 'FL|LSI2-3F': 'FL_4',
-            'FT|LSI1-2F': 'FT_1', 'FT|LSI2-1F': 'FT_2', 'FT|LSI2-2F': 'FT_3', 'FT|LSI2-3F': 'FT_4',
-            'TP|LSI1-2F': 'TP_1', 'TP|LSI2-1F': 'TP_2', 'TP|LSI2-2F': 'TP_3', 'TP|LSI2-3F': 'TP_4',
-            'MEMS|LSI3-2F': 'MEMS_1',
-            'EDS|LSI3-4F': 'EDS_1',
-            'ATC|LSI1-1F': 'ATC_1', 'ATC|LSI1-2F': 'ATC_2',
-            'ATC|LSI2-1F': 'ATC_3', 'ATC|LSI2-2F': 'ATC_4',
-            'ATC|LSI2-3F': 'ATC_5', 'ATC|LSI3-1F': 'ATC_65', 'ATC|LSI3-3F': 'ATC_6',
-            'SING|LSI1-2F': 'SING_1', 'SING|LSI2-1F': 'SING_2',
-            'SING|LSI2-2F': 'SING_3', 'SING|LSI2-3F': 'SING_4', 'SING|LSI3-3F': 'SING_5',
-        };
-        return map[`${process}|${location}`] || null;
+    function wireCellClicks() {
+        gridContainer()
+            .querySelectorAll('.mcd-cell[data-key]')
+            .forEach(el => el.addEventListener('click', onCellClick));
     }
 
     // ── Cell click → open machine list panel ─────────────────────────────────
     async function onCellClick(e) {
         const el = e.currentTarget;
-        const key = el.dataset.key;
-        const cnt = parseInt(el.textContent, 10);
-        if (!cnt || cnt === 0) return;
+        const count = parseInt(el.textContent, 10) || 0;
+        if (count === 0) return;
 
-        currentCellKey = key;
-        panelTitle().textContent = `Loading ${key.replace('_', ' @ ')}…`;
+        const row = el.closest('.mcd-grid-row');
+        const cell = {
+            key: el.dataset.key,
+            location: el.dataset.loc,
+            process: row ? row.dataset.process : '',
+            userRole: lastFilter.userRole
+        };
+        currentCell = cell;
+        const seq = ++cellSeq;
+
+        panelTitle().textContent = `${cell.process} ( ${cell.location} ) — loading…`;
         machineList().innerHTML = '';
         openPanel();
 
         try {
             const params = new URLSearchParams({
                 handler: 'MachineList',
-                cellKey: key,
+                cellKey: cell.key,
                 dateFrom: lastFilter.dateFrom,
                 dateTo: lastFilter.dateTo,
-                userRole: lastFilter.userRole
+                userRole: cell.userRole
             });
 
             const res = await fetch(`/McdMonitoring?${params}`);
             const json = await res.json();
 
+            if (seq !== cellSeq) return;
+
             if (!json.success) {
-                machineList().innerHTML = `<li class="mcd-list-error">${json.message}</li>`;
+                machineList().innerHTML = `<li class="mcd-list-error">${esc(json.message)}</li>`;
                 return;
             }
 
             const d = json.data;
-            panelTitle().textContent = `${d.process} ( ${d.location} )`;
+            cell.process = d.process || cell.process;
+            cell.location = d.location || cell.location;
+            panelTitle().textContent = `${cell.process} ( ${cell.location} )`;
 
             if (!d.machines || d.machines.length === 0) {
                 machineList().innerHTML = '<li class="mcd-list-empty">No machines.</li>';
@@ -260,33 +232,37 @@
             }
 
             machineList().innerHTML = d.machines
-                .map(m => `<li class="mcd-list-item" data-mcno="${m}">${m}</li>`)
+                .map(m => `<li class="mcd-list-item" data-mcno="${esc(m)}">${esc(m)}</li>`)
                 .join('');
 
-            // Allow selecting a machine
             machineList().querySelectorAll('.mcd-list-item').forEach(li => {
                 li.addEventListener('click', () => {
-                    machineList().querySelectorAll('.mcd-list-item').forEach(x => x.classList.remove('selected'));
+                    machineList().querySelectorAll('.mcd-list-item')
+                        .forEach(x => x.classList.remove('selected'));
                     li.classList.add('selected');
                 });
+                li.addEventListener('dblclick', goToMonitoring);
             });
-
         } catch (err) {
-            machineList().innerHTML = `<li class="mcd-list-error">${err.message}</li>`;
+            if (seq === cellSeq) {
+                machineList().innerHTML = `<li class="mcd-list-error">${esc(err.message)}</li>`;
+            }
         }
     }
 
-    // ── Go to monitoring (mirrors Button2_Click) ──────────────────────────────
+    // ── Go to monitoring (mirrors Button2_Click) ─────────────────────────────
     function goToMonitoring() {
         const selected = machineList().querySelector('.mcd-list-item.selected');
-        if (!selected) { alert('Please select a machine first.'); return; }
+        if (!selected) { setStatus('Please select a machine first.', true); return; }
+        if (!currentCell) return;
 
-        const mcno = selected.dataset.mcno;
-        const process = panelTitle().textContent.split('(')[0].trim();
-        const loc = (panelTitle().textContent.match(/\((.+?)\)/) || [])[1]?.trim() || '';
+        const params = new URLSearchParams({
+            machine: selected.dataset.mcno,
+            process: currentCell.process,
+            floor: currentCell.location,
+            userType: currentCell.userRole === 'TE' ? 'TE' : 'PM'
+        });
 
-        // Navigate to Monitoring page pre-filtered
-        const params = new URLSearchParams({ machine: mcno, process, floor: loc });
         window.location.href = `/Monitoring?${params}`;
     }
 
@@ -299,27 +275,36 @@
     function closePanel() {
         machinePanel().style.display = 'none';
         panelOverlay().style.display = 'none';
-        currentCellKey = null;
+        cellSeq++;
+        currentCell = null;
     }
 
-    // ── Progress ─────────────────────────────────────────────────────────────
+    // ── Progress / status ────────────────────────────────────────────────────
+    let progressTimer = null;
+
     function showProgress(on) {
         progressBar().style.display = on ? '' : 'none';
+
         if (on) {
+            clearInterval(progressTimer);
             let w = 0;
-            const iv = setInterval(() => {
+            progressInner().style.width = '0';
+            progressTimer = setInterval(() => {
                 w = Math.min(w + 5, 90);
                 progressInner().style.width = w + '%';
-                if (w >= 90) clearInterval(iv);
             }, 200);
         } else {
+            clearInterval(progressTimer);
             progressInner().style.width = '100%';
             setTimeout(() => { progressInner().style.width = '0'; }, 400);
         }
     }
 
-    function showError(msg) {
-        alert('Error: ' + msg);
+    function setStatus(message, isError) {
+        const el = lblStatus();
+        if (!el) return;
+        el.textContent = message || '';
+        el.classList.toggle('mcd-status-error', !!isError);
     }
 
     // ── Utilities ────────────────────────────────────────────────────────────
@@ -328,4 +313,12 @@
         return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
     }
 
+    function esc(value) {
+        return String(value == null ? '' : value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
 }());
