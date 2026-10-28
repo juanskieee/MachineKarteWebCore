@@ -1,0 +1,119 @@
+﻿/* ============================================================
+   BmReport.css — BM Maintenance Record page styles
+   ============================================================ */
+
+.bmreport-container {
+    max-width: 680px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+    font-family: inherit;
+}
+
+/* ---- Header ------------------------------------------------ */
+.bmreport-header {
+    margin-bottom: 1.5rem;
+    border-bottom: 2px solid #0071bc;
+    padding-bottom: 0.75rem;
+}
+
+    .bmreport-header h2 {
+        margin: 0 0 0.25rem;
+        font-size: 1.5rem;
+        color: #1a1a2e;
+    }
+
+.bmreport-subtitle {
+    margin: 0;
+    font-size: 0.95rem;
+    color: #555;
+}
+
+.bmreport-process-badge {
+    display: inline-block;
+    margin-left: 0.5rem;
+    padding: 0.15rem 0.55rem;
+    background: #0071bc;
+    color: #fff;
+    border-radius: 3px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    vertical-align: middle;
+}
+
+/* ---- Actions ----------------------------------------------- */
+.bmreport-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.btn-download {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.55rem 1.25rem;
+    background: #0071bc;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.18s;
+}
+
+    .btn-download:hover:not(:disabled) {
+        background: #005a96;
+    }
+
+    .btn-download:disabled {
+        background: #9ab4cc;
+        cursor: not-allowed;
+    }
+
+.btn-icon {
+    font-size: 1rem;
+    line-height: 1;
+}
+
+/* ---- Status ------------------------------------------------ */
+.report-status {
+    font-size: 0.88rem;
+    min-height: 1.2rem;
+}
+
+.report-status--info {
+    color: #2c7a44;
+}
+
+.report-status--error {
+    color: #c0392b;
+}
+
+/* ---- Info block -------------------------------------------- */
+.bmreport-info {
+    background: #f4f8fc;
+    border-left: 4px solid #0071bc;
+    border-radius: 3px;
+    padding: 0.85rem 1.1rem;
+    font-size: 0.9rem;
+    color: #444;
+    line-height: 1.55;
+}
+
+    .bmreport-info p {
+        margin: 0 0 0.5rem;
+    }
+
+        .bmreport-info p:last-child {
+            margin-bottom: 0;
+        }
+
+    .bmreport-info code {
+        background: #dce9f5;
+        padding: 0.1rem 0.3rem;
+        border-radius: 2px;
+        font-size: 0.85em;
+    }

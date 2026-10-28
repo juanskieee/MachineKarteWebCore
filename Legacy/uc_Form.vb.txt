@@ -1,0 +1,162 @@
+Imports System.Data.SqlClient
+Public Class uC_Form
+    'Private conn As SqlConnection = New SqlConnection("Data Source=172.26.220.152;Initial Catalog=eMaintenanceSystemDB;User ID=eMaintUser;Password=eMaintUser")
+    'Dim Process As String = String.Empty
+    'Dim WLocation As String = String.Empty
+    'Dim Mcno As String = String.Empty
+    'Public Sub LoadMain(ByVal LoadProcess As String, ByVal LoadLocation As String, ByVal LoadMcno As String, ByVal LoadDate1 As String, ByVal LoadDate2 As String)
+    '    LoadMCName(LoadProcess, LoadLocation, LoadMcno, LoadDate1, LoadDate2)
+    'End Sub
+    'Private Sub uC_Form_Load(sender As Object, e As EventArgs) Handles MyBase.Load
+
+    'End Sub
+
+    'Private Function LoadTopMachines() As DataTable
+    '    Dim topNum1 As Integer = 0
+    '    Dim topNum2 As Integer = 0
+    '    Dim dt As New DataTable
+    '    If lblPageNumber.Text = "1" Then
+
+    '    End If
+
+    '    topNum2 = lblPageNumber.Text * 10
+    '    topNum1 = (lblPageNumber.Text * 10) - 10
+
+    '    Dim strQuery As String = String.Empty
+    '    strQuery = "   select * from (select distinct top " & topNum2 & "  (mcno) as 'mcno' from [eMaintenanceSystemDB].[dbo].[wbBMMaintenance]  where EndOfRepair between '01/01/2024' and '01/31/2024' order by mcno asc)  x
+    '                    except
+    '                   select * from (select distinct top " & topNum1 & " (mcno) as 'mcno' from [eMaintenanceSystemDB].[dbo].[wbBMMaintenance]  where EndOfRepair between '01/01/2024' and '01/31/2024' order by mcno asc)  y"
+    '    Using cmd = New SqlCommand(strQuery, conn)
+
+    '        cmd.CommandType = CommandType.Text
+    '        Dim da = New SqlDataAdapter(cmd)
+
+    '        da.Fill(dt)
+
+    '    End Using
+
+    '    Form1.DataGridView1.DataSource = dt
+
+    '    Return dt
+    'End Function
+
+    'Private Sub LoadMCName(ByVal MCProcess As String, ByVal MCLocation As String, ByVal MCMcno As String, ByVal MCDate1 As String, ByVal MCDate2 As String)
+    '    Dim dt1 As New DataTable
+    '    Dim topNum1 As Integer = 0
+    '    Dim topNum2 As Integer = 0
+    '    Dim dt2 As New DataTable
+    '    Dim strQuery As String = String.Empty
+    '    Dim strQuery2 As String = String.Empty
+
+    '    If MCMcno = "All" Then
+
+    '        strQuery = "   select a.Mcno as 'Mcno',format(a.Timeofrequest,'MM/dd/yyyy') as 'Timeofrequest',b.BMCase as 'BMCase'
+    '                      from [eMaintenanceSystemDB].[dbo].[" & MCProcess & "BMMaintenance] a inner join [eMaintenanceSystemDB].[dbo].[BMCase] b 
+    '                      on a.BMCaseID = b.BMCaseID
+    '                      where (a.timeofrequest between @Range1 and @Range2)  and (a.location = @Location) and (a.Pmcategoryid = '1')
+    '                      order by a.mcno,a.Timeofrequest,b.BMCase   asc"
+    '    Else
+
+    '        strQuery = "   select a.Mcno as 'Mcno',format(a.Timeofrequest,'MM/dd/yyyy') as 'Timeofrequest',b.BMCase as 'BMCase'
+    '                      from [eMaintenanceSystemDB].[dbo].[" & MCProcess & "BMMaintenance] a inner join [eMaintenanceSystemDB].[dbo].[BMCase] b 
+    '                      on a.BMCaseID = b.BMCaseID
+    '                      where (a.timeofrequest between @Range1 and @Range2)  and (a.mcno = @Mcno) and (a.Pmcategoryid = '1')
+    '                      order by a.mcno,a.Timeofrequest,b.BMCase   asc"
+    '    End If
+
+
+    '    Using cmd = New SqlCommand(strQuery, conn)
+    '        cmd.CommandType = CommandType.Text
+    '        cmd.Parameters.AddWithValue("@Range1", MCDate1)
+    '        cmd.Parameters.AddWithValue("@Range2", MCDate2)
+    '        cmd.Parameters.AddWithValue("@Location", MCLocation)
+    '        cmd.Parameters.AddWithValue("@Mcno", MCMcno)
+    '        Dim da = New SqlDataAdapter(cmd)
+    '        da.Fill(dt1)
+    '    End Using
+
+
+
+    '    topNum2 = lblPageNumber.Text * 10
+    '    topNum1 = (lblPageNumber.Text * 10) - 10
+    '    If MCMcno = "All" Then
+
+    '        strQuery2 = "select * from (select TOP  " & topNum2 & " count((mcno)) as 'MACHINENAME',MCNO from [eMaintenanceSystemDB].[dbo].[" & MCProcess & "BMMaintenance]  where (TimeOfRequest  between  @Range1 and @Range2) and (Location = @Location) AND PMCategoryID = 1  GROUP BY MCNO ORDER BY MACHINENAME DESC) X
+    '                     except
+    '                     select * from (select TOP " & topNum1 & " count((mcno)) as 'MACHINENAME',MCNO from [eMaintenanceSystemDB].[dbo].[" & MCProcess & "BMMaintenance]  where (TimeOfRequest  between  @Range1 and @Range2) and (Location = @Location) AND PMCategoryID = 1  GROUP BY MCNO ORDER BY MACHINENAME DESC) Y "
+
+
+    '    Else
+
+    '        strQuery2 = "select * from (select TOP  " & topNum2 & " count((mcno)) as 'MACHINENAME',MCNO from [eMaintenanceSystemDB].[dbo].[" & MCProcess & "BMMaintenance]  where (TimeOfRequest  between  @Range1 and @Range2) and (Mcno = @Mcno) AND PMCategoryID = 1  GROUP BY MCNO ORDER BY MACHINENAME DESC) X
+    '                     except
+    '                     select * from (select TOP " & topNum1 & " count((mcno)) as 'MACHINENAME',MCNO from [eMaintenanceSystemDB].[dbo].[" & MCProcess & "BMMaintenance]  where (TimeOfRequest  between  @Range1 and @Range2) and (Mcno = @Mcno) AND PMCategoryID = 1  GROUP BY MCNO ORDER BY MACHINENAME DESC) Y "
+
+    '    End If
+    '    Using cmd = New SqlCommand(strQuery2, conn)
+    '        cmd.CommandType = CommandType.Text
+    '        cmd.Parameters.AddWithValue("@Range1", MCDate1)
+    '        cmd.Parameters.AddWithValue("@Range2", MCDate2)
+    '        cmd.Parameters.AddWithValue("@Location", MCLocation)
+    '        cmd.Parameters.AddWithValue("@Mcno", MCMcno)
+    '        Dim da = New SqlDataAdapter(cmd)
+    '        da.Fill(dt2)
+    '    End Using
+
+    '    For x = 0 To dt2.Rows.Count - 1
+    '        Dim expression As String = "[Mcno] = '" & dt2.Rows(x).Item("Mcno").ToString & "'"
+    '        Dim sortOrder As String = "Mcno ASC"
+    '        Dim foundRows As DataRow()
+    '        foundRows = dt1.Select(expression, sortOrder)
+
+    '        Dim DataTable As DataTable = dt1.Clone()
+    '        For Each row As DataRow In foundRows
+    '            DataTable.ImportRow(row)
+    '        Next
+
+    '        CType(Me.Controls.Find("lblMC" & x + 1, True).First, Label).Text = dt2.Rows(x).Item("Mcno").ToString
+
+    '        For i = 0 To DataTable.Rows.Count - 1
+    '            If i <= 9 Then
+    '                If i = 9 Then
+    '                    CType(Me.Controls.Find("lblMC" & x + 1 & "_Case" & i, True).First, Label).Text = DataTable.Rows(i).Item("BMCase").ToString
+    '                    CType(Me.Controls.Find("lblMC" & x + 1 & "_Date" & i, True).First, Label).Text = DataTable.Rows(i).Item("Timeofrequest").ToString
+    '                Else
+    '                    CType(Me.Controls.Find("lblMC" & x + 1 & "_Case" & i + 1, True).First, Label).Text = DataTable.Rows(i).Item("BMCase").ToString
+    '                    CType(Me.Controls.Find("lblMC" & x + 1 & "_Date" & i + 1, True).First, Label).Text = DataTable.Rows(i).Item("Timeofrequest").ToString
+    '                End If
+    '            Else
+    '                'Dim add As Integer = 0
+    '                'Dim PrevNum As Integer = i
+
+
+    '                '    For y = i To DataTable.Rows.Count - 1
+
+    '                '        add = x + 1
+    '                '        If y = 10 Then
+    '                '            CType(Me.Controls.Find("lblMC" & add + 1, True).First, Label).Text = dtNum.Rows(x).Item("Mcno").ToString
+    '                '            y = (y - i) + 1
+    '                '        End If
+
+
+    '                '        'If y = 9 Then
+    '                '        '    CType(Me.Controls.Find("lblMC" & x + 1 & "_Case" & y, True).First, Label).Text = DataTable.Rows(PrevNum).Item("BMCase").ToString
+    '                '        '    CType(Me.Controls.Find("lblMC" & x + 1 & "_Date" & y, True).First, Label).Text = DataTable.Rows(PrevNum).Item("EndOfRepair").ToString
+    '                '        'Else
+    '                '        '    CType(Me.Controls.Find("lblMC" & x + 1 & "_Case" & y + 1, True).First, Label).Text = DataTable.Rows(PrevNum).Item("BMCase").ToString
+    '                '        '    CType(Me.Controls.Find("lblMC" & x + 1 & "_Date" & y + 1, True).First, Label).Text = DataTable.Rows(PrevNum).Item("EndOfRepair").ToString
+    '                '        'End If
+    '                '        PrevNum = i + 1
+
+
+    '                '        '  CType(Me.Controls.Find("lblMC" & add + 1, True).First, Label).Text = dtNum.Rows(x).Item("Mcno").ToString
+    '                '        'CType(Me.Controls.Find("lblMC" & x + 1 & "_Case" & (i - 10) + 1, True).First, Label).Text = DataTable.Rows(i).Item("BMCase").ToString
+    '                '        'CType(Me.Controls.Find("lblMC" & x + 1 & "_Date" & (i - 10) + 1, True).First, Label).Text = DataTable.Rows(i).Item("EndOfRepair").ToString
+    '                '    Next
+    '            End If
+    '        Next
+
+    '    Next
+
+    'End Sub
+End Class

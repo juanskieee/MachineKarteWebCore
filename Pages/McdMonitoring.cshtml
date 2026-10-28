@@ -1,0 +1,96 @@
+﻿@page
+@model MachineKarte.Web.Pages.McdMonitoringModel
+@{
+    ViewData["Title"] = "MCD Monitoring";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/McdMonitoring.css" />
+}
+
+<div class="mcd-page">
+
+    <!-- ── Filter bar ──────────────────────────────────────────────────── -->
+    <div class="mcd-filter-bar card">
+        <div class="filter-row">
+            <div class="filter-group">
+                <label for="dtFrom">Date From</label>
+                <input type="datetime-local" id="dtFrom" class="form-control" />
+            </div>
+            <div class="filter-group">
+                <label for="dtTo">Date To</label>
+                <input type="datetime-local" id="dtTo" class="form-control" />
+            </div>
+            <div class="filter-group">
+                <label for="selUser">User Role</label>
+                <select id="selUser" class="form-control">
+                    <option value="">Standard</option>
+                    <option value="TE">TE</option>
+                </select>
+            </div>
+            <div class="filter-group filter-btn-group">
+                <button id="btnSearch" class="btn btn-primary">
+                    <span class="btn-icon">&#128269;</span> Search
+                </button>
+            </div>
+        </div>
+        <!-- Progress indicator -->
+        <div id="progressBar" class="mcd-progress" style="display:none;">
+            <div class="mcd-progress-inner" id="progressInner"></div>
+        </div>
+    </div>
+
+    <!-- ── Dashboard grid ─────────────────────────────────────────────── -->
+    <div class="mcd-grid-wrapper card" id="dashboardWrapper">
+
+        <!-- Column headers -->
+        <div class="mcd-grid">
+            <div class="mcd-header-row">
+                <div class="mcd-process-col mcd-header">Process</div>
+                <div class="mcd-loc-col mcd-header">LSI1-1F</div>
+                <div class="mcd-loc-col mcd-header">LSI1-2F</div>
+                <div class="mcd-loc-col mcd-header">LSI2-1F</div>
+                <div class="mcd-loc-col mcd-header">LSI2-2F</div>
+                <div class="mcd-loc-col mcd-header">LSI2-3F</div>
+                <div class="mcd-loc-col mcd-header">LSI3-2F</div>
+                <div class="mcd-loc-col mcd-header">LSI3-4F</div>
+                <div class="mcd-total-col mcd-header">Total</div>
+            </div>
+
+            <!-- Process rows – filled dynamically by JS -->
+            <div id="gridBody"></div>
+
+            <!-- Floor totals -->
+            <div class="mcd-total-row" id="totalRow" style="display:none;">
+                <div class="mcd-process-col mcd-total-label">TOTAL</div>
+                <div class="mcd-loc-col mcd-total-cell" id="tot_LSI1_1F">0</div>
+                <div class="mcd-loc-col mcd-total-cell" id="tot_LSI1_2F">0</div>
+                <div class="mcd-loc-col mcd-total-cell" id="tot_LSI2_1F">0</div>
+                <div class="mcd-loc-col mcd-total-cell" id="tot_LSI2_2F">0</div>
+                <div class="mcd-loc-col mcd-total-cell" id="tot_LSI2_3F">0</div>
+                <div class="mcd-loc-col mcd-total-cell" id="tot_LSI3_2F">0</div>
+                <div class="mcd-loc-col mcd-total-cell" id="tot_LSI3_4F">0</div>
+                <div class="mcd-total-col mcd-total-cell" id="tot_Grand">0</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Machine list slide-in panel ────────────────────────────────── -->
+    <div id="machinePanel" class="mcd-machine-panel" style="display:none;">
+        <div class="mcd-machine-panel-header">
+            <span id="panelTitle">Machines</span>
+            <button class="mcd-panel-close" id="btnPanelClose">&times;</button>
+        </div>
+        <ul id="machineList" class="mcd-machine-list"></ul>
+        <div class="mcd-panel-footer">
+            <button class="btn btn-secondary" id="btnPanelCancel">Close</button>
+            <button class="btn btn-primary" id="btnGoToMonitoring">Go to Monitoring</button>
+        </div>
+    </div>
+    <div id="panelOverlay" class="mcd-overlay" style="display:none;"></div>
+
+</div>
+
+@section Scripts {
+    <script src="~/js/McdMonitoring.js"></script>
+}

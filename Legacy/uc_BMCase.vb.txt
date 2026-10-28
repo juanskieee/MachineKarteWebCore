@@ -1,0 +1,13 @@
+Public Class uc_BMCase
+    Private Sub Panel1_Paint(sender As Object, e As PaintEventArgs)
+
+    End Sub
+
+    Private Sub Label3_Click(sender As Object, e As EventArgs) Handles lblBMCase.Click
+
+    End Sub
+
+    Private Sub Label4_Click(sender As Object, e As EventArgs) Handles lblDate.Click
+
+    End Sub
+End Class

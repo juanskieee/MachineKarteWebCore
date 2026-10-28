@@ -1,0 +1,154 @@
+﻿@page
+@model MachineKarte.Web.Pages.MonitoringModel
+@{
+    ViewData["Title"] = "Machine Monitoring";
+    ViewData["Page"] = "Monitoring";
+    Layout = "_Layout";
+}
+
+<!-- ═══════════════════════════════════════════════════════
+     TOOLBAR  (Panel3 → Panel8 in Form1)
+     Holds: User type, Process, Floor, Machine, Date range,
+            Search, Prev/Next page, Auto-refresh timer
+     ═══════════════════════════════════════════════════════ -->
+<div id="toolbar" class="toolbar">
+
+    <!-- User type  (cbUser) -->
+    <div class="toolbar-group">
+        <label class="toolbar-label">User</label>
+        <select id="cbUser" class="toolbar-select" onchange="onUserChanged()">
+            <option value="">-Select-</option>
+            <option value="PM">PM</option>
+            <option value="CC">CC</option>
+            <option value="EEE">EEE</option>
+            <option value="VIS">VIS</option>
+            <option value="TE">TE</option>
+        </select>
+    </div>
+
+    <!-- Process  (cbProcess) -->
+    <div class="toolbar-group">
+        <label class="toolbar-label" id="lblProcessLabel">Machine</label>
+        <select id="cbProcess" class="toolbar-select" onchange="onProcessChanged()">
+            <option value="-Select-">-Select-</option>
+        </select>
+    </div>
+
+    <!-- Floor  (cbFloor) -->
+    <div class="toolbar-group">
+        <label class="toolbar-label">Floor</label>
+        <select id="cbFloor" class="toolbar-select" onchange="onFloorChanged()">
+            <option value="-Select-">-Select-</option>
+        </select>
+    </div>
+
+    <!-- Machine  (cbMachine) -->
+    <div class="toolbar-group">
+        <label class="toolbar-label">Machine</label>
+        <select id="cbMachine" class="toolbar-select">
+            <option value="">-Select-</option>
+        </select>
+    </div>
+
+    <!-- Date range  (dt1 / dt2) -->
+    <div class="toolbar-group">
+        <label class="toolbar-label">From</label>
+        <input type="date" id="dt1" class="toolbar-date" value="@Model.DefaultDateFrom" />
+    </div>
+    <div class="toolbar-group">
+        <label class="toolbar-label">To</label>
+        <input type="date" id="dt2" class="toolbar-date" value="@Model.DefaultDateTo" />
+    </div>
+
+    <!-- Search button  (btnSearch) -->
+    <button id="btnSearch" class="btn-search" onclick="doSearch()">Search</button>
+
+    <!-- Pagination  (lblPrev / lblPageNumber / lblNext) -->
+    <div class="toolbar-group pagination-group">
+        <button id="btnPrev" class="btn-page" onclick="changePage(-1)">◀</button>
+        <span id="lblPageNumber" class="page-number">1</span>
+        <button id="btnNext" class="btn-page" onclick="changePage(1)">▶</button>
+    </div>
+
+    <!-- Auto-refresh countdown  (lblTimer / Timer1) -->
+    <div class="toolbar-group">
+        <span id="lblTimer" class="lbl-timer">600</span>
+    </div>
+
+    <!-- Navigation buttons: Repeat BM (Button5), MCD (btnMCD), With Action (btnWithAction) -->
+    <div class="toolbar-group nav-buttons">
+        <button id="btnRepeatBM" class="btn-nav btn-repeatbm"
+                onclick="openSection('RepeatBM')">
+            Repeat BM
+        </button>
+        <button id="btnMCD" class="btn-nav btn-mcd"
+                onclick="openSection('MCD')">
+            MCD
+        </button>
+        <button id="btnWithAction" class="btn-nav btn-action"
+                onclick="openSection('WithAction')">
+            With Action
+        </button>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     FLOOR SUMMARY PANEL  (Panel5 / Panel2 in Form1)
+     Shows BM/MCD/machine counts per floor with clickable labels.
+     Label_1..Label_9  = floor name labels (lbl_N)
+     Label1_1..Label1_9 = MCD count labels (Label1_N)
+     lbl_1..lbl_9      = BM count labels
+     ═══════════════════════════════════════════════════════ -->
+<div id="floorSummaryPanel" class="floor-summary-panel" style="display:none;">
+    <button id="btnCloseSummary" class="btn-close-summary" onclick="toggleSummary()">▲ Hide</button>
+    <div id="floorSummaryGrid" class="floor-summary-grid">
+        <!-- Populated dynamically by JS after search -->
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     MACHINE LIST SIDEBAR  (Listbox_main / Panel6 / Panel7 in Form1)
+     Shows machine numbers for a selected floor cell.
+     Toggled by Button6 / Button4.
+     ═══════════════════════════════════════════════════════ -->
+<div id="machineListSidebar" class="machine-list-sidebar" style="display:none;">
+    <div class="sidebar-header">
+        <span id="sidebarTitle">Machines</span>
+        <button class="btn-close-sidebar" onclick="closeSidebar()">✕</button>
+    </div>
+    <ul id="listboxMain" class="listbox-main"></ul>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     MAIN CARD AREA  (Panel1 / Panel4 in Form1)
+     uC_Test (MachineMonitoringCard) columns rendered here.
+     ═══════════════════════════════════════════════════════ -->
+<div id="cardContainer" class="card-container">
+    <div id="cardScroller" class="card-scroller">
+        <!-- Machine monitoring cards injected by AJAX -->
+        <div id="noResultMsg" class="no-result-msg" style="display:none;">
+            No machines found for the selected filters.
+        </div>
+        <div id="loadingSpinner" class="loading-spinner" style="display:none;">
+            <div class="spinner"></div>
+            <span>Loading...</span>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     TOAST / ALERT  (replaces MsgBox in Form1)
+     ═══════════════════════════════════════════════════════ -->
+<div id="toastMsg" class="toast-msg" style="display:none;"></div>
+
+<!-- ═══════════════════════════════════════════════════════
+     ANTI-FORGERY TOKEN for AJAX POST
+     ═══════════════════════════════════════════════════════ -->
+@Html.AntiForgeryToken()
+
+@section Styles {
+    <link rel="stylesheet" href="~/Assets/css/Monitoring.css" />
+}
+@section Scripts {
+    <script src="~/Assets/js/Monitoring.js"></script>
+}

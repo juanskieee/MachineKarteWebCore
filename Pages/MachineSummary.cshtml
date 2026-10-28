@@ -1,0 +1,72 @@
+﻿@page
+@model MachineKarte.Web.Pages.MachineSummaryModel
+@{
+    ViewData["Title"] = "Machine Summary — Need Action with MCD";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/MachineSummary.css" />
+}
+
+<div class="ms-wrapper">
+
+    <!-- ── Toolbar ─────────────────────────────────────────────────── -->
+    <div class="ms-toolbar">
+        <div class="ms-toolbar-group">
+            <label for="msFrom">From</label>
+            <input id="msFrom" type="datetime-local" value="@Model.DefaultFrom" />
+        </div>
+        <div class="ms-toolbar-group">
+            <label for="msTo">To</label>
+            <input id="msTo" type="datetime-local" value="@Model.DefaultTo" />
+        </div>
+        <div class="ms-toolbar-group">
+            <label for="msMode">Mode</label>
+            <select id="msMode">
+                <option value="EEE">EEE</option>
+                <option value="TE">TE</option>
+            </select>
+        </div>
+        <button id="msSearch" class="ms-btn-search">&#128269; Search</button>
+        <span id="msStatus" class="ms-status"></span>
+    </div>
+
+    <!-- ── Progress bar ────────────────────────────────────────────── -->
+    <div id="msProgress" class="ms-progress" style="display:none">
+        <div class="ms-progress-bar"></div>
+    </div>
+
+    <!-- ── Grid container ──────────────────────────────────────────── -->
+    <div class="ms-grid-scroll">
+        <table id="msGrid" class="ms-grid" aria-label="Machine Summary Grid">
+            <thead id="msGridHead"></thead>
+            <tbody id="msGridBody"></tbody>
+            <tfoot id="msGridFoot"></tfoot>
+        </table>
+    </div>
+
+    <!-- ── Machine list panel (flyout) ─────────────────────────────── -->
+    <div id="msPanel" class="ms-panel" aria-hidden="true">
+        <div class="ms-panel-header">
+            <span id="msPanelTitle" class="ms-panel-title">—</span>
+            <button id="msPanelClose" class="ms-panel-close" aria-label="Close">&#10005;</button>
+        </div>
+        <div class="ms-panel-sub">Select a machine below:</div>
+        <ul id="msPanelList" class="ms-panel-list"></ul>
+        <button id="msPanelGo" class="ms-btn-go" disabled>
+            &#128269; View in Monitoring
+        </button>
+    </div>
+    <div id="msOverlay" class="ms-overlay" aria-hidden="true"></div>
+
+</div>
+
+@section Scripts {
+    <script>
+        window.__ms = {
+            summaryUrl: '@Url.Page("MachineSummary", "Summary")',
+            monitoringUrl: '@Url.Page("Monitoring")'
+        };
+    </script>
+    <script src="~/js/MachineSummary.js"></script>
+}

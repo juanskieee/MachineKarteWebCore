@@ -1,0 +1,72 @@
+Imports System.Data.SqlClient
+Imports System.IO
+Imports System.Net
+Imports System
+Imports System.Globalization
+
+Public Class Form6
+    Private conn As SqlConnection = New SqlConnection(My.Settings.DBConnection)
+    Private Sub Form6_Load(sender As Object, e As EventArgs) Handles MyBase.Load
+
+    End Sub
+    Public Sub LoadOCAP(BMID As Integer, BMProcess As String, BMCaseID As String)
+        Dim strQuery1 As String = String.Empty
+        Dim strQuery2 As String = String.Empty
+        Dim dt As New DataTable
+        Dim dt2 As New DataTable
+        strQuery1 = "  Select  [BMOCAPName]
+                              ,[BMOCAPCheckingMethod]
+                              ,[BMOCAPTreatmentAction], 'test1' as 'JUDGEMENT','test2' AS 'REMARKS' FROM gridBMOCAP WHERE BMCaseID=@BMCaseID And Process=@Process ORDER BY BMOCAPID"
+        Using cmd = New SqlCommand(strQuery1, conn)
+            cmd.CommandType = CommandType.Text
+            cmd.Parameters.AddWithValue("@BMCaseID", BMCaseID)
+            cmd.Parameters.AddWithValue("@Process", BMProcess)
+            Dim da = New SqlDataAdapter(cmd)
+            da.Fill(dt)
+        End Using
+        DataGridView1.DataSource = dt
+
+        strQuery2 = "  Select  OCAPData from [eMaintenanceSystemDB].[dbo].[" & BMProcess & "BMMaintenance] WHERE BMID=@BMID"
+        Using cmd = New SqlCommand(strQuery2, conn)
+            cmd.CommandType = CommandType.Text
+            cmd.Parameters.AddWithValue("@BMID", BMID)
+            Dim da = New SqlDataAdapter(cmd)
+            da.Fill(dt2)
+        End Using
+
+        Dim arrOCAPData() As String = {}
+        Dim _OCAPData As String = String.Empty
+        If dt2.Rows.Count > 0 Then
+
+            If dt2.Rows(0).Item("OCAPData").ToString <> "" Then
+                _OCAPData = dt2.Rows(0).Item("OCAPData").ToString
+                arrOCAPData = _OCAPData.ToString().Split("|")
+
+
+
+                If arrOCAPData.Length = 2 Then
+                    Dim arrRemarks() As String = arrOCAPData(0).Split(",")
+                    Dim arrResult() As String = arrOCAPData(1).Split(",")
+
+
+                    Dim i = 0
+                    For Each gvr As DataGridViewRow In DataGridView1.Rows
+
+                        If i < arrResult.Length Then
+                            gvr.Cells(4).Value = arrRemarks(i)
+                            gvr.Cells(3).Value = arrResult(i)
+                        End If
+                        i += 1
+                    Next
+                End If
+            End If
+        End If
+
+
+        DataGridView1.ClearSelection()
+    End Sub
+
+    Private Sub Form6_Shown(sender As Object, e As EventArgs) Handles MyBase.Shown
+        DataGridView1.ClearSelection()
+    End Sub
+End Class

@@ -1,0 +1,393 @@
+MachineKarte.Web
+├── Assets
+│   │
+│   ├── css
+│   │   ├── site.css
+│   │   ├── monitoring.css
+│   │   ├── actioncards.css
+│   │   ├── evidencemaking.css
+│   │   ├── reports.css
+│   │   ├── tereports.css
+│   │   ├── administration.css
+│   │   ├── components.css
+│   │   ├── modals.css
+│   │   └── utilities.css
+│   │
+│   └── js
+│       ├── site.js
+│       ├── monitoring.js
+│       ├── bm-details.js
+│       ├── actioncards.js
+│       ├── evidencemaking.js
+│       ├── reports.js
+│       ├── tereports.js
+│       ├── administration.js
+│       ├── ajax.js
+│       ├── modal.js
+│       └── utils.js
+│
+├── Pages
+│
+│   ├── Monitoring.aspx
+│   │
+│   │   Dashboard
+│   │   │
+│   │   ├── Machine Monitoring
+│   │   │   ├── Form1
+│   │   │   ├── Process Filter
+│   │   │   ├── Floor Filter
+│   │   │   ├── Machine Filter
+│   │   │   ├── Date Range Filter
+│   │   │   ├── Machine Search
+│   │   │   ├── Machine Monitoring Cards
+│   │   │   ├── Machine History
+│   │   │   ├── BM Monitoring
+│   │   │   ├── Dashboard Summary
+│   │   │   └── Auto Refresh
+│   │   │
+│   │   ├── Repeat BM Analysis
+│   │   │   ├── Form2
+│   │   │   ├── Repeat BM Dashboard
+│   │   │   ├── BM Frequency Dashboard
+│   │   │   ├── Alert Heatmap
+│   │   │   ├── Monthly Breakdown
+│   │   │   ├── Failure Trend Monitoring
+│   │   │   └── Recurrence Analysis
+│   │   │
+│   │   ├── MCD Monitoring
+│   │   │   ├── Form7
+│   │   │   ├── MCD Dashboard
+│   │   │   ├── MCD Counters
+│   │   │   ├── Process Summary
+│   │   │   ├── Location Summary
+│   │   │   └── Drilldown Machine List
+│   │   │
+│   │   ├── Action Monitoring
+│   │   │   ├── Form8
+│   │   │   ├── Action Card Dashboard
+│   │   │   ├── Machines With Action
+│   │   │   ├── Re-BM Monitoring
+│   │   │   ├── MCD + Action Monitoring
+│   │   │   ├── Action Statistics
+│   │   │   └── Machine Drilldown
+│   │   │
+│   │   └── Machine Detail Modal
+│   │       ├── OCAP Viewer
+│   │       ├── Evidence Viewer
+│   │       ├── Action Card Viewer
+│   │       ├── PDF Report Viewer
+│   │       ├── Machine History Viewer
+│   │       └── TE Report Viewer
+│   │
+│   ├── ActionCards.aspx
+│   │
+│   │   Action Card Management
+│   │   │
+│   │   ├── Form_Input
+│   │   ├── Create Action Card
+│   │   ├── Edit Action Card
+│   │   ├── Investigation Workflow
+│   │   ├── Action Workflow
+│   │   ├── Root Cause Analysis
+│   │   ├── Countermeasure Management
+│   │   ├── Follow-up Comments
+│   │   ├── PM Feedback
+│   │   ├── PM Replies
+│   │   ├── PM In-Charge Tracking
+│   │   ├── Machine Status Workflow
+│   │   ├── TE Workflow
+│   │   ├── CC Workflow
+│   │   ├── VIS Workflow
+│   │   └── EEE Workflow
+│   │
+│   ├── EvidenceMaking.aspx
+│   │
+│   │   Evidence Making
+│   │   │
+│   │   ├── Form4
+│   │   ├── Evidence Generator
+│   │   ├── Evidence Image Loader
+│   │   ├── Process-Based Templates
+│   │   ├── Excel Template Population
+│   │   ├── QC Evidence
+│   │   ├── TSC Confirmation
+│   │   ├── Route Verification
+│   │   ├── PDF Generation
+│   │   ├── PDF Preview
+│   │   └── PDF Download
+│   │
+│   ├── Reports.aspx
+│   │
+│   │   Analytics & Reporting
+│   │   │
+│   │   ├── Form5
+│   │   ├── BM Frequency Analysis
+│   │   ├── BM Recurrence Analysis
+│   │   ├── Failure Analytics
+│   │   ├── Monthly Trends
+│   │   ├── Process Trends
+│   │   ├── Location Trends
+│   │   ├── Heatmap Reports
+│   │   ├── Stacked Chart Reports
+│   │   └── Statistical Reports
+│   │
+│   ├── TEReports.aspx
+│   │
+│   │   TE Reporting
+│   │   │
+│   │   ├── Form9
+│   │   ├── TE Report Generator
+│   │   ├── TE Template Processing
+│   │   ├── EDS CSP Template Processing
+│   │   ├── Excel Population
+│   │   ├── Excel Export
+│   │   ├── PDF Generation
+│   │   ├── PDF Preview
+│   │   ├── PDF Download
+│   │   └── Report Viewer
+│   │
+│   └── Administration.aspx
+│       │
+│       ├── Process Management
+│       ├── Machine Management
+│       ├── BM Case Management
+│       ├── BM Content Management
+│       ├── BM Point Management
+│       ├── OCAP Management
+│       ├── Why Management
+│       ├── QC Management
+│       ├── User Management
+│       ├── Role Management
+│       └── Template Management
+│
+├── Repositories
+│
+│   ├── MachineRepository.vb
+│   │   ├── Machine Master Data
+│   │   ├── Machine Status
+│   │   └── Machine Information
+│   │
+│   ├── MaintenanceRepository.vb
+│   │   ├── Maintenance Records
+│   │   ├── BM Records
+│   │   ├── Repair Records
+│   │   └── Machine Events
+│   │
+│   ├── BMRepository.vb
+│   │   ├── BM Case
+│   │   ├── BM Content
+│   │   ├── BM Point
+│   │   ├── BM Why
+│   │   └── BM History
+│   │
+│   ├── OCAPRepository.vb
+│   │   ├── OCAP Records
+│   │   ├── OCAP Results
+│   │   ├── OCAP History
+│   │   └── OCAP Responses
+│   │
+│   ├── QCRepository.vb
+│   │   ├── QC Records
+│   │   ├── QC Confirmation
+│   │   ├── QC Inspection Items
+│   │   └── QC Evidence
+│   │
+│   ├── MonitoringRepository.vb
+│   │   ├── Dashboard Data
+│   │   ├── Alert Data
+│   │   ├── MCD Data
+│   │   ├── Action Monitoring Data
+│   │   └── Machine Summary Data
+│   │
+│   ├── ActionCardRepository.vb
+│   │   ├── MachineKarte_ActionCard
+│   │   ├── MachineKarte_ActionCard_TE
+│   │   ├── MachineKarte_ActionCard_CC
+│   │   ├── MachineKarte_ActionCard_VIS
+│   │   ├── MachineKarte_ActionCard_EEE
+│   │   └── PM Follow-up Records
+│   │
+│   ├── EvidenceRepository.vb
+│   │   ├── Evidence Records
+│   │   ├── Evidence Images
+│   │   ├── Evidence Metadata
+│   │   └── Evidence History
+│   │
+│   └── ReportingRepository.vb
+│       ├── Analytics Data
+│       ├── Frequency Data
+│       ├── Trend Data
+│       ├── Chart Data
+│       └── Export Data
+│
+├── Services
+│
+│   ├── MonitoringService.vb
+│   │   ├── Machine Monitoring
+│   │   ├── Dashboard Aggregation
+│   │   └── Machine Card Rendering Logic
+│   │
+│   ├── MachineHistoryService.vb
+│   │   ├── Machine History
+│   │   ├── BM History
+│   │   └── History Timeline
+│   │
+│   ├── AlertService.vb
+│   │   ├── Repeat BM Detection
+│   │   ├── Heatmap Builder
+│   │   └── Alert Evaluation
+│   │
+│   ├── ReBMService.vb
+│   │   ├── BM Re-Occurrence Detection
+│   │   ├── Frequency Detection
+│   │   └── Recurrence Logic
+│   │
+│   ├── MCDService.vb
+│   │   ├── MCD Detection
+│   │   ├── MCD Summary
+│   │   └── MCD Statistics
+│   │
+│   ├── ActionCardService.vb
+│   │   ├── Create Action Card
+│   │   ├── Update Action Card
+│   │   ├── PM Reply Processing
+│   │   ├── Follow-up Processing
+│   │   ├── Escalation Logic
+│   │   └── Closure Logic
+│   │
+│   ├── MachineService.vb
+│   │   ├── Machine Information
+│   │   ├── Machine Status
+│   │   └── Machine Lookup
+│   │
+│   ├── OCAPService.vb
+│   │   ├── OCAP Viewer
+│   │   ├── OCAP Processing
+│   │   └── OCAP Results
+│   │
+│   ├── QCService.vb
+│   │   ├── QC Evaluation
+│   │   ├── QC Validation
+│   │   ├── QC Confirmation
+│   │   └── QC Inspection Logic
+│   │
+│   ├── AnalyticsService.vb
+│   │   ├── BM Analytics
+│   │   ├── Frequency Analysis
+│   │   ├── Failure Analysis
+│   │   └── Statistical Analysis
+│   │
+│   ├── TrendAnalysisService.vb
+│   │   ├── Monthly Trends
+│   │   ├── Process Trends
+│   │   ├── Location Trends
+│   │   └── Yearly Trends
+│   │
+│   └── Reporting
+│       ├── PdfReportService.vb           ← Form3
+│       ├── EvidenceMakingService.vb      ← Form4
+│       ├── TEReportService.vb            ← Form9
+│       ├── ExcelTemplateService.vb
+│       ├── PdfExportService.vb
+│       └── ImageAttachmentService.vb
+│
+├── Models
+│
+│   ├── Machine.vb
+│   ├── MaintenanceRecord.vb
+│   ├── MachineStatus.vb
+│   ├── MachineAlert.vb
+│   ├── DashboardMetric.vb
+│   ├── TrendPoint.vb
+│   ├── BMFrequency.vb
+│   │
+│   ├── BMCase.vb
+│   ├── OCAPItem.vb
+│   ├── QCItem.vb
+│   │
+│   ├── MCDMachine.vb
+│   ├── ActionCardMachine.vb
+│   │
+│   ├── ActionCard.vb
+│   ├── ActionCardComment.vb
+│   ├── PMReply.vb
+│   │
+│   ├── EvidenceItem.vb
+│   ├── EvidenceReport.vb
+│   └── TEReport.vb
+│
+├── Controls
+│
+│   ├── Monitoring
+│   │
+│   │   ├── MachineMonitoringCard.ascx
+│   │   │   └── uC_Test
+│   │   │
+│   │   ├── SummaryPanel.ascx
+│   │   │   └── uC_Panel
+│   │   │
+│   │   ├── BMCaseRow.ascx
+│   │   │   └── uc_BMCase
+│   │   │
+│   │   ├── MachineHistoryPanel.ascx
+│   │   │   └── uc_BMCaseWName
+│   │   │
+│   │   ├── MCDPanel.ascx
+│   │   │   └── Form7
+│   │   │
+│   │   └── ActionCardPanel.ascx
+│   │       └── Form8
+│   │
+│   ├── ActionCards
+│   │
+│   │   └── ActionCardEditor.ascx
+│   │       └── Form_Input
+│   │
+│   ├── Maintenance
+│   │
+│   │   ├── OCAPViewer.ascx
+│   │   │   └── Form6
+│   │   │
+│   │   └── QCPanel.ascx
+│   │
+│   ├── Reporting
+│   │
+│   │   ├── TrendChart.ascx
+│   │   ├── FrequencyChart.ascx
+│   │   ├── PdfViewer.ascx
+│   │   └── EvidenceGallery.ascx
+│   │
+│   └── Archive
+│       ├── uC_Form.vb
+│       ├── uC_NewForm.vb
+│       └── uC_NewFormNoName.vb
+│
+├── Templates
+│
+│   ├── EvidenceMaking
+│   │   ├── EvidenceMaking_DC.xlsx
+│   │   ├── EvidenceMaking_DB.xlsx
+│   │   ├── EvidenceMaking_WB.xlsx
+│   │   ├── EvidenceMaking_MP.xlsx
+│   │   ├── EvidenceMaking_PL.xlsx
+│   │   ├── EvidenceMaking_FL.xlsx
+│   │   ├── EvidenceMaking_FT.xlsx
+│   │   ├── EvidenceMaking_TP.xlsx
+│   │   ├── EvidenceMaking_EDS.xlsx
+│   │   ├── EvidenceMaking_MEMS.xlsx
+│   │   └── EvidenceMaking_SING.xlsx
+│   │
+│   └── TE
+│       ├── TETemplate.xlsx
+│       └── EDS-CSPTemplate.xlsx
+│
+├── Uploads
+│
+│   ├── EvidenceImages
+│   ├── ActionCardAttachments
+│   └── TempEvidenceFiles
+│
+└── TempData
+    ├── GeneratedPdf
+    ├── GeneratedReports
+    └── TEReports

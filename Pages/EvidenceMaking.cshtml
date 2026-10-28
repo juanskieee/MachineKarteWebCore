@@ -1,0 +1,92 @@
+﻿@page
+@model MachineKarte.Web.Pages.EvidenceMakingModel
+@{
+    ViewData["Title"] = "BM Maintenance Evidence";
+    ViewData["Page"] = "EvidenceMaking";
+    Layout = "_Layout";
+}
+
+<!-- ════════════════════════════════════════════════
+     HEADER BAR
+     Mirrors Form4 title: "BM Maintenance Evidence"
+     ════════════════════════════════════════════════ -->
+<div class="ev-header">
+    <span class="ev-title">BM Maintenance Evidence</span>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     FORM PANEL
+     Mirrors EMakingPrint(ProcessCase, bmid) inputs.
+     Called from Monitoring page (Form1) when user
+     clicks a BM card to generate evidence.
+     ════════════════════════════════════════════════ -->
+<div class="ev-form-panel">
+
+    <!-- Process (ProcessCase) -->
+    <div class="form-group">
+        <label class="form-label">Process</label>
+        <select id="selProcess" class="form-select">
+            <option value="">— Select —</option>
+            <option value="DC">DC</option>
+            <option value="DB">DB</option>
+            <option value="WB">WB</option>
+            <option value="MP">MP</option>
+            <option value="PL">PL</option>
+            <option value="FL">FL</option>
+            <option value="SING">SING</option>
+            <option value="FT">FT</option>
+            <option value="TP">TP</option>
+            <option value="EDS">EDS</option>
+            <option value="MEMS">MEMS</option>
+        </select>
+    </div>
+
+    <!-- BM ID (bmid) -->
+    <div class="form-group">
+        <label class="form-label">BM ID</label>
+        <input type="number" id="txtBmId" class="form-input" placeholder="Enter BM ID" min="1" />
+    </div>
+
+    <!-- Generate button (mirrors Button1 / EMakingPrint trigger) -->
+    <button id="btnGenerate" class="btn-generate" onclick="generateEvidence()">
+        Generate Evidence
+    </button>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     STATUS / PROGRESS
+     Replaces WinForms MsgBox + WebBrowser progress
+     ════════════════════════════════════════════════ -->
+<div id="statusArea" class="status-area" style="display:none;">
+    <div id="statusSpinner" class="ev-spinner" style="display:none;">
+        <div class="spinner"></div>
+        <span>Generating evidence file…</span>
+    </div>
+    <div id="statusMsg" class="status-msg"></div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     PDF / EXCEL PREVIEW PANEL
+     Mirrors the WebBrowser control added to Form4.
+     Shows an inline iframe for PDF preview;
+     also provides a direct download link.
+     ════════════════════════════════════════════════ -->
+<div id="previewPanel" class="preview-panel" style="display:none;">
+    <div class="preview-toolbar">
+        <span id="previewFileName" class="preview-filename"></span>
+        <a id="downloadLink" class="btn-download" href="#" download>
+            ⬇ Download
+        </a>
+        <button class="btn-close-preview" onclick="closePreview()">✕ Close</button>
+    </div>
+    <iframe id="previewFrame" class="preview-frame" src=""></iframe>
+</div>
+
+@Html.AntiForgeryToken()
+
+@section Styles {
+    <link rel="stylesheet" href="~/Assets/css/EvidenceMaking.css" />
+}
+@section Scripts {
+    <script src="~/Assets/js/EvidenceMaking.js"></script>
+}

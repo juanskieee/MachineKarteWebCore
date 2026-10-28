@@ -1,0 +1,316 @@
+﻿/* ═══════════════════════════════════════════════════════════════════════════
+   McdMonitoring.css  –  Form7 → MCD Monitoring page
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Page shell ─────────────────────────────────────────────────────────── */
+.mcd-page {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.card {
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+
+/* ── Filter bar ─────────────────────────────────────────────────────────── */
+.mcd-filter-bar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .75rem;
+    align-items: flex-end;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+}
+
+    .filter-group label {
+        font-size: .75rem;
+        font-weight: 600;
+        color: #495057;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+    }
+
+.form-control {
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    padding: .375rem .75rem;
+    font-size: .875rem;
+    line-height: 1.5;
+    color: #212529;
+}
+
+.filter-btn-group {
+    justify-content: flex-end;
+}
+
+.btn {
+    padding: .4rem .9rem;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-size: .875rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    transition: filter .15s;
+}
+
+    .btn:hover {
+        filter: brightness(0.92);
+    }
+
+    .btn:disabled {
+        opacity: .6;
+        cursor: not-allowed;
+    }
+
+.btn-primary {
+    background: #0d6efd;
+    color: #fff;
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: #fff;
+}
+
+/* ── Progress bar ───────────────────────────────────────────────────────── */
+.mcd-progress {
+    height: 4px;
+    background: #e9ecef;
+    border-radius: 2px;
+    margin-top: .5rem;
+    overflow: hidden;
+}
+
+.mcd-progress-inner {
+    height: 100%;
+    width: 0;
+    background: #0d6efd;
+    transition: width .3s ease;
+}
+
+/* ── Grid wrapper ───────────────────────────────────────────────────────── */
+.mcd-grid-wrapper {
+    overflow-x: auto;
+}
+
+.mcd-grid {
+    min-width: 760px;
+}
+
+/* ── Grid rows ──────────────────────────────────────────────────────────── */
+.mcd-header-row,
+.mcd-grid-row,
+.mcd-total-row {
+    display: flex;
+    align-items: stretch;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.mcd-header-row {
+    background: #343a40;
+    color: #fff;
+    font-weight: 700;
+    font-size: .78rem;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    border-radius: 4px 4px 0 0;
+}
+
+.mcd-total-row {
+    background: #f8f9fa;
+    font-weight: 700;
+    border-top: 2px solid #adb5bd;
+    border-radius: 0 0 4px 4px;
+}
+
+/* ── Column widths ──────────────────────────────────────────────────────── */
+.mcd-process-col {
+    flex: 0 0 70px;
+    min-width: 70px;
+}
+
+.mcd-loc-col {
+    flex: 1 1 0;
+    min-width: 70px;
+}
+
+.mcd-total-col {
+    flex: 0 0 70px;
+    min-width: 70px;
+}
+
+/* ── Cell base ──────────────────────────────────────────────────────────── */
+.mcd-header,
+.mcd-proc-label,
+.mcd-cell,
+.mcd-proc-total,
+.mcd-total-label,
+.mcd-total-cell {
+    padding: .45rem .5rem;
+    text-align: center;
+    border-right: 1px solid #dee2e6;
+    font-size: .85rem;
+}
+
+.mcd-proc-label {
+    font-weight: 700;
+    background: #e9ecef;
+    text-align: left;
+    padding-left: .75rem;
+}
+
+.mcd-total-label {
+    font-weight: 700;
+    text-align: left;
+    padding-left: .75rem;
+}
+
+/* ── Cells – state variants ─────────────────────────────────────────────── */
+.mcd-cell {
+    transition: background .15s, color .15s;
+}
+
+.mcd-cell-na {
+    background: #f0f0f0;
+    color: #adb5bd;
+    cursor: default;
+}
+
+.mcd-cell-hot {
+    background: #fff3cd;
+    color: #842029;
+    font-weight: 700;
+}
+
+.mcd-cell-clickable {
+    cursor: pointer;
+}
+
+    .mcd-cell-clickable:hover {
+        background: #ffe08a;
+        outline: 2px solid #fd7e14;
+    }
+
+/* ── Process row total column ───────────────────────────────────────────── */
+.mcd-proc-total {
+    background: #f8f9fa;
+    font-weight: 600;
+}
+
+/* ── Floor total row ────────────────────────────────────────────────────── */
+.mcd-total-cell {
+    font-weight: 700;
+}
+
+.mcd-total-hot {
+    color: #842029;
+}
+
+/* ── Machine list panel (slide-in overlay) ──────────────────────────────── */
+.mcd-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.35);
+    z-index: 100;
+}
+
+.mcd-machine-panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%,-50%);
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.25);
+    z-index: 101;
+    width: 360px;
+    max-width: 95vw;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.mcd-machine-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: .75rem 1rem;
+    background: #343a40;
+    color: #fff;
+    font-weight: 700;
+    font-size: 1rem;
+}
+
+.mcd-panel-close {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 1.4rem;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.mcd-machine-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 340px;
+    overflow-y: auto;
+}
+
+.mcd-list-item {
+    padding: .5rem 1rem;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: .9rem;
+    transition: background .1s;
+}
+
+    .mcd-list-item:hover {
+        background: #e9ecef;
+    }
+
+    .mcd-list-item.selected {
+        background: #cfe2ff;
+        font-weight: 700;
+    }
+
+.mcd-list-empty,
+.mcd-list-error {
+    padding: 1rem;
+    text-align: center;
+    color: #6c757d;
+    font-style: italic;
+}
+
+.mcd-list-error {
+    color: #dc3545;
+}
+
+.mcd-panel-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: .5rem;
+    padding: .75rem 1rem;
+    border-top: 1px solid #dee2e6;
+    background: #f8f9fa;
+}

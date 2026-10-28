@@ -1,0 +1,407 @@
+Imports System.Data.SqlClient
+Public Class Form_Input
+    Private conn As SqlConnection = New SqlConnection(My.Settings.DBConnection)
+    Dim StatusID As String
+    Dim DateTrue1 As Boolean = False
+    Dim DateTrue2 As Boolean = False
+    Dim DateTrue3 As Boolean = False
+
+
+    Public Sub LoadData(ByVal bmid As String, ByVal status As String, ByVal mcno As String, ByVal ColorT As Color, ByVal HeaderCase As String)
+
+
+
+        If Form1.cbUser.Text = "TE" Then
+            Label18.Text = "TE Reply"
+            Label21.Text = "TE Reply"
+            Label24.Text = "TE Reply"
+        End If
+
+
+        If status = "Existing" Then
+
+            Me.Text = mcno.ToString.ToUpper & " - " & HeaderCase
+            tbMachineNo.Text = mcno
+            lblBMID.Text = bmid
+            LoadData(bmid, mcno)
+            tbProblemContent.Enabled = True
+            tbInCharge.Enabled = True
+            tbInvestigation.Enabled = True
+            tbAction.Enabled = True
+            btnSave.Enabled = True
+            If ColorT.Name = "Green" Then
+                cbStatus.SelectedItem = "NO RE-OCCURRENCE AFTER 7 DAYS"
+            ElseIf ColorT.Name = "LightGreen" Then
+                cbStatus.SelectedItem = "RUNNING (LOT EVALUATION)"
+            ElseIf ColorT.Name = "Red" Then
+                cbStatus.SelectedItem = "STOP (ONGOING INVESTIGATION)"
+            ElseIf ColorT.Name = "DarkOrange" Then
+                cbStatus.SelectedItem = "RUNNING (UNDER 100% INSPECTION)"
+            ElseIf ColorT.Name = "DarkGray" Then
+                cbStatus.SelectedItem = "RUNNING (ONGOING INVESTIGATION/MONITORING)"
+            ElseIf ColorT.Name = "Violet"
+                cbStatus.SelectedItem = "STOP (WAITING For INSPECTION RESULTS)"
+            ElseIf ColorT.Name = "Aqua"
+                cbStatus.SelectedItem = "STOP (WAITING FOR QC INSTRUCTION)"
+            End If
+        Else
+            cbStatus.SelectedItem = "-SELECT-"
+            lblBMID.Text = bmid
+            Me.Text = mcno & " - Check And Action Card"
+            tbMachineNo.Text = mcno
+            tbDate.Text = Date.Now.ToString("MM/dd/yyyy hh:mm:ss")
+        End If
+        tbComment.Enabled = True
+        tbIncharge_1.Enabled = True
+        tbComment2.Enabled = True
+        tbIncharge_2.Enabled = True
+        tbComment3.Enabled = True
+        tbIncharge_3.Enabled = True
+        StatusID = status
+    End Sub
+    Private Sub SaveData()
+
+        Dim strQuery As String = String.Empty
+        If Form1.cbUser.Text = "TE" Then
+            strQuery = " Insert into [dbo].[MachineKarte_ActionCard_TE] (BMID,Machineno,ProblemContent,Incharge,DateCard,InvestigationDone,Action,Comment,date1,incharge1,Comment2,date2,incharge2,Comment3,date3,incharge3,MCStatus,PMReply1,PMReply2,PMReply3,PMIncharge1,PMIncharge2,PMIncharge3,PMDate1,PMDate2,PMDate3) Values (@BMID,@Machineno,@ProblemContent,@Incharge,@DateCard,@Investigation,@Action,@Comment,@date1,@incharge1,@Comment2,@date2,@incharge2,@Comment3,@date3,@incharge3,@MCStatus,@PMReply1,@PMReply2,@PMReply3,@PMIncharge1,@PMIncharge2,@PMIncharge3,@PMDate1,@PMDate2,@PMDate3)"
+        Else
+            Dim userTemp As String = ""
+            Dim TableTemp As String = ""
+
+            If Form1.cbUser.Text = "CC" Then
+                TableTemp = "MachineKarte_ActionCard_CC"
+            ElseIf Form1.cbUser.Text = "VIS" Then
+                TableTemp = "MachineKarte_ActionCard_VIS"
+            ElseIf Form1.cbUser.Text = "EEE" Then
+                TableTemp = "MachineKarte_ActionCard_EEE"
+            Else
+                TableTemp = "MachineKarte_ActionCard"
+            End If
+
+            strQuery = " Insert into [dbo].[" & TableTemp & "]  (BMID,Machineno,ProblemContent,Incharge,DateCard,InvestigationDone,Action,Comment,date1,incharge1,Comment2,date2,incharge2,Comment3,date3,incharge3,MCStatus,PMReply1,PMReply2,PMReply3,PMIncharge1,PMIncharge2,PMIncharge3,PMDate1,PMDate2,PMDate3) Values (@BMID,@Machineno,@ProblemContent,@Incharge,@DateCard,@Investigation,@Action,@Comment,@date1,@incharge1,@Comment2,@date2,@incharge2,@Comment3,@date3,@incharge3,@MCStatus,@PMReply1,@PMReply2,@PMReply3,@PMIncharge1,@PMIncharge2,@PMIncharge3,@PMDate1,@PMDate2,@PMDate3)"
+        End If
+
+        Using cmd = New SqlCommand(strQuery, conn)
+            cmd.CommandType = CommandType.Text
+            cmd.Parameters.AddWithValue("@bmid", lblBMID.Text)
+            cmd.Parameters.AddWithValue("@Machineno", tbMachineNo.Text)
+            cmd.Parameters.AddWithValue("@ProblemContent", tbProblemContent.Text)
+            cmd.Parameters.AddWithValue("@Incharge", tbInCharge.Text)
+            cmd.Parameters.AddWithValue("@DateCard", tbDate.Text)
+            cmd.Parameters.AddWithValue("@Investigation", tbInvestigation.Text)
+            cmd.Parameters.AddWithValue("@Action", tbAction.Text)
+            cmd.Parameters.AddWithValue("@Comment", tbComment.Text)
+            cmd.Parameters.AddWithValue("@Date1", tbdate_1.Text)
+            cmd.Parameters.AddWithValue("@Incharge1", tbIncharge_1.Text)
+            cmd.Parameters.AddWithValue("@Comment2", tbComment2.Text)
+            cmd.Parameters.AddWithValue("@Date2", tbdate_2.Text)
+            cmd.Parameters.AddWithValue("@Incharge2", tbIncharge_2.Text)
+            cmd.Parameters.AddWithValue("@Comment3", tbComment3.Text)
+            cmd.Parameters.AddWithValue("@Date3", tbdate_3.Text)
+            cmd.Parameters.AddWithValue("@Incharge3", tbIncharge_3.Text)
+            cmd.Parameters.AddWithValue("@PMReply1", tbReply1.Text)
+            cmd.Parameters.AddWithValue("@PMReply2", tbReply2.Text)
+            cmd.Parameters.AddWithValue("@PMReply3", tbReply3.Text)
+            cmd.Parameters.AddWithValue("@PMIncharge1", tbReplyEmp1.Text)
+            cmd.Parameters.AddWithValue("@PMIncharge2", tbReplyEmp2.Text)
+            cmd.Parameters.AddWithValue("@PMIncharge3", tbReplyEmp3.Text)
+            cmd.Parameters.AddWithValue("@PMDate1", tbReplyDate1.Text)
+            cmd.Parameters.AddWithValue("@PMDate2", tbReplyDate2.Text)
+            cmd.Parameters.AddWithValue("@PMDate3", tbReplyDate3.Text)
+            Dim mcStatustemp As String = If(cbStatus.Text = "-SELECT-", String.Empty, cbStatus.Text)
+            cmd.Parameters.AddWithValue("@MCStatus", mcStatustemp)
+
+            Try
+                conn.Open()
+                cmd.ExecuteNonQuery()
+
+            Catch ex As Exception
+                MsgBox("An error occurred: " & ex.Message, MsgBoxStyle.Critical, "Error")
+                Exit Sub
+            Finally
+                conn.Close()
+            End Try
+        End Using
+
+
+
+
+        'If CheckIfDivCom() = True Then
+        '    Dim strQueryReBM As String = "UPDATE [dbo].[MachineKarte_ReBM] SET isDone = @isDone where bmid=@bmid and mcno=@mcno"
+        '    Using cmd As New SqlCommand(strQueryReBM, conn)
+        '        cmd.CommandType = CommandType.Text
+        '        cmd.Parameters.AddWithValue("@isDone", True)
+        '        cmd.Parameters.AddWithValue("@bmid", lblBMID.Text)
+        '        cmd.Parameters.AddWithValue("@mcno", tbMachineNo.Text)
+        '        Try
+        '            conn.Open()
+        '            cmd.ExecuteNonQuery()
+        '        Catch ex As Exception
+        '            MsgBox("An error occurred: " & ex.Message, MsgBoxStyle.Critical, "Error")
+        '            Exit Sub
+        '        Finally
+        '            conn.Close()
+        '        End Try
+        '    End Using
+        'End If
+
+
+        MsgBox("Successfully Saved", MsgBoxStyle.Information, "Check And Action Card")
+        Me.Close()
+    End Sub
+    Private Sub UpdateData()
+
+
+        Dim strQuery As String = String.Empty
+        If Form1.cbUser.Text = "TE" Then
+            strQuery = " UPDATE [dbo].[MachineKarte_ActionCard_TE] SET Comment = @Comment, Date1 = @Date1, Incharge1 = @Incharge1, Comment2 = @Comment2, Date2 = @Date2, Incharge2 = @Incharge2, Comment3 = @Comment3, Date3 = @Date3, Incharge3 = @Incharge3, ProblemContent = @ProblemContent, InvestigationDone = @Investigation, Action = @Action, Incharge = @Incharge, Mcstatus = @MCStatus, PMReply1 = @PMReply1, PMReply2 = @PMReply2, PMReply3 = @PMReply3, PMIncharge1 = @PMIncharge1, PMIncharge2 = @PMIncharge2, PMIncharge3 = @PMIncharge3, PMDate1 = @PMDate1, PMDate2 = @PMDate2, PMDate3 = @PMDate3 WHERE BMID = @bmid AND Machineno = @Machineno"
+        Else
+            Dim userTemp As String = String.Empty
+            Dim TableTemp As String = String.Empty
+
+            If Form1.cbUser.Text = "CC" Then
+                TableTemp = "MachineKarte_ActionCard_CC"
+            ElseIf Form1.cbUser.Text = "VIS" Then
+                TableTemp = "MachineKarte_ActionCard_VIS"
+            ElseIf Form1.cbUser.Text = "EEE" Then
+                TableTemp = "MachineKarte_ActionCard_EEE"
+            Else
+                TableTemp = "MachineKarte_ActionCard"
+            End If
+
+            strQuery = " UPDATE [dbo].[" & TableTemp & "] SET Comment = @Comment, Date1 = @Date1, Incharge1 = @Incharge1, Comment2 = @Comment2, Date2 = @Date2, Incharge2 = @Incharge2, Comment3 = @Comment3, Date3 = @Date3, Incharge3 = @Incharge3, ProblemContent = @ProblemContent, InvestigationDone = @Investigation, Action = @Action, Incharge = @Incharge, Mcstatus = @MCStatus, PMReply1 = @PMReply1, PMReply2 = @PMReply2, PMReply3 = @PMReply3, PMIncharge1 = @PMIncharge1, PMIncharge2 = @PMIncharge2, PMIncharge3 = @PMIncharge3, PMDate1 = @PMDate1, PMDate2 = @PMDate2, PMDate3 = @PMDate3 WHERE BMID = @bmid AND Machineno = @Machineno"
+        End If
+
+
+        Using cmd As New SqlCommand(strQuery, conn)
+            cmd.CommandType = CommandType.Text
+            cmd.Parameters.AddWithValue("@bmid", lblBMID.Text)
+            cmd.Parameters.AddWithValue("@Machineno", tbMachineNo.Text)
+            cmd.Parameters.AddWithValue("@Comment", tbComment.Text)
+            cmd.Parameters.AddWithValue("@Date1", tbdate_1.Text)
+            cmd.Parameters.AddWithValue("@Incharge1", tbIncharge_1.Text)
+            cmd.Parameters.AddWithValue("@Comment2", tbComment2.Text)
+            cmd.Parameters.AddWithValue("@Date2", tbdate_2.Text)
+            cmd.Parameters.AddWithValue("@Incharge2", tbIncharge_2.Text)
+            cmd.Parameters.AddWithValue("@Comment3", tbComment3.Text)
+            cmd.Parameters.AddWithValue("@Date3", tbdate_3.Text)
+            cmd.Parameters.AddWithValue("@Incharge3", tbIncharge_3.Text)
+            cmd.Parameters.AddWithValue("@ProblemContent", tbProblemContent.Text)
+            cmd.Parameters.AddWithValue("@Investigation", tbInvestigation.Text)
+            cmd.Parameters.AddWithValue("@Action", tbAction.Text)
+            cmd.Parameters.AddWithValue("@Incharge", tbInCharge.Text)
+            cmd.Parameters.AddWithValue("@PMReply1", tbReply1.Text)
+            cmd.Parameters.AddWithValue("@PMReply2", tbReply2.Text)
+            cmd.Parameters.AddWithValue("@PMReply3", tbReply3.Text)
+            cmd.Parameters.AddWithValue("@PMIncharge1", tbReplyEmp1.Text)
+            cmd.Parameters.AddWithValue("@PMIncharge2", tbReplyEmp2.Text)
+            cmd.Parameters.AddWithValue("@PMIncharge3", tbReplyEmp3.Text)
+            cmd.Parameters.AddWithValue("@PMDate1", tbReplyDate1.Text)
+            cmd.Parameters.AddWithValue("@PMDate2", tbReplyDate2.Text)
+            cmd.Parameters.AddWithValue("@PMDate3", tbReplyDate3.Text)
+            Dim mcStatustemp As String = If(cbStatus.Text = "-SELECT-", String.Empty, cbStatus.Text)
+            cmd.Parameters.AddWithValue("@MCStatus", mcStatustemp)
+            Try
+                conn.Open()
+                cmd.ExecuteNonQuery()
+            Catch ex As Exception
+                MsgBox("An error occurred: " & ex.Message, MsgBoxStyle.Critical, "Error")
+                Exit Sub
+            Finally
+                conn.Close()
+            End Try
+        End Using
+
+
+
+        'If CheckIfDivCom() = True Then
+        '    Dim strQueryReBM As String = "UPDATE [dbo].[MachineKarte_ReBM] SET isDone = @isDone where bmid=@bmid and mcno=@mcno"
+        '    Using cmd As New SqlCommand(strQueryReBM, conn)
+        '        cmd.CommandType = CommandType.Text
+        '        cmd.Parameters.AddWithValue("@isDone", True)
+        '        cmd.Parameters.AddWithValue("@bmid", lblBMID.Text)
+        '        cmd.Parameters.AddWithValue("@mcno", tbMachineNo.Text)
+        '        Try
+        '            conn.Open()
+        '            cmd.ExecuteNonQuery()
+        '        Catch ex As Exception
+        '            MsgBox("An error occurred: " & ex.Message, MsgBoxStyle.Critical, "Error")
+        '            Exit Sub
+        '        Finally
+        '            conn.Close()
+        '        End Try
+        '    End Using
+        'End If
+
+
+        MsgBox("Successfully Updated", MsgBoxStyle.Information, "Check And Action Card")
+        Me.Close()
+    End Sub
+    'Private Function CheckIfDivCom() As Boolean
+    '    Try
+    '        Dim dt As New DataTable()
+    '        Dim strQuery As String = "SELECT CASE
+    '                                WHEN (Comment IS NULL OR Comment = '') and (Comment2 IS NULL OR Comment2 = '') and (Comment3 IS NULL OR Comment3 = '') THEN 'No'                               
+    '                                ELSE 'Yes'
+    '                              END AS DivReply
+    '                              FROM [dbo].[MachineKarte_ActionCard]
+    '                              WHERE bmid = @bmid AND machineno = @machineno"
+
+    '        Using cmd As New SqlCommand(strQuery, conn)
+    '            cmd.CommandType = CommandType.Text
+    '            cmd.Parameters.AddWithValue("@bmid", lblBMID.Text)
+    '            cmd.Parameters.AddWithValue("@machineno", tbMachineNo.Text)
+    '            Dim da As New SqlDataAdapter(cmd)
+    '            da.Fill(dt)
+    '        End Using
+
+    '        If dt.Rows.Count > 0 AndAlso dt.Rows(0).Item("DivReply").ToString() <> "No" Then
+    '            Return True
+    '        Else
+    '            Return False
+    '        End If
+
+    '    Catch ex As Exception
+    '        Return False
+    '    End Try
+    'End Function
+
+    Private Sub LoadData(ByVal bmid As String, ByVal mcno As String)
+
+        Dim dt As New DataTable()
+
+
+        Dim strQuery As String = String.Empty
+        If Form1.cbUser.Text = "TE" Then
+            strQuery = " SELECT * FROM [dbo].[MachineKarte_ActionCard_TE] WHERE bmid = @bmid AND Machineno = @Machineno"
+        Else
+            Dim userTemp As String = String.Empty
+            Dim TableTemp As String = String.Empty
+
+            If Form1.cbUser.Text = "CC" Then
+                TableTemp = "MachineKarte_ActionCard_CC"
+            ElseIf Form1.cbUser.Text = "VIS" Then
+                TableTemp = "MachineKarte_ActionCard_VIS"
+            ElseIf Form1.cbUser.Text = "EEE" Then
+                TableTemp = "MachineKarte_ActionCard_EEE"
+            Else
+                TableTemp = "MachineKarte_ActionCard"
+            End If
+
+            strQuery = " SELECT * FROM [dbo].[" & TableTemp & "] WHERE bmid = @bmid AND Machineno = @Machineno"
+        End If
+
+
+        Using cmd As New SqlCommand(strQuery, conn)
+            cmd.CommandType = CommandType.Text
+            cmd.Parameters.AddWithValue("@bmid", bmid)
+            cmd.Parameters.AddWithValue("@Machineno", mcno)
+            Using da As New SqlDataAdapter(cmd)
+                da.Fill(dt)
+            End Using
+        End Using
+
+        If dt.Rows.Count > 0 Then
+            Dim row As DataRow = dt.Rows(0)
+            tbProblemContent.Text = row("ProblemContent").ToString()
+            tbInCharge.Text = row("Incharge").ToString()
+            tbDate.Text = row("DateCard").ToString()
+            tbInvestigation.Text = row("InvestigationDone").ToString()
+            tbAction.Text = row("Action").ToString()
+            tbComment.Text = row("Comment").ToString()
+            tbdate_1.Text = row("Date1").ToString()
+            tbIncharge_1.Text = row("InCharge1").ToString()
+            tbComment2.Text = row("Comment2").ToString()
+            tbdate_2.Text = row("Date2").ToString()
+            tbIncharge_2.Text = row("InCharge2").ToString()
+            tbComment3.Text = row("Comment3").ToString()
+            tbdate_3.Text = row("Date3").ToString()
+            tbIncharge_3.Text = row("InCharge3").ToString()
+            cbStatus.SelectedItem = row("MCStatus").ToString()
+            tbReply1.Text = row("PMReply1").ToString()
+            tbReply2.Text = row("PMReply2").ToString()
+            tbReply3.Text = row("PMReply3").ToString()
+            tbReplyDate1.Text = row("PMDate1").ToString()
+            tbReplyDate2.Text = row("PMDate2").ToString()
+            tbReplyDate3.Text = row("PMDate3").ToString()
+            tbReplyEmp1.Text = row("PMIncharge1").ToString()
+            tbReplyEmp2.Text = row("PMIncharge2").ToString()
+            tbReplyEmp3.Text = row("PMIncharge3").ToString()
+        Else
+            MsgBox("No data.", MsgBoxStyle.Information, "Check And Action Card")
+            Me.Close()
+        End If
+    End Sub
+    Private Sub btnSave_Click(sender As Object, e As EventArgs) Handles btnSave.Click
+
+        If cbStatus.Text = "-SELECT-" Then
+            MsgBox("Please select a MC Status.", MsgBoxStyle.Information, "Check And Action Card")
+            Exit Sub
+        End If
+
+        If StatusID = "Existing" Then
+            UpdateData()
+        Else
+            SaveData()
+        End If
+        Form1.LoadMCName(Form1.cbProcess.Text, Form1.cbFloor.Text, Form1.cbMachine.Text, Form1.dt1.Value.ToString("MM/dd/yyyy hh:mm:ss"), Form1.dt2.Value.ToString("MM/dd/yyyy hh:mm:ss"))
+        Form1.Panel1.VerticalScroll.Value = Form1.Panel1.VerticalScroll.Maximum
+
+    End Sub
+
+    Private Sub tbComment_Leave(sender As Object, e As EventArgs) Handles tbComment.Leave
+
+        If tbComment.Text <> "" Then
+            tbdate_1.Text = Date.Now.ToString("MM/dd/yyyy hh:mm:ss")
+        Else
+            tbdate_1.Text = ""
+        End If
+
+    End Sub
+
+    Private Sub tbComment2_Leave(sender As Object, e As EventArgs) Handles tbComment2.Leave
+
+        If tbComment2.Text <> "" Then
+            tbdate_2.Text = Date.Now.ToString("MM/dd/yyyy hh:mm:ss")
+        Else
+            tbdate_2.Text = ""
+        End If
+
+    End Sub
+
+    Private Sub tbComment3_Leave(sender As Object, e As EventArgs) Handles tbComment3.Leave
+
+        If tbComment3.Text <> "" Then
+            tbdate_3.Text = Date.Now.ToString("MM/dd/yyyy hh:mm:ss")
+        Else
+            tbdate_3.Text = ""
+        End If
+
+    End Sub
+
+
+    Private Sub tbReply1_Leave(sender As Object, e As EventArgs) Handles tbReply1.Leave
+
+        If tbReply1.Text <> "" Then
+            tbReplyDate1.Text = Date.Now.ToString("MM/dd/yyyy hh:mm:ss")
+        Else
+            tbReplyDate1.Text = ""
+        End If
+
+    End Sub
+
+    Private Sub tbReply2_Leave(sender As Object, e As EventArgs) Handles tbReply2.Leave
+        If tbReply2.Text <> "" Then
+            tbReplyDate2.Text = Date.Now.ToString("MM/dd/yyyy hh:mm:ss")
+        Else
+            tbReplyDate2.Text = ""
+        End If
+    End Sub
+    Private Sub tbReply3_Leave(sender As Object, e As EventArgs) Handles tbReply3.Leave
+        If tbReply3.Text <> "" Then
+            tbReplyDate3.Text = Date.Now.ToString("MM/dd/yyyy hh:mm:ss")
+        Else
+            tbReplyDate3.Text = ""
+        End If
+    End Sub
+End Class

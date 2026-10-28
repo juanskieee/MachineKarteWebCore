@@ -1,0 +1,366 @@
+﻿/* ============================================================
+   MachineSummary.css — Form11 → MachineSummary.cshtml
+   Dark-panel aesthetic matching the original WinForms grid.
+   ============================================================ */
+
+/* ── Wrapper ──────────────────────────────────────────────── */
+.ms-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px 16px;
+    background: #3a3a3a;
+    min-height: calc(100vh - 60px);
+    color: #fff;
+    position: relative;
+}
+
+/* ── Toolbar ──────────────────────────────────────────────── */
+.ms-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 14px;
+    background: #555;
+    padding: 10px 14px;
+    border-radius: 4px;
+}
+
+.ms-toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+    .ms-toolbar-group label {
+        font-size: 0.8rem;
+        color: #ccc;
+        white-space: nowrap;
+    }
+
+    .ms-toolbar-group input[type="datetime-local"],
+    .ms-toolbar-group select {
+        background: #2c2c2c;
+        color: #fff;
+        border: 1px solid #777;
+        border-radius: 3px;
+        padding: 4px 6px;
+        font-size: 0.85rem;
+    }
+
+.ms-btn-search {
+    background: #1a6fdb;
+    color: #fff;
+    border: none;
+    border-radius: 3px;
+    padding: 6px 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+    .ms-btn-search:hover {
+        background: #1558b0;
+    }
+
+.ms-status {
+    font-size: 0.78rem;
+    color: #adf;
+    margin-left: auto;
+}
+
+/* ── Progress bar ─────────────────────────────────────────── */
+.ms-progress {
+    height: 5px;
+    background: #555;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.ms-progress-bar {
+    height: 100%;
+    width: 40%;
+    background: #1a6fdb;
+    animation: ms-slide 1.2s linear infinite;
+}
+
+@keyframes ms-slide {
+    0% {
+        transform: translateX(-100%);
+    }
+
+    100% {
+        transform: translateX(350%);
+    }
+}
+
+/* ── Grid scroll wrapper ──────────────────────────────────── */
+.ms-grid-scroll {
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 70vh;
+}
+
+/* ── Grid table ───────────────────────────────────────────── */
+.ms-grid {
+    border-collapse: collapse;
+    font-size: 0.82rem;
+    min-width: 900px;
+    width: 100%;
+    table-layout: fixed;
+}
+
+    /* Column headers */
+    .ms-grid thead th {
+        background: #b0c8e0; /* azure-like */
+        color: #000;
+        padding: 8px 6px;
+        text-align: center;
+        border: 1px solid #888;
+        font-size: 0.75rem;
+        font-weight: 700;
+        white-space: nowrap;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+
+        .ms-grid thead th.ms-th-process {
+            background: #1a6fdb;
+            color: #fff;
+            position: sticky;
+            left: 0;
+            z-index: 3;
+            min-width: 70px;
+        }
+
+        .ms-grid thead th.ms-th-total {
+            background: #1a6fdb;
+            color: #fff;
+        }
+
+/* Process row label */
+.ms-td-process {
+    background: #b0c8e0;
+    color: #000;
+    font-weight: 700;
+    text-align: center;
+    border: 1px solid #888;
+    padding: 4px 6px;
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    white-space: nowrap;
+    min-width: 70px;
+}
+
+/* Data cells */
+.ms-cell {
+    text-align: center;
+    font-weight: 700;
+    font-size: 1.05rem;
+    border: 1px solid #666;
+    padding: 6px 4px;
+    min-width: 80px;
+    height: 38px;
+}
+
+.ms-na {
+    background: #5c5c5c;
+    color: #888;
+    font-weight: 400;
+}
+
+.ms-zero {
+    background: #fff;
+    color: #000;
+}
+
+.ms-active {
+    background: #fff;
+    color: tomato; /* mirrors ForeColor = Color.Tomato when count > 0 */
+    cursor: pointer;
+    transition: background 0.12s, transform 0.1s;
+}
+
+    .ms-active:hover,
+    .ms-active:focus {
+        background: #ffe0dc;
+        outline: 2px solid #e44;
+    }
+
+/* Row totals */
+.ms-td-rowtotal {
+    background: #fff;
+    color: #000;
+    font-weight: 700;
+    font-size: 1rem;
+    text-align: center;
+    border: 1px solid #888;
+    padding: 6px 4px;
+}
+
+.ms-row-nonzero {
+    color: tomato;
+}
+
+/* Footer (column totals) */
+.ms-grid tfoot td {
+    padding: 7px 4px;
+    text-align: center;
+    border: 1px solid #888;
+    font-weight: 700;
+    font-size: 1rem;
+}
+
+.ms-tf-label {
+    background: #1a6fdb;
+    color: #fff;
+    position: sticky;
+    left: 0;
+}
+
+.ms-tf-cell {
+    background: #fff;
+    color: #000;
+}
+
+.ms-tf-grand {
+    background: #fff;
+    color: #000;
+}
+
+.ms-tf-nonzero {
+    color: tomato;
+}
+
+/* ── Machine list panel (flyout) ──────────────────────────── */
+.ms-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.45);
+    z-index: 200;
+}
+
+.ms-overlay-show {
+    display: block;
+}
+
+.ms-panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.9);
+    width: min(520px, 92vw);
+    max-height: 80vh;
+    background: #fff;
+    border-radius: 6px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.55);
+    z-index: 201;
+    display: flex;
+    flex-direction: column;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s;
+}
+
+.ms-panel-open {
+    opacity: 1;
+    pointer-events: all;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+.ms-panel-header {
+    display: flex;
+    align-items: center;
+    background: #dde6ed;
+    border-bottom: 1px solid #bbb;
+    padding: 10px 14px;
+    border-radius: 6px 6px 0 0;
+    gap: 8px;
+}
+
+.ms-panel-title {
+    flex: 1;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #1a1a1a;
+}
+
+.ms-panel-close {
+    background: tomato;
+    color: #fff;
+    border: none;
+    border-radius: 3px;
+    width: 32px;
+    height: 32px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    font-weight: 700;
+}
+
+    .ms-panel-close:hover {
+        background: #c0392b;
+    }
+
+.ms-panel-sub {
+    background: #dde6ed;
+    padding: 6px 14px;
+    font-size: 0.82rem;
+    color: #333;
+    font-weight: 600;
+    border-bottom: 1px solid #bbb;
+}
+
+.ms-panel-list {
+    flex: 1;
+    overflow-y: auto;
+    margin: 0;
+    padding: 4px 0;
+    list-style: none;
+    background: #343434;
+}
+
+.ms-panel-item {
+    padding: 8px 16px;
+    color: #fff;
+    font-size: 1.15rem;
+    font-weight: 500;
+    cursor: pointer;
+    border-bottom: 1px solid #444;
+    transition: background 0.1s;
+}
+
+    .ms-panel-item:hover {
+        background: #555;
+    }
+
+    .ms-panel-item.ms-selected {
+        background: #1a6fdb;
+        color: #fff;
+    }
+
+.ms-btn-go {
+    margin: 10px;
+    padding: 10px;
+    background: #1a6fdb;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+    align-self: stretch;
+}
+
+    .ms-btn-go:hover:not(:disabled) {
+        background: #1558b0;
+    }
+
+    .ms-btn-go:disabled {
+        background: #999;
+        cursor: default;
+    }

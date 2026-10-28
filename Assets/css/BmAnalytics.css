@@ -1,0 +1,137 @@
+﻿/* =========================================================
+   BmAnalytics.css  –  BM Analytics page (Form12 conversion)
+   ========================================================= */
+
+/* Page wrapper */
+.bma-page {
+    padding: 1rem;
+    position: relative;
+}
+
+/* Toolbar card */
+.bma-toolbar {
+    padding: 0.75rem 1rem;
+    background: #fff;
+}
+
+/* ── Grid table ─────────────────────────────────────── */
+.bma-table {
+    white-space: nowrap;
+    font-size: 0.8rem;
+    border-collapse: collapse;
+}
+
+.bma-hdr-process,
+.bma-hdr-loc {
+    background: #343a40;
+    color: #fff;
+    text-align: center;
+    font-size: 0.75rem;
+    padding: 0.4rem 0.5rem;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+.bma-hdr-total {
+    background: #495057;
+    color: #fff;
+    text-align: center;
+    font-size: 0.75rem;
+    padding: 0.4rem 0.5rem;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+.bma-proc-label {
+    font-weight: 600;
+    background: #f8f9fa;
+    padding: 0.35rem 0.6rem;
+    min-width: 60px;
+}
+
+/* Individual cells */
+.bma-cell {
+    text-align: center;
+    padding: 0.35rem 0.4rem;
+    min-width: 60px;
+    font-weight: 700;
+}
+
+.bma-cell-na {
+    background: #e9ecef;
+}
+
+.bma-cell-zero {
+    background: #fff;
+    color: #adb5bd;
+    font-weight: 400;
+}
+
+.bma-cell-active {
+    background: #fff8e1;
+    color: #e65100;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+    .bma-cell-active:hover {
+        background: #ffe0b2;
+    }
+
+/* Totals */
+.bma-row-total {
+    text-align: center;
+    font-weight: 700;
+    background: #e3f2fd;
+    color: #0d47a1;
+}
+
+.bma-total-row td {
+    background: #dee2e6;
+    font-weight: 700;
+    text-align: center;
+}
+
+.bma-col-total {
+    color: #0d47a1;
+}
+
+.bma-grand-total {
+    background: #0d47a1 !important;
+    color: #fff !important;
+    font-size: 1rem;
+}
+
+/* ── Flyout panel ──────────────────────────────────── */
+.bma-flyout {
+    position: fixed;
+    right: 1.5rem;
+    top: 120px;
+    width: 260px;
+    z-index: 1050;
+    border: 2px solid #0d6efd;
+}
+
+.bma-mc-item {
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+    .bma-mc-item.active {
+        background: #0d6efd;
+        color: #fff;
+    }
+
+/* Responsive */
+@media (max-width: 768px) {
+    .bma-flyout {
+        right: 0.5rem;
+        width: calc(100vw - 1rem);
+    }
+
+    .bma-page {
+        padding: 0.5rem;
+    }
+}

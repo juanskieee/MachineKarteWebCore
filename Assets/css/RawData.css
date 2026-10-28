@@ -1,0 +1,187 @@
+﻿/* Assets/css/RawData.css */
+/* Mirrors the Form5 layout: two stacked sections,
+   each section = wide chart (left) + data grid (right). */
+
+/* ── Page shell ────────────────────────────────────────────────────────────── */
+.rd-page {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    padding: 1rem 1.25rem 2rem;
+    background: #f5f5f5;
+    min-height: 100vh;
+    font-family: "Microsoft Sans Serif", Arial, sans-serif;
+}
+
+/* ── Page header ───────────────────────────────────────────────────────────── */
+.rd-header {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    border-bottom: 2px solid #555;
+    padding-bottom: .5rem;
+}
+
+.rd-title {
+    font-size: 1.35rem;
+    font-weight: 700;
+    margin: 0;
+    color: #333;
+}
+
+.rd-subtitle {
+    font-size: .95rem;
+    color: #666;
+}
+
+/* ── Loading / error ───────────────────────────────────────────────────────── */
+.rd-loading {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    font-size: 1rem;
+    color: #444;
+    padding: .5rem 0;
+}
+
+.rd-spinner {
+    width: 22px;
+    height: 22px;
+    border: 3px solid #ccc;
+    border-top-color: #555;
+    border-radius: 50%;
+    animation: rd-spin .8s linear infinite;
+    flex-shrink: 0;
+}
+
+@keyframes rd-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.rd-error {
+    background: #fde8e8;
+    border: 1px solid #f5a0a0;
+    color: #a00;
+    padding: .6rem 1rem;
+    border-radius: 4px;
+    font-size: .9rem;
+}
+
+/* ── Section = chart + grid side-by-side ───────────────────────────────────── */
+.rd-section {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+/* ── Individual panel ──────────────────────────────────────────────────────── */
+.rd-panel {
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    overflow: hidden;
+}
+
+.rd-panel--chart {
+    flex: 1 1 72%; /* ~72 % of width — mirrors 1840px of 2543px */
+    min-width: 0;
+}
+
+.rd-panel--grid {
+    flex: 0 0 26%;
+    min-width: 220px;
+    max-height: 680px;
+    overflow-y: auto;
+}
+
+.rd-panel-title {
+    background: #555;
+    color: #fff;
+    font-size: .9rem;
+    font-weight: 700;
+    padding: .45rem .75rem;
+    letter-spacing: .02em;
+}
+
+/* ── Chart canvas wrapper ──────────────────────────────────────────────────── */
+.rd-chart-wrap {
+    padding: .75rem;
+    position: relative;
+    min-height: 320px;
+}
+
+    .rd-chart-wrap canvas {
+        display: block;
+        width: 100% !important;
+    }
+
+/* ── Data grid ─────────────────────────────────────────────────────────────── */
+.rd-grid-wrap {
+    overflow-x: auto;
+}
+
+.rd-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .875rem;
+}
+
+    .rd-table thead th {
+        background: #444;
+        color: #fff;
+        font-size: .875rem;
+        font-weight: 700;
+        text-align: center;
+        padding: .45rem .5rem;
+        white-space: nowrap;
+        position: sticky;
+        top: 0;
+        z-index: 1;
+    }
+
+    .rd-table tbody tr:nth-child(odd) {
+        background: #fff;
+    }
+
+    .rd-table tbody tr:nth-child(even) {
+        background: #f7f7f7;
+    }
+
+    .rd-table tbody tr:hover {
+        background: #e8f0fb;
+    }
+
+    .rd-table td {
+        padding: .35rem .5rem;
+        border-bottom: 1px solid #e8e8e8;
+        color: #222;
+        text-align: center;
+    }
+
+.rd-num {
+    text-align: right !important;
+    font-variant-numeric: tabular-nums;
+}
+
+.rd-empty {
+    text-align: center;
+    color: #999;
+    font-style: italic;
+    padding: 1rem;
+}
+
+/* ── Responsive: stack sections on narrow screens ──────────────────────────── */
+@media (max-width: 900px) {
+    .rd-section {
+        flex-direction: column;
+    }
+
+    .rd-panel--chart,
+    .rd-panel--grid {
+        flex: 1 1 100%;
+        max-height: none;
+    }
+}

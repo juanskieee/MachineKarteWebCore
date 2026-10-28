@@ -1,0 +1,157 @@
+
+Imports System.Data.SqlClient
+Public Class uC_BMCaseWName
+    Private conn As SqlConnection = New SqlConnection("Data Source=172.26.220.152;Initial Catalog=eMaintenanceSystemDB;User ID=eMaintUser;Password=eMaintUser")
+    Public Sub LoadMain(ByVal LoadProcess As String, ByVal LoadLocation As String, ByVal LoadMcno As String, ByVal LoadDate1 As String, ByVal LoadDate2 As String)
+        LoadMCName(LoadProcess, LoadLocation, LoadMcno, LoadDate1, LoadDate2)
+    End Sub
+    Private Sub LoadMCName(ByVal MCProcess As String, ByVal MCLocation As String, ByVal MCMcno As String, ByVal MCDate1 As String, ByVal MCDate2 As String)
+        Dim dt1 As New DataTable
+        Dim topNum1 As Integer = 0
+        Dim topNum2 As Integer = 0
+        Dim dt2 As New DataTable
+        Dim strQuery As String = String.Empty
+        Dim strQuery2 As String = String.Empty
+
+        strQuery = "   select a.Mcno as 'Mcno',format(a.Timeofrequest,'MM/dd/yyyy') as 'Timeofrequest',b.BMCase as 'BMCase'
+                          from [eMaintenanceSystemDB].[dbo].[" & MCProcess & "BMMaintenance] a inner join [eMaintenanceSystemDB].[dbo].[BMCase] b 
+                          on a.BMCaseID = b.BMCaseID
+                          where (a.timeofrequest between @Range1 and @Range2)  and (a.mcno = @Mcno) and (a.Pmcategoryid = '1')
+                          order by a.mcno,a.Timeofrequest,b.BMCase   asc"
+
+
+
+        Using cmd = New SqlCommand(strQuery, conn)
+            cmd.CommandType = CommandType.Text
+            cmd.Parameters.AddWithValue("@Range1", MCDate1)
+            cmd.Parameters.AddWithValue("@Range2", MCDate2)
+            cmd.Parameters.AddWithValue("@Location", MCLocation)
+            cmd.Parameters.AddWithValue("@Mcno", MCMcno)
+            Dim da = New SqlDataAdapter(cmd)
+            da.Fill(dt1)
+        End Using
+
+
+        For i = 0 To dt1.Rows.Count - 1
+            If i <= 12 Then
+                If i = 12 Then
+                    CType(Me.Controls.Find("lblMC_Case" & i, True).First, Label).Text = dt1.Rows(i).Item("BMCase").ToString
+                    CType(Me.Controls.Find("lblMC_Date" & i, True).First, Label).Text = dt1.Rows(i).Item("Timeofrequest").ToString
+                Else
+                    CType(Me.Controls.Find("lblMC_Case" & i + 1, True).First, Label).Text = dt1.Rows(i).Item("BMCase").ToString
+                    CType(Me.Controls.Find("lblMC_Date" & i + 1, True).First, Label).Text = dt1.Rows(i).Item("Timeofrequest").ToString
+                End If
+
+                If i + 3 < dt1.Rows.Count Then
+                    Dim currentRowIndex As Integer = 0
+                    Dim targetColumn As String = "BMCase" ' Replace with your actual column name
+
+                    If i + 3 < dt1.Rows.Count Then
+                        ' Get the current row
+                        Dim currentRow As DataRow = dt1.Rows(i)
+
+                        ' Check if the values in the specified column are the same in the next three rows
+                        If CType(Me.Controls.Find("lblMC1_Color" & i + 1, True).First, Label).Text = "Label1" Then
+
+
+                            If AreNextThreeColumnValuesEqual(currentRow, dt1, targetColumn, i + 1) Then
+
+                                CType(Me.Controls.Find("lblMC1_Color" & i + 1, True).First, Label).Text = "Red"
+                                CType(Me.Controls.Find("lblMC1_Color" & i + 2, True).First, Label).Text = "Red"
+                                CType(Me.Controls.Find("lblMC1_Color" & i + 3, True).First, Label).Text = "Red"
+                                CType(Me.Controls.Find("lblMC1_Color" & i + 4, True).First, Label).Text = "Red"
+                            ElseIf AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn, i + 1) Then
+                                CType(Me.Controls.Find("lblMC1_Color" & i + 1, True).First, Label).Text = "Orange"
+                                CType(Me.Controls.Find("lblMC1_Color" & i + 2, True).First, Label).Text = "Orange"
+                                CType(Me.Controls.Find("lblMC1_Color" & i + 3, True).First, Label).Text = "Orange"
+
+                            ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn, i + 1) Then
+                                CType(Me.Controls.Find("lblMC1_Color" & i + 1, True).First, Label).Text = "DarkGreen"
+                                CType(Me.Controls.Find("lblMC1_Color" & i + 2, True).First, Label).Text = "DarkGreen"
+
+                            Else
+                                Console.WriteLine($"The next three rows in column '{targetColumn}' are not the same.")
+                            End If
+                        End If
+
+
+
+                    Else
+                        Console.WriteLine("There are not enough rows to compare.")
+                    End If
+                    'ElseIf i > 9 And i <= 12
+                    '    Dim currentRow As DataRow = dt1.Rows(i)
+
+
+
+
+                    '    If CType(Me.Controls.Find("lblMC1_Color" & i + 1, True).First, Label).Text = "Label1" Then
+                    '        If AreNextThreeColumnValuesEqual(currentRow, dt1, targetColumn, i + 1) Then
+                    '            CType(Me.Controls.Find("lblMC1_Color" & i + 1, True).First, Label).Text = "Red"
+                    '            CType(Me.Controls.Find("lblMC1_Color" & i + 2, True).First, Label).Text = "Red"
+                    '            CType(Me.Controls.Find("lblMC1_Color" & i + 3, True).First, Label).Text = "Red"
+                    '            CType(Me.Controls.Find("lblMC1_Color" & i + 4, True).First, Label).Text = "Red"
+                    '        ElseIf AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn, i + 1) Then
+                    '            CType(Me.Controls.Find("lblMC1_Color" & i + 1, True).First, Label).Text = "Orange"
+                    '            CType(Me.Controls.Find("lblMC1_Color" & i + 2, True).First, Label).Text = "Orange"
+                    '            CType(Me.Controls.Find("lblMC1_Color" & i + 3, True).First, Label).Text = "Orange"
+
+                    '        ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn, i + 1) Then
+                    '            CType(Me.Controls.Find("lblMC1_Color" & i + 1, True).First, Label).Text = "Yellow"
+                    '            CType(Me.Controls.Find("lblMC1_Color" & i + 2, True).First, Label).Text = "Yellow"
+                    '        Else
+                    '            Console.WriteLine($"The next three rows in column '{targetColumn}' are not the same.")
+                    '        End If
+                    '    End If
+
+
+                End If
+
+            End If
+        Next
+        For i = 1 To 12
+            If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text = "DarkGreen" Then
+                CType(Me.Controls.Find("lblMC1_Case" & i, True).First, Label).BackColor = Color.DarkGreen
+            ElseIf CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text = "Orange" Then
+                CType(Me.Controls.Find("lblMC1_Case" & i, True).First, Label).BackColor = Color.Orange
+            ElseIf CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text = "Red" Then
+                CType(Me.Controls.Find("lblMC1_Case" & i, True).First, Label).BackColor = Color.Red
+            End If
+        Next
+
+
+
+    End Sub
+    Function AreNextThreeColumnValuesEqual(currentRow As DataRow, dataTable As DataTable, column As String, startIndex As Integer) As Boolean
+        For i As Integer = startIndex To startIndex + 2
+            If Not currentRow(column).Equals(dataTable.Rows(i)(column)) Then
+                Return False
+            End If
+        Next
+        Return True
+    End Function
+    Function AreNextTwoColumnValuesEqual(currentRow As DataRow, dataTable As DataTable, column As String, startIndex As Integer) As Boolean
+        For i As Integer = startIndex To startIndex + 1
+            If Not currentRow(column).Equals(dataTable.Rows(i)(column)) Then
+                Return False
+            End If
+        Next
+        Return True
+    End Function
+    Function AreNextOneColumnValuesEqual(currentRow As DataRow, dataTable As DataTable, column As String, startIndex As Integer) As Boolean
+        For i As Integer = startIndex To startIndex
+            If Not currentRow(column).Equals(dataTable.Rows(i)(column)) Then
+                Return False
+            End If
+        Next
+        Return True
+    End Function
+    Function RowsAreEqual(row1 As DataRow, row2 As DataRow) As Boolean
+        For Each column As DataColumn In row1.Table.Columns
+            If Not row1(column).Equals(row2(column)) Then
+                Return False
+            End If
+        Next
+        Return True
+    End Function
+End Class

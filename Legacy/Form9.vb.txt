@@ -1,0 +1,2386 @@
+Imports GemBox.Spreadsheet
+Imports System.Data.SqlClient
+Imports System.Net
+Imports System.Globalization
+Imports System.IO
+Imports System.Runtime.InteropServices
+Imports System.Security.Principal
+Imports System.Deployment.Application
+Public Class Form9
+    Dim lblID As String = ""
+
+    Private conn As SqlConnection = New SqlConnection(My.Settings.DBConnection)
+    <DllImport("advapi32.dll", SetLastError:=True)>
+    Private Shared Function LogonUser(lpszUsername As String, lpszDomain As String, lpszPassword As String, dwLogonType As Integer, dwLogonProvider As Integer, ByRef phToken As IntPtr) As Boolean
+    End Function
+
+    <DllImport("kernel32.dll")>
+    Private Shared Function CloseHandle(hObject As IntPtr) As [Boolean]
+    End Function
+
+    Sub LoadData(Process As String, bmid As Integer, timeofrequest As String, mcno As String)
+        lblID = bmid
+        TEBMPrint(bmid, Process)
+    End Sub
+    Private Function RetPFImg(valPF As String) As String
+        Select Case valPF.Trim
+            Case "Passed"
+                Return "\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\PBox2.png"
+            Case "Failed"
+                Return "\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\FBox2.png"
+            Case Else
+                Return "\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\PFNBox2.png"
+        End Select
+    End Function
+    Private Function RetABCImg_2(valABC As String) As String
+        Select Case valABC.Trim
+            Case "A"
+                Return "\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\A.png"
+            Case "B"
+                Return "\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\B.png"
+            Case "C"
+                Return "\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\C.png"
+
+        End Select
+    End Function
+    Private Function RetABCImg(valABC As String) As String
+        Select Case valABC.Trim
+            Case "A"
+                Return "\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\ABox.png"
+            Case "B"
+                Return "\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\BBox.png"
+            Case "C"
+                Return "\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\CBox.png"
+            Case Else
+                Return "\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\NBox.png"
+        End Select
+    End Function
+
+    Private Function getPMCategory(ByVal id As Integer) As String
+        Try
+
+            Dim oConn As New SqlConnection
+            Dim category As String = "0"
+
+            oConn = New SqlConnection(My.Settings.DBConnection)
+            oConn.Open()
+            Dim Sql As String = "SELECT PMCategory FROM PMCategory where PMCategoryID = " & id
+            Dim DC As New SqlCommand(Sql, oConn)
+            Dim DR = (DC.ExecuteReader)
+
+            Do While DR.Read
+                category = DR("PMCategory").ToString
+            Loop
+            oConn.Close()
+            Return category
+
+        Catch ex As Exception
+            Return "-"
+        End Try
+
+    End Function
+    Private Function getProcCodes(procCodeID As String, tableName As String, procCodeIDCrit As String, retValue As String) As String
+        Try
+
+            Dim oConn As New SqlConnection
+            Dim pCodes As String = "0"
+
+            oConn = New SqlConnection(My.Settings.DBConnection)
+            oConn.Open()
+            Dim Sql As String = "SELECT " & retValue & " FROM " & tableName & " Where " & procCodeIDCrit & "=" & procCodeID & ""
+            Dim DC As New SqlCommand(Sql, oConn)
+            Dim DR = (DC.ExecuteReader)
+
+            Do While DR.Read
+                pCodes = DR(retValue).ToString
+            Loop
+            oConn.Close()
+            Return pCodes
+
+        Catch ex As Exception
+            Return "0"
+        End Try
+
+    End Function
+    Private Function getBMWhyInfo(BMWhyID As String, retField As String) As String
+        Dim oConn As New SqlConnection
+
+        oConn = New SqlConnection(My.Settings.DBConnection)
+        oConn.Open()
+
+        Dim mSQLStr As String = "SELECT " & retField & " FROM BMWhy WHERE BMWhyID=" & BMWhyID
+
+        Dim emDC As New SqlCommand(mSQLStr, oConn)
+        Dim emDR As SqlDataReader = (emDC.ExecuteReader)
+        Dim retData As String = ""
+
+        Do While emDR.Read
+
+            retData = emDR(retField).ToString
+
+        Loop
+        emDR.Close()
+        Return retData
+    End Function
+
+    Private Sub TabControl1_DrawItem(sender As Object, e As DrawItemEventArgs)
+        Dim tabctl As TabControl = DirectCast(sender, TabControl)
+        Dim g As Graphics = e.Graphics
+        Dim font As Font = tabctl.Font
+        Dim brush As New SolidBrush(Color.Black)
+        Dim tabTextArea As RectangleF = RectangleF.op_Implicit(tabctl.GetTabRect(e.Index))
+
+        If tabctl.SelectedIndex = e.Index Then
+            font = New Font(font, FontStyle.Bold)
+            brush = New SolidBrush(Color.White)
+            g.FillRectangle(Brushes.LimeGreen, tabTextArea)
+        End If
+        g.DrawString(tabctl.TabPages(e.Index).Text, font, brush, tabTextArea)
+    End Sub
+    Private Function getVRNumber(rank As Integer) As String
+        Dim Result As String = ""
+        Dim Column As String = "VRNumber"
+        Dim oConn As New SqlConnection
+        oConn = New SqlConnection(My.Settings.DBConnection)
+        oConn.Open()
+
+        Dim Sql As String = "SELECT VRNumber1, VRNumber2, VRNumber3 FROM [eMaintenanceSystemDB].[dbo].[VRNumber] WHERE bmID='" & lblID & "'"
+        Dim DC As New SqlCommand(Sql, oConn)
+        Dim DR = DC.ExecuteReader
+
+        Do While DR.Read
+            Result = DR(Column & rank).ToString
+        Loop
+
+        oConn.Close()
+        Return Result
+    End Function
+    Private Sub TEBMPrint(bmID As String, ProcessStr As String)
+        SpreadsheetInfo.SetLicense("FREE-LIMITED-KEY")
+        Dim targetTemplate As String = String.Empty
+
+        If ProcessStr = "EDS" Then
+            targetTemplate = "EDS-CSPTemplate.xlsx"
+        Else
+            targetTemplate = "TETemplate.xlsx"
+        End If
+
+
+        Dim token As IntPtr = IntPtr.Zero
+        Dim wb As ExcelFile = Nothing
+        Dim ws As ExcelWorksheet = Nothing
+
+        Dim noImage As String = "\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\noimage.png"
+        LogonUser(My.Settings.PathUserName, My.Settings.PathServer, My.Settings.PathPassword, 9, 0, token)
+        If LogonUser(My.Settings.PathUserName, My.Settings.PathServer, My.Settings.PathPassword, 9, 0, token) = True Then
+            Using person As WindowsImpersonationContext = New WindowsIdentity(token).Impersonate()
+                wb = ExcelFile.Load("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\Templates\" & targetTemplate)
+                ws = wb.Worksheets.ActiveWorksheet
+
+                Dim oConn As New SqlConnection
+                oConn = New SqlConnection(My.Settings.DBConnection)
+                oConn.Open()
+
+
+                Try
+
+                    Dim Sql As String = "SELECT top 1 * FROM ViewTEData_Test Where bmID ='" & bmID & "'"
+                    Dim DC As New SqlCommand(Sql, oConn)
+                    Dim DR = (DC.ExecuteReader)
+
+                    If ProcessStr = "EDS" Then
+
+                        Do While DR.Read
+
+                            If getVRNumber(1) = "" Or getVRNumber(1) = DBNull.Value.ToString Then
+                                ws.Cells("K39").Value = "VR(1)"
+                            Else
+                                ws.Cells("K39").Value = "VR(" & getVRNumber(1) & ")"
+                            End If
+
+                            If getVRNumber(2) = "" Or getVRNumber(2) = DBNull.Value.ToString Then
+                                ws.Cells("K40").Value = "VR(2)"
+                            Else
+                                ws.Cells("K40").Value = "VR(" & getVRNumber(2) & ")"
+                            End If
+
+                            If getVRNumber(3) = "" Or getVRNumber(3) = DBNull.Value.ToString Then
+                                ws.Cells("K41").Value = "VR(3)"
+                            Else
+                                ws.Cells("K41").Value = "VR(" & getVRNumber(3) & ")"
+                            End If
+
+                            'nath 2022
+                            If DR("AQI").ToString = "" Then
+                                ws.Cells("AD2").Value = "NO"
+                            Else
+                                ws.Cells("AD2").Value = DR("AQI").ToString
+                            End If
+                            If DR("Andon").ToString = "" Then
+                                ws.Cells("AJ2").Value = "NO"
+                            Else
+                                ws.Cells("AJ2").Value = DR("Andon").ToString
+                            End If
+
+                            If DR("GLAndon").ToString = "" Then
+                                ws.Cells("AP2").Value = "NO"
+                            Else
+                                ws.Cells("AP2").Value = DR("GLAndon").ToString
+                            End If
+                            ws.Cells("AV2").Value = DR("GLAndon2").ToString
+
+                            ws.Cells("AJ4").Value = DR("GLConfirmOPReqBy").ToString
+
+                            Try
+                                If DR("Priority").ToString = "QUALITY BM" Then
+
+                                    ws.Cells("AM35").Value = DR("GLConfi").ToString
+                                    ws.Cells("AZ33").Value = DR("GLConfi").ToString
+                                    ws.Cells("AZ32").Value = DR("RequestTo").ToString
+                                    ws.Cells("AW34").Value = DR("Remarks").ToString
+                                    ws.Cells("AT37").Value = DR("ChangingPoint").ToString
+                                    ws.Cells("AM33").Value = Format(CDate(DR("GLConfi_Date").ToString), "yy.MM.dd").ToString()
+                                End If
+                            Catch ex As Exception
+
+                            End Try
+
+                            If DR("PMCategoryID").ToString = "1" Then 'Before BM
+                                ws.Cells("G10").Value = "1. BM"
+                            ElseIf DR("PMCategoryID").ToString = "2" Then 'Before PM
+                                ws.Cells("G10").Value = "2. PM"
+                            ElseIf DR("PMCategoryID").ToString = "3" Then 'Before CM
+                                ws.Cells("G10").Value = "3. CM"
+                            ElseIf DR("PMCategoryID").ToString = "4" Then ' Before Set-up/TC
+                                ws.Cells("G10").Value = "4. SET-UP"
+                            ElseIf DR("PMCategoryID").ToString = "5" Then 'Before Pre-Process
+                                ws.Cells("G10").Value = "5. Pre-Process"
+                            ElseIf DR("PMCategoryID").ToString = "6" Or DR("PMCategoryID").ToString = "7" Then  'Others Others
+                                ws.Cells("G10").Value = "6. Others"
+                            End If
+                            If DR("Setup").ToString = "Newly Set-up" Then
+                                ws.Cells("S13").Value = ""
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\PBox2.png", "S13", 14, 14, LengthUnit.Pixel)
+                            ElseIf DR("Setup").ToString = "Lot Change only" Then
+                                ws.Cells("S14").Value = ""
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\two.png", "S14", 14, 14, LengthUnit.Pixel)
+                            ElseIf DR("Setup").ToString = "Device changed only" Then
+                                ws.Cells("AA13").Value = ""
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\three.png", "AA13", 14, 14, LengthUnit.Pixel)
+                            ElseIf DR("Setup").ToString = "Others" Then
+                                ws.Cells("AA14").Value = ""
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\four.png", "AA14", 14, 14, LengthUnit.Pixel)
+                            End If '
+
+                            'If DR("FourM").ToString = "1" Then
+                            '    ws.Pictures.Add("\\172.26.220.161\TEeMaintenanceSystem\images\Man.png", "AP37", 2.17, 0.19, LengthUnit.Inch)
+                            'ElseIf DR("FourM").ToString = "2" Then
+                            '    ws.Pictures.Add("\\172.26.220.161\TEeMaintenanceSystem\images\MC.png", "AP37", 2.17, 0.19, LengthUnit.Inch)
+                            'Else
+                            '    ws.Pictures.Add("\\172.26.220.161\TEeMaintenanceSystem\images\Others.png", "AP37", 2.17, 0.19, LengthUnit.Inch)
+                            'End If
+
+                            If DR("OPPosition").ToString = "Start of Lot" Then
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\Check.png", "Y16", 14, 14, LengthUnit.Pixel)
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\Square.png", "AD16", 14, 14, LengthUnit.Pixel)
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\Square.png", "AI16", 14, 14, LengthUnit.Pixel)
+                            ElseIf DR("OPPosition").ToString = "Middle of Lot" Then
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\Square.png", "Y16", 14, 14, LengthUnit.Pixel)
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\Check.png", "AD16", 14, 14, LengthUnit.Pixel)
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\Square.png", "AI16", 14, 14, LengthUnit.Pixel)
+                            ElseIf DR("OPPosition").ToString = "End of Lot" Then
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\Square.png", "Y16", 14, 14, LengthUnit.Pixel)
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\Square.png", "AD16", 14, 14, LengthUnit.Pixel)
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\Check.png", "AI16", 14, 14, LengthUnit.Pixel)
+                            End If
+
+                            ws.Cells("G17").Value = DR("OPRemarks").ToString
+                            ws.Cells("I22").Value = DR("Designation").ToString
+
+                            If DR("MCStatus").ToString = "On-Stop" Then
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\Check.png", "AK17", 14, 14, LengthUnit.Pixel)
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\Square.png", "AK22", 14, 14, LengthUnit.Pixel)
+                            ElseIf DR("MCStatus").ToString = "Operational" Then
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\Square.png", "AK17", 14, 14, LengthUnit.Pixel)
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\Check.png", "AK22", 14, 14, LengthUnit.Pixel)
+                            End If
+
+                            If DR("TestFlow").ToString = "OS" Then
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\OS.png", "X17", 178.16, 19, LengthUnit.Pixel)
+                            ElseIf DR("TestFlow").ToString = "A1" Then
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\A1.png", "X17", 178.16, 19, LengthUnit.Pixel)
+                            ElseIf DR("TestFlow").ToString = "A2" Then
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\A2.png", "X17", 178.16, 19, LengthUnit.Pixel)
+                            ElseIf DR("TestFlow").ToString = "A3" Then
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\A3.png", "X17", 178.16, 19, LengthUnit.Pixel)
+                            ElseIf DR("TestFlow").ToString = "A4" Then
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\A4.png", "X17", 178.16, 19, LengthUnit.Pixel)
+                            ElseIf DR("TestFlow").ToString = "A8" Then
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\A8.png", "X17", 178.16, 19, LengthUnit.Pixel)
+                            End If
+
+                            ws.Cells("BC17").Value = DR("ShipmentDate").ToString()
+
+                            If getProcCodes(DR("BMContentID").ToString, "BMContent", "BMContentID", "BMContent") = "MEKA" Then
+                                ws.Cells("G11").Style.Font.UnderlineStyle = UnderlineStyle.Single
+                            ElseIf getProcCodes(DR("BMContentID").ToString, "BMContent", "BMContentID", "BMContent") = "QUALITY" Then
+                                ws.Cells("N11").Style.Font.UnderlineStyle = UnderlineStyle.Single
+                            ElseIf getProcCodes(DR("BMContentID").ToString, "BMContent", "BMContentID", "BMContent") = "PERIODIC INSPECTION" Then
+                                ws.Cells("G12").Style.Font.UnderlineStyle = UnderlineStyle.Single
+                            ElseIf getProcCodes(DR("BMContentID").ToString, "BMContent", "BMContentID", "BMContent") = "CORRECTIVE MAINTENANCE" Then
+
+                            ElseIf getProcCodes(DR("BMContentID").ToString, "BMContent", "BMContentID", "BMContent") = "FEEDBACK INVESTIGATION" Then
+
+                            ElseIf getProcCodes(DR("BMContentID").ToString, "BMContent", "BMContentID", "BMContent") = "SETUP" Then
+
+                            ElseIf getProcCodes(DR("BMContentID").ToString, "BMContent", "BMContentID", "BMContent") = "PM DETECTION" Then
+                                ws.Cells("N12").Style.Font.UnderlineStyle = UnderlineStyle.Single
+                            ElseIf getProcCodes(DR("BMContentID").ToString, "BMContent", "BMContentID", "BMContent") = "OP DETECTION" Then
+                                ws.Cells("AA11").Style.Font.UnderlineStyle = UnderlineStyle.Single
+                            ElseIf getProcCodes(DR("BMContentID").ToString, "BMContent", "BMContentID", "BMContent") = "OTHERS" Then
+                                ws.Cells("U11").Style.Font.UnderlineStyle = UnderlineStyle.Single
+                            ElseIf getProcCodes(DR("BMContentID").ToString, "BMContent", "BMContentID", "BMContent") = "PRE/POST-PROCESS FEEDBACK INVESTIGATION" Then
+                                ws.Cells("U12").Style.Font.UnderlineStyle = UnderlineStyle.Single
+                            End If
+                            ws.Cells("K13").Value = DR("TestNoNG").ToString
+                            ws.Cells("K14").Value = DR("LotNG").ToString
+                            ws.Cells("K15").Value = DR("KeepSample").ToString
+                            ws.Cells("K16").Value = DR("BinCat").ToString
+
+                            ws.Cells("BD12").Value = DR("TesterNo").ToString
+                            ws.Cells("AW12").Value = DR("MCNo").ToString
+                            ws.Cells("AQ12").Value = DR("CellLine").ToString
+                            ws.Cells("AS16").Value = DR("DeviceName").ToString
+                            ws.Cells("Z20").Value = DR("PKGName").ToString
+                            ws.Cells("AS18").Value = DR("LOTNo").ToString
+
+                            ws.Cells("AA18").Value = DR("DUT").ToString
+                            ws.Cells("V19").Value = DR("BoxNo").ToString
+                            ws.Cells("AG19").Value = DR("SubDUT").ToString
+                            ws.Cells("Z21").Value = DR("Freq").ToString
+
+                            ws.Cells("AD4").Value = DR("RequestedBy").ToString 'OP ID No.
+                            ws.Cells("AE78").Value = DR("GLConfirmOPReqBy").ToString 'GL ID No.
+                            ws.Cells("AI78").Value = DR("CurrentTE").ToString 'TE ID No. rev 12/4/2020
+
+                            Dim TEjudgement As String = DR("d_TEJudgment").ToString
+                            If TEjudgement <> "" Then
+                                ws.Cells("AF79").Value = TEjudgement
+                            Else
+                                ws.Cells("AF79").Value = "N/A"
+                            End If
+
+                            If (DR("PMConfirmGLOPReqBy").ToString = DR("RepairedByEnd").ToString) Then
+                                ws.Cells("AP4").Value = DR("PMConfirmGLOPReqBy").ToString()  'PM ID No.
+                            Else
+                                ws.Cells("AP4").Value = DR("PMConfirmGLOPReqBy").ToString() & ", " & DR("RepairedByEnd").ToString()
+                            End If
+
+                            ws.Cells("AV4").Value = DR("GLRepairConfirmationBy").ToString 'GL ID No.
+                            ws.Cells("BC4").Value = DR("EndBMBy").ToString 'PM ID No.
+                            ws.Cells("AB55").Value = DR("MittomonaiClaim").ToString
+
+                            If DR("MCStatus").ToString = "" Then
+                            ElseIf DR("MCStatus").ToString = "Stop" Then
+                                ws.Cells("AQ16").Style.Font.UnderlineStyle = UnderlineStyle.Single
+                            ElseIf DR("MCStatus").ToString = "Running" Then
+                                ws.Cells("AZ16").Style.Font.UnderlineStyle = UnderlineStyle.Single
+                            End If
+                            Dim arrDT As String() = DR("OccurrenceDate").ToString().Split(" ").ToArray()
+                            ws.Cells("AS24").Value = DR("StartOfRepair").ToString 'Time Ended
+                            ws.Cells("AS26").Value = DR("EndOfRepair").ToString 'Time Ended
+                            ws.Cells("AS20").Value = DR("OccurrenceDate").ToString()
+                            ws.Cells("AS22").Value = DR("TEReceived").ToString()
+                            ws.Cells("AO38").Value = DR("Why1")
+                            ws.Cells("AO42").Value = DR("Why2")
+                            ws.Cells("AO47").Value = DR("Why3")
+                            ws.Cells("AM77").Value = DR("PMUnknown")
+                            Dim _4Data As String = DR("FourMData").ToString
+                            If _4Data <> "" Then
+                                Dim arrWData() As String = _4Data.Split("|")
+                                If DR("FourM").ToString = 1 Then 'For Man
+                                    Dim arrWDataVal1() As String = arrWData(0).Split(",")
+                                    ws.Cells("AQ60").Value = arrWDataVal1(0).ToString
+                                    ws.Cells("AY60").Value = arrWDataVal1(1).ToString
+                                ElseIf DR("FourM").ToString = 2 Then 'For Machine
+                                    Dim arrWDataVal2() As String = arrWData(0).Split(",")
+                                    ws.Cells("AQ62").Value = arrWDataVal2(0).ToString
+                                    ws.Cells("AY62").Value = arrWDataVal2(1).ToString
+                                ElseIf DR("FourM").ToString = 3 Then 'For Materials / Parts
+                                    Dim arrWDataVal3() As String = arrWData(0).Split(",")
+                                    ws.Cells("AQ64").Value = arrWDataVal3(0).ToString
+                                    ws.Cells("AY64").Value = arrWDataVal3(1).ToString
+                                ElseIf DR("FourM").ToString = 3 Then 'For Method
+                                    Dim arrWDataVal4() As String = arrWData(0).Split(",")
+                                    ws.Cells("AQ66").Value = arrWDataVal4(0).ToString
+                                    ws.Cells("AY66").Value = arrWDataVal4(1).ToString
+                                End If
+                            End If
+
+                            Dim _ADData As String = DR("AdjustedRecordData").ToString
+                            If _ADData <> "" Then
+                                Dim arrWData() As String = _ADData.Split("|")
+                                If arrWData.Length = 3 Then
+                                    Dim arrWDataVal1() As String = arrWData(0).Split(",")
+                                    ws.Cells("U39").Value = arrWDataVal1(0).ToString
+                                    ws.Cells("AA39").Value = arrWDataVal1(1).ToString
+                                    ws.Cells("AG39").Value = arrWDataVal1(2).ToString
+
+                                    Dim arrWDataVal2() As String = arrWData(1).Split(",")
+                                    ws.Cells("U40").Value = arrWDataVal2(0).ToString
+                                    ws.Cells("AA40").Value = arrWDataVal2(1).ToString
+                                    ws.Cells("AG40").Value = arrWDataVal2(2).ToString
+
+                                    Dim arrWDataVal3() As String = arrWData(2).Split(",")
+                                    ws.Cells("U41").Value = arrWDataVal3(0).ToString
+                                    ws.Cells("AA41").Value = arrWDataVal3(1).ToString
+                                    ws.Cells("AG41").Value = arrWDataVal3(2).ToString
+                                End If
+                            End If
+                            ws.Cells("D25").Value = DR("ReqTestNoNG").ToString()
+                            ws.Cells("AS53").Value = DR("StopAddressX").ToString()
+                            ws.Cells("BA53").Value = DR("StopAddressY").ToString()
+                            ws.Cells("AS54").Value = DR("TEX").ToString()
+                            ws.Cells("BA54").Value = DR("TEY").ToString()
+                            ws.Cells("AS55").Value = DR("PDGLX").ToString()
+                            ws.Cells("BA55").Value = DR("PDGLY").ToString()
+                            ws.Cells("AR74").Value = DR("WaferMapAnswer").ToString()
+                            ws.Cells("BC74").Value = DR("WaferMapNOD").ToString()
+                            ws.Cells("K23").Value = DR("SocketBoard").ToString()
+
+                            ws.Cells("D52").Value = DR("QAction").ToString() 'tbxQAction.Text
+
+                            Try
+                                Dim _CPData As String = DR("CheckItemData").ToString()
+
+                                If _CPData <> "" Then
+                                    Dim arrCPData() As String = _CPData.Split("|")
+                                    If arrCPData.Length = 8 Then
+                                        Dim arrCPDataVal1() As String = arrCPData(0).Split(",")
+                                        ws.Cells("S27").Value = arrCPDataVal1(1)
+                                        ws.Cells("Y27").Value = arrCPDataVal1(2)
+                                        ws.Cells("AH27").Value = arrCPDataVal1(3)
+
+                                        Dim arrCPDataVal2() As String = arrCPData(1).Split(",")
+                                        ws.Cells("S28").Value = arrCPDataVal2(1)
+                                        ws.Cells("Y28").Value = arrCPDataVal2(2)
+                                        ws.Cells("AH28").Value = arrCPDataVal2(3)
+
+                                        Dim arrCPDataVal3() As String = arrCPData(2).Split(",")
+                                        ws.Cells("O30").Value = arrCPDataVal3(0)
+                                        ws.Cells("T30").Value = arrCPDataVal3(1)
+                                        ws.Cells("Y29").Value = arrCPDataVal3(2)
+                                        ws.Cells("AH30").Value = arrCPDataVal3(3)
+
+                                        Dim arrCPDataVal4() As String = arrCPData(3).Split(",")
+                                        ws.Cells("O31").Value = arrCPDataVal4(0)
+                                        ws.Cells("T31").Value = arrCPDataVal4(1)
+                                        ws.Cells("Y30").Value = arrCPDataVal4(2)
+                                        ws.Cells("AH31").Value = arrCPDataVal4(3)
+
+                                        Dim arrCPDataVal5() As String = arrCPData(4).Split(",")
+                                        ws.Cells("O32").Value = arrCPDataVal5(0)
+                                        ws.Cells("T32").Value = arrCPDataVal5(1)
+                                        ws.Cells("Y31").Value = arrCPDataVal5(2)
+                                        ws.Cells("AH32").Value = arrCPDataVal5(3)
+
+                                        Dim arrCPDataVal6() As String = arrCPData(5).Split(",")
+                                        ws.Cells("O33").Value = arrCPDataVal6(0)
+                                        ws.Cells("T33").Value = arrCPDataVal6(1)
+                                        ws.Cells("Y32").Value = arrCPDataVal6(2)
+                                        ws.Cells("AH33").Value = arrCPDataVal6(3)
+
+                                        Dim arrCPDataVal7() As String = arrCPData(6).Split(",")
+                                        ws.Cells("O34").Value = arrCPDataVal7(0)
+                                        ws.Cells("T34").Value = arrCPDataVal7(1)
+                                        ws.Cells("Y33").Value = arrCPDataVal7(2)
+                                        ws.Cells("AH34").Value = arrCPDataVal7(3)
+
+                                        Dim arrCPDataVal8() As String = arrCPData(7).Split(",")
+                                        ws.Cells("Y35").Value = arrCPDataVal8(2)
+                                        ws.Cells("AH35").Value = arrCPDataVal8(3)
+                                    End If
+                                End If
+                            Catch ex As Exception
+
+                            End Try
+
+                            If DR("AccreditorRemarks").ToString <> "" Then
+                                If DR("AccreditorRemarks").ToString <> "" Then
+                                    ws.Cells(91, 93).Style.Font.Color = SpreadsheetColor.FromName(ColorName.Red)
+                                End If
+                                ws.Cells("AT92").Value = DR("AccreditorRemarks").ToString
+                            Else
+                                If DR("AccreditorRemarks_Max").ToString <> "" Then
+                                    ws.Cells(91, 93).Style.Font.Color = SpreadsheetColor.FromName(ColorName.Red)
+                                End If
+                                ws.Cells("AT92").Value = DR("AccreditorRemarks_Max").ToString
+                            End If
+                            ws.Cells("AB83").Value = DR("ChangePartsName1").ToString
+                            ws.Cells("AQ83").Value = DR("ChangePartsType1").ToString
+                            ws.Cells("BE83").Value = DR("ChangePartsQty1").ToString
+                            ws.Cells("AB84").Value = DR("ChangePartsName2").ToString
+                            ws.Cells("AQ84").Value = DR("ChangePartsType2").ToString
+                            ws.Cells("BE84").Value = DR("ChangePartsQty2").ToString
+                            ws.Cells("AB85").Value = DR("ChangePartsName3").ToString
+                            ws.Cells("AQ85").Value = DR("ChangePartsType3").ToString
+                            ws.Cells("BE85").Value = DR("ChangePartsQty3").ToString
+                            ws.Cells("AB86").Value = DR("ChangePartsName4").ToString
+                            ws.Cells("AQ86").Value = DR("ChangePartsType4").ToString
+                            ws.Cells("BE86").Value = DR("ChangePartsQty4").ToString
+                            Dim wtTotal As Decimal = DateDiff(DateInterval.Minute, CDate(DR("GLConfirmOPReqDate").ToString), CDate(DR("PMConfirmGLOPReqDate").ToString)) 'convert it to min instead of hour
+                            Dim TStopTime As String = DR("TotalStopTime").ToString
+                            If TStopTime = "" Then
+                                TStopTime = "0"
+                            End If
+                            wtTotal = wtTotal + Decimal.Parse(TStopTime)
+                            ws.Cells("AS30").Value = DR("WaitingTime1").ToString
+                            ws.Cells("AS28").Value = DR("MonitoringTime1").ToString
+                            ws.Cells("AS32").Value = DR("RepairTime1").ToString
+                            Dim DCStartOfRepair As String = DR("StartOfRepair").ToString
+                            Dim DCEndOfRepair As String = DR("EndOfRepair").ToString
+                            Dim DCSKCTPDOnHoldDate As String = DR("SKCTPDOnHoldDate").ToString
+                            Dim DCSKCTPDReleaseDate As String = DR("SKCTPDReleaseDate").ToString
+
+                            Dim rtTotal As Decimal
+                            Try
+                                If DR("TotalSKCTPDtime").ToString = "" Or (DR("SKCTPDOnHoldDate").ToString() = "" And DR("SKCTPDReleaseDate").ToString() = "") Then
+                                    rtTotal = DateDiff(DateInterval.Minute, CDate(DR("StartOfRepair").ToString), CDate(DR("EndOfRepair").ToString)) - Decimal.Parse(TStopTime)
+                                Else
+                                    rtTotal = DateDiff(DateInterval.Minute, CDate(DR("StartOfRepair").ToString), CDate(DR("EndOfRepair").ToString)) - Decimal.Parse(DR("TotalSKCTPDtime").ToString) - Decimal.Parse(TStopTime) 'convert it to min instead of hour
+                                End If
+                                rtTotal = rtTotal - Decimal.Parse(TStopTime)
+                                Dim TST As Decimal = wtTotal + rtTotal
+                                ws.Cells("AS34").Value = Decimal.Parse(DR("WaitingTime1").ToString) + Decimal.Parse(DR("RepairTime1").ToString)
+                            Catch ex As Exception
+
+                            End Try
+                            ws.Cells("A92").Value = DR("RepairedByEnd").ToString
+                            ws.Cells("F92").Value = Me.getPMCategory(DR("PMCategoryID").ToString)
+
+
+                            ws.Cells("K92").Value = Me.getProcCodes(DR("BMContentID").ToString, "TEContent", "BMContentID", "BMContent")
+                            ws.Cells("P92").Value = Me.getProcCodes(DR("BMCaseID").ToString, "TECase", "BMCaseID", "BMCase")
+                            ws.Cells("U92").Value = Me.getProcCodes(DR("BMUnitID").ToString, "BMTEUnit", "BMTEUnitID", "BMTEUnit")
+                            ws.Cells("Z92").Value = Me.getProcCodes(DR("BMPointID").ToString, "TEPoint", "BMPointID", "BMPoint")
+                            ws.Cells("AE92").Value = Me.getProcCodes(DR("BMWorkContentID").ToString, "TEWorkContent", "BMWorkContentID", "BMWorkContent")
+                            ws.Cells("AJ92").Value = Me.getProcCodes(DR("BMCauseID").ToString, "TECause ", "BMCauseID", "BMCause")
+                            ws.Cells("AO92").Value = Me.getProcCodes(DR("PrevMeasureID").ToString, "TEPREVMeasure", "PREVMeasureID", "PREVMeasure")
+                            ws.Cells("AL65").Value = DR("AcredINSPN").ToString
+                            ws.Cells("AY88").Value = DR("WDSetupQty").ToString
+                            ws.Cells("AY89").Value = DR("WDWIPQty").ToString
+                            ws.Cells("AY90").Value = DR("WDBoxBoardQty").ToString
+
+
+                            If ProcessStr = "EDS" Then
+                                ws.Cells("AC15").Value = DR("EDSTotalDutNG").ToString
+                                ws.Cells("AI15").Value = DR("EDSTotalDutCOUNT").ToString
+                                ws.Cells("M73").Value = DR("OverDriveBefore").ToString
+                                ws.Cells("V73").Value = DR("OverDriveAFter").ToString
+                            Else
+                            End If
+
+                            Dim _QCData_QC As String = DR("QcJudgement").ToString
+                            If _QCData_QC <> "" Then
+                                Dim arrQCData() As String = _QCData_QC.Split("|")
+
+                                Dim arrQCDataVal6() As String = arrQCData(0).Split(",")
+                                If (arrQCDataVal6(1) = "Pass" Or arrQCDataVal6(1) = "Yes") And arrQCDataVal6(1) <> "" And arrQCDataVal6(1) <> "0" Then
+                                    ws.Cells("AE72").Value = "Yes"
+                                Else
+                                    ws.Cells("AE72").Value = "N/A"
+                                End If
+                                If (arrQCDataVal6(0) = "Pass" Or arrQCDataVal6(0) = "Yes") And arrQCDataVal6(0) <> "" And arrQCDataVal6(0) <> "0" Then
+                                    ws.Cells("AC72").Value = "Yes"
+                                Else
+                                    ws.Cells("AC72").Value = "N/A"
+                                End If
+                            End If
+                            Dim _QCData As String = DR("QualityCheckData").ToString
+                            If _QCData <> "" Then
+                                Dim arrQCData() As String = _QCData.Split("|")
+                                If arrQCData.Length = 14 Or arrQCData.Length = 15 Then
+
+                                    '------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+                                    Dim arrQCDataVal1() As String = arrQCData(0).Split(",")
+                                    If (arrQCDataVal1(1) = "Pass" Or arrQCDataVal1(1) = "Yes") And arrQCDataVal1(1) <> "" And arrQCDataVal1(1) <> "0" Then
+                                        ws.Cells("AE60").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE60").Value = "N/A"
+                                    End If
+
+                                    '------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+                                    Dim arrQCDataVal2() As String = arrQCData(1).Split(",")
+                                    If (arrQCDataVal2(1) = "Pass" Or arrQCDataVal2(1) = "Yes") And arrQCDataVal2(1) <> "" And arrQCDataVal2(1) <> "0" Then
+                                        ws.Cells("AE61").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE61").Value = "N/A"
+                                    End If
+                                    If (arrQCDataVal2(0) = "Pass" Or arrQCDataVal2(0) = "Yes") And arrQCDataVal2(0) <> "" And arrQCDataVal2(0) <> "0" Then
+                                        ws.Cells("AC61").Value = "Yes"
+                                    Else
+                                        ws.Cells("AC61").Value = "N/A"
+                                    End If
+
+                                    '------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+                                    Dim arrQCDataVal3() As String = arrQCData(2).Split(",")
+                                    If (arrQCDataVal3(1) = "Pass" Or arrQCDataVal3(1) = "Yes") And arrQCDataVal3(1) <> "" And arrQCDataVal3(1) <> "0" Then
+                                        ws.Cells("AE62").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE62").Value = "N/A"
+                                    End If
+                                    If (arrQCDataVal3(0) = "Pass" Or arrQCDataVal3(0) = "Yes") And arrQCDataVal3(0) <> "" And arrQCDataVal3(0) <> "0" Then
+                                        ws.Cells("AC62").Value = "Yes"
+                                    Else
+                                        ws.Cells("AC62").Value = "N/A"
+                                    End If
+
+
+                                    '------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+                                    Dim arrQCDataVal4() As String = arrQCData(3).Split(",")
+                                    If (arrQCDataVal4(1) = "Pass" Or arrQCDataVal4(1) = "Yes") And arrQCDataVal4(1) <> "" And arrQCDataVal4(1) <> "0" Then
+                                        ws.Cells("AE63").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE63").Value = "N/A"
+                                    End If
+
+
+
+                                    '------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+                                    Dim arrQCDataVal5() As String = arrQCData(4).Split(",")
+                                    If (arrQCDataVal5(1) = "Pass" Or arrQCDataVal5(1) = "Yes") And arrQCDataVal5(1) <> "" And arrQCDataVal5(1) <> "0" Then
+                                        ws.Cells("AE74").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE74").Value = "N/A"
+                                    End If
+                                    'If (arrQCDataVal5(0) = "Pass" Or arrQCDataVal5(0) = "Yes") And arrQCDataVal5(0) <> "" And arrQCDataVal5(0) <> "0" Then
+                                    '    ws.Cells("AC74").Value = "Yes"
+                                    'Else
+                                    '    ws.Cells("AC74").Value = "N/A"
+                                    'End If
+
+
+                                    '------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+                                    Dim arrQCDataVal7() As String = arrQCData(6).Split(",")
+                                    If (arrQCDataVal7(1) = "Pass" Or arrQCDataVal7(1) = "Yes") And arrQCDataVal7(1) <> "" And arrQCDataVal7(1) <> "0" Then
+                                        ws.Cells("AE65").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE65").Value = "N/A"
+                                    End If
+                                    If (arrQCDataVal7(0) = "Pass" Or arrQCDataVal7(0) = "Yes") And arrQCDataVal7(0) <> "" And arrQCDataVal7(0) <> "0" Then
+                                        ws.Cells("AC65").Value = "Yes"
+                                    Else
+                                        ws.Cells("AC65").Value = "N/A"
+                                    End If
+
+
+                                    '------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+                                    Dim arrQCDataVal9() As String = arrQCData(8).Split(",")
+                                    If (arrQCDataVal9(1) = "Pass" Or arrQCDataVal9(1) = "Yes") And arrQCDataVal9(1) <> "" And arrQCDataVal9(1) <> "0" Then
+                                        ws.Cells("AE66").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE66").Value = "N/A"
+                                    End If
+
+                                    '------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+                                    Dim arrQCDataVal10() As String = arrQCData(9).Split(",")
+                                    If (arrQCDataVal10(1) = "Pass" Or arrQCDataVal10(1) = "Yes") And arrQCDataVal10(1) <> "" And arrQCDataVal10(1) <> "0" Then
+                                        ws.Cells("AE67").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE67").Value = "N/A"
+                                    End If
+                                    If (arrQCDataVal10(0) = "Pass" Or arrQCDataVal10(0) = "Yes") And arrQCDataVal10(0) <> "" And arrQCDataVal10(0) <> "0" Then
+                                        ws.Cells("AC67").Value = "Yes"
+                                    Else
+                                        ws.Cells("AC67").Value = "N/A"
+                                    End If
+
+                                    '------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+                                    Dim arrQCDataVal11() As String = arrQCData(10).Split(",")
+                                    If (arrQCDataVal11(1) = "Pass" Or arrQCDataVal11(1) = "Yes") And arrQCDataVal11(1) <> "" And arrQCDataVal11(1) <> "0" Then
+                                        ws.Cells("AE68").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE68").Value = "N/A"
+                                    End If
+                                    '------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+                                    Dim arrQCDataVal12() As String = arrQCData(11).Split(",")
+                                    If (arrQCDataVal12(1) = "Pass" Or arrQCDataVal12(1) = "Yes") And arrQCDataVal12(1) <> "" And arrQCDataVal12(1) <> "0" Then
+                                        ws.Cells("AE69").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE69").Value = "N/A"
+                                    End If
+                                    If (arrQCDataVal12(0) = "Pass" Or arrQCDataVal12(0) = "Yes") And arrQCDataVal12(0) <> "" And arrQCDataVal12(0) <> "0" Then
+                                        ws.Cells("AC69").Value = "Yes"
+                                    Else
+                                        ws.Cells("AC69").Value = "N/A"
+                                    End If
+
+                                    '------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+                                    Dim arrQCDataVal14() As String = arrQCData(12).Split(",")
+                                    If (arrQCDataVal14(1) = "Pass" Or arrQCDataVal14(1) = "Yes") And arrQCDataVal14(1) <> "" And arrQCDataVal14(1) <> "0" Then
+                                        ws.Cells("AE70").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE70").Value = "N/A"
+                                    End If
+                                    If (arrQCDataVal14(0) = "Pass" Or arrQCDataVal14(0) = "Yes") And arrQCDataVal14(0) <> "" And arrQCDataVal14(0) <> "0" Then
+                                        ws.Cells("AC70").Value = "Yes"
+                                    Else
+                                        ws.Cells("AC70").Value = "N/A"
+                                    End If
+
+                                    '------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                                    Dim arrQCDataVal15() As String = arrQCData(13).Split(",")
+                                    If (arrQCDataVal15(1) = "Pass" Or arrQCDataVal15(1) = "Yes") And arrQCDataVal15(1) <> "" And arrQCDataVal15(1) <> "0" Then
+                                        ws.Cells("AE71").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE71").Value = "N/A"
+                                    End If
+
+                                    '------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                                    Dim arrQCDataVal16() As String = arrQCData(15).Split(",")
+                                    If (arrQCDataVal16(0) <> "") Or (arrQCDataVal16(0) <> "0") Then
+                                        ws.Cells("M75").Value = arrQCDataVal16(0).ToString
+                                    End If
+
+
+                                Else
+
+
+                                    '------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+                                    Dim arrQCDataVal1() As String = arrQCData(0).Split(",")
+                                    If (arrQCDataVal1(1) = "Pass" Or arrQCDataVal1(1) = "Yes") And arrQCDataVal1(1) <> "" And arrQCDataVal1(1) <> "0" Then
+                                        ws.Cells("AE60").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE60").Value = "N/A"
+                                    End If
+
+                                    '------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+                                    Dim arrQCDataVal2() As String = arrQCData(1).Split(",")
+                                    If (arrQCDataVal2(1) = "Pass" Or arrQCDataVal2(1) = "Yes") And arrQCDataVal2(1) <> "" And arrQCDataVal2(1) <> "0" Then
+                                        ws.Cells("AE61").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE61").Value = "N/A"
+                                    End If
+                                    If (arrQCDataVal2(0) = "Pass" Or arrQCDataVal2(0) = "Yes") And arrQCDataVal2(0) <> "" And arrQCDataVal2(0) <> "0" Then
+                                        ws.Cells("AC61").Value = "Yes"
+                                    Else
+                                        ws.Cells("AC61").Value = "N/A"
+                                    End If
+
+                                    '------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+                                    Dim arrQCDataVal3() As String = arrQCData(2).Split(",")
+                                    If (arrQCDataVal3(1) = "Pass" Or arrQCDataVal3(1) = "Yes") And arrQCDataVal3(1) <> "" And arrQCDataVal3(1) <> "0" Then
+                                        ws.Cells("AE62").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE62").Value = "N/A"
+                                    End If
+                                    If (arrQCDataVal3(0) = "Pass" Or arrQCDataVal3(0) = "Yes") And arrQCDataVal3(0) <> "" And arrQCDataVal3(0) <> "0" Then
+                                        ws.Cells("AC62").Value = "Yes"
+                                    Else
+                                        ws.Cells("AC62").Value = "N/A"
+                                    End If
+
+
+                                    '------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+                                    Dim arrQCDataVal4() As String = arrQCData(3).Split(",")
+                                    If (arrQCDataVal4(1) = "Pass" Or arrQCDataVal4(1) = "Yes") And arrQCDataVal4(1) <> "" And arrQCDataVal4(1) <> "0" Then
+                                        ws.Cells("AE63").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE63").Value = "N/A"
+                                    End If
+
+
+
+                                    '------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+                                    Dim arrQCDataVal5() As String = arrQCData(4).Split(",")
+                                    If (arrQCDataVal5(1) = "Pass" Or arrQCDataVal5(1) = "Yes") And arrQCDataVal5(1) <> "" And arrQCDataVal5(1) <> "0" Then
+                                        ws.Cells("AE74").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE74").Value = "N/A"
+                                    End If
+                                    'If (arrQCDataVal5(0) = "Pass" Or arrQCDataVal5(0) = "Yes") And arrQCDataVal5(0) <> "" And arrQCDataVal5(0) <> "0" Then
+                                    '    ws.Cells("AC74").Value = "Yes"
+                                    'Else
+                                    '    ws.Cells("AC74").Value = "N/A"
+                                    'End If
+
+
+                                    '------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+                                    Dim arrQCDataVal7() As String = arrQCData(6).Split(",")
+                                    If (arrQCDataVal7(1) = "Pass" Or arrQCDataVal7(1) = "Yes") And arrQCDataVal7(1) <> "" And arrQCDataVal7(1) <> "0" Then
+                                        ws.Cells("AE65").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE65").Value = "N/A"
+                                    End If
+                                    If (arrQCDataVal7(0) = "Pass" Or arrQCDataVal7(0) = "Yes") And arrQCDataVal7(0) <> "" And arrQCDataVal7(0) <> "0" Then
+                                        ws.Cells("AC65").Value = "Yes"
+                                    Else
+                                        ws.Cells("AC65").Value = "N/A"
+                                    End If
+
+
+                                    '------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+                                    Dim arrQCDataVal9() As String = arrQCData(8).Split(",")
+                                    If (arrQCDataVal9(1) = "Pass" Or arrQCDataVal9(1) = "Yes") And arrQCDataVal9(1) <> "" And arrQCDataVal9(1) <> "0" Then
+                                        ws.Cells("AE66").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE66").Value = "N/A"
+                                    End If
+
+                                    '------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+                                    Dim arrQCDataVal10() As String = arrQCData(9).Split(",")
+                                    If (arrQCDataVal10(1) = "Pass" Or arrQCDataVal10(1) = "Yes") And arrQCDataVal10(1) <> "" And arrQCDataVal10(1) <> "0" Then
+                                        ws.Cells("AE67").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE67").Value = "N/A"
+                                    End If
+                                    If (arrQCDataVal10(0) = "Pass" Or arrQCDataVal10(0) = "Yes") And arrQCDataVal10(0) <> "" And arrQCDataVal10(0) <> "0" Then
+                                        ws.Cells("AC67").Value = "Yes"
+                                    Else
+                                        ws.Cells("AC67").Value = "N/A"
+                                    End If
+
+                                    '------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+                                    Dim arrQCDataVal11() As String = arrQCData(10).Split(",")
+                                    If (arrQCDataVal11(1) = "Pass" Or arrQCDataVal11(1) = "Yes") And arrQCDataVal11(1) <> "" And arrQCDataVal11(1) <> "0" Then
+                                        ws.Cells("AE68").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE68").Value = "N/A"
+                                    End If
+                                    '------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+                                    Dim arrQCDataVal12() As String = arrQCData(11).Split(",")
+                                    If (arrQCDataVal12(1) = "Pass" Or arrQCDataVal12(1) = "Yes") And arrQCDataVal12(1) <> "" And arrQCDataVal12(1) <> "0" Then
+                                        ws.Cells("AE69").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE69").Value = "N/A"
+                                    End If
+                                    If (arrQCDataVal12(0) = "Pass" Or arrQCDataVal12(0) = "Yes") And arrQCDataVal12(0) <> "" And arrQCDataVal12(0) <> "0" Then
+                                        ws.Cells("AC69").Value = "Yes"
+                                    Else
+                                        ws.Cells("AC69").Value = "N/A"
+                                    End If
+
+                                    '------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+                                    Dim arrQCDataVal14() As String = arrQCData(12).Split(",")
+                                    If (arrQCDataVal14(1) = "Pass" Or arrQCDataVal14(1) = "Yes") And arrQCDataVal14(1) <> "" And arrQCDataVal14(1) <> "0" Then
+                                        ws.Cells("AE70").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE70").Value = "N/A"
+                                    End If
+                                    If (arrQCDataVal14(0) = "Pass" Or arrQCDataVal14(0) = "Yes") And arrQCDataVal14(0) <> "" And arrQCDataVal14(0) <> "0" Then
+                                        ws.Cells("AC70").Value = "Yes"
+                                    Else
+                                        ws.Cells("AC70").Value = "N/A"
+                                    End If
+
+                                    '------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                                    Dim arrQCDataVal15() As String = arrQCData(13).Split(",")
+                                    If (arrQCDataVal15(1) = "Pass" Or arrQCDataVal15(1) = "Yes") And arrQCDataVal15(1) <> "" And arrQCDataVal15(1) <> "0" Then
+                                        ws.Cells("AE71").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE71").Value = "N/A"
+                                    End If
+
+
+
+                                End If
+                            End If
+                            ws.Cells("AC73").Value = DR("EDSCS1Pprod").ToString
+                            ws.Cells("M76").Value = DR("OverDriveBefore").ToString
+                            ws.Cells("V76").Value = DR("OverDriveAFter").ToString
+                            ws.Cells("N61").Value = DR("LotSlipvsOIS").ToString
+                            ws.Cells("N62").Value = DR("LoadOIS").ToString
+                            ws.Cells("Y62").Value = DR("LoadTestFlow").ToString
+                            ws.Cells("O63").Value = DR("FTADisk").ToString
+
+                            If ((DR("ExternalAccessories_B").ToString.Contains("N/A")) Or (DR("ExternalAccessories_B").ToString = "")) And (DR("ExternalAccessories").ToString <> "") Then
+                                ws.Cells("S65").Value = ""
+                                ws.Cells("S65").Value = DR("ExternalAccessories").ToString
+                            Else
+                                ws.Cells("X65").Value = ""
+                                ws.Cells("X65").Value = DR("ExternalAccessories_B").ToString
+                            End If
+                            ws.Cells("L66").Value = DR("LastTestNoCheck").ToString
+                            ws.Cells("K78").Value = DR("BoxChangedfrom").ToString
+                            ws.Cells("S78").Value = DR("BoxChangedTo").ToString
+                            ws.Cells("L79").Value = DR("TesterChangeFrom").ToString
+                            ws.Cells("U79").Value = DR("TesterChangeTo").ToString
+                            ws.Cells("P84").Value = DR("QItemsNoIC").ToString
+                            If DR("QItemsYN1").ToString = "Yes" Then
+                                ws.Cells("V81").Value = DR("QItemsYN1").ToString
+                            Else
+                                ws.Cells("V81").Value = "N/A"
+                            End If
+
+                            If DR("QItemsYN2").ToString = "Yes" Then
+                                ws.Cells("V82").Value = DR("QItemsYN2").ToString
+                            Else
+                                ws.Cells("V82").Value = "N/A"
+                            End If
+
+                            If DR("QItemsYN3").ToString = "Yes" Then
+                                ws.Cells("V83").Value = DR("QItemsYN3").ToString
+                            Else
+                                ws.Cells("V83").Value = "N/A"
+                            End If
+
+                            If DR("QItemsYN4").ToString = "Yes" Then
+                                ws.Cells("V84").Value = DR("QItemsYN4").ToString
+                            Else
+                                ws.Cells("V84").Value = "N/A"
+                            End If
+
+                            If DR("QItemsYN5").ToString = "Yes" Then
+                                ws.Cells("V85").Value = DR("QItemsYN5").ToString
+                            Else
+                                ws.Cells("V85").Value = "N/A"
+                            End If
+                            ws.Cells("H60").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+                            ws.Cells("H61").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+                            ws.Cells("H62").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+
+                            ws.Cells("K60").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+                            ws.Cells("K61").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+                            ws.Cells("K62").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+
+                            ws.Cells("N60").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+                            ws.Cells("N61").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+                            ws.Cells("N62").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+
+                            ws.Cells("Q60").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+                            ws.Cells("Q61").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+                            ws.Cells("Q62").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+
+                            ws.Cells("T60").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+                            ws.Cells("T61").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+                            ws.Cells("T62").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+
+                            ws.Cells("W60").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+                            ws.Cells("W61").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+                            ws.Cells("W62").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+
+                            ws.Cells("Y60").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+                            ws.Cells("Y61").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+                            ws.Cells("Y62").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+
+                            ws.Cells("AB60").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+                            ws.Cells("AB61").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+                            ws.Cells("AB62").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+                            ws = wb.Worksheets(1)
+                            Try
+                                ws.Cells("B2").Value = DR("WD1").ToString
+                                ws.Cells("Q3").Value = DR("WDate1").ToString
+                                ws.Cells("Q7").Value = DR("WDDate1End").ToString
+                                ws.Cells("P2").Value = DR("WAcc1").ToString
+
+                                ws.Cells("B11").Value = DR("WD2").ToString
+                                ws.Cells("Q12").Value = DR("WDate2").ToString
+                                ws.Cells("Q16").Value = DR("WDDate2End").ToString
+                                ws.Cells("P11").Value = DR("WAcc2").ToString
+
+                                ws.Cells("B20").Value = DR("WD3").ToString
+                                ws.Cells("Q21").Value = DR("WDate3").ToString
+                                ws.Cells("Q25").Value = DR("WDDate3End").ToString
+                                ws.Cells("P20").Value = DR("WAcc3").ToString
+
+                                ws.Cells("B29").Value = DR("WD4").ToString
+                                ws.Cells("Q30").Value = DR("WDate4").ToString
+                                ws.Cells("Q34").Value = DR("WDDate4End").ToString
+                                ws.Cells("P29").Value = DR("WAcc4").ToString
+
+                                ws.Cells("B38").Value = DR("WD5").ToString
+                                ws.Cells("Q39").Value = DR("WDate5").ToString
+                                ws.Cells("Q43").Value = DR("WDDate5End").ToString
+                                ws.Cells("P38").Value = DR("WAcc5").ToString
+
+                                ws.Cells("B47").Value = DR("WD6").ToString
+                                ws.Cells("Q48").Value = DR("WDate6").ToString
+                                ws.Cells("Q52").Value = DR("WDDate6End").ToString
+                                ws.Cells("P47").Value = DR("WAcc6").ToString
+
+                                ws.Cells("B56").Value = DR("WD7").ToString
+                                ws.Cells("Q57").Value = DR("WDate7").ToString
+                                ws.Cells("Q61").Value = DR("WDDate7End").ToString
+                                ws.Cells("P56").Value = DR("WAcc7").ToString
+
+                                ws.Cells("B65").Value = DR("WD8").ToString
+                                ws.Cells("Q66").Value = DR("WDate8").ToString
+                                ws.Cells("Q70").Value = DR("WDDate8End").ToString
+                                ws.Cells("P65").Value = DR("WAcc8").ToString
+
+                                ws.Cells("B74").Value = DR("WD9").ToString
+                                ws.Cells("Q75").Value = DR("WDate9").ToString
+                                ws.Cells("Q79").Value = DR("WDDate9End").ToString
+                                ws.Cells("P74").Value = DR("WAcc9").ToString
+
+                                ws.Cells("B83").Value = DR("WD10").ToString
+                                ws.Cells("Q84").Value = DR("WDate10").ToString
+                                ws.Cells("Q88").Value = DR("WDDate10End").ToString
+                                ws.Cells("P83").Value = DR("WAcc10").ToString
+                            Catch ex As Exception
+
+                            End Try
+                            ws = wb.Worksheets(3)
+                            Try
+                                ws.Cells("A2").Value = DR("ExternalAccessories").ToString
+                                ws.Cells("B2").Value = DR("ExternalAccessories_B").ToString
+                                Dim arrCPData1() As String = DR("ExternalAccessoriesData").ToString.Split("|")
+                                If arrCPData1.Length <> 0 Then
+                                    Dim arrCPDataVal2() As String = arrCPData1(0).Split(",")
+                                    If arrCPDataVal2.Length <> 0 Then
+                                        ws.Cells("A3").Value = arrCPDataVal2(0)
+                                        ws.Cells("B3").Value = arrCPDataVal2(1)
+                                    End If
+                                    Dim arrCPDataVal3() As String = arrCPData1(1).Split(",")
+                                    If arrCPDataVal3.Length <> 0 Then
+                                        ws.Cells("A4").Value = arrCPDataVal3(0)
+                                        ws.Cells("B4").Value = arrCPDataVal3(1)
+                                    End If
+                                    Dim arrCPDataVal4() As String = arrCPData1(2).Split(",")
+                                    If arrCPDataVal4.Length <> 0 Then
+                                        ws.Cells("A5").Value = arrCPDataVal4(0)
+                                        ws.Cells("B5").Value = arrCPDataVal4(1)
+                                    End If
+                                    Dim arrCPDataVa5() As String = arrCPData1(3).Split(",")
+                                    If arrCPDataVal4.Length <> 0 Then
+                                        ws.Cells("A6").Value = arrCPDataVa5(0)
+                                        ws.Cells("B6").Value = arrCPDataVa5(1)
+                                    End If
+                                End If
+                                Dim arr() As String = DR("QualityCheckData").ToString.Split("|")
+                                If arr.Length <> 0 Then
+                                    Dim arrCPDataVal7() As String = arr(6).Split(",")
+                                    ws.Cells("C2").Value = arrCPDataVal7(0)
+                                    ws.Cells("D2").Value = arrCPDataVal7(1)
+                                End If
+                            Catch ex As Exception
+                            End Try
+
+                            ws.PrintOptions.BottomMargin = (0)
+                            ws.PrintOptions.LeftMargin = (0)
+                            ws.PrintOptions.TopMargin = (0)
+                            ws.PrintOptions.RightMargin = (0)
+                            ws.PrintOptions.FitToPage = False
+                            ws.PrintOptions.PaperType = PaperType.A4
+                            ws.PrintOptions.HorizontalCentered = True
+                            ws.PrintOptions.VerticalCentered = True
+                            ws.PrintOptions.Portrait = True
+
+                            'Dim folderPath As String = "\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\TempData\Print Out\TE"
+                            'Try
+                            '    If File.Exists(localFilePath) = True Then
+                            '        File.Delete(localFilePath)
+                            '    End If
+                            '    wb.Save(localFilePath)
+                            'Catch ex As Exception
+                            '    MsgBox("Close the file first before opening another file.", MsgBoxStyle.Information, "Production Endgineering Systems")
+                            '    Exit Sub
+                            'End Try
+
+                            Dim folderPath As String = "\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\TempData\Print Out\TE\"
+                            Dim fileNamestr As String = "TE_" & bmID & ".pdf"
+                            Dim serverFilePath As String = Path.Combine(folderPath, fileNamestr)
+                            Try
+                                'wb.Save(serverFilePath)
+
+                                Dim downloadsPath As String = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads")
+                                Dim localFilePath As String = Path.Combine(downloadsPath, fileNamestr)
+
+                                'File.Copy(serverFilePath, localFilePath, True)
+                                wb.Save(localFilePath)
+
+                                Try
+                                    Dim AdobeSoftwares As Microsoft.Win32.RegistryKey = Microsoft.Win32.Registry.LocalMachine.OpenSubKey("SOFTWARE").OpenSubKey("ADOBE")
+                                    If AdobeSoftwares Is Nothing Then
+                                        Me.Close()
+                                        Process.Start("iexplore.exe", localFilePath)
+                                    Else
+                                        If Not Array.IndexOf(AdobeSoftwares.GetSubKeyNames, "Acrobat Reader") = -1 Then
+                                            Me.Show()
+
+                                            Dim PLTemp As New WebBrowser
+                                            PLTemp.Navigate(localFilePath)
+                                            PLTemp.Dock = DockStyle.Fill
+                                            Me.Controls.Add(PLTemp)
+                                        Else
+                                            Me.Close()
+                                            Process.Start("iexplore.exe", localFilePath)
+
+                                        End If
+                                    End If
+                                Catch ex As Exception
+                                    Me.Close()
+                                    Process.Start("iexplore.exe", ApplicationDeployment.CurrentDeployment.DataDirectory & "\TEeMaintenanceSystem\TempData\Print Out\TE\TE_" & bmID & ".pdf")
+                                End Try
+                            Catch ex As Exception
+                                MsgBox(ex.ToString, MsgBoxStyle.Information, "Production Endgineering Systems")
+                                Exit Sub
+                            End Try
+
+
+
+                            oConn.Close()
+                            Exit Sub
+                        Loop
+                    Else
+                        Do While DR.Read
+
+                            If getVRNumber(1) = "" Or getVRNumber(1) = DBNull.Value.ToString Then
+                                ws.Cells("L38").Value = "VR( 1 )"
+                            Else
+                                ws.Cells("L38").Value = "VR( " & getVRNumber(1) & " )"
+                            End If
+
+                            If getVRNumber(2) = "" Or getVRNumber(2) = DBNull.Value.ToString Then
+                                ws.Cells("L39").Value = "VR( 2 )"
+                            Else
+                                ws.Cells("L39").Value = "VR( " & getVRNumber(2) & " )"
+                            End If
+
+                            If getVRNumber(3) = "" Or getVRNumber(3) = DBNull.Value.ToString Then
+                                ws.Cells("L40").Value = "VR( 3 )"
+                            Else
+                                ws.Cells("L40").Value = "VR( " & getVRNumber(3) & " )"
+                            End If
+
+                            If DR("AQI").ToString = "" Then
+                                ws.Cells("AD2").Value = "NO"
+                            Else
+                                ws.Cells("AD2").Value = DR("AQI").ToString
+                            End If
+
+                            If DR("Andon").ToString = "" Then
+                                ws.Cells("AJ2").Value = "NO"
+                            Else
+                                ws.Cells("AJ2").Value = DR("Andon").ToString
+                            End If
+
+                            If DR("GLAndon").ToString = "" Then
+                                ws.Cells("AP2").Value = "NO"
+                            Else
+                                ws.Cells("AP2").Value = DR("GLAndon").ToString
+                            End If
+
+
+                            Try
+                                If DR("Priority").ToString = "QUALITY BM" Then
+                                    ws.Cells("AM34").Value = DR("GLConfi").ToString
+                                    ws.Cells("AZ33").Value = DR("GLConfi").ToString
+                                    ws.Cells("AZ32").Value = DR("RequestTo").ToString
+                                    ws.Cells("AW34").Value = DR("Remarks").ToString
+                                    ws.Cells("AT36").Value = DR("ChangingPoint").ToString
+                                    ws.Cells("AM33").Value = Format(CDate(DR("GLConfi_Date").ToString), "yy.MM.dd").ToString()
+                                End If
+                            Catch ex As Exception
+
+                            End Try
+
+                            ws.Cells("Z87").Value = DR("AccreditorPMReply").ToString
+                            ws.Cells("AJ4").Value = DR("GLConfirmOPReqBy").ToString
+                            ws.Cells("AV2").Value = DR("GLAndon2").ToString
+
+                            If DR("PMCategoryID").ToString = "1" Then 'Before BM
+                                ws.Cells("G10").Value = "1. BM"
+                            ElseIf DR("PMCategoryID").ToString = "2" Then 'Before PM
+                                ws.Cells("G10").Value = "2. PM"
+                            ElseIf DR("PMCategoryID").ToString = "3" Then 'Before CM
+                                ws.Cells("G10").Value = "3. CM"
+                            ElseIf DR("PMCategoryID").ToString = "4" Then ' Before Set-up/TC
+                                ws.Cells("G10").Value = "4. SET-UP"
+                            ElseIf DR("PMCategoryID").ToString = "5" Then 'Before Pre-Process
+                                ws.Cells("G10").Value = "5. Pre-Process"
+                            ElseIf DR("PMCategoryID").ToString = "6" Or DR("PMCategoryID").ToString = "7" Then  'Others Others
+                                ws.Cells("G10").Value = "6. Others"
+                            End If
+
+                            '"✔"
+
+                            If DR("Setup").ToString = "Newly Set-up" Then
+                                ws.Cells("S13").Value = ""
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\one.png", "S13", 14, 14, LengthUnit.Pixel)
+                            ElseIf DR("Setup").ToString = "Lot Change only" Then
+                                ws.Cells("S14").Value = ""
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\two.png", "S14", 14, 14, LengthUnit.Pixel)
+                            ElseIf DR("Setup").ToString = "Device changed only" Then
+                                ws.Cells("AA13").Value = ""
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\three.png", "AA13", 14, 14, LengthUnit.Pixel)
+                            ElseIf DR("Setup").ToString = "Others" Then
+                                ws.Cells("AA14").Value = ""
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\four.png", "AA14", 14, 14, LengthUnit.Pixel)
+                            End If '
+                            'If DR("FourM").ToString = "1" Then
+                            '    ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\Man.png", "AP36", 2.17, 0.19, LengthUnit.Inch)
+                            'ElseIf DR("FourM").ToString = "2" Then
+                            '    ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\MC.png", "AP36", 2.17, 0.19, LengthUnit.Inch)
+                            'Else
+                            '    ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\Others.png", "AP36", 2.17, 0.19, LengthUnit.Inch)
+                            'End If
+                            If DR("OPPosition").ToString = "Start of Lot" Then
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\Check.png", "X16", 14, 14, LengthUnit.Pixel)
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\Square.png", "AD16", 14, 14, LengthUnit.Pixel)
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\Square.png", "AI16", 14, 14, LengthUnit.Pixel)
+                            ElseIf DR("OPPosition").ToString = "Middle of Lot" Then
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\Square.png", "X16", 14, 14, LengthUnit.Pixel)
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\Check.png", "AD16", 14, 14, LengthUnit.Pixel)
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\Square.png", "AI16", 14, 14, LengthUnit.Pixel)
+                            ElseIf DR("OPPosition").ToString = "End of Lot" Then
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\Square.png", "X16", 14, 14, LengthUnit.Pixel)
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\Square.png", "AD16", 14, 14, LengthUnit.Pixel)
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\Check.png", "AI16", 14, 14, LengthUnit.Pixel)
+                            End If
+
+                            ws.Cells("G17").Value = DR("OPRemarks").ToString
+                            ws.Cells("I22").Value = DR("Designation").ToString
+
+                            If DR("MCStatus").ToString = "On-Stop" Then
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\Check.png", "AK17", 14, 14, LengthUnit.Pixel)
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\Square.png", "AK22", 14, 14, LengthUnit.Pixel)
+                            ElseIf DR("MCStatus").ToString = "Operational" Then
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\Square.png", "AK17", 14, 14, LengthUnit.Pixel)
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\Check.png", "AK22", 14, 14, LengthUnit.Pixel)
+                            End If
+
+                            If DR("TestFlow").ToString = "OS" Then
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\OS.png", "X17", 178.16, 19, LengthUnit.Pixel)
+                            ElseIf DR("TestFlow").ToString = "A1" Then
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\A1.png", "X17", 178.16, 19, LengthUnit.Pixel)
+                            ElseIf DR("TestFlow").ToString = "A2" Then
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\A2.png", "X17", 178.16, 19, LengthUnit.Pixel)
+                            ElseIf DR("TestFlow").ToString = "A3" Then
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\A3.png", "X17", 178.16, 19, LengthUnit.Pixel)
+                            ElseIf DR("TestFlow").ToString = "A4" Then
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\A4.png", "X17", 178.16, 19, LengthUnit.Pixel)
+                            ElseIf DR("TestFlow").ToString = "A8" Then
+                                ws.Pictures.Add("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\A8.png", "X17", 178.16, 19, LengthUnit.Pixel)
+                            End If
+
+                            ws.Cells("BC17").Value = DR("ShipmentDate").ToString()
+
+                            If getProcCodes(DR("BMContentID").ToString, "BMContent", "BMContentID", "BMContent") = "MEKA" Then
+                                ws.Cells("G11").Style.Font.UnderlineStyle = UnderlineStyle.Single
+                            ElseIf getProcCodes(DR("BMContentID").ToString, "BMContent", "BMContentID", "BMContent") = "QUALITY" Then
+                                ws.Cells("N11").Style.Font.UnderlineStyle = UnderlineStyle.Single
+                            ElseIf getProcCodes(DR("BMContentID").ToString, "BMContent", "BMContentID", "BMContent") = "PERIODIC INSPECTION" Then
+                                ws.Cells("G12").Style.Font.UnderlineStyle = UnderlineStyle.Single
+                            ElseIf getProcCodes(DR("BMContentID").ToString, "BMContent", "BMContentID", "BMContent") = "CORRECTIVE MAINTENANCE" Then
+
+                            ElseIf getProcCodes(DR("BMContentID").ToString, "BMContent", "BMContentID", "BMContent") = "FEEDBACK INVESTIGATION" Then
+
+                            ElseIf getProcCodes(DR("BMContentID").ToString, "BMContent", "BMContentID", "BMContent") = "SETUP" Then
+
+                            ElseIf getProcCodes(DR("BMContentID").ToString, "BMContent", "BMContentID", "BMContent") = "PM DETECTION" Then
+                                ws.Cells("N12").Style.Font.UnderlineStyle = UnderlineStyle.Single
+                            ElseIf getProcCodes(DR("BMContentID").ToString, "BMContent", "BMContentID", "BMContent") = "OP DETECTION" Then
+                                ws.Cells("AA11").Style.Font.UnderlineStyle = UnderlineStyle.Single
+                            ElseIf getProcCodes(DR("BMContentID").ToString, "BMContent", "BMContentID", "BMContent") = "OTHERS" Then
+                                ws.Cells("U11").Style.Font.UnderlineStyle = UnderlineStyle.Single
+                            ElseIf getProcCodes(DR("BMContentID").ToString, "BMContent", "BMContentID", "BMContent") = "PRE/POST-PROCESS FEEDBACK INVESTIGATION" Then
+                                ws.Cells("U12").Style.Font.UnderlineStyle = UnderlineStyle.Single
+                            End If
+
+                            ws.Cells("K13").Value = DR("TestNoNG").ToString
+                            ws.Cells("K14").Value = DR("LotNG").ToString
+                            ws.Cells("K15").Value = DR("KeepSample").ToString
+                            ws.Cells("K16").Value = DR("BinCat").ToString
+                            ws.Cells("BD12").Value = DR("TesterNo").ToString
+                            ws.Cells("AW12").Value = DR("MCNo").ToString
+                            ws.Cells("AQ12").Value = DR("CellLine").ToString
+                            ws.Cells("AS16").Value = DR("DeviceName").ToString
+                            ws.Cells("W20").Value = DR("PKGName").ToString
+                            ws.Cells("AS18").Value = DR("LOTNo").ToString
+                            ws.Cells("AA18").Value = DR("DUT").ToString
+                            ws.Cells("V19").Value = DR("BoxNo").ToString
+                            ws.Cells("AF19").Value = DR("SubDUT").ToString
+
+                            ws.Cells("AD4").Value = DR("RequestedBy").ToString 'OP ID No.
+                            ws.Cells("AE77").Value = DR("GLConfirmOPReqBy").ToString 'GL ID No.
+                            ws.Cells("AI77").Value = DR("CurrentTE").ToString 'TE ID No. rev 12/4/2020
+
+                            Dim TEjudgement As String = DR("d_TEJudgment").ToString
+                            If TEjudgement <> "" Then
+                                ws.Cells("AF78").Value = TEjudgement
+                            Else
+                                ws.Cells("AF78").Value = "N/A"
+                            End If
+                            If (DR("PMConfirmGLOPReqBy").ToString = DR("RepairedByEnd").ToString) Then
+                                ws.Cells("AP4").Value = DR("PMConfirmGLOPReqBy").ToString()  'PM ID No.
+                            Else
+                                ws.Cells("AP4").Value = DR("PMConfirmGLOPReqBy").ToString() & ", " & DR("RepairedByEnd").ToString()
+                            End If
+                            ws.Cells("AV4").Value = DR("GLRepairConfirmationBy").ToString 'GL ID No.
+                            ws.Cells("BC4").Value = DR("EndBMBy").ToString 'PM ID No.
+                            ws.Cells("AB55").Value = DR("MittomonaiClaim").ToString
+                            If DR("MCStatus").ToString = "" Then
+                            ElseIf DR("MCStatus").ToString = "Stop" Then
+                                'ws.Cells("AQ16").Style.Font.Weight = ExcelFont.BoldWeight
+                                ws.Cells("AQ16").Style.Font.UnderlineStyle = UnderlineStyle.Single
+                            ElseIf DR("MCStatus").ToString = "Running" Then
+                                'ws.Cells("AZ16").Style.Font.Weight = ExcelFont.BoldWeight
+                                ws.Cells("AZ16").Style.Font.UnderlineStyle = UnderlineStyle.Single
+                            End If
+                            Dim arrDT As String() = DR("OccurrenceDate").ToString().Split(" ").ToArray()
+                            ws.Cells("AS24").Value = DR("EndOfRepair").ToString 'Time Ended
+                            ws.Cells("AS20").Value = DR("OccurrenceDate").ToString()
+                            ws.Cells("AS22").Value = DR("TEReceived").ToString()
+                            ws.Cells("AO37").Value = DR("Why1")
+                            ws.Cells("AO41").Value = DR("Why2")
+                            ws.Cells("AO46").Value = DR("Why3")
+                            ws.Cells("AM76").Value = DR("PMUnknown")
+                            Dim LotSampleNGUntested = DR("UntestedSample")
+                            Dim arrData() As String = LotSampleNGUntested.Split("|")
+                            If (arrData.Length = 5) Then
+                                Dim arrDataVal1() As String = arrData(0).Split(",")
+                                ws.Cells("AQ70").Value = arrDataVal1(0).ToString
+                                ws.Cells("AT70").Value = arrDataVal1(1).ToString
+                                ws.Cells("AX70").Value = arrDataVal1(2).ToString
+                                Try
+                                    ws.Cells("BB70").Value = arrDataVal1(3).ToString
+                                    ws.Cells("BE70").Value = arrDataVal1(4).ToString
+                                Catch ex As Exception
+
+                                End Try
+
+
+                                Dim arrDataVal2() As String = arrData(1).Split(",")
+                                ws.Cells("AQ71").Value = arrDataVal2(0).ToString
+                                ws.Cells("AT71").Value = arrDataVal2(1).ToString
+                                ws.Cells("AX71").Value = arrDataVal2(2).ToString
+                                Try
+                                    ws.Cells("BB71").Value = arrDataVal2(3).ToString
+                                    ws.Cells("BE71").Value = arrDataVal2(4).ToString
+                                Catch ex As Exception
+
+                                End Try
+
+
+                                Dim arrDataVal3() As String = arrData(2).Split(",")
+                                ws.Cells("AQ72").Value = arrDataVal3(0).ToString
+                                ws.Cells("AT72").Value = arrDataVal3(1).ToString
+                                ws.Cells("AX72").Value = arrDataVal3(2).ToString
+                                Try
+                                    ws.Cells("BB72").Value = arrDataVal3(3).ToString
+                                    ws.Cells("BE72").Value = arrDataVal3(4).ToString
+                                Catch ex As Exception
+
+                                End Try
+
+
+                                Dim arrDataVal4() As String = arrData(3).Split(",")
+                                ws.Cells("AQ73").Value = arrDataVal4(0).ToString
+                                ws.Cells("AT73").Value = arrDataVal4(1).ToString
+                                ws.Cells("AX73").Value = arrDataVal4(2).ToString
+                                Try
+                                    ws.Cells("BB73").Value = arrDataVal4(3).ToString
+                                    ws.Cells("BE73").Value = arrDataVal4(4).ToString
+                                Catch ex As Exception
+
+                                End Try
+
+
+                                Dim arrDataVal5() As String = arrData(4).Split(",")
+                                ws.Cells("AQ74").Value = arrDataVal5(0).ToString
+                                ws.Cells("AT74").Value = arrDataVal5(1).ToString
+                                ws.Cells("AX74").Value = arrDataVal5(2).ToString
+                                Try
+                                    ws.Cells("BB74").Value = arrDataVal5(3).ToString
+                                    ws.Cells("BE74").Value = arrDataVal5(4).ToString
+                                Catch ex As Exception
+
+                                End Try
+
+
+                            End If
+
+                            Dim _WData As String = DR("ItemTotalQTYData").ToString
+                            If _WData <> "" Then
+                                Dim arrWData() As String = _WData.Split("|")
+                                If arrWData.Length = 2 Then
+                                    Dim arrWDataVal1() As String = arrWData(0).Split(",")
+                                    Dim arrWDataVal2() As String = arrWData(1).Split(",")
+                                    'If ws.Cells("AP54").Value = "" Then
+                                    '    ws.Cells("AP54").Value = tbxCheckedBy2.Text
+                                    'End If
+
+                                    'If ws.Cells("AS54").Value = "" Then
+                                    '    ws.Cells("AS54").Value = tbxPass2.Text
+                                    'End If
+
+                                    'If ws.Cells("AV54").Value = "" Then
+                                    '    ws.Cells("AV54").Value = tbxFail2.Text
+                                    'End If
+
+                                    'If ws.Cells("AY54").Value = "" Then
+                                    '    ws.Cells("AY54").Value = tbxTTL2.Text
+                                    'End If
+
+                                    'If ws.Cells("BB54").Value = "" Then
+                                    '    ws.Cells("BB54").Value = tbxVisual2.Text
+                                    'End If
+                                End If
+                            End If
+
+                            Dim _4Data As String = DR("FourMData").ToString
+                            If _4Data <> "" Then
+                                Dim arrWData() As String = _4Data.Split("|")
+                                If DR("FourM").ToString = 1 Then 'For Man
+                                    Dim arrWDataVal1() As String = arrWData(0).Split(",")
+                                    ws.Cells("AQ59").Value = arrWDataVal1(0).ToString
+                                    ws.Cells("AY59").Value = arrWDataVal1(1).ToString
+                                ElseIf DR("FourM").ToString = 2 Then 'For Machine
+                                    Dim arrWDataVal2() As String = arrWData(0).Split(",")
+                                    ws.Cells("AQ61").Value = arrWDataVal2(0).ToString
+                                    ws.Cells("AY61").Value = arrWDataVal2(1).ToString
+                                ElseIf DR("FourM").ToString = 3 Then 'For Materials / Parts
+                                    Dim arrWDataVal3() As String = arrWData(0).Split(",")
+                                    ws.Cells("AQ63").Value = arrWDataVal3(0).ToString
+                                    ws.Cells("AY63").Value = arrWDataVal3(1).ToString
+                                ElseIf DR("FourM").ToString = 3 Then 'For Method
+                                    Dim arrWDataVal4() As String = arrWData(0).Split(",")
+                                    ws.Cells("AQ65").Value = arrWDataVal4(0).ToString
+                                    ws.Cells("AY65").Value = arrWDataVal4(1).ToString
+                                End If
+                            End If
+                            Dim _ADData As String = DR("AdjustedRecordData").ToString
+                            If _ADData <> "" Then
+                                Dim arrWData() As String = _ADData.Split("|")
+                                If arrWData.Length = 3 Then
+                                    Dim arrWDataVal1() As String = arrWData(0).Split(",")
+                                    ws.Cells("U38").Value = arrWDataVal1(0).ToString
+                                    ws.Cells("AA38").Value = arrWDataVal1(1).ToString
+                                    ws.Cells("AG38").Value = arrWDataVal1(2).ToString
+
+                                    Dim arrWDataVal2() As String = arrWData(1).Split(",")
+                                    ws.Cells("U39").Value = arrWDataVal2(0).ToString
+                                    ws.Cells("AA39").Value = arrWDataVal2(1).ToString
+                                    ws.Cells("AG39").Value = arrWDataVal2(2).ToString
+
+                                    Dim arrWDataVal3() As String = arrWData(2).Split(",")
+                                    ws.Cells("U40").Value = arrWDataVal3(0).ToString
+                                    ws.Cells("AA40").Value = arrWDataVal3(1).ToString
+                                    ws.Cells("AG40").Value = arrWDataVal3(2).ToString
+                                End If
+                            End If
+
+                            ws.Cells("BE52").Value = DR("TESign").ToString()
+                            ws.Cells("BE53").Value = DR("PDSign1").ToString()
+                            ws.Cells("BE54").Value = DR("GLRepairConfirmationBy").ToString() '
+                            ws.Cells("M23").Value = DR("DropICCheck").ToString()
+                            ws.Cells("D25").Value = DR("ReqTestNoNG").ToString()
+                            ws.Cells("AB23").Value = DR("DropICTreatedBy").ToString()
+                            ws.Cells("D51").Value = DR("QAction").ToString() 'tbxQAction.Text
+
+
+
+                            Dim _CPData As String = (DR("CheckItemData").ToString())
+                            If _CPData <> "" Then
+                                Dim arrCPData() As String = _CPData.Split("|")
+                                If arrCPData.Length = 8 Then
+                                    Dim arrCPDataVal1() As String = arrCPData(0).Split(",")
+                                    Dim arrCPDataVal2() As String = arrCPData(1).Split(",")
+                                    Dim arrCPDataVal3() As String = arrCPData(2).Split(",")
+                                    Dim arrCPDataVal4() As String = arrCPData(3).Split(",")
+                                    Dim arrCPDataVal5() As String = arrCPData(4).Split(",")
+                                    Dim arrCPDataVal6() As String = arrCPData(5).Split(",")
+                                    Dim arrCPDataVal7() As String = arrCPData(6).Split(",")
+                                    Dim arrCPDataVal8() As String = arrCPData(7).Split(",")
+
+
+                                    ws.Cells("O29").Value = arrCPDataVal3(0)
+                                    ws.Cells("O30").Value = arrCPDataVal4(0)
+                                    ws.Cells("O31").Value = arrCPDataVal5(0)
+                                    ws.Cells("O32").Value = arrCPDataVal6(0)
+                                    ws.Cells("O33").Value = arrCPDataVal7(0)
+
+                                    ws.Cells("S27").Value = arrCPDataVal1(1)
+                                    ws.Cells("S28").Value = arrCPDataVal2(1)
+
+                                    ws.Cells("T29").Value = arrCPDataVal3(1)
+                                    ws.Cells("T30").Value = arrCPDataVal4(1)
+                                    ws.Cells("T31").Value = arrCPDataVal5(1)
+                                    ws.Cells("T32").Value = arrCPDataVal6(1)
+                                    ws.Cells("T33").Value = arrCPDataVal7(1)
+
+                                    ws.Cells("Y27").Value = arrCPDataVal1(2)
+                                    ws.Cells("Y28").Value = arrCPDataVal2(2)
+                                    ws.Cells("Y29").Value = arrCPDataVal3(2)
+                                    ws.Cells("Y30").Value = arrCPDataVal4(2)
+                                    ws.Cells("Y31").Value = arrCPDataVal5(2)
+                                    ws.Cells("Y32").Value = arrCPDataVal6(2)
+                                    ws.Cells("Y33").Value = arrCPDataVal7(2)
+                                    ws.Cells("Y34").Value = arrCPDataVal8(2)
+
+
+                                    ws.Cells("AH27").Value = arrCPDataVal1(3)
+                                    ws.Cells("AH28").Value = arrCPDataVal2(3)
+                                    ws.Cells("AH29").Value = arrCPDataVal3(3)
+                                    ws.Cells("AH30").Value = arrCPDataVal4(3)
+                                    ws.Cells("AH31").Value = arrCPDataVal5(3)
+                                    ws.Cells("AH32").Value = arrCPDataVal6(3)
+                                    ws.Cells("AH33").Value = arrCPDataVal7(3)
+                                    ws.Cells("AH34").Value = arrCPDataVal8(3)
+                                End If
+                            End If
+
+                            If DR("AccreditorRemarks").ToString <> "" Then
+                                If DR("AccreditorRemarks").ToString <> "" Then
+                                    ws.Cells(91, 93).Style.Font.Color = SpreadsheetColor.FromName(ColorName.Red)
+                                End If
+                                ws.Cells("AO91").Value = DR("AccreditorRemarks").ToString
+                            Else
+                                If DR("AccreditorRemarks_Max").ToString <> "" Then
+                                    ws.Cells(91, 93).Style.Font.Color = SpreadsheetColor.FromName(ColorName.Red)
+                                End If
+                                ws.Cells("AO91").Value = DR("AccreditorRemarks_Max").ToString
+                            End If
+                            ws.Cells("AB82").Value = DR("ChangePartsName1").ToString
+                            ws.Cells("AQ82").Value = DR("ChangePartsType1").ToString
+                            ws.Cells("BE82").Value = DR("ChangePartsQty1").ToString
+                            ws.Cells("AB83").Value = DR("ChangePartsName2").ToString
+                            ws.Cells("AQ83").Value = DR("ChangePartsType2").ToString
+                            ws.Cells("BE83").Value = DR("ChangePartsQty2").ToString
+                            ws.Cells("AB84").Value = DR("ChangePartsName3").ToString
+                            ws.Cells("AQ84").Value = DR("ChangePartsType3").ToString
+                            ws.Cells("BE84").Value = DR("ChangePartsQty3").ToString
+                            ws.Cells("AB85").Value = DR("ChangePartsName4").ToString
+                            ws.Cells("AQ85").Value = DR("ChangePartsType4").ToString
+                            ws.Cells("BE85").Value = DR("ChangePartsQty4").ToString
+                            Dim wtTotal As Decimal = DateDiff(DateInterval.Minute, CDate(DR("GLConfirmOPReqDate").ToString), CDate(DR("PMConfirmGLOPReqDate").ToString)) 'convert it to min instead of hour
+                            Dim TStopTime As String = DR("TotalStopTime").ToString
+                            If TStopTime = "" Then
+                                TStopTime = "0"
+                            End If
+                            wtTotal = wtTotal + Decimal.Parse(TStopTime)
+                            ws.Cells("AS26").Value = DR("WaitingTime1").ToString
+                            ws.Cells("AS28").Value = DR("RepairTime1").ToString
+                            Dim DCStartOfRepair As String = DR("StartOfRepair").ToString
+                            Dim DCEndOfRepair As String = DR("EndOfRepair").ToString
+                            Dim DCSKCTPDOnHoldDate As String = DR("SKCTPDOnHoldDate").ToString
+                            Dim DCSKCTPDReleaseDate As String = DR("SKCTPDReleaseDate").ToString
+
+                            Dim rtTotal As Decimal
+                            If DR("TotalSKCTPDtime").ToString() = "" Or (DR("SKCTPDOnHoldDate").ToString() = "" And DR("SKCTPDReleaseDate").ToString() = "") Then
+                                rtTotal = DateDiff(DateInterval.Minute, CDate(DR("StartOfRepair").ToString), CDate(DR("EndOfRepair").ToString)) - Decimal.Parse(TStopTime)
+                            Else
+                                rtTotal = DateDiff(DateInterval.Minute, CDate(DR("StartOfRepair").ToString), CDate(DR("EndOfRepair").ToString)) - DateDiff(DateInterval.Minute, CDate(DR("SKCTPDOnHoldDate").ToString), CDate(DR("SKCTPDReleaseDate").ToString)) - Decimal.Parse(TStopTime) 'convert it to min instead of hour
+                            End If
+                            rtTotal = rtTotal - Decimal.Parse(TStopTime)
+                            Dim TST As Decimal = wtTotal + rtTotal
+                            ws.Cells("AS30").Value = Decimal.Parse(DR("WaitingTime1").ToString) + Decimal.Parse(DR("RepairTime1").ToString)
+                            ws.Cells("A91").Value = DR("RepairedByEnd").ToString
+                            'ws.Cells("F91").Value = ddlOPClassification.SelectedItem.Text
+                            ws.Cells("K91").Value = Me.getProcCodes(DR("BMCaseID").ToString, "TECase", "BMCaseID", "BMCase")
+                            ws.Cells("P91").Value = Me.getProcCodes(DR("BMUnitID").ToString, "BMTEUnit", "BMTEUnitID", "BMTEUnit")
+                            ws.Cells("U91").Value = Me.getProcCodes(DR("BMPointID").ToString, "TEPoint", "BMPointID", "BMPoint")
+                            ws.Cells("Z91").Value = Me.getProcCodes(DR("BMWorkContentID").ToString, "TEWorkContent", "BMWorkContentID", "BMWorkContent")
+                            ws.Cells("AE91").Value = Me.getProcCodes(DR("BMCauseID").ToString, "TECause ", "BMCauseID", "BMCause")
+                            ws.Cells("AJ91").Value = Me.getProcCodes(DR("PrevMeasureID").ToString, "TEPREVMeasure", "PREVMeasureID", "PREVMeasure")
+                            ws.Cells("AL65").Value = DR("AcredINSPN").ToString
+                            ws.Cells("AY87").Value = DR("WDSetupQty").ToString
+                            ws.Cells("AY88").Value = DR("WDWIPQty").ToString
+                            ws.Cells("AY89").Value = DR("WDBoxBoardQty").ToString
+                            If ProcessStr = "EDS" Then
+                                ws.Cells("I87").Value = DR("ProbeRingBefore").ToString
+                                ws.Cells("T87").Value = DR("ProbeRingAfter").ToString
+                                ws.Cells("I89").Value = DR("IronPlateBefore").ToString
+                                ws.Cells("T89").Value = DR("IronPlateAfter").ToString
+                                ws.Cells("Z84").Value = DR("EDSTotalDutNG").ToString
+                                ws.Cells("AI84").Value = DR("EDSTotalDutCOUNT").ToString
+                                ws.Cells("AA87").Value = DR("StopAddAxisX").ToString
+                                ws.Cells("AJ87").Value = DR("StopAddAxisY").ToString
+                                ws.Cells("AA89").Value = DR("StartAddAxisX").ToString
+                                ws.Cells("AJ89").Value = DR("StartAddAxisY").ToString
+                                ws.Cells("AT87").Value = DR("OverDriveBefore").ToString
+                                ws.Cells("BC87").Value = DR("OverDriveAFter").ToString
+                            Else
+                            End If
+
+                            Dim _QCData_QC As String = DR("QcJudgement").ToString
+                            If _QCData_QC <> "" Then
+                                Dim arrQCData() As String = _QCData_QC.Split("|")
+
+                                Dim arrQCDataVal6() As String = arrQCData(0).Split(",")
+                                If (arrQCDataVal6(1) = "Pass" Or arrQCDataVal6(1) = "Yes") And arrQCDataVal6(1) <> "" And arrQCDataVal6(1) <> "0" Then
+                                    ws.Cells("AE73").Value = "Yes"
+                                Else
+                                    ws.Cells("AE73").Value = "N/A"
+                                End If
+                                If (arrQCDataVal6(0) = "Pass" Or arrQCDataVal6(0) = "Yes") And arrQCDataVal6(0) <> "" And arrQCDataVal6(0) <> "0" Then
+                                    ws.Cells("AC73").Value = "Yes"
+                                Else
+                                    ws.Cells("AC73").Value = "N/A"
+                                End If
+                            End If
+
+                            Dim _QCData As String = DR("QualityCheckData").ToString
+                            If _QCData <> "" Then
+                                Dim arrQCData() As String = _QCData.Split("|")
+                                If arrQCData.Length = 14 Or arrQCData.Length = 15 Then
+
+
+                                    Dim arrQCDataVal1() As String = arrQCData(0).Split(",")
+                                    If (arrQCDataVal1(1) = "Pass" Or arrQCDataVal1(1) = "Yes") And arrQCDataVal1(1) <> "" And arrQCDataVal1(1) <> "0" Then
+                                        ws.Cells("AE59").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE59").Value = "N/A"
+                                    End If
+
+                                    Dim arrQCDataVal2() As String = arrQCData(1).Split(",")
+                                    If (arrQCDataVal2(1) = "Pass" Or arrQCDataVal2(1) = "Yes") And arrQCDataVal2(1) <> "" And arrQCDataVal2(1) <> "0" Then
+                                        ws.Cells("AE60").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE60").Value = "N/A"
+                                    End If
+                                    If (arrQCDataVal2(0) = "Pass" Or arrQCDataVal2(0) = "Yes") And arrQCDataVal2(0) <> "" And arrQCDataVal2(0) <> "0" Then
+                                        ws.Cells("AC60").Value = "Yes"
+                                    Else
+                                        ws.Cells("AC60").Value = "N/A"
+                                    End If
+
+                                    Dim arrQCDataVal3() As String = arrQCData(2).Split(",")
+                                    If (arrQCDataVal3(1) = "Pass" Or arrQCDataVal3(1) = "Yes") And arrQCDataVal3(1) <> "" And arrQCDataVal3(1) <> "0" Then
+                                        ws.Cells("AE61").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE61").Value = "N/A"
+                                    End If
+                                    If (arrQCDataVal3(0) = "Pass" Or arrQCDataVal3(0) = "Yes") And arrQCDataVal3(0) <> "" And arrQCDataVal3(0) <> "0" Then
+                                        ws.Cells("AC61").Value = "Yes"
+                                    Else
+                                        ws.Cells("AC61").Value = "N/A"
+                                    End If
+
+                                    Dim arrQCDataVal4() As String = arrQCData(3).Split(",")
+                                    If (arrQCDataVal4(1) = "Pass" Or arrQCDataVal4(1) = "Yes") And arrQCDataVal4(1) <> "" And arrQCDataVal4(1) <> "0" Then
+                                        ws.Cells("AE62").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE62").Value = "N/A"
+                                    End If
+                                    Dim arrQCDataVal5() As String = arrQCData(4).Split(",")
+                                    If (arrQCDataVal5(1) = "Pass" Or arrQCDataVal5(1) = "Yes") And arrQCDataVal5(1) <> "" And arrQCDataVal5(1) <> "0" Then
+                                        ws.Cells("AE63").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE63").Value = "N/A"
+                                    End If
+                                    If (arrQCDataVal5(0) = "Pass" Or arrQCDataVal5(0) = "Yes") And arrQCDataVal5(0) <> "" And arrQCDataVal5(0) <> "0" Then
+                                        ws.Cells("AC63").Value = arrQCDataVal5(0).ToString
+                                    Else
+                                        ws.Cells("AC63").Value = "N/A"
+                                    End If
+
+                                    Dim arrQCDataVal6() As String = arrQCData(5).Split(",")
+                                    If (arrQCDataVal6(1) = "Pass" Or arrQCDataVal6(1) = "Yes") And arrQCDataVal6(1) <> "" And arrQCDataVal6(1) <> "0" Then
+                                        ws.Cells("AE72").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE72").Value = "N/A"
+                                    End If
+                                    If (arrQCDataVal6(0) = "Pass" Or arrQCDataVal6(0) = "Yes") And arrQCDataVal6(0) <> "" And arrQCDataVal6(0) <> "0" Then
+                                        ws.Cells("AC72").Value = "Yes"
+                                    Else
+                                        ws.Cells("AC72").Value = "N/A"
+                                    End If
+
+                                    Dim arrQCDataVal7() As String = arrQCData(6).Split(",")
+                                    If (arrQCDataVal7(1) = "Pass" Or arrQCDataVal7(1) = "Yes") And arrQCDataVal7(1) <> "" And arrQCDataVal7(1) <> "0" Then
+                                        ws.Cells("AE64").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE64").Value = "N/A"
+                                    End If
+                                    If (arrQCDataVal7(0) = "Pass" Or arrQCDataVal7(0) = "Yes") And arrQCDataVal7(0) <> "" And arrQCDataVal7(0) <> "0" Then
+                                        ws.Cells("AC64").Value = "Yes"
+                                    Else
+                                        ws.Cells("AC64").Value = "N/A"
+                                    End If
+
+                                    Dim arrQCDataVal8() As String = arrQCData(7).Split(",")
+                                    If (arrQCDataVal8(1) = "Pass" Or arrQCDataVal8(1) = "Yes") And arrQCDataVal8(1) <> "" And arrQCDataVal8(1) <> "0" Then
+                                        ws.Cells("AE65").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE65").Value = "N/A"
+                                    End If
+                                    Dim arrQCDataVal9() As String = arrQCData(8).Split(",")
+                                    If (arrQCDataVal9(1) = "Pass" Or arrQCDataVal9(1) = "Yes") And arrQCDataVal9(1) <> "" And arrQCDataVal9(1) <> "0" Then
+                                        ws.Cells("AE66").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE66").Value = "N/A"
+                                    End If
+                                    If (arrQCDataVal9(0) = "Pass" Or arrQCDataVal9(0) = "Yes") And arrQCDataVal9(0) <> "" And arrQCDataVal9(0) <> "0" Then
+                                        ws.Cells("AC66").Value = "Yes"
+                                    Else
+                                        ws.Cells("AC66").Value = "N/A"
+                                    End If
+
+                                    Dim arrQCDataVal10() As String = arrQCData(9).Split(",")
+                                    If (arrQCDataVal10(1) = "Pass" Or arrQCDataVal10(1) = "Yes") And arrQCDataVal10(1) <> "" And arrQCDataVal10(1) <> "0" Then
+                                        ws.Cells("AE67").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE67").Value = "N/A"
+                                    End If
+                                    Dim arrQCDataVal11() As String = arrQCData(10).Split(",")
+                                    If (arrQCDataVal11(1) = "Pass" Or arrQCDataVal11(1) = "Yes") And arrQCDataVal11(1) <> "" And arrQCDataVal11(1) <> "0" Then
+                                        ws.Cells("AE68").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE68").Value = "N/A"
+                                    End If
+                                    If (arrQCDataVal11(0) = "Pass" Or arrQCDataVal11(0) = "Yes") And arrQCDataVal11(0) <> "" And arrQCDataVal11(0) <> "0" Then
+                                        ws.Cells("AC68").Value = "Yes"
+                                    Else
+                                        ws.Cells("AC68").Value = "N/A"
+                                    End If
+
+                                    Dim arrQCDataVal12() As String = arrQCData(11).Split(",")
+                                    If (arrQCDataVal12(1) = "Pass" Or arrQCDataVal12(1) = "Yes") And arrQCDataVal12(1) <> "" And arrQCDataVal12(1) <> "0" Then
+                                        ws.Cells("AE69").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE69").Value = "N/A"
+                                    End If
+                                    If (arrQCDataVal12(0) = "Pass" Or arrQCDataVal12(0) = "Yes") And arrQCDataVal12(0) <> "" And arrQCDataVal12(0) <> "0" Then
+                                        ws.Cells("AC69").Value = "Yes"
+                                    Else
+                                        ws.Cells("AC69").Value = "N/A"
+                                    End If
+
+                                    Dim arrQCDataVal13() As String = arrQCData(12).Split(",")
+                                    If (arrQCDataVal13(1) = "Pass" Or arrQCDataVal13(1) = "Yes") And arrQCDataVal13(1) <> "" And arrQCDataVal13(1) <> "0" Then
+                                        ws.Cells("AE70").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE70").Value = "N/A"
+                                    End If
+                                    Dim arrQCDataVal14() As String = arrQCData(13).Split(",")
+                                    If (arrQCDataVal14(1) = "Pass" Or arrQCDataVal14(1) = "Yes") And arrQCDataVal14(1) <> "" And arrQCDataVal14(1) <> "0" Then
+                                        ws.Cells("AE74").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE74").Value = "N/A"
+                                    End If
+
+                                    If arrQCData.Length = 15 Then
+                                        'Additional Item update for the changes made in the TEReport rev 5/02/2022
+                                        Dim arrQCDataVal15() As String = arrQCData(14).Split(",")
+                                        If (arrQCDataVal15(1) = "Yes" Or arrQCDataVal15(1) = "Pass") And arrQCDataVal15(1) <> "" And arrQCDataVal15(1) <> "0" Then
+                                            ws.Cells("AE74").Value = "Yes"
+                                            ws.Cells("O75").Value = arrQCDataVal15(0)
+                                        Else
+                                            ws.Cells("AE74").Value = "N/A"
+                                            ws.Cells("O75").Value = ""
+                                        End If
+                                    Else
+                                        ws.Cells("AE74").Value = "N/A"
+                                        ws.Cells("O75").Value = ""
+                                    End If
+
+
+                                Else
+
+                                    '''''''''Is this occurred in ALL DUT or channel during low 
+                                    Dim arrQCDataVal1() As String = arrQCData(0).Split(",")
+                                    'If (arrQCDataVal1(0) = "Pass" Or arrQCDataVal1(0) = "Yes") And arrQCDataVal1(0) <> "" And arrQCDataVal1(0) <> "0" Then
+                                    '    ws.Cells("AC59").Value = arrQCDataVal1(0).ToString
+                                    'End If
+
+                                    If (arrQCDataVal1(1) = "Pass" Or arrQCDataVal1(1) = "Yes") And arrQCDataVal1(1) <> "" And arrQCDataVal1(1) <> "0" Then
+                                        ws.Cells("AE59").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE59").Value = "N/A"
+                                    End If
+
+
+                                    ''''''''''Confirm device name, lot slip vs. OIS?	
+                                    Dim arrQCDataVal2() As String = arrQCData(1).Split(",")
+                                    If (arrQCDataVal2(0) = "Pass" Or arrQCDataVal2(0) = "Yes") And arrQCDataVal2(0) <> "" And arrQCDataVal2(0) <> "0" Then
+                                        ws.Cells("AC60").Value = "Yes"
+                                    Else
+                                        ws.Cells("AC60").Value = "N/A"
+                                    End If
+                                    If (arrQCDataVal2(1) = "Pass" Or arrQCDataVal2(1) = "Yes") And arrQCDataVal2(1) <> "" And arrQCDataVal2(1) <> "0" Then
+                                        ws.Cells("AE60").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE60").Value = "N/A"
+                                    End If
+
+
+                                    '''''''''''Confirm program name load vs. OIS? 
+                                    Dim arrQCDataVal3() As String = arrQCData(2).Split(",")
+                                    If (arrQCDataVal3(0) = "Pass" Or arrQCDataVal3(0) = "Yes") And arrQCDataVal3(0) <> "" And arrQCDataVal3(0) <> "0" Then
+                                        ws.Cells("AC61").Value = "Yes"
+                                    Else
+                                        ws.Cells("AC61").Value = "N/A"
+                                    End If
+                                    If (arrQCDataVal3(1) = "Pass" Or arrQCDataVal3(1) = "Yes") And arrQCDataVal3(1) <> "" And arrQCDataVal3(1) <> "0" Then
+                                        ws.Cells("AE61").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE61").Value = "N/A"
+                                    End If
+
+
+                                    ''''''''''''A-Disk Used? / System Version Check 
+                                    Dim arrQCDataVal4() As String = arrQCData(3).Split(",")
+                                    'If (arrQCDataVal4(0) = "Pass" Or arrQCDataVal4(0) = "Yes") And arrQCDataVal4(0) <> "" And arrQCDataVal4(0) <> "0" Then
+                                    '    ws.Cells("AC62").Value = arrQCDataVal4(1).ToString
+                                    'End If
+                                    If (arrQCDataVal4(1) = "Pass" Or arrQCDataVal4(1) = "Yes") And arrQCDataVal4(1) <> "" And arrQCDataVal4(1) <> "0" Then
+                                        ws.Cells("AE62").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE62").Value = "N/A"
+                                    End If
+
+                                    ''''''''''''''Need to conduct repeat accuracy check in 
+                                    Dim arrQCDataVal5() As String = arrQCData(4).Split(",")
+                                    If (arrQCDataVal5(0) = "Pass" Or arrQCDataVal5(0) = "Yes") And arrQCDataVal5(0) <> "" And arrQCDataVal5(0) <> "0" Then
+                                        ws.Cells("AC63").Value = arrQCDataVal5(0).ToString
+                                    Else
+                                        ws.Cells("AC63").Value = "N/A"
+                                    End If
+                                    If (arrQCDataVal5(1) = "Pass" Or arrQCDataVal5(1) = "Yes") And arrQCDataVal5(1) <> "" And arrQCDataVal5(1) <> "0" Then
+                                        ws.Cells("AE63").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE63").Value = "N/A"
+                                    End If
+
+                                    ''''''''''''''''''''Lot Monitoring (Bunrui/ mix check) 10 pcs. Min
+                                    Dim arrQCDataVal6() As String = arrQCData(5).Split(",")
+                                    If (arrQCDataVal6(0) = "Pass" Or arrQCDataVal6(0) = "Yes") And arrQCDataVal6(0) <> "" And arrQCDataVal6(0) <> "0" Then
+                                        ws.Cells("AC72").Value = "Yes"
+                                    Else
+                                        ws.Cells("AC72").Value = "N/A"
+                                    End If
+                                    If (arrQCDataVal6(1) = "Pass" Or arrQCDataVal6(1) = "Yes") And arrQCDataVal6(1) <> "" And arrQCDataVal6(1) <> "0" Then
+                                        ws.Cells("AE72").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE72").Value = "N/A"
+                                    End If
+
+                                    '''''''''''''''''''External Accessories Connected/Power    On 
+                                    Dim arrQCDataVal7() As String = arrQCData(6).Split(",")
+                                    If (arrQCDataVal7(0) = "Pass" Or arrQCDataVal7(0) = "Yes") And arrQCDataVal7(0) <> "" And arrQCDataVal7(0) <> "0" Then
+                                        ws.Cells("AC64").Value = "Yes"
+                                    Else
+                                        ws.Cells("AC64").Value = "N/A"
+                                    End If
+                                    If (arrQCDataVal7(1) = "Pass" Or arrQCDataVal7(1) = "Yes") And arrQCDataVal7(1) <> "" And arrQCDataVal7(1) <> "0" Then
+                                        ws.Cells("AE64").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE64").Value = "N/A"
+                                    End If
+
+                                    ''''''''''''''''''Last test no.check ( Test no. 
+                                    Dim arrQCDataVal8() As String = arrQCData(8).Split(",")
+                                    If (arrQCDataVal8(1) = "Pass" Or arrQCDataVal8(1) = "Yes") And arrQCDataVal8(1) <> "" And arrQCDataVal8(1) <> "0" Then
+                                        ws.Cells("AE65").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE65").Value = "N/A"
+                                    End If
+
+
+                                    '''''''''''''''''TELEKO check with evidence(m/c print-out or picture).
+                                    Dim arrQCDataVal9() As String = arrQCData(9).Split(",")
+                                    If (arrQCDataVal9(0) = "Pass" Or arrQCDataVal9(0) = "Yes") And arrQCDataVal9(0) <> "" And arrQCDataVal9(0) <> "0" Then
+                                        ws.Cells("AC66").Value = "Yes"
+                                    Else
+                                        ws.Cells("AC66").Value = "N/A"
+                                    End If
+                                    If (arrQCDataVal9(1) = "Pass" Or arrQCDataVal9(1) = "Yes") And arrQCDataVal9(1) <> "" And arrQCDataVal9(1) <> "0" Then
+                                        ws.Cells("AE66").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE66").Value = "N/A"
+                                    End If
+
+                                    '''''''''''''''''''''Tester Boards History Up-dated? (if boards was changed)
+                                    Dim arrQCDataVal10() As String = arrQCData(10).Split(",")
+                                    If (arrQCDataVal10(1) = "Pass" Or arrQCDataVal10(1) = "Yes") And arrQCDataVal10(1) <> "" And arrQCDataVal10(1) <> "0" Then
+                                        ws.Cells("AE67").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE67").Value = "N/A"
+                                    End If
+
+
+                                    '''''''''''''Andon to PD GL Conduct affected lots retrieval?
+                                    Dim arrQCDataVal11() As String = arrQCData(11).Split(",")
+                                    If (arrQCDataVal11(0) = "Pass" Or arrQCDataVal11(0) = "Yes") And arrQCDataVal11(0) <> "" And arrQCDataVal11(0) <> "0" Then
+                                        ws.Cells("AC68").Value = "Yes"
+                                    Else
+                                        ws.Cells("AC68").Value = "N/A"
+                                    End If
+                                    If (arrQCDataVal11(1) = "Pass" Or arrQCDataVal11(1) = "Yes") And arrQCDataVal11(1) <> "" And arrQCDataVal11(1) <> "0" Then
+                                        ws.Cells("AE68").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE68").Value = "N/A"
+                                    End If
+
+
+                                    ''''''''''''5’S Check (Tester drawer, cover and screw are all complete and properly returned?)
+                                    Dim arrQCDataVal12() As String = arrQCData(12).Split(",")
+                                    If (arrQCDataVal12(0) = "Pass" Or arrQCDataVal12(0) = "Yes") And arrQCDataVal12(0) <> "" And arrQCDataVal12(0) <> "0" Then
+                                        ws.Cells("AC69").Value = "Yes"
+                                    Else
+                                        ws.Cells("AC69").Value = "N/A"
+                                    End If
+                                    If (arrQCDataVal12(1) = "Pass" Or arrQCDataVal12(1) = "Yes") And arrQCDataVal12(1) <> "" And arrQCDataVal12(1) <> "0" Then
+                                        ws.Cells("AE69").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE69").Value = "N/A"
+                                    End If
+
+
+                                    '''''''''''''''Tester Network Connection?  (is it properly connect?)
+                                    Dim arrQCDataVal13() As String = arrQCData(13).Split(",")
+                                    If (arrQCDataVal13(1) = "Pass" Or arrQCDataVal13(1) = "Yes") And arrQCDataVal13(1) <> "" And arrQCDataVal13(1) <> "0" Then
+                                        ws.Cells("AE70").Value = "Yes"
+                                    Else
+                                        ws.Cells("AE70").Value = "N/A"
+                                    End If
+
+
+                                    '''''''''''''''If yes, What is the tester Serial Number (
+                                    Dim arrQCDataVal14() As String = arrQCData(15).Split(",")
+
+                                    If (arrQCDataVal14(1) = "Pass" Or arrQCDataVal14(1) = "Yes") And arrQCDataVal14(1) <> "" And arrQCDataVal14(1) <> "0" Then
+                                        ws.Cells("AE74").Value = "Yes"
+                                        ws.Cells("O75").Value = arrQCDataVal14(0).ToString
+                                    Else
+                                        ws.Cells("AE74").Value = "N/A"
+                                        ws.Cells("O75").Value = ""
+                                    End If
+
+                                End If
+
+                                ws.Cells("K72").Value = DR("DropICCheckAfterWork").ToString
+                                ws.Cells("W72").Value = DR("DropICCheckBy").ToString
+                            End If
+
+                            ws.Cells("N60").Value = DR("LotSlipvsOIS").ToString
+                            ws.Cells("N61").Value = DR("LoadOIS").ToString
+                            ws.Cells("Y61").Value = DR("LoadTestFlow").ToString
+                            ws.Cells("O62").Value = DR("FTADisk").ToString
+                            If ((DR("ExternalAccessories_B").ToString.Contains("N/A")) Or (DR("ExternalAccessories_B").ToString = "")) And (DR("ExternalAccessories").ToString <> "") Then
+                                ws.Cells("V64").Value = ""
+                                ws.Cells("V64").Value = DR("ExternalAccessories").ToString
+                            Else
+                                ws.Cells("Z64").Value = ""
+                                ws.Cells("Z64").Value = DR("ExternalAccessories_B").ToString
+                            End If
+
+                            ws.Cells("L65").Value = DR("LastTestNoCheck").ToString
+                            ws.Cells("K71").Value = DR("DropICCheckAfterWork").ToString
+                            ws.Cells("W71").Value = DR("DropICCheckBy").ToString
+
+                            ws.Cells("K77").Value = DR("BoxChangedfrom").ToString
+                            ws.Cells("S77").Value = DR("BoxChangedTo").ToString
+
+                            ws.Cells("L78").Value = DR("TesterChangeFrom").ToString
+                            ws.Cells("U78").Value = DR("TesterChangeTo").ToString
+
+                            ws.Cells("P83").Value = DR("QItemsNoIC").ToString
+
+                            If DR("QItemsYN1").ToString = "Yes" Then
+                                ws.Cells("V80").Value = DR("QItemsYN1").ToString
+                            Else
+                                ws.Cells("V80").Value = "N/A"
+                            End If
+
+                            If DR("QItemsYN2").ToString = "Yes" Then
+                                ws.Cells("V81").Value = DR("QItemsYN2").ToString
+                            Else
+                                ws.Cells("V81").Value = "N/A"
+                            End If
+
+                            If DR("QItemsYN3").ToString = "Yes" Then
+                                ws.Cells("V82").Value = DR("QItemsYN3").ToString
+                            Else
+                                ws.Cells("V82").Value = "N/A"
+                            End If
+
+                            If DR("QItemsYN4").ToString = "Yes" Then
+                                ws.Cells("V83").Value = DR("QItemsYN4").ToString
+                            Else
+                                ws.Cells("V83").Value = "N/A"
+                            End If
+
+                            If DR("QItemsYN5").ToString = "Yes" Then
+                                ws.Cells("V84").Value = DR("QItemsYN5").ToString
+                            Else
+                                ws.Cells("V84").Value = "N/A"
+                            End If
+
+                            ws.Cells("H60").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+                            ws.Cells("H61").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+                            ws.Cells("H62").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+
+                            ws.Cells("K60").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+                            ws.Cells("K61").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+                            ws.Cells("K62").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+
+                            ws.Cells("N60").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+                            ws.Cells("N61").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+                            ws.Cells("N62").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+
+                            ws.Cells("Q60").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+                            ws.Cells("Q61").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+                            ws.Cells("Q62").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+
+                            ws.Cells("T60").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+                            ws.Cells("T61").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+                            ws.Cells("T62").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+
+                            ws.Cells("W60").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+                            ws.Cells("W61").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+                            ws.Cells("W62").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+
+                            ws.Cells("Y60").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+                            ws.Cells("Y61").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+                            ws.Cells("Y62").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+
+                            ws.Cells("AB60").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+                            ws.Cells("AB61").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+                            ws.Cells("AB62").Style.HorizontalAlignment = HorizontalAlignmentStyle.Center
+
+
+                            Dim _CPData1 As String = DR("CPData").ToString
+                            If _CPData1 <> "" Then
+                                Dim arrCPData() As String = _CPData1.Split("|")
+                                If arrCPData.Length = 3 Then
+                                    Dim arrCPDataVal1() As String = arrCPData(0).Split(",")
+                                    Dim arrCPDataVal2() As String = arrCPData(1).Split(",")
+                                    Dim arrCPDataVal3() As String = arrCPData(2).Split(",")
+
+                                    ws.Pictures.Add((Me.RetABCImg(arrCPDataVal1(0))), "AQ54", 72, 24, LengthUnit.Pixel)
+                                    ws.Pictures.Add((Me.RetABCImg(arrCPDataVal1(1))), "AV54", 72, 24, LengthUnit.Pixel)
+
+                                    ws.Pictures.Add((Me.RetABCImg(arrCPDataVal2(0))), "AQ55", 72, 24, LengthUnit.Pixel)
+                                    ws.Pictures.Add((Me.RetABCImg(arrCPDataVal2(1))), "AV55", 72, 24, LengthUnit.Pixel)
+
+                                    ws.Pictures.Add((Me.RetABCImg(arrCPDataVal3(0))), "AQ56", 72, 24, LengthUnit.Pixel)
+                                    ws.Pictures.Add((Me.RetABCImg(arrCPDataVal3(1))), "AV56", 72, 24, LengthUnit.Pixel)
+
+                                End If
+                            End If
+
+
+                            If DR("BMStatusID") = "14" Then
+                                If DR("AcredPMCategoryID").ToString <> DR("PMCategoryID").ToString Then
+                                    ws.Cells(72, 4).Style.Font.Color = SpreadsheetColor.FromName(ColorName.Red)
+                                    ' ws.Cells("F91").Value = ddlAcceditorBMCategory.SelectedItem.Text 'Me.getProcCodes(DR("AcredPMCategoryID").ToString, "PMCategory", "PMCategoryID", "PMCategory")
+                                End If
+
+                                'Removed: 02-07-2023
+                                'If DR("AcredBMContentID").ToString <> DR("BMContentID").ToString Then
+                                '    ws.Cells(72, 7).Style.Font.Color = SpreadsheetColor.FromName(ColorName.Red)
+                                '    ws.Cells("K91").Value = ddlAccBMContentID.SelectedItem.Text 'Me.getProcCodes(DR("AcredBMContentID").ToString, "BMContent", "BMContentID", "BMContent")
+                                'End If
+
+                                If DR("AcredBMCaseID").ToString <> DR("BMCaseID").ToString Then
+                                    ws.Cells(72, 10).Style.Font.Color = SpreadsheetColor.FromName(ColorName.Red)
+                                    '  ws.Cells("K91").Value = ddlAccRequestItem.SelectedItem.Text 'Me.getProcCodes(DR("AcredBMCaseID").ToString, "BMCase", "BMCaseID", "BMCase")
+                                End If
+
+                                If DR("AcredBMMCUnitID").ToString <> DR("BMUnitID").ToString Then
+                                    ws.Cells(72, 13).Style.Font.Color = SpreadsheetColor.FromName(ColorName.Red)
+                                    '  ws.Cells("P91").Value = ddlACCBMUnitID.SelectedItem.Text 'Me.getProcCodes(DR("AcredBMMCUnitID").ToString, "BMMCUnit", "BMMCUnitID", "BMMCUnit")
+                                End If
+
+                                'If DR("AcredBMPointID").ToString <> DR("BMPointID").ToString Then
+                                '    ws.Cells(72, 16).Style.Font.Color = SpreadsheetColor.FromName(ColorName.Red)
+                                '    ws.Cells("AE69").Value = Me.getProcCodes(DR("AcredBMPointID").ToString, "BMPoint", "BMPointID", "BMPoint")
+                                'End If
+
+                                If DR("AcredBMWorkContentID").ToString <> DR("BMWorkContentID").ToString Then
+                                    ws.Cells(72, 19).Style.Font.Color = SpreadsheetColor.FromName(ColorName.Red)
+                                    '   ws.Cells("Z91").Value = ddlBMACCWorkContentID.SelectedItem.Text 'Me.getProcCodes(DR("AcredBMWorkContentID").ToString, "BMWorkContent", "BMWorkContentID", "BMWorkContent")
+                                End If
+
+                                If DR("Why4").ToString <> DR("AcredBMCauseID").ToString Then
+                                    ws.Cells(72, 22).Style.Font.Color = SpreadsheetColor.FromName(ColorName.Red)
+                                    ' ws.Cells("AE91").Value = ddlBMACCCauseID.SelectedItem.Text 'Me.getProcCodes(DR("AcredBMCauseID").ToString, "BMWhy", "BMWhyID", "BMWhy")
+                                End If
+
+                                'If DR("AcredPREVMeasureID").ToString <> DR("PrevMeasureID").ToString Then
+                                '    ws.Cells(72, 25).Style.Font.Color = SpreadsheetColor.FromName(ColorName.Red)
+                                '    ws.Cells("Y74").Value = Me.getProcCodes(DR("AcredPREVMeasureID").ToString, "PREVMeasure", "PREVMeasureID", "PREVMeasure")
+                                'End If
+                            End If
+
+
+                            ws = wb.Worksheets(1)
+                            Try
+
+
+                                ws.Cells("B2").Value = DR("WD1").ToString
+                                ws.Cells("Q3").Value = DR("WDate1").ToString
+                                ws.Cells("Q7").Value = DR("WDDate1End").ToString
+                                ws.Cells("P2").Value = DR("WAcc1").ToString
+
+                                ws.Cells("B11").Value = DR("WD2").ToString
+                                ws.Cells("Q12").Value = DR("WDate2").ToString
+                                ws.Cells("Q16").Value = DR("WDDate2End").ToString
+                                ws.Cells("P11").Value = DR("WAcc2").ToString
+
+                                ws.Cells("B20").Value = DR("WD3").ToString
+                                ws.Cells("Q21").Value = DR("WDate3").ToString
+                                ws.Cells("Q25").Value = DR("WDDate3End").ToString
+                                ws.Cells("P20").Value = DR("WAcc3").ToString
+
+                                ws.Cells("B29").Value = DR("WD4").ToString
+                                ws.Cells("Q30").Value = DR("WDate4").ToString
+                                ws.Cells("Q34").Value = DR("WDDate4End").ToString
+                                ws.Cells("P29").Value = DR("WAcc4").ToString
+
+                                ws.Cells("B38").Value = DR("WD5").ToString
+                                ws.Cells("Q39").Value = DR("WDate5").ToString
+                                ws.Cells("Q43").Value = DR("WDDate5End").ToString
+                                ws.Cells("P38").Value = DR("WAcc5").ToString
+
+                                ws.Cells("B47").Value = DR("WD6").ToString
+                                ws.Cells("Q48").Value = DR("WDate6").ToString
+                                ws.Cells("Q52").Value = DR("WDDate6End").ToString
+                                ws.Cells("P47").Value = DR("WAcc6").ToString
+
+                                ws.Cells("B56").Value = DR("WD7").ToString
+                                ws.Cells("Q57").Value = DR("WDate7").ToString
+                                ws.Cells("Q61").Value = DR("WDDate7End").ToString
+                                ws.Cells("P56").Value = DR("WAcc7").ToString
+
+                                ws.Cells("B65").Value = DR("WD8").ToString
+                                ws.Cells("Q66").Value = DR("WDate8").ToString
+                                ws.Cells("Q70").Value = DR("WDDate8End").ToString
+                                ws.Cells("P65").Value = DR("WAcc8").ToString
+
+                                ws.Cells("B74").Value = DR("WD9").ToString
+                                ws.Cells("Q75").Value = DR("WDate9").ToString
+                                ws.Cells("Q79").Value = DR("WDDate9End").ToString
+                                ws.Cells("P74").Value = DR("WAcc9").ToString
+
+                                ws.Cells("B83").Value = DR("WD10").ToString
+                                ws.Cells("Q84").Value = DR("WDate10").ToString
+                                ws.Cells("Q88").Value = DR("WDDate10End").ToString
+                                ws.Cells("P83").Value = DR("WAcc10").ToString
+                            Catch ex As Exception
+
+                            End Try
+
+                            ws = wb.Worksheets(3)
+
+
+                            Try
+
+
+                                ws.Cells("A2").Value = DR("ExternalAccessories").ToString
+                                ws.Cells("B2").Value = DR("ExternalAccessories_B").ToString
+
+
+
+                                Dim arrCPData1() As String = DR("ExternalAccessoriesData").ToString.Split("|")
+                                If arrCPData1.Length <> 0 Then
+
+
+                                    Dim arrCPDataVal2() As String = arrCPData1(0).Split(",")
+                                    If arrCPDataVal2.Length <> 0 Then
+                                        ws.Cells("A3").Value = arrCPDataVal2(0)
+                                        ws.Cells("B3").Value = arrCPDataVal2(1)
+                                    End If
+
+                                    Dim arrCPDataVal3() As String = arrCPData1(1).Split(",")
+                                    If arrCPDataVal3.Length <> 0 Then
+                                        ws.Cells("A4").Value = arrCPDataVal3(0)
+                                        ws.Cells("B4").Value = arrCPDataVal3(1)
+                                    End If
+
+
+                                    Dim arrCPDataVal4() As String = arrCPData1(2).Split(",")
+                                    If arrCPDataVal4.Length <> 0 Then
+                                        ws.Cells("A5").Value = arrCPDataVal4(0)
+                                        ws.Cells("B5").Value = arrCPDataVal4(1)
+                                    End If
+
+                                    Dim arrCPDataVa5() As String = arrCPData1(3).Split(",")
+                                    If arrCPDataVal4.Length <> 0 Then
+                                        ws.Cells("A6").Value = arrCPDataVa5(0)
+                                        ws.Cells("B6").Value = arrCPDataVa5(1)
+                                    End If
+                                End If
+
+
+
+                                Dim arr() As String = DR("QualityCheckData").ToString.Split("|")
+                                If arr.Length <> 0 Then
+                                    Dim arrCPDataVal7() As String = arr(6).Split(",")
+                                    ws.Cells("C2").Value = arrCPDataVal7(0)
+                                    ws.Cells("D2").Value = arrCPDataVal7(1)
+                                End If
+                            Catch ex As Exception
+
+                            End Try
+
+                            'ws.Cells("AT91").Value = tbxAccreditorRemarks.Text
+                            'Adjusted: 02-07-2023
+                            'ws.Cells("AO91").Value = tbxAccreditorRemarks.Text
+
+                            'Total Waiting Time/Stop Time
+                            'ws.Cells("AS30").Value = DR("TotalStopTime").ToString
+
+                            'ws.Cells("H69").Style.ShrinkToFit = True 'PM Category
+                            'ws.Cells("N69").Style.ShrinkToFit = True 'BM Content
+                            'ws.Cells("T69").Style.ShrinkToFit = True 'Case
+                            'ws.Cells("Z69").Style.ShrinkToFit = True 'Machine Unit
+                            'ws.Cells("AE69").Style.ShrinkToFit = True 'Position
+                            'ws.Cells("AJ69").Style.ShrinkToFit = True 'Work Content
+                            'ws.Cells("AO69").Style.ShrinkToFit = True 'BM Cause
+                            'ws.Cells("Y72").Style.ShrinkToFit = True 'Preventive Measure
+
+                            ws.PrintOptions.BottomMargin = (0)
+                            ws.PrintOptions.LeftMargin = (0)
+                            ws.PrintOptions.TopMargin = (0)
+                            ws.PrintOptions.RightMargin = (0)
+                            ws.PrintOptions.FitToPage = False
+                            ws.PrintOptions.PaperType = PaperType.A4
+                            ws.PrintOptions.HorizontalCentered = True
+                            ws.PrintOptions.VerticalCentered = True
+                            ws.PrintOptions.Portrait = True
+
+
+                            'Dim folderPath As String = ApplicationDeployment.CurrentDeployment.DataDirectory & "\TempData\Print Out\TE"
+                            'If Directory.Exists(folderPath) Then
+                            '    Dim files() As String = Directory.GetFiles(folderPath)
+                            '    For Each filesstr As String In files
+                            '        Try
+                            '            File.Delete(filesstr)
+                            '        Catch ex As Exception
+                            '            Exit Sub
+                            '        End Try
+                            '    Next
+                            'Else
+                            '    Directory.CreateDirectory(folderPath)
+                            'End If
+
+
+                            'Try
+                            '    If File.Exists(folderPath & "\TE_" & bmID & ".pdf") = True Then
+                            '        File.Delete(folderPath & "\TE_" & bmID & ".pdf")
+                            '    End If
+                            '    wb.Save(folderPath & "\TE_" & bmID & ".pdf")
+                            'Catch ex As Exception
+                            '    MsgBox("Close the file first before opening another file.", MsgBoxStyle.Information, "Production Endgineering Systems")
+                            '    Exit Sub
+                            'End Try
+
+
+                            'Try
+                            '    Dim AdobeSoftwares As Microsoft.Win32.RegistryKey = Microsoft.Win32.Registry.LocalMachine.OpenSubKey("SOFTWARE").OpenSubKey("ADOBE")
+                            '    If AdobeSoftwares Is Nothing Then
+                            '        Me.Close()
+                            '        Process.Start("iexplore.exe", folderPath & "\TE_" & bmID & ".pdf")
+                            '    Else
+                            '        If Not Array.IndexOf(AdobeSoftwares.GetSubKeyNames, "Acrobat Reader") = -1 Then
+                            '            Me.Show()
+
+                            '            Dim PLTemp As New WebBrowser
+                            '            PLTemp.Navigate(folderPath & "\TE_" & bmID & ".pdf")
+                            '            PLTemp.Dock = DockStyle.Fill
+                            '            Me.Controls.Add(PLTemp)
+
+
+                            '        Else
+                            '            Me.Close()
+                            '            Process.Start("iexplore.exe", folderPath & "\TE_" & bmID & ".pdf")
+
+                            '        End If
+                            '    End If
+                            'Catch ex As Exception
+                            '    Me.Close()
+                            '    Process.Start("iexplore.exe", folderPath & "\TE_" & bmID & ".pdf")
+                            'End Try
+
+
+                            Dim folderPath As String = "\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\TempData\Print Out\TE\"
+                            Dim fileNamestr As String = "TE_" & bmID & ".pdf"
+                            Dim serverFilePath As String = Path.Combine(folderPath, fileNamestr)
+                            Try
+                                'wb.Save(serverFilePath)
+
+                                Dim downloadsPath As String = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads")
+                                Dim localFilePath As String = Path.Combine(downloadsPath, fileNamestr)
+
+                                'File.Copy(serverFilePath, localFilePath, True)
+                                wb.Save(localFilePath)
+
+                                Try
+                                    Dim AdobeSoftwares As Microsoft.Win32.RegistryKey = Microsoft.Win32.Registry.LocalMachine.OpenSubKey("SOFTWARE").OpenSubKey("ADOBE")
+                                    If AdobeSoftwares Is Nothing Then
+                                        Me.Close()
+                                        Process.Start("iexplore.exe", localFilePath)
+                                    Else
+                                        If Not Array.IndexOf(AdobeSoftwares.GetSubKeyNames, "Acrobat Reader") = -1 Then
+                                            Me.Show()
+
+                                            Dim PLTemp As New WebBrowser
+                                            PLTemp.Navigate(localFilePath)
+                                            PLTemp.Dock = DockStyle.Fill
+                                            Me.Controls.Add(PLTemp)
+                                        Else
+                                            Me.Close()
+                                            Process.Start("iexplore.exe", localFilePath)
+
+                                        End If
+                                    End If
+                                Catch ex As Exception
+                                    Me.Close()
+                                    Process.Start("iexplore.exe", ApplicationDeployment.CurrentDeployment.DataDirectory & "\TEeMaintenanceSystem\TempData\Print Out\TE\TE_" & bmID & ".pdf")
+                                End Try
+                            Catch ex As Exception
+                                MsgBox(ex.ToString, MsgBoxStyle.Information, "Production Endgineering Systems")
+                                Exit Sub
+                            End Try
+
+                        Loop
+                        oConn.Close()
+                    End If
+
+
+                Catch ex As IOException
+                    MsgBox(ex.Message)
+                Finally
+                    person.Undo()
+                    person.Dispose()
+                    CloseHandle(token)
+                End Try
+            End Using
+        End If
+
+    End Sub
+
+    Private Sub Form9_Load(sender As Object, e As EventArgs) Handles MyBase.Load
+
+    End Sub
+End Class

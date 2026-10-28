@@ -1,0 +1,592 @@
+Imports GemBox.Spreadsheet
+Imports System.Data.SqlClient
+Imports System.Net
+Imports System.Globalization
+Imports System.IO
+Imports System.Runtime.InteropServices
+Imports System.Security.Principal
+Imports System.Deployment.Application
+Public Class Form10
+    Private conn As SqlConnection = New SqlConnection(My.Settings.DBConnection)
+    <DllImport("advapi32.dll", SetLastError:=True)>
+    Private Shared Function LogonUser(lpszUsername As String, lpszDomain As String, lpszPassword As String, dwLogonType As Integer, dwLogonProvider As Integer, ByRef phToken As IntPtr) As Boolean
+    End Function
+
+    <DllImport("kernel32.dll")>
+    Private Shared Function CloseHandle(hObject As IntPtr) As [Boolean]
+    End Function
+    Private Function GetTEAssign(bmID As String) As String '8-11-2020 Additional Function
+
+        Try
+            Dim ooConn = New SqlConnection(My.Settings.DBConnection)
+            ooConn.Open()
+            Dim SQLScript As String = "SELECT * FROM ViewTEData Where bmID ='" & bmID & "'"
+            Dim DISI As New SqlCommand(SQLScript, ooConn)
+            Dim DIAR = (DISI.ExecuteReader)
+            Do While DIAR.Read
+
+                If (DIAR("PMConfirmGLOPReqBy").ToString = DIAR("RepairedByEnd").ToString) Then
+                    Return DIAR("PMConfirmGLOPReqBy").ToString()  'PM ID No.
+                Else
+                    Return DIAR("PMConfirmGLOPReqBy").ToString() & ", " & DIAR("RepairedByEnd").ToString()
+                End If
+            Loop
+            ooConn.Close()
+
+        Catch e As Exception
+        End Try
+
+        Return Nothing
+
+
+    End Function
+
+    Sub EMakingPrint(ProcessStr As String, bmID As String)
+        ProcessStr = "TE"
+        SpreadsheetInfo.SetLicense("FREE-LIMITED-KEY")
+
+        Dim token As IntPtr = IntPtr.Zero
+        Dim wb As ExcelFile = Nothing
+        Dim ws As ExcelWorksheet
+        Dim ws_2 As ExcelWorksheet
+        Dim ws_3 As ExcelWorksheet
+        Dim noImage As String = "\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\images\noimage.png"
+
+        LogonUser(My.Settings.PathUserName, My.Settings.PathServer, My.Settings.PathPassword, 9, 0, token)
+        If LogonUser(My.Settings.PathUserName, My.Settings.PathServer, My.Settings.PathPassword, 9, 0, token) = True Then
+            Using person As WindowsImpersonationContext = New WindowsIdentity(token).Impersonate()
+                wb = ExcelFile.Load("\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\Templates\CWC.xlsx")
+
+                ws = wb.Worksheets.Item(0)
+
+
+                Dim oConn As New SqlConnection
+                Dim strFolder As String = "\\" & My.Settings.PathServer & "\TEeMaintenanceSystem"
+                oConn = New SqlConnection(My.Settings.DBConnection)
+                oConn.Open()
+
+                Try
+
+                    Dim mSQLStr1_A As String = "SELECT TOP 6 * From TEBMEvidenceMaking Where BMEvidence_Category = 'PHENOMENON' AND bmID=" & bmID & "  ORDER BY BMEvidenceID "
+                    Dim mSQLStr2_A As String = "Select TOP 6 * From TEBMEvidenceMaking Where BMEvidence_Category = 'MACHINE COUNTER AND VISUAL BIN' and bmID=" & bmID & "  ORDER BY BMEvidenceID "
+                    Dim mSQLStr3_A As String = "Select TOP 6 * From TEBMEvidenceMaking Where BMEvidence_Category = 'PROGRAM LOADED' and bmID=" & bmID & "  ORDER BY BMEvidenceID "
+                    Dim mSQLStr4_A As String = "Select TOP 20 * From TEBMEvidenceMaking Where BMEvidence_Category = 'TEST BOARD' and bmID=" & bmID & "  ORDER BY BMEvidenceID "
+                    Dim mSQLStr5_A As String = "Select TOP 6 * From TEBMEvidenceMaking Where BMEvidence_Category = 'TEST CABLE' and bmID=" & bmID & "  ORDER BY BMEvidenceID "
+                    Dim mSQLStr6_A As String = "Select TOP 6 * From TEBMEvidenceMaking Where BMEvidence_Category = 'OTHER EVIDENCE' and bmID=" & bmID & "  ORDER BY BMEvidenceID "
+                    Dim mSQLStr7_A As String = "SELECT TOP 4 * FROM TEBMEvidenceMaking where bmID = " & bmID & " and BMEvidence_Category='TELEKO EVIDENCE' and TelekoEvidence <> '' AND TelekoEvidence is not null"
+
+                    Dim mSQLStr8_A As String = "Select TOP 1 * From TEBMEvidenceMaking Where BMEvidence_Category = 'BEFORE QUALITY CONDITION' and bmID=" & bmID & "  ORDER BY BMEvidenceID "
+                    Dim mSQLStr9_A As String = "Select TOP 1 * From TEBMEvidenceMaking Where BMEvidence_Category = 'AFTER QUALITY CONDITION' and bmID=" & bmID & "  ORDER BY BMEvidenceID "
+                    Dim mSQLStr10_A As String = "Select TOP 1 * From TEBMEvidenceMaking Where BMEvidence_Category = 'IDEAL QUALITY CONDITION' and bmID=" & bmID & "  ORDER BY BMEvidenceID "
+
+                    Dim mSQLStr_Data As String = "Select Distinct TelekoCheckingData, TelekoEvidence, Ideas, Remarks, WaferNo,QualityDefect From TEBMEvidenceMaking Where bmID=" & bmID & "  GROUP BY TelekoCheckingData, TelekoEvidence, Ideas, Remarks, WaferNo,QualityDefect"
+                    Dim mSQLStr_Cat_Remarks As String = "select Distinct BMEvidence_Category, Condition, BMEvidence_Desc from TEBMEvidenceMaking where bmID = " & bmID & "  and BMEvidence_Category <> 'TELEKO EVIDENCE' AND BMEvidence_Desc <> ''"
+                    Dim emCatR As New SqlCommand(mSQLStr_Cat_Remarks, oConn)
+                    Dim emDRCat As SqlDataReader = (emCatR.ExecuteReader)
+
+                    Do While emDRCat.Read
+                        If emDRCat("BMEvidence_Category").ToString = "PHENOMENON" And emDRCat("Condition").ToString = "BEFORE" Then
+                            ws.Cells("H20").Value = emDRCat("BMEvidence_Desc").ToString
+                        ElseIf emDRCat("BMEvidence_Category").ToString = "PHENOMENON" And emDRCat("Condition").ToString = "AFTER" Then
+                            ws.Cells("P20").Value = emDRCat("BMEvidence_Desc").ToString
+                        ElseIf emDRCat("BMEvidence_Category").ToString = "MACHINE COUNTER AND VISUAL BIN" And emDRCat("Condition").ToString = "BEFORE" Then
+                            ws.Cells("H31").Value = emDRCat("BMEvidence_Desc").ToString
+                        ElseIf emDRCat("BMEvidence_Category").ToString = "MACHINE COUNTER AND VISUAL BIN" And emDRCat("Condition").ToString = "AFTER" Then
+                            ws.Cells("P31").Value = emDRCat("BMEvidence_Desc").ToString
+                        ElseIf emDRCat("BMEvidence_Category").ToString = "PROGRAM LOADED" And emDRCat("Condition").ToString = "BEFORE" Then
+                            ws.Cells("H36").Value = emDRCat("BMEvidence_Desc").ToString
+                        ElseIf emDRCat("BMEvidence_Category").ToString = "PROGRAM LOADED" And emDRCat("Condition").ToString = "AFTER" Then
+                            ws.Cells("P36").Value = emDRCat("BMEvidence_Desc").ToString
+                        ElseIf emDRCat("BMEvidence_Category").ToString = "TEST BOARD" And emDRCat("Condition").ToString = "BEFORE" Then
+                            ws.Cells("H45").Value = emDRCat("BMEvidence_Desc").ToString
+                        ElseIf emDRCat("BMEvidence_Category").ToString = "TEST BOARD" And emDRCat("Condition").ToString = "AFTER" Then
+                            ws.Cells("P45").Value = emDRCat("BMEvidence_Desc").ToString
+                        ElseIf emDRCat("BMEvidence_Category").ToString = "TEST CABLE" And emDRCat("Condition").ToString = "BEFORE" Then
+                            ws.Cells("H54").Value = emDRCat("BMEvidence_Desc").ToString
+                        ElseIf emDRCat("BMEvidence_Category").ToString = "TEST CABLE" And emDRCat("Condition").ToString = "AFTER" Then
+                            ws.Cells("P54").Value = emDRCat("BMEvidence_Desc").ToString
+                        ElseIf emDRCat("BMEvidence_Category").ToString = "OTHER EVIDENCE" And emDRCat("Condition").ToString = "BEFORE" Then
+                            ws.Cells("H62").Value = emDRCat("BMEvidence_Desc").ToString
+                        ElseIf emDRCat("BMEvidence_Category").ToString = "OTHER EVIDENCE" And emDRCat("Condition").ToString = "AFTER" Then
+                            ws.Cells("P62").Value = emDRCat("BMEvidence_Desc").ToString
+
+                        ElseIf emDRCat("BMEvidence_Category").ToString = "BEFORE QUALITY CONDITION" And emDRCat("Condition").ToString = "BEFORE" Then
+                            ws_3.Cells("E7").Value = emDRCat("BMEvidence_Desc").ToString
+                        ElseIf emDRCat("BMEvidence_Category").ToString = "AFTER QUALITY CONDITION" And emDRCat("Condition").ToString = "AFTER" Then
+                            ws_3.Cells("J7").Value = emDRCat("BMEvidence_Desc").ToString
+                        ElseIf emDRCat("BMEvidence_Category").ToString = "IDEAL QUALITY CONDITION" And emDRCat("Condition").ToString = "AFTER" Then
+                            ws_3.Cells("O7").Value = emDRCat("BMEvidence_Desc").ToString
+
+                        End If
+                    Loop
+                    emDRCat.Close()
+                    ws.Cells("N12").Value = GetTEAssign(bmID)
+
+                    Try
+
+                        Dim emDC1_QD As New SqlCommand(mSQLStr8_A, oConn)
+                        Dim emDR1_QD As SqlDataReader = (emDC1_QD.ExecuteReader)
+                        Dim imagesDat1_A_QD(5) As String
+                        imagesDat1_A_QD(0) = ""
+                        Do While emDR1_QD.Read
+                            imagesDat1_A_QD(0) = emDR1_QD("BMEvidence_ImgFile").ToString
+                        Loop
+                        emDR1_QD.Close()
+                        ws_3.Pictures.Add(If(File.Exists(strFolder & imagesDat1_A_QD(0).ToString().Replace("~", "")), strFolder & imagesDat1_A_QD(0).ToString().Replace("~", ""), (noImage)), "F3", 2.1, 1.7, LengthUnit.Inch)
+
+
+                        Dim emDC2_QD As New SqlCommand(mSQLStr9_A, oConn)
+                        Dim emDR2_QD As SqlDataReader = (emDC2_QD.ExecuteReader)
+                        Dim imagesDat2_A_QD(5) As String
+                        imagesDat2_A_QD(0) = ""
+                        Do While emDR2_QD.Read
+                            imagesDat2_A_QD(0) = emDR2_QD("BMEvidence_ImgFile").ToString
+                        Loop
+                        emDR2_QD.Close()
+                        ws_3.Pictures.Add(If(File.Exists(strFolder & imagesDat2_A_QD(0).ToString().Replace("~", "")), strFolder & imagesDat2_A_QD(0).ToString().Replace("~", ""), (noImage)), "K3", 2.1, 1.7, LengthUnit.Inch)
+
+
+                        Dim emDC3_QD As New SqlCommand(mSQLStr10_A, oConn)
+                        Dim emDR3_QD As SqlDataReader = (emDC3_QD.ExecuteReader)
+                        Dim imagesDat3_A_QD(5) As String
+                        imagesDat3_A_QD(0) = ""
+                        Do While emDR3_QD.Read
+                            imagesDat3_A_QD(0) = emDR3_QD("BMEvidence_ImgFile").ToString
+                        Loop
+                        emDR3_QD.Close()
+                        ws_3.Pictures.Add(If(File.Exists(strFolder & imagesDat3_A_QD(0).ToString().Replace("~", "")), strFolder & imagesDat3_A_QD(0).ToString().Replace("~", ""), (noImage)), "P3", 2.1, 1.7, LengthUnit.Inch)
+
+
+                    Catch ex As Exception
+
+                    End Try
+
+
+                    Dim emDC1 As New SqlCommand(mSQLStr1_A, oConn)
+                    Dim emDR1 As SqlDataReader = (emDC1.ExecuteReader)
+                    Dim imagesDat1_A(4) As String
+                    Dim imagesDat1_B(4) As String
+
+                    imagesDat1_A(0) = ""
+                    imagesDat1_A(1) = ""
+                    imagesDat1_A(2) = ""
+                    imagesDat1_A(3) = ""
+
+                    imagesDat1_B(0) = ""
+                    imagesDat1_B(1) = ""
+                    imagesDat1_B(2) = ""
+                    imagesDat1_B(3) = ""
+
+                    Dim iCnt1A As Integer = 0
+                    Dim iCnt1B As Integer = 0
+                    Do While emDR1.Read
+                        If (emDR1("Condition").ToString) = "BEFORE" Then
+                            imagesDat1_A(iCnt1A) = emDR1("BMEvidence_ImgFile").ToString
+                            iCnt1A += 1
+                        Else
+                            imagesDat1_B(iCnt1B) = emDR1("BMEvidence_ImgFile").ToString
+                            iCnt1B += 1
+                        End If
+
+                    Loop
+                    emDR1.Close()
+                    ws.Pictures.Add(If(File.Exists(strFolder & imagesDat1_A(0).ToString().Replace("~", "")), strFolder & imagesDat1_A(0).ToString().Replace("~", ""), (noImage)), "B20", 1.3, 1.61, LengthUnit.Inch)
+                    ws.Pictures.Add(If(File.Exists(strFolder & imagesDat1_A(1).ToString().Replace("~", "")), strFolder & imagesDat1_A(1).ToString().Replace("~", ""), (noImage)), "D20", 1.46, 1.61, LengthUnit.Inch)
+                    ws.Pictures.Add(If(File.Exists(strFolder & imagesDat1_A(2).ToString().Replace("~", "")), strFolder & imagesDat1_A(2).ToString().Replace("~", ""), (noImage)), "F20", 1.52, 1.61, LengthUnit.Inch)
+                    ws.Pictures.Add(If(File.Exists(strFolder & imagesDat1_B(0).ToString().Replace("~", "")), strFolder & imagesDat1_B(0).Replace("~", ""), (noImage)), "J20", 1.3, 1.61, LengthUnit.Inch)
+                    ws.Pictures.Add(If(File.Exists(strFolder & imagesDat1_B(1).ToString().Replace("~", "")), strFolder & imagesDat1_B(1).Replace("~", ""), (noImage)), "L20", 1.46, 1.61, LengthUnit.Inch)
+                    ws.Pictures.Add(If(File.Exists(strFolder & imagesDat1_B(2).ToString().Replace("~", "")), strFolder & imagesDat1_B(2).Replace("~", ""), (noImage)), "N20", 1.52, 1.61, LengthUnit.Inch)
+                    Dim emDC2 As New SqlCommand(mSQLStr2_A, oConn)
+                    Dim emDR2 As SqlDataReader = (emDC2.ExecuteReader)
+                    Dim imagesDat2_A(4) As String
+                    Dim imagesDat2_B(4) As String
+
+                    imagesDat2_A(0) = ""
+                    imagesDat2_A(1) = ""
+                    imagesDat2_A(2) = ""
+                    imagesDat2_A(3) = ""
+
+                    imagesDat2_B(0) = ""
+                    imagesDat2_B(1) = ""
+                    imagesDat2_B(2) = ""
+                    imagesDat2_B(3) = ""
+
+                    Dim iCnt2A As Integer = 0
+                    Dim iCnt2B As Integer = 0
+                    Do While emDR2.Read
+                        If (emDR2("Condition").ToString) = "BEFORE" Then
+                            imagesDat2_A(iCnt2A) = emDR2("BMEvidence_ImgFile").ToString
+                            iCnt2A += 1
+                        Else
+                            imagesDat2_B(iCnt2B) = emDR2("BMEvidence_ImgFile").ToString
+                            iCnt2B += 1
+                        End If
+                    Loop
+                    emDR2.Close()
+                    ws.Pictures.Add(If(File.Exists(strFolder & imagesDat2_A(0).ToString().Replace("~", "")), strFolder & imagesDat2_A(0).ToString().Replace("~", ""), (noImage)), "B31", 1.29, 1.44, LengthUnit.Inch)
+                    ws.Pictures.Add(If(File.Exists(strFolder & imagesDat2_A(1).ToString().Replace("~", "")), strFolder & imagesDat2_A(1).ToString().Replace("~", ""), (noImage)), "D31", 1.44, 1.44, LengthUnit.Inch)
+                    ws.Pictures.Add(If(File.Exists(strFolder & imagesDat2_A(2).ToString().Replace("~", "")), strFolder & imagesDat2_A(2).ToString().Replace("~", ""), (noImage)), "F31", 1.48, 1.44, LengthUnit.Inch)
+                    ws.Pictures.Add(If(File.Exists(strFolder & imagesDat2_B(0).ToString().Replace("~", "")), strFolder & imagesDat2_B(0).ToString().Replace("~", ""), (noImage)), "J31", 1.27, 1.44, LengthUnit.Inch)
+                    ws.Pictures.Add(If(File.Exists(strFolder & imagesDat2_B(1).ToString().Replace("~", "")), strFolder & imagesDat2_B(1).ToString().Replace("~", ""), (noImage)), "L31", 1.48, 1.44, LengthUnit.Inch)
+                    ws.Pictures.Add(If(File.Exists(strFolder & imagesDat2_B(2).ToString().Replace("~", "")), strFolder & imagesDat2_B(2).ToString().Replace("~", ""), (noImage)), "N31", 1.52, 1.44, LengthUnit.Inch)
+
+                    Dim emDC3 As New SqlCommand(mSQLStr3_A, oConn)
+                    Dim emDR3 As SqlDataReader = (emDC3.ExecuteReader)
+                    Dim imagesDat3_A(4) As String
+                    Dim imagesDat3_B(4) As String
+
+                    imagesDat3_A(0) = ""
+                    imagesDat3_A(1) = ""
+                    imagesDat3_A(2) = ""
+                    imagesDat3_A(3) = ""
+
+                    imagesDat3_B(0) = ""
+                    imagesDat3_B(1) = ""
+                    imagesDat3_B(2) = ""
+                    imagesDat3_B(3) = ""
+
+
+                    Dim iCnt3A As Integer = 0
+                    Dim iCnt3B As Integer = 0
+                    Do While emDR3.Read
+                        If (emDR3("Condition").ToString) = "BEFORE" Then
+                            imagesDat3_A(iCnt3A) = emDR3("BMEvidence_ImgFile").ToString
+                            iCnt3A += 1
+                        Else
+                            imagesDat3_B(iCnt3B) = emDR3("BMEvidence_ImgFile").ToString
+                            iCnt3B += 1
+                        End If
+                    Loop
+                    emDR3.Close()
+
+                    ws.Pictures.Add(If(File.Exists(strFolder & imagesDat3_A(0).ToString().Replace("~", "")), strFolder & imagesDat3_A(0).ToString().Replace("~", ""), (noImage)), "B36", 1.27, 1.66, LengthUnit.Inch)
+                    ws.Pictures.Add(If(File.Exists(strFolder & imagesDat3_A(1).ToString().Replace("~", "")), strFolder & imagesDat3_A(1).ToString().Replace("~", ""), (noImage)), "D36", 1.46, 1.66, LengthUnit.Inch)
+                    ws.Pictures.Add(If(File.Exists(strFolder & imagesDat3_A(2).ToString().Replace("~", "")), strFolder & imagesDat3_A(2).ToString().Replace("~", ""), (noImage)), "F36", 1.46, 1.66, LengthUnit.Inch)
+
+                    ws.Pictures.Add(If(File.Exists(strFolder & imagesDat3_B(0).ToString().Replace("~", "")), strFolder & imagesDat3_B(0).ToString().Replace("~", ""), (noImage)), "J36", 1.26, 1.66, LengthUnit.Inch)
+                    ws.Pictures.Add(If(File.Exists(strFolder & imagesDat3_B(1).ToString().Replace("~", "")), strFolder & imagesDat3_B(1).ToString().Replace("~", ""), (noImage)), "L36", 1.46, 1.66, LengthUnit.Inch)
+                    ws.Pictures.Add(If(File.Exists(strFolder & imagesDat3_B(2).ToString().Replace("~", "")), strFolder & imagesDat3_B(2).ToString().Replace("~", ""), (noImage)), "N36", 1.52, 1.66, LengthUnit.Inch)
+
+                    Dim emDC4 As New SqlCommand(mSQLStr4_A, oConn)
+                    Dim emDR4 As SqlDataReader = (emDC4.ExecuteReader)
+
+                    Do While emDR4.Read
+                        'remarksData(iCnt) = emDR("BMEvidence_Desc").ToString
+                        If (emDR4("Condition").ToString) = "BEFORE" Then
+                            If (emDR4("CN").ToString) = "CN1" Then
+                                'ws.Pictures.Add(If(File.Exists((emDR4("BMEvidence_ImgFile").ToString)), (emDR4("BMEvidence_ImgFile").ToString), (noImage)), "B45", 1.27, 0.8, LengthUnit.Inch)
+                                ws.Pictures.Add(If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "B45", 1.27, 0.8, LengthUnit.Inch)
+                            ElseIf (emDR4("CN").ToString) = "CN2" Then
+                                'ws.Pictures.Add(If(File.Exists((emDR4("BMEvidence_ImgFile").ToString)), (emDR4("BMEvidence_ImgFile").ToString), (noImage)), "D45", 1.27, 0.8, LengthUnit.Inch)
+                                ws.Pictures.Add(If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "D45", 1.27, 0.8, LengthUnit.Inch)
+                            ElseIf (emDR4("CN").ToString) = "CN3" Then
+                                'ws.Pictures.Add(If(File.Exists((emDR4("BMEvidence_ImgFile").ToString)), (emDR4("BMEvidence_ImgFile").ToString), (noImage)), "B49", 1.27, 0.8, LengthUnit.Inch)
+                                ws.Pictures.Add(If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "B49", 1.27, 0.8, LengthUnit.Inch)
+                            ElseIf (emDR4("CN").ToString) = "CN4" Then
+                                'ws.Pictures.Add(If(File.Exists((emDR4("BMEvidence_ImgFile").ToString)), (emDR4("BMEvidence_ImgFile").ToString), (noImage)), "D49", 1.27, 0.8, LengthUnit.Inch)
+                                ws.Pictures.Add(If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "D49", 1.27, 0.8, LengthUnit.Inch)
+                            ElseIf (emDR4("CN").ToString) = "CN5" Then
+                                'ws_2.Pictures.Add(If(File.Exists((emDR4("BMEvidence_ImgFile").ToString)), (emDR4("BMEvidence_ImgFile").ToString), (noImage)), "A3", 1.26, 0.88, LengthUnit.Inch)
+                                ws_2.Pictures.Add(If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "A3", 1.26, 0.88, LengthUnit.Inch)
+                            ElseIf (emDR4("CN").ToString) = "CN6" Then
+                                'ws_2.Pictures.Add(If(File.Exists((emDR4("BMEvidence_ImgFile").ToString)), (emDR4("BMEvidence_ImgFile").ToString), (noImage)), "C3", 1.26, 0.88, LengthUnit.Inch)
+                                ws_2.Pictures.Add(If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "C3", 1.26, 0.88, LengthUnit.Inch)
+                            ElseIf (emDR4("CN").ToString) = "CN7" Then
+                                'ws_2.Pictures.Add(If(File.Exists((emDR4("BMEvidence_ImgFile").ToString)), (emDR4("BMEvidence_ImgFile").ToString), (noImage)), "A7", 1.26, 0.88, LengthUnit.Inch)
+                                ws_2.Pictures.Add(If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "A7", 1.26, 0.88, LengthUnit.Inch)
+                            ElseIf (emDR4("CN").ToString) = "CN8" Then
+                                'ws.Pictures.Add(If(File.Exists((emDR4("BMEvidence_ImgFile").ToString)), (emDR4("BMEvidence_ImgFile").ToString), (noImage)), "C7", 1.26, 0.88, LengthUnit.Inch)
+                                ws_2.Pictures.Add(If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "C7", 1.26, 0.88, LengthUnit.Inch)
+                            Else
+                                'ws.Pictures.Add(If(File.Exists((emDR4("BMEvidence_ImgFile").ToString)), (emDR4("BMEvidence_ImgFile").ToString), (noImage)), "F45", 1.46, 1.66, LengthUnit.Inch)
+                                ws.Pictures.Add(If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "F45", 1.46, 1.66, LengthUnit.Inch)
+                            End If
+                            'ws.Cells("H45").Value = emDR4("BMEvidence_Desc").ToString
+                        Else
+                            If (emDR4("CN").ToString) = "CN1" Then
+                                'ws.Pictures.Add(If(File.Exists((emDR4("BMEvidence_ImgFile").ToString)), (emDR4("BMEvidence_ImgFile").ToString), (noImage)), "J45", 1.27, 0.8, LengthUnit.Inch)
+                                ws.Pictures.Add(If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "J45", 1.27, 0.8, LengthUnit.Inch)
+                            ElseIf (emDR4("CN").ToString) = "CN2" Then
+                                'ws.Pictures.Add(If(File.Exists((emDR4("BMEvidence_ImgFile").ToString)), (emDR4("BMEvidence_ImgFile").ToString), (noImage)), "L45", 1.27, 0.8, LengthUnit.Inch)
+                                ws.Pictures.Add(If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "L45", 1.27, 0.8, LengthUnit.Inch)
+                            ElseIf (emDR4("CN").ToString) = "CN3" Then
+                                'ws.Pictures.Add(If(File.Exists((emDR4("BMEvidence_ImgFile").ToString)), (emDR4("BMEvidence_ImgFile").ToString), (noImage)), "J49", 1.27, 0.8, LengthUnit.Inch)
+                                ws.Pictures.Add(If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "J49", 1.27, 0.8, LengthUnit.Inch)
+                            ElseIf (emDR4("CN").ToString) = "CN4" Then
+                                'ws.Pictures.Add(If(File.Exists((emDR4("BMEvidence_ImgFile").ToString)), (emDR4("BMEvidence_ImgFile").ToString), (noImage)), "L49", 1.27, 0.8, LengthUnit.Inch)
+                                ws.Pictures.Add(If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "L49", 1.27, 0.8, LengthUnit.Inch)
+                            ElseIf (emDR4("CN").ToString) = "CN5" Then
+                                'ws_2.Pictures.Add(If(File.Exists((emDR4("BMEvidence_ImgFile").ToString)), (emDR4("BMEvidence_ImgFile").ToString), (noImage)), "G3", 1.26, 0.88, LengthUnit.Inch)
+                                ws_2.Pictures.Add(If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "G3", 1.26, 0.88, LengthUnit.Inch)
+                            ElseIf (emDR4("CN").ToString) = "CN6" Then
+                                'ws_2.Pictures.Add(If(File.Exists((emDR4("BMEvidence_ImgFile").ToString)), (emDR4("BMEvidence_ImgFile").ToString), (noImage)), "I3", 1.26, 0.88, LengthUnit.Inch)
+                                ws_2.Pictures.Add(If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "I3", 1.26, 0.88, LengthUnit.Inch)
+                            ElseIf (emDR4("CN").ToString) = "CN7" Then
+                                'ws_2.Pictures.Add(If(File.Exists((emDR4("BMEvidence_ImgFile").ToString)), (emDR4("BMEvidence_ImgFile").ToString), (noImage)), "G7", 1.26, 0.88, LengthUnit.Inch)
+                                ws_2.Pictures.Add(If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "G7", 1.26, 0.88, LengthUnit.Inch)
+                            ElseIf (emDR4("CN").ToString) = "CN8" Then
+                                'ws_2.Pictures.Add(If(File.Exists((emDR4("BMEvidence_ImgFile").ToString)), (emDR4("BMEvidence_ImgFile").ToString), (noImage)), "I7", 1.26, 0.88, LengthUnit.Inch)
+                                ws_2.Pictures.Add(If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "I7", 1.26, 0.88, LengthUnit.Inch)
+                            Else
+                                'ws.Pictures.Add(If(File.Exists((emDR4("BMEvidence_ImgFile").ToString)), (emDR4("BMEvidence_ImgFile").ToString), (noImage)), "N45", 1.46, 1.66, LengthUnit.Inch)
+                                ws.Pictures.Add(If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "N45", 1.46, 1.66, LengthUnit.Inch)
+                            End If
+                            'ws.Cells("P45").Value = emDR4("BMEvidence_Desc").ToString
+                        End If
+                    Loop
+                    emDR4.Close()
+
+
+                    Dim emDC5 As New SqlCommand(mSQLStr5_A, oConn)
+                    Dim emDR5 As SqlDataReader = (emDC5.ExecuteReader)
+                    Dim imagesDat5_A(4) As String
+                    Dim imagesDat5_B(4) As String
+
+                    imagesDat5_A(0) = ""
+                    imagesDat5_A(1) = ""
+                    imagesDat5_A(2) = ""
+                    imagesDat5_A(3) = ""
+
+                    imagesDat5_B(0) = ""
+                    imagesDat5_B(1) = ""
+                    imagesDat5_B(2) = ""
+                    imagesDat5_B(3) = ""
+
+                    Dim iCnt5A As Integer = 0
+                    Dim iCnt5B As Integer = 0
+                    Do While emDR5.Read
+                        If (emDR5("Condition").ToString) = "BEFORE" Then
+                            imagesDat5_A(iCnt5A) = emDR5("BMEvidence_ImgFile").ToString
+                            iCnt5A += 1
+                        Else
+                            imagesDat5_B(iCnt5B) = emDR5("BMEvidence_ImgFile").ToString
+                            iCnt5B += 1
+                        End If
+
+                    Loop
+                    emDR5.Close()
+
+                    ws.Pictures.Add(If(File.Exists(strFolder & imagesDat5_A(0).ToString().Replace("~", "")), strFolder & imagesDat5_A(0).ToString().Replace("~", ""), (noImage)), "B54", 1.27, 1.42, LengthUnit.Inch)
+                    ws.Pictures.Add(If(File.Exists(strFolder & imagesDat5_A(1).ToString().Replace("~", "")), strFolder & imagesDat5_A(1).ToString().Replace("~", ""), (noImage)), "D54", 1.46, 1.42, LengthUnit.Inch)
+                    ws.Pictures.Add(If(File.Exists(strFolder & imagesDat5_A(2).ToString().Replace("~", "")), strFolder & imagesDat5_A(2).ToString().Replace("~", ""), (noImage)), "F54", 1.46, 1.42, LengthUnit.Inch)
+
+                    ws.Pictures.Add(If(File.Exists(strFolder & imagesDat5_B(0).ToString().Replace("~", "")), strFolder & imagesDat5_B(0).ToString().Replace("~", ""), (noImage)), "J54", 1.27, 1.42, LengthUnit.Inch)
+                    ws.Pictures.Add(If(File.Exists(strFolder & imagesDat5_B(1).ToString().Replace("~", "")), strFolder & imagesDat5_B(1).ToString().Replace("~", ""), (noImage)), "L54", 1.46, 1.42, LengthUnit.Inch)
+                    ws.Pictures.Add(If(File.Exists(strFolder & imagesDat5_B(2).ToString().Replace("~", "")), strFolder & imagesDat5_B(2).ToString().Replace("~", ""), (noImage)), "N54", 1.53, 1.42, LengthUnit.Inch)
+
+                    Dim emDC6 As New SqlCommand(mSQLStr6_A, oConn)
+                    Dim emDR6 As SqlDataReader = (emDC6.ExecuteReader)
+                    Dim imagesDat6_A(10) As String
+                    Dim imagesDat6_B(10) As String
+
+                    imagesDat6_A(0) = ""
+                    imagesDat6_A(1) = ""
+                    imagesDat6_A(2) = ""
+                    imagesDat6_A(3) = ""
+
+                    imagesDat6_B(0) = ""
+                    imagesDat6_B(1) = ""
+                    imagesDat6_B(2) = ""
+                    imagesDat6_B(3) = ""
+
+                    Dim iCnt6A As Integer = 0
+                    Dim iCnt6B As Integer = 0
+                    Do While emDR6.Read
+                        If (emDR6("Condition").ToString) = "BEFORE" Then
+                            imagesDat6_A(iCnt6A) = emDR6("BMEvidence_ImgFile").ToString
+                            iCnt6A += 1
+                        Else
+                            imagesDat6_B(iCnt6B) = emDR6("BMEvidence_ImgFile").ToString
+                            iCnt6B += 1
+                        End If
+
+                    Loop
+                    emDR6.Close()
+
+                    ws.Pictures.Add(If(File.Exists(strFolder & imagesDat6_A(0).ToString().Replace("~", "")), strFolder & imagesDat6_A(0).ToString().Replace("~", ""), (noImage)), "B62", 1.27, 1.42, LengthUnit.Inch)
+                    ws.Pictures.Add(If(File.Exists(strFolder & imagesDat6_A(1).ToString().Replace("~", "")), strFolder & imagesDat6_A(1).ToString().Replace("~", ""), (noImage)), "D62", 1.46, 1.42, LengthUnit.Inch)
+                    ws.Pictures.Add(If(File.Exists(strFolder & imagesDat6_A(2).ToString().Replace("~", "")), strFolder & imagesDat6_A(2).ToString().Replace("~", ""), (noImage)), "F62", 1.46, 1.42, LengthUnit.Inch)
+
+                    ws.Pictures.Add(If(File.Exists(strFolder & imagesDat6_B(0).ToString().Replace("~", "")), strFolder & imagesDat6_B(0).ToString().Replace("~", ""), (noImage)), "J62", 1.26, 1.42, LengthUnit.Inch)
+                    ws.Pictures.Add(If(File.Exists(strFolder & imagesDat6_B(1).ToString().Replace("~", "")), strFolder & imagesDat6_B(1).ToString().Replace("~", ""), (noImage)), "L62", 1.46, 1.42, LengthUnit.Inch)
+                    ws.Pictures.Add(If(File.Exists(strFolder & imagesDat6_B(2).ToString().Replace("~", "")), strFolder & imagesDat6_B(2).ToString().Replace("~", ""), (noImage)), "N62", 1.52, 1.42, LengthUnit.Inch)
+
+                    Dim tsc1 As String = ""
+                    Dim tsc2 As String = ""
+                    Dim tsc3 As String = ""
+
+                    Dim arrTeleko() As String = {"H", "J", "M", "O"} '
+                    Dim intTeleko As Int32 = 0
+
+                    Dim emDC_DataTeleko As New SqlCommand(mSQLStr7_A, oConn)
+                    Dim emDR_DataTeleko As SqlDataReader = (emDC_DataTeleko.ExecuteReader)
+
+
+                    Do While emDR_DataTeleko.Read
+                        ws.Pictures.Add(If(File.Exists(strFolder & emDR_DataTeleko("TelekoEvidence").ToString().Replace("~", "")), strFolder & emDR_DataTeleko("TelekoEvidence").ToString().Replace("~", ""), (noImage)), arrTeleko(intTeleko) + "70", 1.54, 1.4, LengthUnit.Inch)
+                        intTeleko += 1
+                    Loop
+                    emDR_DataTeleko.Close()
+
+                    Dim emDC_Data As New SqlCommand(mSQLStr_Data, oConn)
+                    Dim emDR_Data As SqlDataReader = (emDC_Data.ExecuteReader)
+
+
+                    Do While emDR_Data.Read
+                        ws.Cells("B78").Value = emDR_Data("Ideas").ToString
+
+                        ws.Cells("M7").Value = emDR_Data("WaferNo").ToString
+                        ws.Cells("M14").Value = emDR_Data("Remarks").ToString
+
+                        Dim UProdLot As String = emDR_Data("TelekoCheckingData").ToString
+                        If UProdLot <> "" Then
+                            Dim arrQCData() As String = UProdLot.Split("|")
+                            If arrQCData.Length = 5 Then
+                                Dim arrQCDataVal1() As String = arrQCData(0).Split(",")
+                                ws.Cells("B72").Value = arrQCDataVal1(0)
+                                ws.Cells("C72").Value = arrQCDataVal1(1)
+                                ws.Cells("E72").Value = arrQCDataVal1(2)
+                                ws.Cells("G72").Value = arrQCDataVal1(3)
+
+                                Dim arrQCDataVal2() As String = arrQCData(1).Split(",")
+                                ws.Cells("B73").Value = arrQCDataVal2(0)
+                                ws.Cells("C73").Value = arrQCDataVal2(1)
+                                ws.Cells("E73").Value = arrQCDataVal2(2)
+                                ws.Cells("G73").Value = arrQCDataVal2(3)
+
+                                Dim arrQCDataVal3() As String = arrQCData(2).Split(",")
+                                ws.Cells("B74").Value = arrQCDataVal3(0)
+                                ws.Cells("C74").Value = arrQCDataVal3(1)
+                                ws.Cells("E74").Value = arrQCDataVal3(2)
+                                ws.Cells("G74").Value = arrQCDataVal3(3)
+
+                                Dim arrQCDataVal4() As String = arrQCData(3).Split(",")
+                                ws.Cells("B75").Value = arrQCDataVal4(0)
+                                ws.Cells("C75").Value = arrQCDataVal4(1)
+                                ws.Cells("E75").Value = arrQCDataVal4(2)
+                                ws.Cells("G75").Value = arrQCDataVal4(3)
+
+                                Dim arrQCDataVal5() As String = arrQCData(4).Split(",")
+                                ws.Cells("B76").Value = arrQCDataVal5(0)
+                                ws.Cells("C76").Value = arrQCDataVal5(1)
+                                ws.Cells("E76").Value = arrQCDataVal5(2)
+                                ws.Cells("G76").Value = arrQCDataVal5(3)
+
+                            End If
+                        End If
+                    Loop
+                    emDR_Data.Close()
+
+                    Dim Sql As String = "SELECT * FROM ViewTEData Where bmID ='" & bmID & "'"
+                    Dim DC As New SqlCommand(Sql, oConn)
+                    Dim DR = (DC.ExecuteReader)
+
+
+                    Do While DR.Read
+                        ws.Cells("M4").Value = DR("MCNo").ToString 'Mc no
+                        ws.Cells("P4").Value = DR("TesterNo").ToString 'Mc no
+                        ws.Cells("M6").Value = DR("DeviceName").ToString 'Device Name
+                        ws.Cells("M8").Value = DR("LOTNo").ToString 'Lot No
+                        ws.Cells("B5").Value = DR("TestNoNG").ToString
+
+                        If (DR("StartOfRepair").ToString <> "") Then
+                            Dim dts As DateTime = Convert.ToDateTime(DR("StartOfRepair").ToString)
+                            ws.Cells("M10").Value = dts.ToString("MM-dd-yyyy") 'Start Date
+                            ws.Cells("M11").Value = dts.ToString("HH:mm:ss -tt") 'Start Time
+                        End If
+
+
+
+                        If (DR("EndOfRepair").ToString <> "") Then
+                            Dim dte As DateTime = Convert.ToDateTime(DR("EndOfRepair").ToString)
+                            ws.Cells("O10").Value = dte.ToString("MM-dd-yyyy") 'End Date
+                            ws.Cells("O11").Value = dte.ToString("HH:mm:ss -tt") 'End Time
+                        End If
+
+
+
+                        ws.PrintOptions.BottomMargin = (0)
+                        ws.PrintOptions.LeftMargin = 0
+                        ws.PrintOptions.TopMargin = 0
+                        ws.PrintOptions.RightMargin = (0)
+                        ws.PrintOptions.FitToPage = True
+                        ws.PrintOptions.PaperType = PaperType.A4
+                        ws.PrintOptions.HorizontalCentered = True
+                        ws.PrintOptions.VerticalCentered = True
+                        ws.PrintOptions.Portrait = True
+
+
+                        'Dim folderPath As String = "\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\TempData\Print Out\TE"
+                        'Try
+                        '    If File.Exists(folderPath & "\Evidence_" & bmID & ".pdf") = True Then
+                        '        File.Delete(folderPath & "\Evidence_" & bmID & ".pdf")
+                        '    End If
+                        '    wb.Save(folderPath & "\Evidence_" & bmID & ".pdf")
+                        'Catch ex As Exception
+                        '    MsgBox("Close the file first before opening another file.", MsgBoxStyle.Information, "Production Endgineering Systems")
+                        '    Exit Sub
+                        'End Try
+
+                        Dim folderPath As String = "\\" & My.Settings.PathServer & "\TEeMaintenanceSystem\TempData\Print Out\TE\"
+                        Dim fileNamestr As String = "Evidence_" & bmID & ".pdf"
+                        Dim serverFilePath As String = Path.Combine(folderPath, fileNamestr)
+                        Try
+                            'wb.Save(serverFilePath)
+                            Dim downloadsPath As String = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads")
+                            Dim localFilePath As String = Path.Combine(downloadsPath, fileNamestr)
+                            'File.Copy(serverFilePath, localFilePath, True)
+                            wb.Save(localFilePath)
+                            Try
+                                Dim AdobeSoftwares As Microsoft.Win32.RegistryKey = Microsoft.Win32.Registry.LocalMachine.OpenSubKey("SOFTWARE").OpenSubKey("ADOBE")
+                                If AdobeSoftwares Is Nothing Then
+                                    Me.Close()
+                                    Process.Start("iexplore.exe", localFilePath)
+                                Else
+                                    If Not Array.IndexOf(AdobeSoftwares.GetSubKeyNames, "Acrobat Reader") = -1 Then
+                                        Me.Show()
+
+                                        Dim PLTemp As New WebBrowser
+                                        PLTemp.Navigate(localFilePath)
+                                        PLTemp.Dock = DockStyle.Fill
+                                        Me.Controls.Add(PLTemp)
+
+
+                                    Else
+                                        Me.Close()
+                                        Process.Start("iexplore.exe", localFilePath)
+
+                                    End If
+                                End If
+                            Catch ex As Exception
+                                Me.Close()
+                                Process.Start("iexplore.exe", localFilePath)
+                            End Try
+
+                        Catch ex As Exception
+                            MsgBox(ex.ToString, MsgBoxStyle.Information, "Production Endgineering Systems")
+                            Exit Sub
+                        End Try
+
+
+
+                    Loop
+                    oConn.Close()
+
+                Catch ex As IOException
+                    MsgBox(ex.Message)
+                Finally
+                    person.Undo()
+                    person.Dispose()
+                    CloseHandle(token)
+                End Try
+            End Using
+        End If
+
+
+
+    End Sub
+
+    Private Sub Form10_Load(sender As Object, e As EventArgs) Handles MyBase.Load
+
+    End Sub
+End Class

@@ -1,0 +1,249 @@
+﻿/* ── AlertBoard.css ─────────────────────────────────────────────────────────
+   Converts the WinForms Panel3 grid + Panel4 drilldown popup into a
+   responsive web layout.
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* Container */
+.ab-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    font-family: Segoe UI, sans-serif;
+    font-size: 13px;
+    position: relative;
+}
+
+/* ── Toolbar ──────────────────────────────────────────────────────────────── */
+.ab-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: #f0f0f0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+    .ab-toolbar label {
+        font-weight: 600;
+    }
+
+    .ab-toolbar input[type="datetime-local"],
+    .ab-toolbar select {
+        padding: 3px 6px;
+        border: 1px solid #bbb;
+        border-radius: 3px;
+        font-size: 13px;
+    }
+
+.ab-btn-search {
+    padding: 4px 14px;
+    background: #1a73e8;
+    color: #fff;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+    .ab-btn-search:hover {
+        background: #1558b0;
+    }
+
+/* Progress bar */
+.ab-progress {
+    flex: 1;
+    min-width: 120px;
+    height: 10px;
+    background: #ddd;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.ab-progress-inner {
+    height: 100%;
+    width: 0;
+    background: #1a73e8;
+    transition: width 0.1s linear;
+}
+
+/* ── Main grid ────────────────────────────────────────────────────────────── */
+.ab-panel {
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    overflow-x: auto;
+}
+
+/* Each row is a 12-column grid:
+   [label | 9 location cols | total] */
+.ab-header-row,
+.ab-proc-row {
+    display: grid;
+    grid-template-columns: 60px repeat(9, 1fr) 60px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+    .ab-proc-row:last-child {
+        border-bottom: none;
+    }
+
+/* ── Header ── */
+.ab-header-row {
+    background: #2c5f8a;
+    color: #fff;
+    font-weight: 700;
+    text-align: center;
+}
+
+.ab-hdr-process,
+.ab-hdr-loc,
+.ab-hdr-total {
+    padding: 6px 2px;
+    font-size: 11px;
+}
+
+/* ── Cells ── */
+.ab-cell-label {
+    padding: 5px 6px;
+    font-weight: 700;
+    background: #e8eaf6;
+    border-right: 1px solid #ccc;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    font-size: 12px;
+}
+
+.ab-cell {
+    text-align: center;
+    padding: 5px 2px;
+    border-right: 1px solid #e0e0e0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    font-size: 13px;
+}
+
+/* Empty (no station at this location) */
+.ab-cell-empty {
+    background: #f5f5f5;
+    color: #bbb;
+}
+
+/* Active (has a station) — default state */
+.ab-cell-active {
+    background: #fff;
+    cursor: default;
+}
+
+    /* Alert state — count > 0 */
+    .ab-cell-active.ab-alert {
+        background: #fff3cd;
+        color: #c62828;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+        .ab-cell-active.ab-alert:hover {
+            background: #ffe082;
+        }
+
+/* Total cells */
+.ab-cell-total {
+    background: #e3f2fd;
+    font-weight: 700;
+}
+
+.ab-cell-grand {
+    background: #1565c0;
+    color: #fff;
+    font-weight: 700;
+}
+
+/* Totals row */
+.ab-totals-row .ab-cell-label {
+    background: #c8e6c9;
+    font-weight: 700;
+}
+
+/* ── Drilldown panel ──────────────────────────────────────────────────────── */
+.ab-drilldown {
+    position: absolute;
+    top: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(420px, 95vw);
+    background: #fff;
+    border: 2px solid #1a73e8;
+    border-radius: 6px;
+    box-shadow: 0 4px 20px rgba(0,0,0,.25);
+    display: flex;
+    flex-direction: column;
+    z-index: 100;
+}
+
+.ab-drilldown-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: #1a73e8;
+    color: #fff;
+    border-radius: 4px 4px 0 0;
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.ab-drilldown-btns {
+    display: flex;
+    gap: 6px;
+}
+
+.ab-btn {
+    padding: 3px 10px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 12px;
+    background: rgba(255,255,255,.25);
+    color: #fff;
+}
+
+    .ab-btn:hover {
+        background: rgba(255,255,255,.45);
+    }
+
+.ab-btn-primary {
+    background: #0d47a1;
+}
+
+    .ab-btn-primary:hover {
+        background: #0a3270;
+    }
+
+/* Machine list */
+.ab-machine-list {
+    list-style: none;
+    margin: 0;
+    padding: 6px 0;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.ab-machine-item {
+    padding: 6px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+    .ab-machine-item:hover {
+        background: #e3f2fd;
+    }
+
+    .ab-machine-item.selected {
+        background: #bbdefb;
+        font-weight: 700;
+    }

@@ -1,0 +1,530 @@
+Imports GemBox.Spreadsheet
+Imports System.Data.SqlClient
+Imports System.Net
+Imports System.Globalization
+Imports System.IO
+Imports System.Runtime.InteropServices
+Imports System.Security.Principal
+Imports System.Deployment.Application
+Public Class Form4
+    Private conn As SqlConnection = New SqlConnection(My.Settings.DBConnection)
+    <DllImport("advapi32.dll", SetLastError:=True)>
+    Private Shared Function LogonUser(lpszUsername As String, lpszDomain As String, lpszPassword As String, dwLogonType As Integer, dwLogonProvider As Integer, ByRef phToken As IntPtr) As Boolean
+    End Function
+
+    <DllImport("kernel32.dll")>
+    Private Shared Function CloseHandle(hObject As IntPtr) As [Boolean]
+    End Function
+
+    Sub EMakingPrint(ProcessCase As String, bmid As Integer)
+        SpreadsheetInfo.SetLicense("FREE-LIMITED-KEY")
+
+        Dim token As IntPtr = IntPtr.Zero
+        LogonUser(My.Settings.PathUserName, My.Settings.PathServer, My.Settings.PathPassword, 9, 0, token)
+        If LogonUser(My.Settings.PathUserName, My.Settings.PathServer, My.Settings.PathPassword, 9, 0, token) = True Then
+
+
+            Using person As WindowsImpersonationContext = New WindowsIdentity(token).Impersonate()
+
+                Dim ProcessGroup As String = ProcessCase
+                Dim ProcessStr As String = Nothing
+                Dim ProcessTable As String = Nothing
+                Dim ProcessTableData As String = Nothing
+                Select Case ProcessGroup
+                    Case "DC"
+                        ProcessStr = "EvidenceMaking_DC.xlsx"
+                        ProcessTable = "viewDCEMaking_Ver3"
+                        ProcessTableData = "ViewDCData_Ver4"
+                    Case "DB"
+                        ProcessStr = "EvidenceMaking_DB.xlsx"
+                        ProcessTable = "viewDBEMaking_Ver2"
+                        ProcessTableData = "ViewDBData_Ver4"
+                    Case "WB"
+                        ProcessStr = "EvidenceMaking_WB.xlsx"
+                        ProcessTable = "viewWBEMaking_Ver2"
+                        ProcessTableData = "ViewWBData_Ver4"
+                    Case "MP"
+                        ProcessStr = "EvidenceMaking_MP.xlsx"
+                        ProcessTable = "viewMPEMaking_Ver2"
+                        ProcessTableData = "ViewMPData_Ver4"
+                    Case "PL"
+                        ProcessStr = "EvidenceMaking_PL.xlsx"
+                        ProcessTable = "viewPLEMaking_Ver2"
+                        ProcessTableData = "ViewPLData_Ver2"
+                    Case "FL"
+                        ProcessStr = "EvidenceMaking_FL.xlsx"
+                        ProcessTable = "viewFLEMaking_ver2"
+                        ProcessTableData = "ViewFLData_V2"
+
+                    Case "SING"
+                        ProcessStr = "EvidenceMaking_SING.xlsx"
+                        ProcessTable = "viewSINGEMaking"
+                        ProcessTableData = "ViewSINGData"
+
+                    Case "FT"
+                        ProcessStr = "EvidenceMaking_FT.xlsx"
+                        ProcessTable = "viewFTEMaking_Ver2"
+                        ProcessTableData = "ViewFTData"
+                    Case "TP"
+                        ProcessStr = "EvidenceMaking_TP.xlsx"
+                        ProcessTable = "viewTPEMaking_Ver2"
+                        ProcessTableData = "ViewTPData"
+                    Case "EDS"
+                        ProcessStr = "EvidenceMaking_EDS.xlsx"
+                        ProcessTable = "viewEDSEMaking"
+                        ProcessTableData = "viewedsdata_ver2"
+                    Case "MEMS"
+                        ProcessStr = "EvidenceMaking_MEMS.xlsx"
+                        ProcessTable = "viewMEMSEMaking"
+                        ProcessTableData = "ViewMEMSData"
+                End Select
+
+                Dim wb As ExcelFile = ExcelFile.Load("\\" & My.Settings.PathServer & "\eMaintenanceSystem\Templates\" & ProcessStr)
+                Dim ws As ExcelWorksheet = wb.Worksheets.ActiveWorksheet
+                Dim noImage As String = "\\" & My.Settings.PathServer & "\eMaintenanceSystem\images\noimage.png"
+                Dim Filename As String = ""
+
+                Dim oConn As New SqlConnection
+                Dim strFolder As String = "\\" & My.Settings.PathServer & "\eMaintenanceSystem"
+                oConn = New SqlConnection(My.Settings.DBConnection)
+                oConn.Open()
+
+                Try
+                    Dim mSQLStr As String = "SELECT TOP 3 * From gridEvidenceMaking_Ver3 Where BMEvidence_Category = 'PROBLEM POINT / PHENOMENON' and bmID=" & bmid & " and Process = '" & ProcessCase & "' ORDER BY BMEvidenceID "
+                    Dim mSQLStr2 As String = "Select TOP 2 * From gridEvidenceMaking_Ver3 Where BMEvidence_Category = 'ACTION TAKEN / EVIDENCE AFTER ADJUSTMENT' and bmID=" & bmid & " and Process = '" & ProcessCase & "' ORDER BY BMEvidenceID "
+                    Dim mSQLStr3 As String = "Select TOP 2 * From gridEvidenceMaking_Ver3 Where BMEvidence_Category = 'PARTS REPLACED BEFORE / PARTS REPLACED AFTER' and bmID=" & bmid & " and Process = '" & ProcessCase & "' ORDER BY BMEvidenceID "
+                    Dim mSQLStr4 As String = "Select TOP 2 * From gridEvidenceMaking_Ver3 Where BMEvidence_Category = 'DETAILS OF DIS-ASSEMBLY  DETAILS OF RE-ASSEMBLY' and bmID=" & bmid & " and Process = '" & ProcessCase & "' ORDER BY BMEvidenceID "
+                    Dim mSQLStr5 As String = "Select TOP 3 * From gridEvidenceMaking_Ver3 Where BMEvidence_Category = 'BEFORE AND AFTER QUALITY CONFIRMATION' and bmID=" & bmid & " and Process = '" & ProcessCase & "' ORDER BY BMEvidenceID "
+
+                    Dim emDC As New SqlCommand(mSQLStr, oConn)
+                    Dim emDR As SqlDataReader = (emDC.ExecuteReader)
+                    Dim remarksData(2) As String
+                    Dim imagesData(2) As String
+                    'Jameson
+                    Dim tsc1 As String = ""
+                    Dim tsc2 As String = ""
+                    Dim tsc3 As String = ""
+                    Dim tsc4 As String = ""
+                    Dim tsc5 As String = ""
+                    Dim tsc6 As String = ""
+                    Dim tsc7 As String = ""
+                    Dim tsc8 As String = ""
+                    Dim tsc9 As String = ""
+                    Dim tsc10 As String = ""
+                    Dim tsc11 As String = ""
+                    'Jameson
+
+                    imagesData(0) = ""
+                    imagesData(1) = ""
+
+                    Dim iCnt As Integer = 0
+                    Do While emDR.Read
+                        remarksData(iCnt) = emDR("BMEvidence_Desc").ToString
+                        imagesData(iCnt) = emDR("BMEvidence_ImgFile").ToString
+                        iCnt += 1
+                    Loop
+                    emDR.Close()
+
+                    Dim emDC2 As New SqlCommand(mSQLStr2, oConn)
+                    Dim emDR2 As SqlDataReader = (emDC2.ExecuteReader)
+                    Dim remarksData2(2) As String
+                    Dim imagesData2(2) As String
+
+                    imagesData2(0) = ""
+                    imagesData2(1) = ""
+
+                    Dim iCnt2 As Integer = 0
+                    Do While emDR2.Read
+                        remarksData2(iCnt2) = emDR2("BMEvidence_Desc").ToString
+                        imagesData2(iCnt2) = emDR2("BMEvidence_ImgFile").ToString
+                        iCnt2 += 1
+                    Loop
+                    emDR2.Close()
+
+
+                    Dim emDC3 As New SqlCommand(mSQLStr3, oConn)
+                    Dim emDR3 As SqlDataReader = (emDC3.ExecuteReader)
+                    Dim remarksData3(2) As String
+                    Dim imagesData3(2) As String
+
+                    imagesData3(0) = ""
+                    imagesData3(1) = ""
+                    'imagesData3(2) = ""  'for ideal condition
+
+                    Dim iCnt3 As Integer = 0
+                    Do While emDR3.Read
+                        remarksData3(iCnt3) = emDR3("BMEvidence_Desc").ToString
+                        imagesData3(iCnt3) = emDR3("BMEvidence_ImgFile").ToString
+                        'tsc1 = emDR3("BMEvidence_TCConfirm1").ToString
+                        'tsc2 = emDR3("BMEvidence_TCConfirm2").ToString
+                        'tsc3 = emDR3("BMEvidence_TCConfirm3").ToString
+                        iCnt3 += 1
+                    Loop
+                    emDR3.Close()
+
+                    'Jameson2023
+                    Dim emDC4 As New SqlCommand(mSQLStr4, oConn)
+                    Dim emDR4 As SqlDataReader = (emDC4.ExecuteReader)
+                    Dim remarksData4(2) As String
+                    Dim imagesData4(2) As String
+
+                    imagesData4(0) = ""
+                    imagesData4(1) = ""
+
+                    Dim iCnt4 As Integer = 0
+                    Do While emDR4.Read
+                        remarksData4(iCnt4) = emDR4("BMEvidence_Desc").ToString
+                        imagesData4(iCnt4) = emDR4("BMEvidence_ImgFile").ToString
+                        iCnt4 += 1
+                    Loop
+                    emDR4.Close()
+
+                    Dim emDC5 As New SqlCommand(mSQLStr5, oConn)
+                    Dim emDR5 As SqlDataReader = (emDC5.ExecuteReader)
+                    Dim remarksData5(2) As String
+                    Dim imagesData5(2) As String
+
+                    imagesData5(0) = ""
+                    imagesData5(1) = ""
+                    imagesData5(2) = ""
+
+                    Dim iCnt5 As Integer = 0
+                    Do While emDR5.Read
+                        remarksData5(iCnt5) = emDR5("BMEvidence_Desc").ToString
+                        imagesData5(iCnt5) = emDR5("BMEvidence_ImgFile").ToString
+                        iCnt5 += 1
+                    Loop
+                    emDR5.Close()
+                    'Jameson2023
+
+                    'Jameson2023x
+                    Dim Sqlss1 As String = ""
+                    If ProcessGroup = "SING" Then
+                        Sqlss1 = "SELECT BMRouteNo,BMVersionNo,BMEvidence_TCConfirm1,BMEvidence_TCConfirm2,BMEvidence_TCConfirm3,BMEvidence_TCConfirm4,BMEvidence_TCConfirm5,BMEvidence_TCConfirm6,BMEvidence_TCConfirm7,BMEvidence_TCConfirm8,BMEvidence_TCConfirm9,SignalTowerKanban,SafetyTags,Bypass FROM " & ProcessTable & " Where bmID ='" & bmid & "'"
+
+                    Else
+                        Sqlss1 = "SELECT BMRouteNo,BMVersionNo,BMEvidence_TCConfirm1,BMEvidence_TCConfirm2,BMEvidence_TCConfirm3,BMEvidence_TCConfirm4,BMEvidence_TCConfirm5,BMEvidence_TCConfirm6,BMEvidence_TCConfirm7,BMEvidence_TCConfirm8,BMEvidence_TCConfirm9 FROM " & ProcessTable & " Where bmID ='" & bmid & "'"
+
+                    End If
+
+
+
+                    Dim DCss1 As New SqlCommand(Sqlss1, oConn)
+                    Dim DRss1 = (DCss1.ExecuteReader)
+
+                    Do While DRss1.Read
+                        tsc1 = DRss1("BMEvidence_TCConfirm1").ToString
+                        tsc2 = DRss1("BMEvidence_TCConfirm2").ToString
+                        tsc3 = DRss1("BMEvidence_TCConfirm3").ToString
+                        'Jameson2023
+                        tsc4 = DRss1("BMEvidence_TCConfirm4").ToString
+                        tsc5 = DRss1("BMEvidence_TCConfirm5").ToString
+                        tsc6 = DRss1("BMEvidence_TCConfirm6").ToString
+                        tsc7 = DRss1("BMEvidence_TCConfirm7").ToString
+                        tsc8 = DRss1("BMEvidence_TCConfirm8").ToString
+                        tsc9 = DRss1("BMEvidence_TCConfirm9").ToString
+                        tsc10 = DRss1("BMRouteNo").ToString
+
+                        If ProcessGroup = "SING" Then
+                            If tsc1 = "Yes" Then
+                                ws.Cells("S61").Value = "✔"
+                                ws.Cells("AF63").Value = DRss1("BMRouteNo").ToString 'RouteNo
+                            ElseIf tsc1 = "No" Then
+                                ws.Cells("W61").Value = "✔"
+                            End If
+                            If tsc6 = "Yes" Then
+                                ws.Cells("Q40").Value = "✔"
+                                ws.Cells("AF42").Value = DRss1("BMVersionNo").ToString 'VersionNo
+                            ElseIf tsc6 = "No" Then
+                                ws.Cells("U40").Value = "✔"
+                            ElseIf tsc6 = "N/A" Then
+                                ws.Cells("Y40").Value = "✔"
+                            End If
+
+                            If tsc2 = "Yes" Then
+                                ws.Cells("S62").Value = "✔"
+                            ElseIf tsc2 = "No" Then
+                                ws.Cells("W62").Value = "✔"
+                            End If
+                            If tsc3 = "Yes" Then
+                                ws.Cells("S63").Value = "✔"
+                            ElseIf tsc3 = "No" Then
+                                ws.Cells("W63").Value = "✔"
+                            End If
+                            If tsc4 = "Yes" Then
+                                ws.Cells("S64").Value = "✔"
+                            ElseIf tsc4 = "No" Then
+                                ws.Cells("W64").Value = "✔"
+                            End If
+                            If tsc5 = "Yes" Then
+                                ws.Cells("S65").Value = "✔"
+                            ElseIf tsc5 = "No" Then
+                                ws.Cells("W65").Value = "✔"
+                            End If
+
+                            If tsc7 = "Yes" Then
+                                ws.Cells("Q41").Value = "✔"
+                            ElseIf tsc7 = "No" Then
+                                ws.Cells("U41").Value = "✔"
+                            ElseIf tsc7 = "N/A" Then
+                                ws.Cells("Y41").Value = "✔"
+                            End If
+                            If tsc8 = "Yes" Then
+                                ws.Cells("Q42").Value = "✔"
+                            ElseIf tsc8 = "No" Then
+                                ws.Cells("U42").Value = "✔"
+                            ElseIf tsc8 = "N/A" Then
+                                ws.Cells("Y42").Value = "✔"
+                            End If
+                            If tsc9 = "Yes" Then
+                                ws.Cells("Q43").Value = "✔"
+                            ElseIf tsc9 = "No" Then
+                                ws.Cells("U43").Value = "✔"
+                            ElseIf tsc9 = "N/A" Then
+                                ws.Cells("Y43").Value = "✔"
+                            End If
+                            'Safety Dropdown
+                            If DRss1("SignalTowerKanban").ToString <> "0" AndAlso DRss1("SignalTowerKanban").ToString <> "" Then
+                                ws.Cells("AF20").Value = DRss1("SignalTowerKanban").ToString
+                            Else
+                                ws.Cells("AF20").Value = ""
+                            End If
+                            If DRss1("SafetyTags").ToString <> "0" AndAlso DRss1("SafetyTags").ToString <> "" Then
+                                ws.Cells("AF21").Value = DRss1("SafetyTags").ToString
+                            Else
+                                ws.Cells("AF21").Value = ""
+                            End If
+
+                            If DRss1("Bypass").ToString <> "0" AndAlso DRss1("Bypass").ToString <> "" Then
+                                ws.Cells("AF22").Value = DRss1("Bypass").ToString
+                            Else
+                                ws.Cells("AF22").Value = ""
+                            End If
+                        Else
+
+                            If tsc1 = "Yes" Then
+                                ws.Cells("S60").Value = "✔"
+                                ws.Cells("AF62").Value = DRss1("BMRouteNo").ToString 'RouteNo
+                            ElseIf tsc1 = "No" Then
+                                ws.Cells("W60").Value = "✔"
+                            End If
+                            If tsc6 = "Yes" Then
+                                ws.Cells("Q39").Value = "✔"
+                                ws.Cells("AF41").Value = DRss1("BMVersionNo").ToString 'VersionNo
+                            ElseIf tsc6 = "No" Then
+                                ws.Cells("U39").Value = "✔"
+                            ElseIf tsc6 = "N/A" Then
+                                ws.Cells("Y39").Value = "✔"
+                            End If
+
+                            If tsc2 = "Yes" Then
+                                ws.Cells("S61").Value = "✔"
+                            ElseIf tsc2 = "No" Then
+                                ws.Cells("W61").Value = "✔"
+                            End If
+                            If tsc3 = "Yes" Then
+                                ws.Cells("S62").Value = "✔"
+                            ElseIf tsc3 = "No" Then
+                                ws.Cells("W62").Value = "✔"
+                            End If
+                            If tsc4 = "Yes" Then
+                                ws.Cells("S63").Value = "✔"
+                            ElseIf tsc4 = "No" Then
+                                ws.Cells("W63").Value = "✔"
+                            End If
+                            If tsc5 = "Yes" Then
+                                ws.Cells("S64").Value = "✔"
+                            ElseIf tsc5 = "No" Then
+                                ws.Cells("W64").Value = "✔"
+                            End If
+
+                            If tsc7 = "Yes" Then
+                                ws.Cells("Q40").Value = "✔"
+                            ElseIf tsc7 = "No" Then
+                                ws.Cells("U40").Value = "✔"
+                            ElseIf tsc7 = "N/A" Then
+                                ws.Cells("Y40").Value = "✔"
+                            End If
+                            If tsc8 = "Yes" Then
+                                ws.Cells("Q41").Value = "✔"
+                            ElseIf tsc8 = "No" Then
+                                ws.Cells("U41").Value = "✔"
+                            ElseIf tsc8 = "N/A" Then
+                                ws.Cells("Y41").Value = "✔"
+                            End If
+                            If tsc9 = "Yes" Then
+                                ws.Cells("Q42").Value = "✔"
+                            ElseIf tsc9 = "No" Then
+                                ws.Cells("U42").Value = "✔"
+                            ElseIf tsc9 = "N/A" Then
+                                ws.Cells("Y42").Value = "✔"
+                            End If
+                        End If
+
+
+
+                    Loop
+
+                    DRss1.Close()
+
+                    'Jameson2023x
+
+                    Dim Sql As String = "SELECT MCNo,MCType,PkgName,DeviceName,LOTNo,PMConfirmGLOPReqBy,OccurrenceDate,StartOfRepair,EndOfRepair FROM " & ProcessTableData & " Where bmID ='" & bmid & "'"
+                    Dim DC As New SqlCommand(Sql, oConn)
+                    Dim DR = (DC.ExecuteReader)
+
+
+                    Do While DR.Read
+                        ws.Cells("E3").Value = DR("MCNo").ToString 'Mc no
+                        ws.Cells("E4").Value = DR("MCType").ToString 'Mc type
+                        ws.Cells("E5").Value = DR("PkgName").ToString 'Package
+                        ws.Cells("E6").Value = DR("DeviceName").ToString 'Device Name
+                        ws.Cells("O3").Value = DR("LOTNo").ToString 'Lot No
+                        ws.Cells("O4").Value = DR("PMConfirmGLOPReqBy") 'DR("Andon").ToString 'PM No
+                        '  ws.Cells("O6").Value = ddlRequestItem.SelectedItem.Text 'BM Name
+                        ws.Cells("AA3").Value = CDate(DR("OccurrenceDate").ToString).ToShortDateString 'Date
+                        ws.Cells("AA4").Value = DR("StartOfRepair").ToString 'Start Time
+                        ws.Cells("AA5").Value = DR("EndOfRepair").ToString 'End Time
+
+
+
+                        'JAMESON2023
+                        If ProcessGroup = "SING" Then
+                            ws.Pictures.Add(If(File.Exists(strFolder & (imagesData(0))), strFolder & (imagesData(0)), (noImage)), "C11", 350, 200, LengthUnit.Pixel)
+                            ws.Cells("B20").Value = remarksData(0)
+                            ws.Pictures.Add(If(File.Exists(strFolder & (imagesData(1))), strFolder & (imagesData(1)), (noImage)), "O11", 270, 200, LengthUnit.Pixel)
+                            ws.Cells("N20").Value = remarksData(1)
+                            ws.Pictures.Add(If(File.Exists(strFolder & (imagesData(2))), strFolder & (imagesData(2)), (noImage)), "Z11", 310, 200, LengthUnit.Pixel)
+
+
+                            ws.Pictures.Add(If(File.Exists(strFolder & (imagesData2(0))), strFolder & (imagesData2(0)), (noImage)), "C27", 280, 200, LengthUnit.Pixel)
+                            ws.Pictures.Add(If(File.Exists(strFolder & (imagesData2(1))), strFolder & (imagesData2(1)), (noImage)), "L27", 285, 200, LengthUnit.Pixel)
+                            ws.Cells("B37").Value = remarksData2(0)
+                            ws.Cells("K37").Value = remarksData2(1)
+
+                            ws.Pictures.Add(If(File.Exists(strFolder & (imagesData3(0))), strFolder & (imagesData3(0)), (noImage)), "V27", 215, 200, LengthUnit.Pixel)
+                            ws.Pictures.Add(If(File.Exists(strFolder & (imagesData3(1))), strFolder & (imagesData3(1)), (noImage)), "AD27", 225, 200, LengthUnit.Pixel)
+                            ws.Cells("U37").Value = remarksData3(0)
+                            ws.Cells("AC37").Value = remarksData3(1)
+
+                            ws.Pictures.Add(If(File.Exists(strFolder & (imagesData4(0))), strFolder & (imagesData4(0)), (noImage)), "C47", 420, 210, LengthUnit.Pixel)
+                            ws.Pictures.Add(If(File.Exists(strFolder & (imagesData4(1))), strFolder & (imagesData4(1)), (noImage)), "T47", 350, 210, LengthUnit.Pixel)
+                            ws.Cells("P46").Value = remarksData4(0)
+                            ws.Cells("AH46").Value = remarksData4(1)
+
+                            ws.Pictures.Add(If(File.Exists(strFolder & (imagesData5(0))), strFolder & (imagesData5(0)), (noImage)), "C69", 365, 220, LengthUnit.Pixel)
+                            ws.Pictures.Add(If(File.Exists(strFolder & (imagesData5(1))), strFolder & (imagesData5(1)), (noImage)), "O69", 310, 220, LengthUnit.Pixel)
+                            ws.Pictures.Add(If(File.Exists(strFolder & (imagesData5(2))), strFolder & (imagesData5(2)), (noImage)), "AA69", 275, 220, LengthUnit.Pixel)
+                            ws.Cells("D82").Value = remarksData5(0)
+                            ws.Cells("P82").Value = remarksData5(1)
+                            ws.Cells("AB82").Value = remarksData5(2)
+                        Else
+                            ws.Pictures.Add(If(File.Exists(strFolder & (imagesData(0))), strFolder & (imagesData(0)), (noImage)), "C11", 280, 240, LengthUnit.Pixel)
+                            ws.Cells("K10").Value = remarksData(0)
+                            ws.Pictures.Add(If(File.Exists(strFolder & (imagesData(1))), strFolder & (imagesData(1)), (noImage)), "P11", 270, 240, LengthUnit.Pixel)
+                            ws.Cells("Y10").Value = remarksData(1)
+                            ws.Pictures.Add(If(File.Exists(strFolder & (imagesData(2))), strFolder & (imagesData(2)), (noImage)), "AC11", 240, 240, LengthUnit.Pixel)
+
+
+                            ws.Pictures.Add(If(File.Exists(strFolder & (imagesData2(0))), strFolder & (imagesData2(0)), (noImage)), "C26", 280, 220, LengthUnit.Pixel)
+                            ws.Pictures.Add(If(File.Exists(strFolder & (imagesData2(1))), strFolder & (imagesData2(1)), (noImage)), "L26", 285, 220, LengthUnit.Pixel)
+                            ws.Cells("B24").Value = remarksData2(0)
+                            ws.Cells("K24").Value = remarksData2(1)
+
+                            ws.Pictures.Add(If(File.Exists(strFolder & (imagesData3(0))), strFolder & (imagesData3(0)), (noImage)), "V26", 215, 220, LengthUnit.Pixel)
+                            ws.Pictures.Add(If(File.Exists(strFolder & (imagesData3(1))), strFolder & (imagesData3(1)), (noImage)), "AD26", 225, 220, LengthUnit.Pixel)
+                            ws.Cells("U24").Value = remarksData3(0)
+                            ws.Cells("AC24").Value = remarksData3(1)
+
+                            ws.Pictures.Add(If(File.Exists(strFolder & (imagesData4(0))), strFolder & (imagesData4(0)), (noImage)), "C46", 420, 220, LengthUnit.Pixel)
+                            ws.Pictures.Add(If(File.Exists(strFolder & (imagesData4(1))), strFolder & (imagesData4(1)), (noImage)), "T46", 350, 215, LengthUnit.Pixel)
+                            ws.Cells("P45").Value = remarksData4(0)
+                            ws.Cells("AH45").Value = remarksData4(1)
+
+                            ws.Pictures.Add(If(File.Exists(strFolder & (imagesData5(0))), strFolder & (imagesData5(0)), (noImage)), "C68", 365, 250, LengthUnit.Pixel)
+                            ws.Pictures.Add(If(File.Exists(strFolder & (imagesData5(1))), strFolder & (imagesData5(1)), (noImage)), "O68", 310, 250, LengthUnit.Pixel)
+                            ws.Pictures.Add(If(File.Exists(strFolder & (imagesData5(2))), strFolder & (imagesData5(2)), (noImage)), "AA68", 275, 250, LengthUnit.Pixel)
+                            ws.Cells("B81").Value = remarksData5(0)
+                            ws.Cells("N81").Value = remarksData5(1)
+                            ws.Cells("Z81").Value = remarksData5(2)
+                        End If
+
+
+                        ws.PrintOptions.BottomMargin = (0)
+                        ws.PrintOptions.LeftMargin = 0
+                        ws.PrintOptions.TopMargin = 0
+                        ws.PrintOptions.RightMargin = (0)
+                        ws.PrintOptions.FitToPage = True
+                        ws.PrintOptions.PaperType = PaperType.A4
+                        ws.PrintOptions.HorizontalCentered = True
+                        ws.PrintOptions.VerticalCentered = True
+                        ws.PrintOptions.Portrait = True
+
+
+                        Dim folderPath As String = "\\" & My.Settings.PathServer & "\eMaintenanceSystem\TempData\Print Out\" & ProcessCase
+                        Dim fileNamestr As String = ProcessCase & "Evidence_" & bmid & ".pdf"
+                        Dim serverFilePath As String = Path.Combine(folderPath, fileNamestr)
+                        Try
+
+                            Dim downloadsPath As String = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads")
+                            Dim localFilePath As String = Path.Combine(downloadsPath, fileNamestr)
+                            'File.Copy(serverFilePath, localFilePath, True)
+                            wb.Save(localFilePath)
+                            Try
+                                Dim AdobeSoftwares As Microsoft.Win32.RegistryKey = Microsoft.Win32.Registry.LocalMachine.OpenSubKey("SOFTWARE").OpenSubKey("ADOBE")
+                                If AdobeSoftwares Is Nothing Then
+                                    Me.Close()
+                                    Process.Start("iexplore.exe", localFilePath)
+                                Else
+                                    If Not Array.IndexOf(AdobeSoftwares.GetSubKeyNames, "Acrobat Reader") = -1 Then
+                                        Me.Show()
+
+                                        Dim PLTemp As New WebBrowser
+                                        PLTemp.Navigate(localFilePath)
+                                        PLTemp.Dock = DockStyle.Fill
+                                        Me.Controls.Add(PLTemp)
+
+
+                                    Else
+                                        Me.Close()
+                                        Process.Start("iexplore.exe", localFilePath)
+
+                                    End If
+                                End If
+                            Catch ex As Exception
+                                Me.Close()
+                                Process.Start("iexplore.exe", localFilePath)
+                            End Try
+
+
+                        Catch ex As Exception
+                            MsgBox(ex.ToString, MsgBoxStyle.Information, "Production Endgineering Systems")
+                            Exit Sub
+                        End Try
+
+
+
+
+
+                    Loop
+                    oConn.Close()
+                Catch ex As IOException
+                    MsgBox(ex.Message)
+                Finally
+                    person.Undo()
+                    person.Dispose()
+                    CloseHandle(token)
+                End Try
+            End Using
+
+        End If
+    End Sub
+
+    Private Sub Button1_Click(sender As Object, e As EventArgs)
+
+    End Sub
+
+    Private Sub Form4_Load(sender As Object, e As EventArgs) Handles MyBase.Load
+
+    End Sub
+End Class

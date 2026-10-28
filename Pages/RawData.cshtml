@@ -1,0 +1,100 @@
+﻿@page
+@model MachineKarte.Web.Pages.RawDataModel
+@{
+    ViewData["Title"] = "Raw Data";
+    Layout = "_Layout";
+}
+
+@* ── Hidden inputs carry query-string params into JS ────────────────────── *@
+<input type="hidden" id="hdnProcess" value="@Model.Process" />
+<input type="hidden" id="hdnLocation" value="@Model.Location" />
+<input type="hidden" id="hdnMachine" value="@Model.Machine" />
+<input type="hidden" id="hdnDateFrom" value="@Model.DateFrom" />
+<input type="hidden" id="hdnDateTo" value="@Model.DateTo" />
+
+<div id="raw-data-page" class="rd-page">
+
+    @* ── Page header ─────────────────────────────────────────────────────── *@
+    <div class="rd-header">
+        <h2 class="rd-title">Raw Data</h2>
+        <span class="rd-subtitle">
+            @Model.Process &nbsp;|&nbsp; @Model.Location
+            @if (!string.IsNullOrEmpty(Model.DateFrom))
+            {
+                <span>&nbsp;|&nbsp; @Model.DateFrom &nbsp;–&nbsp; @Model.DateTo</span>
+            }
+        </span>
+    </div>
+
+    @* ── Loading / error banners ─────────────────────────────────────────── *@
+    <div id="rd-loading" class="rd-loading" style="display:none;">
+        <span class="rd-spinner"></span> Loading data…
+    </div>
+    <div id="rd-error" class="rd-error" style="display:none;"></div>
+
+    @* ══════════════════════════════════════════════════════════════════════
+       TOP SECTION — Frequency recurrence (Chart1 + DataGridView2)
+       ══════════════════════════════════════════════════════════════════════ *@
+    <div class="rd-section">
+        <div class="rd-panel rd-panel--chart" id="panel-freq-chart">
+            <div class="rd-panel-title">BM Recurrence Frequency (by Month)</div>
+            <div class="rd-chart-wrap">
+                <canvas id="chart-frequency"></canvas>
+            </div>
+        </div>
+
+        <div class="rd-panel rd-panel--grid" id="panel-freq-grid">
+            <div class="rd-panel-title">Frequency Summary</div>
+            <div class="rd-grid-wrap">
+                <table id="grid-frequency" class="rd-table">
+                    <thead>
+                        <tr>
+                            <th>Frequency</th>
+                            <th>Month / Year</th>
+                            <th>Count</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    @* ══════════════════════════════════════════════════════════════════════
+       BOTTOM SECTION — BM case count by month (Chart2 + DataGridView1)
+       ══════════════════════════════════════════════════════════════════════ *@
+    <div class="rd-section">
+        <div class="rd-panel rd-panel--chart" id="panel-bmcase-chart">
+            <div class="rd-panel-title">BM Case Count by Month</div>
+            <div class="rd-chart-wrap">
+                <canvas id="chart-bmcase"></canvas>
+            </div>
+        </div>
+
+        <div class="rd-panel rd-panel--grid" id="panel-bmcase-grid">
+            <div class="rd-panel-title">BM Case Detail</div>
+            <div class="rd-grid-wrap">
+                <table id="grid-bmcase" class="rd-table">
+                    <thead>
+                        <tr>
+                            <th>BM Case</th>
+                            <th>Month</th>
+                            <th>Year</th>
+                            <th>Count</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+    @* Chart.js from CDN *@
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"
+            integrity="sha512-ZwR1/gSZM3ai6vCdI+LVF1zSq/5HznD3oD+sCoJrzXJ+yKi9uFlIcNMfMpPWUzavNdd/iYMWpcdB9YqlhaYA=="
+            crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="~/js/RawData.js" asp-append-version="true"></script>
+}

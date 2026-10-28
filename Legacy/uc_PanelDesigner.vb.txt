@@ -1,0 +1,136 @@
+<Global.Microsoft.VisualBasic.CompilerServices.DesignerGenerated()> _
+Partial Class uC_Panel
+    Inherits System.Windows.Forms.UserControl
+
+    'UserControl overrides dispose to clean up the component list.
+    <System.Diagnostics.DebuggerNonUserCode()> _
+    Protected Overrides Sub Dispose(ByVal disposing As Boolean)
+        Try
+            If disposing AndAlso components IsNot Nothing Then
+                components.Dispose()
+            End If
+        Finally
+            MyBase.Dispose(disposing)
+        End Try
+    End Sub
+
+    'Required by the Windows Form Designer
+    Private components As System.ComponentModel.IContainer
+
+    'NOTE: The following procedure is required by the Windows Form Designer
+    'It can be modified using the Windows Form Designer.  
+    'Do not modify it using the code editor.
+    <System.Diagnostics.DebuggerStepThrough()> _
+    Private Sub InitializeComponent()
+        Me.components = New System.ComponentModel.Container()
+        Me.Timer1 = New System.Windows.Forms.Timer(Me.components)
+        Me.lblMctype1 = New System.Windows.Forms.Label()
+        Me.lblMC1 = New System.Windows.Forms.Label()
+        Me.lblLocation1 = New System.Windows.Forms.Label()
+        Me.Label1 = New System.Windows.Forms.Label()
+        Me.lblNeedAction1 = New System.Windows.Forms.Label()
+        Me.SuspendLayout()
+        '
+        'Timer1
+        '
+        Me.Timer1.Interval = 1000
+        '
+        'lblMctype1
+        '
+        Me.lblMctype1.BackColor = System.Drawing.Color.LightGray
+        Me.lblMctype1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.lblMctype1.Dock = System.Windows.Forms.DockStyle.Top
+        Me.lblMctype1.Font = New System.Drawing.Font("Microsoft Sans Serif", 11.25!)
+        Me.lblMctype1.ForeColor = System.Drawing.Color.Black
+        Me.lblMctype1.Location = New System.Drawing.Point(0, 63)
+        Me.lblMctype1.Margin = New System.Windows.Forms.Padding(4, 0, 4, 0)
+        Me.lblMctype1.Name = "lblMctype1"
+        Me.lblMctype1.Size = New System.Drawing.Size(251, 30)
+        Me.lblMctype1.TabIndex = 66
+        Me.lblMctype1.Text = "Location"
+        Me.lblMctype1.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'lblMC1
+        '
+        Me.lblMC1.BackColor = System.Drawing.Color.FromArgb(CType(CType(252, Byte), Integer), CType(CType(227, Byte), Integer), CType(CType(138, Byte), Integer))
+        Me.lblMC1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.lblMC1.Dock = System.Windows.Forms.DockStyle.Top
+        Me.lblMC1.Font = New System.Drawing.Font("Microsoft Sans Serif", 14.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.lblMC1.ForeColor = System.Drawing.Color.Black
+        Me.lblMC1.Location = New System.Drawing.Point(0, 30)
+        Me.lblMC1.Margin = New System.Windows.Forms.Padding(4, 0, 4, 0)
+        Me.lblMC1.Name = "lblMC1"
+        Me.lblMC1.Size = New System.Drawing.Size(251, 33)
+        Me.lblMC1.TabIndex = 65
+        Me.lblMC1.Text = "MachineNo"
+        Me.lblMC1.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'lblLocation1
+        '
+        Me.lblLocation1.BackColor = System.Drawing.Color.LightGray
+        Me.lblLocation1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.lblLocation1.Dock = System.Windows.Forms.DockStyle.Top
+        Me.lblLocation1.Font = New System.Drawing.Font("Microsoft Sans Serif", 11.25!)
+        Me.lblLocation1.ForeColor = System.Drawing.Color.Black
+        Me.lblLocation1.Location = New System.Drawing.Point(0, 0)
+        Me.lblLocation1.Margin = New System.Windows.Forms.Padding(4, 0, 4, 0)
+        Me.lblLocation1.Name = "lblLocation1"
+        Me.lblLocation1.Size = New System.Drawing.Size(251, 30)
+        Me.lblLocation1.TabIndex = 64
+        Me.lblLocation1.Text = "Location"
+        Me.lblLocation1.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label1
+        '
+        Me.Label1.BackColor = System.Drawing.Color.LightGray
+        Me.Label1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label1.Dock = System.Windows.Forms.DockStyle.Left
+        Me.Label1.Font = New System.Drawing.Font("Microsoft Sans Serif", 11.25!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.Label1.ForeColor = System.Drawing.Color.Black
+        Me.Label1.Location = New System.Drawing.Point(0, 93)
+        Me.Label1.Margin = New System.Windows.Forms.Padding(4, 0, 4, 0)
+        Me.Label1.Name = "Label1"
+        Me.Label1.Size = New System.Drawing.Size(127, 34)
+        Me.Label1.TabIndex = 67
+        Me.Label1.Text = "Need Action"
+        Me.Label1.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'lblNeedAction1
+        '
+        Me.lblNeedAction1.BackColor = System.Drawing.Color.FromArgb(CType(CType(252, Byte), Integer), CType(CType(227, Byte), Integer), CType(CType(138, Byte), Integer))
+        Me.lblNeedAction1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.lblNeedAction1.Dock = System.Windows.Forms.DockStyle.Left
+        Me.lblNeedAction1.Font = New System.Drawing.Font("Microsoft Sans Serif", 11.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.lblNeedAction1.ForeColor = System.Drawing.Color.Red
+        Me.lblNeedAction1.Location = New System.Drawing.Point(127, 93)
+        Me.lblNeedAction1.Margin = New System.Windows.Forms.Padding(4, 0, 4, 0)
+        Me.lblNeedAction1.Name = "lblNeedAction1"
+        Me.lblNeedAction1.Size = New System.Drawing.Size(122, 34)
+        Me.lblNeedAction1.TabIndex = 68
+        Me.lblNeedAction1.Text = "0"
+        Me.lblNeedAction1.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'uC_Panel
+        '
+        Me.AutoScaleDimensions = New System.Drawing.SizeF(8.0!, 16.0!)
+        Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font
+        Me.AutoSize = True
+        Me.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Controls.Add(Me.lblNeedAction1)
+        Me.Controls.Add(Me.Label1)
+        Me.Controls.Add(Me.lblMctype1)
+        Me.Controls.Add(Me.lblMC1)
+        Me.Controls.Add(Me.lblLocation1)
+        Me.Margin = New System.Windows.Forms.Padding(4, 4, 4, 4)
+        Me.Name = "uC_Panel"
+        Me.Size = New System.Drawing.Size(251, 127)
+        Me.ResumeLayout(False)
+
+    End Sub
+    Public WithEvents Timer1 As Timer
+    Public WithEvents lblMctype1 As Label
+    Public WithEvents lblMC1 As Label
+    Public WithEvents lblLocation1 As Label
+    Public WithEvents Label1 As Label
+    Public WithEvents lblNeedAction1 As Label
+End Class

@@ -1,0 +1,474 @@
+Imports System.Data.SqlClient
+Imports System.IO
+Imports System.Net
+Imports System
+Imports System.Windows.Forms.DataVisualization.Charting
+Public Class Form5
+    Private conn As SqlConnection = New SqlConnection("Data Source=172.26.220.152;Initial Catalog=eMaintenanceSystemDB;User ID=eMaintUser;Password=eMaintUser")
+    Sub LoadData(Process As String, Location As String, Machine As String, DateFrom As String, DateTo As String)
+        Dim dt As New DataTable
+        Dim strQuery As String = String.Empty
+        Dim FreqCount As Integer = 0
+        Dim IfSame As Boolean = False
+        Dim CreatedTable As New DataTable
+        CreatedTable.Columns.Add("Frequency", GetType(String))
+        CreatedTable.Columns.Add("Count", GetType(Integer))
+        CreatedTable.Columns.Add("DateStr", GetType(Date))
+        CreatedTable.Columns.Add("DateMonth", GetType(Integer))
+        CreatedTable.Columns.Add("DateYear", GetType(Integer))
+
+
+        strQuery = "SELECT   a.mcno, b.BMCase AS bmcase, OccurrenceDate, 
+                        CASE WHEN mcno = LEAD(mcno) OVER (ORDER BY mcno DESC, OccurrenceDate ASC, bmcase DESC) 
+                         THEN 
+                          CASE WHEN bmcase = LEAD(bmcase) OVER (ORDER BY mcno DESC, OccurrenceDate ASC, bmcase DESC) 
+                          THEN 'Same as next row' 
+                         ELSE 
+                          CASE WHEN bmcase = LAG(bmcase) OVER (ORDER BY mcno DESC, OccurrenceDate ASC, bmcase DESC) AND mcno = LAG(mcno) OVER (ORDER BY mcno DESC, OccurrenceDate ASC, bmcase DESC) 
+                             THEN 'Same as next row'
+                           ELSE 'Different from next row' 
+                          END 
+                         END 
+                        ELSE 
+                         CASE WHEN bmcase = LAG(bmcase) OVER (ORDER BY mcno DESC, OccurrenceDate ASC, bmcase DESC) AND  mcno = LAG(mcno) OVER (ORDER BY mcno DESC, OccurrenceDate ASC, bmcase DESC)
+                          THEN 'Same as next row' 
+                         ELSE 
+                          'Different from next row' 
+                         END 
+                        END AS comparison_result into #temptable
+                                     FROM   " & GetTablename(Process) & " a INNER JOIN  [eMaintenanceSystemDB].[dbo].[BMCase] b ON a.BMCaseID = b.BMCaseID
+                        WHERE    OccurrenceDate IS NOT NULL and (bmcase not like '%corrective%' and bmcase not like '%preventive%') and Location = '" & Location & "' and OccurrenceDate between '" & DateFrom & "' and '" & DateTo & "' ORDER BY mcno DESC, OccurrenceDate ASC, bmcase DESC
+
+                    select mcno,bmcase as 'BMCase',DATEPART(MM, OccurrenceDate) as 'DateNum',datename(month,OccurrenceDate) as 'DateMonth',datepart(Year,OccurrenceDate) as 'DateYear'
+                    from #temptable
+                    where comparison_result = 'Same as next row'   ORDER BY datepart(Year,OccurrenceDate),DATEPART(MM, OccurrenceDate) asc,MCNO
+                    Drop Table #temptable"
+        Using cmd = New SqlCommand(strQuery, conn)
+            cmd.CommandType = CommandType.Text
+            Dim da = New SqlDataAdapter(cmd)
+            da.Fill(dt)
+        End Using
+
+
+
+        For i As Integer = 0 To dt.Rows.Count - 1
+            Dim targetColumn_Case As String = "BMCase"
+            Dim targetColumn_Mcno As String = "Mcno"
+            Dim row As DataRow = dt.Rows(i)
+
+            If i <> dt.Rows.Count - 1 Then
+                If IfSame = True Then
+                    If AreNextOneColumnValuesEqual(row, dt, targetColumn_Mcno, i + 1) Then
+                        Continue For
+                    Else
+                        FreqCount = 0
+                        IfSame = False
+                    End If
+                Else
+
+                    Dim nextRow As DataRow = dt(i + 1)
+                    If AreNextOneColumnValuesEqual_MCNO(row, dt, targetColumn_Mcno, i) Then
+                        If i + 4 < dt.Rows.Count Then
+                            If AreNextFiveColumnValuesEqual(row, dt, targetColumn_Case, i) Then
+                                FreqCount += 1
+
+                                CreatedTable.Rows.Add("5x", FreqCount, dt.Rows(i).Item("DateMonth").ToString & " " & dt.Rows(i).Item("DateYear").ToString, CInt(dt.Rows(i).Item("DateNum")), CInt(dt.Rows(i).Item("DateYear")))
+                                IfSame = True
+                            ElseIf AreNextFourColumnValuesEqual(row, dt, targetColumn_Case, i) Then
+                                FreqCount += 1
+
+                                CreatedTable.Rows.Add("4x", FreqCount, dt.Rows(i).Item("DateMonth").ToString & " " & dt.Rows(i).Item("DateYear").ToString, CInt(dt.Rows(i).Item("DateNum")), CInt(dt.Rows(i).Item("DateYear")))
+                                IfSame = True
+                            ElseIf AreNextThreeColumnValuesEqual(row, dt, targetColumn_Case, i) Then
+                                FreqCount += 1
+
+                                CreatedTable.Rows.Add("3x", FreqCount, dt.Rows(i).Item("DateMonth").ToString & " " & dt.Rows(i).Item("DateYear").ToString, CInt(dt.Rows(i).Item("DateNum")), CInt(dt.Rows(i).Item("DateYear")))
+                                IfSame = True
+                            ElseIf AreNextTwoColumnValuesEqual(row, dt, targetColumn_Case, i) Then
+                                FreqCount += 1
+                                CreatedTable.Rows.Add("2x", FreqCount, dt.Rows(i).Item("DateMonth").ToString & " " & dt.Rows(i).Item("DateYear").ToString, CInt(dt.Rows(i).Item("DateNum")), CInt(dt.Rows(i).Item("DateYear")))
+                                IfSame = True
+                            End If
+                        ElseIf i + 3 < dt.Rows.Count
+                            If AreNextFourColumnValuesEqual(row, dt, targetColumn_Case, i) Then
+                                FreqCount += 1
+
+                                CreatedTable.Rows.Add("4x", FreqCount, dt.Rows(i).Item("DateMonth").ToString & " " & dt.Rows(i).Item("DateYear").ToString, CInt(dt.Rows(i).Item("DateNum")), CInt(dt.Rows(i).Item("DateYear")))
+                                IfSame = True
+                            ElseIf AreNextThreeColumnValuesEqual(row, dt, targetColumn_Case, i) Then
+                                FreqCount += 1
+
+                                CreatedTable.Rows.Add("3x", FreqCount, dt.Rows(i).Item("DateMonth").ToString & " " & dt.Rows(i).Item("DateYear").ToString, CInt(dt.Rows(i).Item("DateNum")), CInt(dt.Rows(i).Item("DateYear")))
+                                IfSame = True
+                            ElseIf AreNextTwoColumnValuesEqual(row, dt, targetColumn_Case, i) Then
+                                FreqCount += 1
+                                CreatedTable.Rows.Add("2x", FreqCount, dt.Rows(i).Item("DateMonth").ToString & " " & dt.Rows(i).Item("DateYear").ToString, CInt(dt.Rows(i).Item("DateNum")), CInt(dt.Rows(i).Item("DateYear")))
+                                IfSame = True
+                            End If
+                        ElseIf i + 2 < dt.Rows.Count
+                            If AreNextThreeColumnValuesEqual(row, dt, targetColumn_Case, i) Then
+                                FreqCount += 1
+
+                                CreatedTable.Rows.Add("3x", FreqCount, dt.Rows(i).Item("DateMonth").ToString & " " & dt.Rows(i).Item("DateYear").ToString, CInt(dt.Rows(i).Item("DateNum")), CInt(dt.Rows(i).Item("DateYear")))
+                                IfSame = True
+                            ElseIf AreNextTwoColumnValuesEqual(row, dt, targetColumn_Case, i) Then
+                                FreqCount += 1
+                                CreatedTable.Rows.Add("2x", FreqCount, dt.Rows(i).Item("DateMonth").ToString & " " & dt.Rows(i).Item("DateYear").ToString, CInt(dt.Rows(i).Item("DateNum")), CInt(dt.Rows(i).Item("DateYear")))
+                                IfSame = True
+                            End If
+                        ElseIf i + 1 < dt.Rows.Count
+                            If AreNextTwoColumnValuesEqual(row, dt, targetColumn_Case, i) Then
+                                FreqCount += 1
+                                CreatedTable.Rows.Add("2x", FreqCount, dt.Rows(i).Item("DateMonth").ToString & " " & dt.Rows(i).Item("DateYear").ToString, CInt(dt.Rows(i).Item("DateNum")), CInt(dt.Rows(i).Item("DateYear")))
+                                IfSame = True
+                            End If
+                        End If
+
+                    Else
+                        IfSame = False
+                    End If
+                End If
+            End If
+        Next
+
+        CreatedTable.DefaultView.Sort = "DateStr Desc,Frequency asc,Count asc"
+        CreatedTable = CreatedTable.DefaultView.ToTable
+
+        Dim duplicates = CreatedTable.AsEnumerable().
+                                                    GroupBy(Function(r) New With {
+                                                        Key .Frequency = r.Field(Of String)("Frequency"),
+                                                        Key .DateStr = r.Field(Of Date)("DateStr"),
+                                                         Key .DateNum = r.Field(Of Integer)("DateMonth"),
+                                                          Key .DateYear = r.Field(Of Integer)("DateYear")
+                                                    }).
+                                                    Where(Function(g) g.Count() > 1).Select(Function(g) New With {
+                                                        Key .Name = g.Key.Frequency,
+                                                        Key .Date = g.Key.DateStr,
+                                                        Key .DateMonth = g.Key.DateNum,
+                                                        Key .DateYear = g.Key.DateYear,
+                                                        Key .Count = g.Count(),
+                                                        Key .Total = g.Sum(Function(s) s.Field(Of Int32)("Count"))
+                                                    }).
+                                                    OrderByDescending(Function(j) j.Total).
+                                                    ToList()
+
+        Dim dt1 As New DataTable()
+        dt1.Columns.Add("Frequency", GetType(String))
+        dt1.Columns.Add("Date", GetType(String))
+        dt1.Columns.Add("Total", GetType(Integer))
+        dt1.Columns.Add("DateMonth", GetType(Integer))
+        dt1.Columns.Add("DateYear", GetType(Integer))
+
+
+        For Each item In duplicates
+            Dim row As DataRow = dt1.NewRow()
+            row("Frequency") = item.Name
+            row("Date") = item.Date
+            row("Total") = item.Total
+            row("DateMonth") = item.DateMonth
+            row("DateYear") = item.DateYear
+            dt1.Rows.Add(row)
+        Next
+
+        dt1.DefaultView.Sort = "DateYear asc,DateMonth ASC,Total desc"
+        dt1 = dt1.DefaultView.ToTable
+        DataGridView2.DataSource = dt1
+        DataGridView2.Columns(1).Visible = False
+
+
+
+        Chart1.Series.Clear()
+
+
+        'For i = 0 To dt1.Rows.Count - 1
+        '    If dt1.Rows(i).Item("Frequency") = "5x" Then
+        '        Chart3.Series(3).Points.AddXY(CInt(dt1.Rows(i).Item("DateMonth")) & "/" & CInt(dt1.Rows(i).Item("DateYear")), CInt(dt1.Rows(i).Item("Total")))
+
+        '    ElseIf dt1.Rows(i).Item("Frequency") = "4x" Then
+        '        Chart3.Series(2).Points.AddXY(CInt(dt1.Rows(i).Item("DateMonth")) & "/" & CInt(dt1.Rows(i).Item("DateYear")), CInt(dt1.Rows(i).Item("Total")))
+
+        '    ElseIf dt1.Rows(i).Item("Frequency") = "3x" Then
+        '        Chart3.Series(1).Points.AddXY(CInt(dt1.Rows(i).Item("DateMonth")) & "/" & CInt(dt1.Rows(i).Item("DateYear")), CInt(dt1.Rows(i).Item("Total")))
+
+        '        'ElseIf dt1.Rows(i).Item("Frequency") = "2x" Then
+        '        '    Chart3.Series(0).Points.AddXY(CInt(dt1.Rows(i).Item("DateMonth")) & "/" & CInt(dt1.Rows(i).Item("DateYear")), CInt(dt1.Rows(i).Item("Total")))
+
+        '        'ElseIf dt1.Rows(i).Item("Frequency") = "6x" Then
+        '        '    Chart3.Series(4).Points.AddXY(convertDate(dt1.Rows(i).Item("DateMonth"), dt1.Rows(i).Item("DateYear")), CInt(dt1.Rows(i).Item("Total")))
+
+        '        'ElseIf dt1.Rows(i).Item("Frequency") = "7x" Then
+        '        '    Chart3.Series(5).Points.AddXY(convertDate(dt1.Rows(i).Item("DateMonth"), dt1.Rows(i).Item("DateYear")), CInt(dt1.Rows(i).Item("Total")))
+
+        '        'ElseIf dt1.Rows(i).Item("Frequency") = "8x" Then
+        '        '    Chart3.Series(6).Points.AddXY(convertDate(dt1.Rows(i).Item("DateMonth"), dt1.Rows(i).Item("DateYear")), CInt(dt1.Rows(i).Item("Total")))
+
+        '        'ElseIf dt1.Rows(i).Item("Frequency") = "9x" Then
+        '        '    Chart3.Series(7).Points.AddXY(convertDate(dt1.Rows(i).Item("DateMonth"), dt1.Rows(i).Item("DateYear")), CInt(dt1.Rows(i).Item("Total")))
+
+        '        'ElseIf dt1.Rows(i).Item("Frequency") = "10x" Then
+        '        '    Chart3.Series(8).Points.AddXY(ConvertDate(dt1.Rows(i).Item("DateMonth"), dt1.Rows(i).Item("DateYear")), CInt(dt1.Rows(i).Item("Total")))
+        '    End If
+
+        'Next
+        Dim strList_test As New List(Of String) From {"2x", "3x", "4x", "5x", "6x", "7x", "8x", "9x", "10x"}
+        For Each country As String In strList_test
+            If country <> "" Then
+                Dim series1 As New Series(country)
+                series1.ChartType = SeriesChartType.StackedColumn
+                series1.LabelToolTip = "#VALX"
+                series1.CustomProperties = ("LabelStyle=Top")
+                series1.Color = RandomRGBColor()
+                'series1.XValueType = ChartValueType.Date
+
+
+                For i = 0 To dt1.Rows.Count - 1
+                    If country = dt1.Rows(i).Item("Frequency") Then
+                        Dim dateValue As Date = New Date(CInt(dt1.Rows(i).Item("DateYear")), CInt(dt1.Rows(i).Item("DateMonth")), 1)
+                        Dim totalValue As Integer = CInt(dt1.Rows(i).Item("Total"))
+                        series1.Points.AddXY(dateValue, totalValue)
+                    End If
+
+
+                Next
+                Chart1.Series.Add(series1)
+            End If
+        Next
+
+
+
+        Chart1.ChartAreas(0).AxisY.Title = "BM Count"
+        Chart1.Legends(0).Enabled = True
+
+
+        ' --------------------------------------------------------------
+        Dim dt2 As New DataTable
+        Dim strQuery2 As String = String.Empty
+        strQuery2 = "SELECT   a.mcno, b.BMCase AS bmcase, OccurrenceDate, CASE WHEN mcno = LEAD(mcno) OVER (ORDER BY mcno DESC, OccurrenceDate ASC, bmcase DESC) 
+                                        THEN CASE WHEN bmcase = LEAD(bmcase) OVER (ORDER BY mcno DESC, OccurrenceDate ASC, bmcase DESC) THEN 'Same as next row' ELSE CASE WHEN bmcase = LAG(bmcase) 
+                                        OVER (ORDER BY mcno DESC, OccurrenceDate ASC, bmcase DESC) AND mcno = LAG(mcno) OVER (ORDER BY mcno DESC, OccurrenceDate ASC, bmcase DESC) 
+                                        THEN 'Same as next row' ELSE 'Different from next row' END END ELSE CASE WHEN bmcase = LAG(bmcase) OVER (ORDER BY mcno DESC, OccurrenceDate ASC, bmcase DESC) AND 
+                                        mcno = LAG(mcno) OVER (ORDER BY mcno DESC, OccurrenceDate ASC, bmcase DESC) THEN 'Same as next row' ELSE 'Different from next row' END END AS comparison_result into #temptable
+                                        FROM         " & GetTablename(Process) & " a INNER JOIN
+                                                                 [eMaintenanceSystemDB].[dbo].[BMCase] b ON a.BMCaseID = b.BMCaseID
+                                        WHERE     OccurrenceDate IS NOT NULL and (bmcase not like '%corrective%' and bmcase not like '%preventive%') and Location = '" & Location & "'
+
+                                        select bmcase as 'BMCase',count(bmcase) as  'BMCount',DATEPART(MM, OccurrenceDate) as 'DateNum',datename(month,OccurrenceDate) as 'DateMonth',datepart(Year,OccurrenceDate) as 'DateYear' from #temptable where comparison_result = 'Same as next row' and OccurrenceDate between '" & DateFrom & "' and '" & DateTo & "'   group by DATEPART(MM, OccurrenceDate),bmcase,datepart(Year,OccurrenceDate),datename(month,OccurrenceDate) ORDER BY datepart(Year,OccurrenceDate),DATEPART(MM, OccurrenceDate) asc , BMCount desc
+                                        Drop Table #temptable"
+        Using cmd = New SqlCommand(strQuery2, conn)
+            cmd.CommandType = CommandType.Text
+            Dim da = New SqlDataAdapter(cmd)
+            da.Fill(dt2)
+        End Using
+        DataGridView1.DataSource = dt2
+        DataGridView1.Columns(2).Visible = False
+
+        Chart2.Series.Clear()
+
+        Dim strList As List(Of String) = (From p In dt2.AsEnumerable()
+                                          Select p.Field(Of String)("BMCase")).Distinct().ToList()
+
+        Dim Year As List(Of Integer) = (From p In dt2.AsEnumerable()
+                                        Select p.Field(Of Integer)("DateYear")).Distinct().ToList()
+
+
+
+        For Each country As String In strList
+            If country <> "" Then
+                Dim series As New Series(country)
+                series.ChartType = SeriesChartType.StackedColumn
+                series.LabelToolTip = "#VALX"
+                series.CustomProperties = ("LabelStyle=Top")
+                series.Color = RandomRGBColor()
+                series.XValueType = ChartValueType.Date
+
+
+                For i = 0 To dt2.Rows.Count - 1
+                    If i <> dt2.Rows.Count - 1 Then
+
+
+                        For Each dateyear As String In Year
+                            If dateyear = dt2.Rows(i).Item("DateYear") Then
+                                If country = dt2.Rows(i).Item("BMCase") Then
+                                    If (dt2.Rows(i).Item("DateMonth").ToString) = "April" Then
+                                        series.Points.AddXY("Apr " & dateyear, CInt(dt2.Rows(i).Item("BMCount")))
+                                    ElseIf (dt2.Rows(i).Item("DateMonth").ToString) = "May" Then
+                                        series.Points.AddXY("May " & dateyear, CInt(dt2.Rows(i).Item("BMCount")))
+                                    ElseIf (dt2.Rows(i).Item("DateMonth").ToString) = "June" Then
+                                        series.Points.AddXY("June " & dateyear, CInt(dt2.Rows(i).Item("BMCount")))
+                                    ElseIf (dt2.Rows(i).Item("DateMonth").ToString) = "July" Then
+                                        series.Points.AddXY("July " & dateyear, CInt(dt2.Rows(i).Item("BMCount")))
+                                    ElseIf (dt2.Rows(i).Item("DateMonth").ToString) = "August" Then
+                                        series.Points.AddXY("Aug " & dateyear, CInt(dt2.Rows(i).Item("BMCount")))
+                                    ElseIf (dt2.Rows(i).Item("DateMonth").ToString) = "September" Then
+                                        series.Points.AddXY("Sept " & dateyear, CInt(dt2.Rows(i).Item("BMCount")))
+                                    ElseIf (dt2.Rows(i).Item("DateMonth").ToString) = "October" Then
+                                        series.Points.AddXY("Oct " & dateyear, CInt(dt2.Rows(i).Item("BMCount")))
+                                    ElseIf (dt2.Rows(i).Item("DateMonth").ToString) = "November" Then
+                                        series.Points.AddXY("Nov " & dateyear, CInt(dt2.Rows(i).Item("BMCount")))
+                                    ElseIf (dt2.Rows(i).Item("DateMonth").ToString) = "December" Then
+                                        series.Points.AddXY("Dec " & dateyear, CInt(dt2.Rows(i).Item("BMCount")))
+                                    ElseIf (dt2.Rows(i).Item("DateMonth").ToString) = "January" Then
+                                        series.Points.AddXY("Jan " & dateyear, CInt(dt2.Rows(i).Item("BMCount")))
+                                    ElseIf (dt2.Rows(i).Item("DateMonth").ToString) = "February" Then
+                                        series.Points.AddXY("Feb " & dateyear, CInt(dt2.Rows(i).Item("BMCount")))
+                                    ElseIf (dt2.Rows(i).Item("DateMonth").ToString) = "March" Then
+                                        series.Points.AddXY("Mar " & dateyear, CInt(dt2.Rows(i).Item("BMCount")))
+
+                                    End If
+                                End If
+                            End If
+                        Next
+                    End If
+
+                Next
+                Chart2.Series.Add(series)
+            End If
+
+        Next
+
+
+        Chart2.ChartAreas(0).AxisY.Title = "BM Count"
+        Chart2.Legends(0).Enabled = True
+    End Sub
+    Function ConvertDate(ByVal tempStr As String, ByVal dateYear As Integer) As String
+        Dim monthMap As New Dictionary(Of String, String) From {
+        {"1", "Jan"}, {"2", "Feb"}, {"3", "Mar"}, {"4", "Apr"},
+        {"5", "May"}, {"6", "June"}, {"7", "July"}, {"8", "Aug"},
+        {"9", "Sept"}, {"10", "Oct"}, {"11", "Nov"}, {"12", "Dec"}
+    }
+
+        Dim monthName As String = monthMap(tempStr)
+        Return $"{monthName} {dateYear}"
+    End Function
+
+    'Function convertDate(ByVal tempStr As String, ByVal dateyear As Integer) As String
+    '    Dim trueStr As String = ""
+    '    trueStr = "May " & dateyear
+    '    If tempStr = "4" Then
+    '        trueStr = "Apr " & dateyear
+    '    ElseIf tempStr = "5" Then
+    '    ElseIf tempStr = "6" Then
+    '        trueStr = "June " & dateyear
+    '    ElseIf tempStr = "7" Then
+    '        trueStr = "July " & dateyear
+    '    ElseIf tempStr = "8" Then
+    '        trueStr = "Aug " & dateyear
+    '    ElseIf tempStr = "9" Then
+    '        trueStr = "Sept " & dateyear
+    '    ElseIf tempStr = "10" Then
+    '        trueStr = "Oct " & dateyear
+    '    ElseIf tempStr = "11" Then
+    '        trueStr = "Nov " & dateyear
+    '    ElseIf tempStr = "12" Then
+    '        trueStr = "Dec " & dateyear
+    '    ElseIf tempStr = "1" Then
+    '        trueStr = "Jan " & dateyear
+    '    ElseIf tempStr = "2" Then
+    '        trueStr = "Feb " & dateyear
+    '    ElseIf tempStr = "3" Then
+    '        trueStr = "Mar " & dateyear
+
+    '    End If
+
+    '    Return trueStr
+    'End Function
+    Function AreNextFiveColumnValuesEqual(currentRow As DataRow, dataTable As DataTable, column As String, startIndex As Integer) As Boolean
+        For i As Integer = startIndex To startIndex + 4
+            If Not (currentRow(column).Equals(dataTable.Rows(i)(column)) And currentRow("Mcno").Equals(dataTable.Rows(i)("Mcno"))) Then
+                Return False
+
+            End If
+        Next
+        Return True
+    End Function
+    Function AreNextFourColumnValuesEqual(currentRow As DataRow, dataTable As DataTable, column As String, startIndex As Integer) As Boolean
+        For i As Integer = startIndex To startIndex + 3
+            If Not (currentRow(column).Equals(dataTable.Rows(i)(column)) And currentRow("Mcno").Equals(dataTable.Rows(i)("Mcno"))) Then
+                Return False
+
+            End If
+        Next
+        Return True
+    End Function
+    Function AreNextThreeColumnValuesEqual(currentRow As DataRow, dataTable As DataTable, column As String, startIndex As Integer) As Boolean
+        For i As Integer = startIndex To startIndex + 2
+            If Not (currentRow(column).Equals(dataTable.Rows(i)(column)) And currentRow("Mcno").Equals(dataTable.Rows(i)("Mcno"))) Then
+                Return False
+            End If
+        Next
+        Return True
+    End Function
+    Function AreNextTwoColumnValuesEqual(currentRow As DataRow, dataTable As DataTable, column As String, startIndex As Integer) As Boolean
+        For i As Integer = startIndex To startIndex + 1
+            If Not (currentRow(column).Equals(dataTable.Rows(i)(column)) And currentRow("Mcno").Equals(dataTable.Rows(i)("Mcno"))) Then
+                Return False
+            End If
+        Next
+        Return True
+    End Function
+    Function AreNextOneColumnValuesEqual(currentRow As DataRow, dataTable As DataTable, column As String, startIndex As Integer) As Boolean
+        For i As Integer = startIndex To startIndex
+            If Not (currentRow(column).Equals(dataTable.Rows(i)(column)) And currentRow("Mcno").Equals(dataTable.Rows(i)("Mcno"))) Then
+                Return False
+            End If
+        Next
+        Return True
+    End Function
+    Function AreNextOneColumnValuesEqual_MCNO(currentRow As DataRow, dataTable As DataTable, column As String, startIndex As Integer) As Boolean
+        For i As Integer = startIndex To startIndex
+            If Not currentRow(column).Equals(dataTable.Rows(i)(column)) Then
+                Return False
+            End If
+        Next
+        Return True
+    End Function
+    Private Function GetTablename(Process As String) As String
+        GetTablename = ""
+        Select Case Process
+            Case "DC"
+                GetTablename = "DCBMMaintenance"
+            Case "DB"
+                GetTablename = "DBBMMaintenance"
+            Case "WB"
+                GetTablename = "WBBMMaintenance"
+            Case "MP"
+                GetTablename = "MPBMMaintenance"
+            Case "PL"
+                GetTablename = "PLBMMaintenance"
+            Case "FL"
+                GetTablename = "FLBMMaintenance"
+            Case "FT"
+                GetTablename = "FTBMMaintenance"
+            Case "TP"
+                GetTablename = "TPBMMaintenance"
+            Case "EDS"
+                GetTablename = "EDSBMMaintenance"
+            Case "MEMS"
+                GetTablename = "MEMSBMaintenance"
+        End Select
+
+        Return GetTablename
+    End Function
+
+    Private random As New Random
+    Public Function RandomRGBColor() As Color
+        Return Color.FromArgb(255,
+            random.Next(0, 255),
+            random.Next(0, 255),
+            random.Next(0, 255))
+    End Function
+    Function GetTable() As DataTable
+        Dim table As New DataTable
+
+        table.Columns.Add("WeekID", GetType(Integer))
+        table.Columns.Add("BMCount", GetType(Integer))
+        table.Columns.Add("BMCase", GetType(String))
+
+
+        Return table
+    End Function
+
+    Private Sub Form5_Load(sender As Object, e As EventArgs) Handles MyBase.Load
+
+    End Sub
+End Class

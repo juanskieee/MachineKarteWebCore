@@ -1,0 +1,3379 @@
+Imports System.Data.SqlClient
+Imports System.Globalization
+Imports System.Net
+Imports System.Net.Http
+Imports System.Text
+Public Class uC_Test
+    Dim globalUser As String = ""
+    Dim TimerNum As Integer = 0
+    Dim PanelCount_Temp As Integer = 0
+    Dim NeedActionCount As Integer = 0
+    Dim dtNotEquals As New DataTable
+    Dim dtNewRowSame As New DataTable
+    Private conn As SqlConnection = New SqlConnection(My.Settings.DBConnection)
+    Public Sub LoadMain(LoadProcess As String, LoadLocation As String, LoadMcno As String, LoadDate1 As String, LoadDate2 As String, ActionLine As Integer, MCtype As String, RowCount As Integer, PanelCount As Integer, eUser As String)
+        globalUser = eUser
+        PanelCount_Temp = PanelCount
+        LoadMCName(LoadProcess, LoadLocation, LoadMcno, LoadDate1, LoadDate2, MCtype, ActionLine, RowCount, eUser)
+
+    End Sub
+    Sub GetDuplicateRowsByColumn(table As DataTable, columnName As String, FirstColumn As String)
+        Dim duplicateRows As New List(Of DataRow)()
+        Dim dt As DataTable = table.Clone()
+        Dim uniqueValues As New HashSet(Of Object)()
+        Dim NotduplicateRows As New List(Of DataRow)()
+        Dim rowCount = table.Rows.Count
+        For i As Integer = 0 To rowCount - 2
+            Dim currentRow As DataRow = table.Rows(i)
+            Dim nextRow As DataRow = table.Rows(i + 1)
+            Dim PrevRow As DataRow = Nothing
+            Dim currentValue As Object = currentRow(columnName)
+            Dim nextValue As Object = nextRow(columnName)
+            Dim PrevValue As Object = Nothing
+
+            If currentValue.Equals(nextValue) Then
+                duplicateRows.Add(currentRow)
+            Else
+                If i <> 0 Then
+                    PrevRow = table.Rows(i - 1)
+                    PrevValue = PrevRow(columnName)
+                    If currentValue.Equals(PrevValue) Then
+                        duplicateRows.Add(currentRow)
+                    Else
+                        NotduplicateRows.Add(currentRow)
+                    End If
+                End If
+                uniqueValues.Add(currentValue)
+            End If
+
+            If i = rowCount - 2 Then
+                Dim lastRow As DataRow = table.Rows(rowCount - 1)
+                Dim lastValue As Object = lastRow(columnName)
+                If currentValue.Equals(lastValue) Then
+                    duplicateRows.Add(lastRow)
+                End If
+            End If
+
+        Next
+
+        For Each duplicateRow As DataRow In duplicateRows
+            dt.ImportRow(duplicateRow)
+        Next
+
+        'For Each duplicateRow As DataRow In NotduplicateRows
+        '    dtNotEquals.ImportRow(duplicateRow)
+        'Next
+
+
+        AreOtherRowsSame(dt, FirstColumn)
+
+    End Sub
+    Sub AreOtherRowsSame(table As DataTable, firstColumn As String)
+        Dim SolveCase As Boolean = False
+        Dim TempDateTest As Date
+        Dim ItemCount As Integer = 0
+        Dim rowCount = table.Rows.Count
+        Dim newDt As New DataTable
+
+
+        dtNewRowSame = table.Clone
+        newDt = table.Clone
+
+
+        For i As Integer = 0 To rowCount - 2
+            Dim currentRow As DataRow = table.Rows(i)
+            Dim nextRow As DataRow = table.Rows(i + 1)
+            Dim currentValue As Object = currentRow("BMCase")
+            Dim nextValue As Object = nextRow("BMCase")
+
+            If i = 0 Then
+                newDt.ImportRow(currentRow)
+            End If
+            If Not currentValue.Equals(nextValue) Then
+                newDt.ImportRow(nextRow)
+            End If
+        Next
+
+        For x As Integer = 0 To rowCount - 1
+            Dim XcurrentRow As DataRow = table.Rows(x)
+            Dim XcurrentValue As Object = XcurrentRow("BMCase")
+            Dim XcurrentTime As Object = XcurrentRow("Timeofrequest")
+            Dim XcurrentValue_ID As Object = XcurrentRow("buttonname")
+            For y As Integer = 0 To newDt.Rows.Count - 1
+                Dim YcurrentRow As DataRow = newDt.Rows(y)
+                Dim YcurrentValue As Object = YcurrentRow("BMCase")
+                Dim YcurrentTime As Object = YcurrentRow("Timeofrequest")
+
+                If YcurrentValue.Equals(XcurrentValue) Then
+                    Dim DateNow_temp As DateTime = DateTime.ParseExact(firstColumn, "MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+                    Dim dateY As DateTime = DateTime.ParseExact(YcurrentTime, "MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+                    Dim daysTemp As TimeSpan = DateNow_temp - dateY
+
+                    If daysTemp.Days >= 7 Then
+                        If (table.Rows(x).Item("HaveAction").ToString) = "Yes" Then
+                            CType(Me.Controls.Find(XcurrentValue_ID, True).First, Button).BackColor = Color.Green
+                            CType(Me.Controls.Find(XcurrentValue_ID, True).First, Button).ForeColor = Color.White
+                            table.Rows(x).Item("HaveAction") = "Green"
+                        End If
+
+                        Exit For
+                    Else
+                        If Not YcurrentTime.Equals(XcurrentTime) Then
+                            Dim date1 As DateTime = DateTime.ParseExact(YcurrentTime, "MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+                            Dim date2 As DateTime = DateTime.ParseExact(XcurrentTime, "MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+                            Dim tempdate As TimeSpan = date1 - date2
+                            If tempdate.Days >= 7 Then
+
+                                If (table.Rows(x).Item("HaveAction").ToString) = "Yes" Then
+                                    CType(Me.Controls.Find(XcurrentValue_ID, True).First, Button).BackColor = Color.Green
+                                    CType(Me.Controls.Find(XcurrentValue_ID, True).First, Button).ForeColor = Color.White
+                                    table.Rows(x).Item("HaveAction") = "Green"
+                                End If
+
+                            End If
+                        End If
+                    End If
+                End If
+            Next
+        Next
+
+        'For i As Integer = 0 To rowCount - 2
+        '    Dim currentRow As DataRow = table.Rows(i)
+        '    Dim nextRow As DataRow = table.Rows(i + 1)
+        '    Dim PrevRow As DataRow = Nothing
+        '    Dim currentValue_ID As Object = currentRow("buttonname")
+        '    Dim currentValue As Object = currentRow("BMCase")
+        '    Dim nextValue As Object = nextRow("BMCase")
+        '    Dim PrevValue As Object = Nothing
+        '    Dim currentValueDate As Object = currentRow("Timeofrequest")
+        '    Dim nextValueDate As Object = nextRow("Timeofrequest")
+        '    Dim PrevValueDate As Object = Nothing
+
+
+        '    If currentValue.Equals(nextValue) Then
+        '        ItemCount += 1
+        '        If SolveCase = True Then
+        '            If Not currentValue.Equals(nextValue) Then
+        '                SolveCase = False
+        '            Else
+        '                If (table.Rows(i).Item("HaveAction").ToString) = "Yes" Then
+        '                    CType(Me.Controls.Find(currentValue_ID, True).First, Button).BackColor = Color.Green
+        '                    CType(Me.Controls.Find(currentValue_ID, True).First, Button).ForeColor = Color.White
+        '                    table.Rows(i).Item("HaveAction") = "Green"
+        '                End If
+        '                table.Rows(i).Item("isSame") = "Yes"
+        '            End If
+        '        Else
+        '            Dim date1 As DateTime
+        '            If TempDateTest = Nothing Then
+        '                date1 = DateTime.ParseExact(currentValueDate, "MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+        '            Else
+        '                date1 = TempDateTest
+        '            End If
+        '            Dim date2 As DateTime = DateTime.ParseExact(nextValueDate, "MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+        '            Dim tempdate As TimeSpan = date1 - date2
+        '            If tempdate.Days >= 7 Then
+        '                SolveCase = True
+        '            Else
+        '                TempDateTest = DateTime.ParseExact(currentValueDate, "MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+        '            End If
+        '        End If
+
+        '    Else
+
+        '        If ItemCount = 1 Then
+        '            Dim date1 As DateTime = DateTime.ParseExact(currentValueDate, "MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+        '            Dim date2 As DateTime = DateTime.ParseExact(nextValueDate, "MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+        '            Dim tempdate As TimeSpan = date1 - date2
+        '            If tempdate.Days >= 7 Then
+        '                If (table.Rows(i).Item("HaveAction").ToString) <> "No" Then
+        '                    table.Rows(i).Item("HaveAction") = "Green"
+        '                    CType(Me.Controls.Find(currentValue_ID, True).First, Button).BackColor = Color.Green
+        '                    CType(Me.Controls.Find(currentValue_ID, True).First, Button).ForeColor = Color.White
+        '                End If
+
+        '                table.Rows(i).Item("isSame") = "Yes"
+        '            End If
+        '        Else
+
+        '            If (table.Rows(i).Item("HaveAction").ToString) <> "No" Then
+        '                table.Rows(i).Item("HaveAction") = "Green"
+        '                CType(Me.Controls.Find(currentValue_ID, True).First, Button).BackColor = Color.Green
+        '                CType(Me.Controls.Find(currentValue_ID, True).First, Button).ForeColor = Color.White
+        '            End If
+
+        '            table.Rows(i).Item("isSame") = "Yes"
+
+
+        '        End If
+
+        '        TempDateTest = Nothing
+        '        SolveCase = False
+
+        '        ItemCount = 0
+
+        '    End If
+
+        'If i = rowCount - 1 Then
+        '    Dim lastRow As DataRow = table.Rows(rowCount - 1)
+        '    Dim last2Row As DataRow = table.Rows(i)
+        '    Dim currentValueDateLast As Object = currentRow("Timeofrequest")
+        '    Dim nextValueDateLast As Object = last2Row("Timeofrequest")
+        '    Dim currentValue_IDLast As Object = lastRow("buttonname")
+        '    Dim lastValue As Object = lastRow("BMCase")
+        '    If table.Rows.Count <= 3 Then
+
+
+        '        'If Not IsDBNull(currentValue_IDLast) Then
+        '        If currentValue.Equals(lastValue) Then
+        '            Dim date1 As DateTime = DateTime.ParseExact(currentValueDateLast, "MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+        '            Dim date2 As DateTime = DateTime.ParseExact(nextValueDateLast, "MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+        '            Dim tempdate As TimeSpan = date1 - date2
+        '            If tempdate.Days >= 7 Then
+        '                If (table.Rows(i).Item("HaveAction").ToString) = "Yes" Then
+        '                    table.Rows(i).Item("HaveAction") = "Green"
+        '                    CType(Me.Controls.Find(currentValue_IDLast, True).First, Button).BackColor = Color.Green
+        '                    CType(Me.Controls.Find(currentValue_IDLast, True).First, Button).ForeColor = Color.White
+        '                End If
+
+        '                table.Rows(i).Item("isSame") = "Yes"
+        '                '  End If
+
+        '            End If
+        '        End If
+        '    Else
+
+        '    End If
+        'End If
+        'Next
+
+
+        dtNewRowSame = table
+
+    End Sub
+    Private Sub CheckIfSolve(dtSolve As DataTable)
+        Dim FirstColumn As String = dtSolve.Rows(0).Item("TimeofRequest").ToString
+        dtSolve.DefaultView.Sort = "BMCase ASC,TimeofRequest DESC"
+        Dim sortedDt As DataTable = dtSolve.DefaultView.ToTable()
+        GetDuplicateRowsByColumn(sortedDt, "BMCase", FirstColumn)
+
+    End Sub
+    Private Sub LoadProcessCapa(ActionLine As Integer, RowCount As Integer)
+
+        Dim Minus As Integer = 0
+        Dim Count As Integer = 0
+
+        If ActionLine >= RowCount Then
+        Else
+
+            For x = (RowCount - 1) To ((RowCount - 1) - ActionLine) Step -1
+
+                CType(Me.Controls.Find("lblMC1_Case" & x, True).First, Label).BackColor = Color.MistyRose
+                CType(Me.Controls.Find("lblMC1_Date" & x, True).First, Label).BackColor = Color.Salmon
+                CType(Me.Controls.Find("lblMC1_Header" & x, True).First, Label).BackColor = Color.Salmon
+
+                Count = x
+            Next
+
+
+            If Count <> 0 Then
+                If 6 Mod Count Then
+                    For x = Count To Count - 1 Step -1
+
+
+                        CType(Me.Controls.Find("lblMC1_Case" & x, True).First, Label).BackColor = Color.LightCyan
+                        CType(Me.Controls.Find("lblMC1_Date" & x, True).First, Label).BackColor = Color.DeepSkyBlue
+                        CType(Me.Controls.Find("lblMC1_Header" & x, True).First, Label).BackColor = Color.DeepSkyBlue
+
+                        Count -= 1
+                    Next
+
+
+                    For x = Count To Count - 1 Step -1
+
+                        CType(Me.Controls.Find("lblMC1_Case" & x, True).First, Label).BackColor = Color.Lavender
+                        CType(Me.Controls.Find("lblMC1_Date" & x, True).First, Label).BackColor = Color.MediumPurple
+                        CType(Me.Controls.Find("lblMC1_Header" & x, True).First, Label).BackColor = Color.MediumPurple
+
+                        Count -= 1
+                    Next
+
+
+                    For x = Count To 0 Step -1
+
+                        CType(Me.Controls.Find("lblMC1_Case" & x, True).First, Label).BackColor = Color.Honeydew
+                        CType(Me.Controls.Find("lblMC1_Date" & x, True).First, Label).BackColor = Color.LimeGreen
+                        CType(Me.Controls.Find("lblMC1_Header" & x, True).First, Label).BackColor = Color.LimeGreen
+
+                    Next
+
+                ElseIf 4 Mod Count Then
+                    If Count = 6 Then
+                        For x = Count To Count - 1 Step -1
+
+
+                            CType(Me.Controls.Find("lblMC1_Case" & x, True).First, Label).BackColor = Color.LightCyan
+                            CType(Me.Controls.Find("lblMC1_Date" & x, True).First, Label).BackColor = Color.DeepSkyBlue
+                            CType(Me.Controls.Find("lblMC1_Header" & x, True).First, Label).BackColor = Color.DeepSkyBlue
+
+                            Count -= 1
+                        Next
+
+
+                        For x = Count To Count - 1 Step -1
+
+                            CType(Me.Controls.Find("lblMC1_Case" & x, True).First, Label).BackColor = Color.Lavender
+                            CType(Me.Controls.Find("lblMC1_Date" & x, True).First, Label).BackColor = Color.MediumPurple
+                            CType(Me.Controls.Find("lblMC1_Header" & x, True).First, Label).BackColor = Color.MediumPurple
+
+                            Count -= 1
+                        Next
+
+
+                        For x = Count To 0 Step -1
+
+                            CType(Me.Controls.Find("lblMC1_Case" & x, True).First, Label).BackColor = Color.Honeydew
+                            CType(Me.Controls.Find("lblMC1_Date" & x, True).First, Label).BackColor = Color.LimeGreen
+                            CType(Me.Controls.Find("lblMC1_Header" & x, True).First, Label).BackColor = Color.LimeGreen
+
+                        Next
+                    Else
+                        For x = Count To Count - 1 Step -1
+
+
+                            CType(Me.Controls.Find("lblMC1_Case" & x, True).First, Label).BackColor = Color.LightCyan
+                            CType(Me.Controls.Find("lblMC1_Date" & x, True).First, Label).BackColor = Color.DeepSkyBlue
+                            CType(Me.Controls.Find("lblMC1_Header" & x, True).First, Label).BackColor = Color.DeepSkyBlue
+
+                            Count -= 1
+                        Next
+
+
+                        For x = Count To Count - 1 Step -1
+
+                            CType(Me.Controls.Find("lblMC1_Case" & x, True).First, Label).BackColor = Color.Lavender
+                            CType(Me.Controls.Find("lblMC1_Date" & x, True).First, Label).BackColor = Color.MediumPurple
+                            CType(Me.Controls.Find("lblMC1_Header" & x, True).First, Label).BackColor = Color.MediumPurple
+
+                            Count -= 1
+                        Next
+                    End If
+
+                Else
+                    If Count = 2 Then
+                        For x = Count To Count - 1 Step -1
+
+
+                            CType(Me.Controls.Find("lblMC1_Case" & x, True).First, Label).BackColor = Color.LightCyan
+                            CType(Me.Controls.Find("lblMC1_Date" & x, True).First, Label).BackColor = Color.DeepSkyBlue
+                            CType(Me.Controls.Find("lblMC1_Header" & x, True).First, Label).BackColor = Color.DeepSkyBlue
+
+                            Count -= 1
+                        Next
+
+                        For x = Count To 0 Step -1
+
+                            CType(Me.Controls.Find("lblMC1_Case" & x, True).First, Label).BackColor = Color.Lavender
+                            CType(Me.Controls.Find("lblMC1_Date" & x, True).First, Label).BackColor = Color.MediumPurple
+                            CType(Me.Controls.Find("lblMC1_Header" & x, True).First, Label).BackColor = Color.MediumPurple
+
+
+                        Next
+                    ElseIf Count = 1 Then
+                        For x = Count To 0 Step -1
+
+
+                            CType(Me.Controls.Find("lblMC1_Case" & x, True).First, Label).BackColor = Color.LightCyan
+                            CType(Me.Controls.Find("lblMC1_Date" & x, True).First, Label).BackColor = Color.DeepSkyBlue
+                            CType(Me.Controls.Find("lblMC1_Header" & x, True).First, Label).BackColor = Color.DeepSkyBlue
+
+                        Next
+
+                    End If
+
+
+                End If
+            Else
+
+                CType(Me.Controls.Find("lblMC1_Case" & 0, True).First, Label).BackColor = Color.LightCyan
+                CType(Me.Controls.Find("lblMC1_Date" & 0, True).First, Label).BackColor = Color.DeepSkyBlue
+                CType(Me.Controls.Find("lblMC1_Header" & 0, True).First, Label).BackColor = Color.DeepSkyBlue
+            End If
+        End If
+
+
+    End Sub
+    Private Sub LoadMCName(ByVal MCProcess As String, ByVal MCLocation As String, ByVal MCMCNo As String, ByVal MCDate1 As String, ByVal MCDate2 As String, ByVal MCtype As String, ActionLine As Integer, Rowcount As Integer, eUser As String)
+        Dim dt1 As New DataTable
+        Dim topNum1 As Integer = 0
+        Dim topNum2 As Integer = 0
+        Dim dt2 As New DataTable
+        Dim strQuery As String = String.Empty
+        Dim strQuery2 As String = String.Empty
+
+        Dim AddQuery As String = ""
+        Dim ActionQuery As String = ""
+
+        If eUser = "PM" Then
+            AddQuery = "(a.BMStatusID not in ('30','31'))"
+            ActionQuery = "MachineKarte_ActionCard"
+        ElseIf eUser = "CC"
+            AddQuery = "(Turnover IN ('CC') AND BMStatusID IN (6,7,8,9,11,20,19,14))"
+            ActionQuery = "MachineKarte_ActionCard_CC"
+        ElseIf eUser = "EEE"
+            AddQuery = "(Turnover IN ('PE') AND BMStatusID IN (6,7,8,9,11,20,19,14))"
+            ActionQuery = "MachineKarte_ActionCard_EEE"
+        ElseIf eUser = "VIS"
+            AddQuery = "(Turnover IN ('VIS') AND BMStatusID IN (6,7,8,9,11,20,19,14))"
+            ActionQuery = "MachineKarte_ActionCard_VIS"
+        End If
+
+        If eUser = "PM" Then
+
+            strQuery = "select a.Devicename, isnull((select 'Yes' from MachineKarte_MCD  where replace(Devicename,' ','') = replace(a.devicename,' ','') and isactive = 1 ),'No') as 'isMCD',a.OCAPData,a.BMCASEID,a.BMStatusID,a.Mcno as 'Mcno',format(a.Timeofrequest,'MM/dd/yyyy HH:mm:ss') as 'Timeofrequest', b.BMCase as 'BMCase',a.bmid,  isnull((select 'Yes' from MachineKarte_ActionCard  where bmid = a.bmID and machineno = a.mcno),'No') as 'HaveAction',isnull((select 'Yes' from MachineKarte_ActionCard d where bmid = a.bmID and machineno = a.mcno and d.Comment3 <> ''),'No') as 'HaveAction_DeptMan',
+                           COALESCE( CASE 
+                            WHEN a.AcredBMContentID  <> a.BMContentID THEN 
+	                            Case when a.AcredBMContentID = '' then
+	                            a.BMContentID 
+	                             when a.AcredBMContentID = '0' then 
+	                            a.BMContentID 
+	                             when a.AcredBMContentID is null then
+	                            a.BMContentID 
+	                            else
+	                            a.AcredBMContentID
+	                            end
+                            ELSE 
+                            a.BMContentID 
+                            end,0) as 'BMContentID',(select BMContent from BMContent  where BMContentID = a.BMContentID and process = '" & MCProcess & "') as 'BMContent',c.Action as 'Accre',c.Comment as 'Sect',c.Comment2 as 'Dept',c.Comment3 as 'Div',c.MCStatus as 'MCStatus',COALESCE(a.AcredBMContentID,0) as acrebmcontentid,(select BMContent from BMContent  where BMContentID = a.AcredBMContentID and process = '" & MCProcess & "') as 'AcreBMContent','' as isSame,
+                            (SELECT COUNT(*) As rCount FROM gridBMOCAP WHERE BMCaseID= a.BMCaseID  AND Process='" & MCProcess & "' ) as 'OCAPCount'                                               
+                                                  from [eMaintenanceSystemDB].[dbo].[" & MCProcess & "BMMaintenance] a inner join [eMaintenanceSystemDB].[dbo].[BMCase] b 
+                                                  on a.BMCaseID = b.BMCaseID
+                                                  left join [eMaintenanceSystemDB].[dbo].[" & ActionQuery & "] c
+										          on a.bmID = c.bmID and a.mcno = c.machineno
+                                                  where (a.timeofrequest between @Range1 and @Range2)  and (a.mcno = @Mcno) and (a.Pmcategoryid = '1') and (a.Location = @Location) and " & AddQuery & "   and a.bmcaseid <> 0
+                                                  order by a.mcno desc,a.Timeofrequest desc,b.BMCase "
+
+        ElseIf eUser = "CC" Or eUser = "EEE" Or eUser = "VIS" Then
+            strQuery = "select a.Devicename, isnull((select 'Yes' from MachineKarte_MCD  where replace(Devicename,' ','') = replace(a.devicename,' ','') and isactive = 1 ),'No') as 'isMCD',a.OCAPData,a.Why4 as 'BMCASEID',a.BMStatusID,a.Mcno as 'Mcno',format(a.Timeofrequest,'MM/dd/yyyy HH:mm:ss') as 'Timeofrequest', b.BMWhy as 'BMCase',a.bmid,  isnull((select 'Yes' from " & ActionQuery & "  where bmid = a.bmID and machineno = a.mcno),'No') as 'HaveAction',isnull((select 'Yes' from " & ActionQuery & " d where bmid = a.bmID and machineno = a.mcno and d.Comment3 <> ''),'No') as 'HaveAction_DeptMan',
+                           COALESCE( CASE 
+                            WHEN a.AcredBMContentID  <> a.BMContentID THEN 
+	                            Case when a.AcredBMContentID = '' then
+	                            a.BMContentID 
+	                             when a.AcredBMContentID = '0' then 
+	                            a.BMContentID 
+	                             when a.AcredBMContentID is null then
+	                            a.BMContentID 
+	                            else
+	                            a.AcredBMContentID
+	                            end
+                            ELSE 
+                            a.BMContentID 
+                            end,0) as 'BMContentID',(select BMContent from BMContent  where BMContentID = a.BMContentID and process = '" & MCProcess & "') as 'BMContent',c.Action as 'Accre',c.Comment as 'Sect',c.Comment2 as 'Dept',c.Comment3 as 'Div',c.MCStatus as 'MCStatus',COALESCE(a.AcredBMContentID,0) as acrebmcontentid,(select BMContent from BMContent  where BMContentID = a.AcredBMContentID and process = '" & MCProcess & "') as 'AcreBMContent','' as isSame,
+                            (SELECT COUNT(*) As rCount FROM gridBMOCAP WHERE BMCaseID= a.BMCaseID  AND Process='" & MCProcess & "' ) as 'OCAPCount'                                               
+                                                  from [eMaintenanceSystemDB].[dbo].[" & MCProcess & "BMMaintenance] a inner join [eMaintenanceSystemDB].[dbo].[BMWhy] b 
+                                                  on a.Why4  = b.BMWhyID
+                                                  left join [eMaintenanceSystemDB].[dbo].[" & ActionQuery & "] c
+										          on a.bmID = c.bmID and a.mcno = c.machineno
+                                                  where (a.timeofrequest between @Range1 and @Range2)  and (a.mcno = @Mcno) and (a.Pmcategoryid = '1') and (a.Location = @Location) and " & AddQuery & "   and a.why4 <> 0
+                                                  order by a.mcno desc,a.Timeofrequest desc,b.BMWhy "
+        Else
+
+            strQuery = " select a.Devicename, isnull((select 'Yes' from MachineKarte_MCD  where replace(Devicename,' ','') = replace(a.devicename,' ','') and isactive = 1 ),'No') as 'isMCD',a.OCAPData,a.BMCASEID,a.BMStatusID,a.testerno as 'testerNo',format(a.Timeofrequest,'MM/dd/yyyy HH:mm:ss') as 'Timeofrequest', b.bmteunit as 'BMCase',a.bmid,  isnull((select 'Yes' from MachineKarte_ActionCard_TE  where bmid = a.bmID),'No') as 'HaveAction',isnull((select 'Yes' from MachineKarte_ActionCard_TE d where bmid = a.bmID and machineno = a.mcno and d.Comment3 <> ''),'No') as 'HaveAction_DeptMan',
+                           COALESCE( CASE 
+                            WHEN a.AcredBMContentID  <> a.BMContentID THEN 
+	                            Case when a.AcredBMContentID = '' then
+	                            a.BMContentID 
+	                             when a.AcredBMContentID = '0' then 
+	                            a.BMContentID 
+	                             when a.AcredBMContentID is null then
+	                            a.BMContentID 
+	                            else
+	                            a.AcredBMContentID
+	                            end
+                            ELSE 
+                            a.BMContentID 
+                            end,0) as 'BMContentID',c.Action as 'Accre',c.Comment as 'Sect',c.Comment2 as 'Dept',c.Comment3 as 'Div',c.MCStatus as 'MCStatus',COALESCE(a.AcredBMContentID,0) as acrebmcontentid,(select BMContent from BMContent  where BMContentID = a.AcredBMContentID and process = '" & MCProcess & "') as 'AcreBMContent','' as isSame
+                                ,Priority, (SELECT COUNT(*) As rCount FROM gridBMOCAP WHERE BMCaseID= a.BMCaseID  AND Process='" & MCProcess & "' ) as 'OCAPCount'                                             
+                                                  from [eMaintenanceSystemDB].[dbo].[TEBMMaintenance] a inner join [eMaintenanceSystemDB].[dbo].[BMTEUnit] b 
+                                                  on a.bmunitid = b.bmteunitid
+                                                  left join [eMaintenanceSystemDB].[dbo].[MachineKarte_ActionCard_TE] c
+										          on a.bmID = c.bmID
+                                                  where (a.timeofrequest between @Range1 and @Range2) and a.process = '" & MCProcess & "' and (a.mctype = @mctype)  and (a.testerno = @Mcno) and ((a.Pmcategoryid = '1' or a.Pmcategoryid = '4')) and (a.Location = @Location) and (a.BMStatusID not in ('30','31','1','2','3','7','17'))  and a.bmunitid <> 0
+                                                  order by a.testerno desc,a.Timeofrequest desc,b.bmteunit "
+
+        End If
+
+
+
+
+        Using cmd = New SqlCommand(strQuery, conn)
+            cmd.CommandType = CommandType.Text
+            cmd.Parameters.AddWithValue("@Range1", MCDate1)
+            cmd.Parameters.AddWithValue("@Range2", MCDate2)
+            cmd.Parameters.AddWithValue("@Location", MCLocation)
+            cmd.Parameters.AddWithValue("@Mcno", MCMCNo)
+            If eUser = "TE" Then
+                cmd.Parameters.AddWithValue("@MCtype", MCtype)
+            End If
+            Dim da = New SqlDataAdapter(cmd)
+            da.Fill(dt1)
+        End Using
+
+        lblMC1.Text = MCMCNo
+        lblLocation1.Text = MCLocation
+        lblMctype1.Text = MCtype
+
+
+
+        Dim dtStore As New DataTable
+        Dim expression As String = "[Mcno] = '" & MCMCNo & "'"
+        Dim sortOrder As String = "Mcno ASC"
+
+        dt1.Columns.Add("ButtonName", GetType(String))
+
+        TimerNum = dt1.Rows.Count - 1
+        For i = 0 To dt1.Rows.Count - 1
+
+            Dim CreatePanel As New Panel
+            CreatePanel.Name = "Panel" + i.ToString
+            CreatePanel.BorderStyle = BorderStyle.FixedSingle
+            CreatePanel.Dock = DockStyle.Bottom
+            CreatePanel.Location = New Point(0, 400)
+            CreatePanel.Size = New Size(186, 120)
+            Panel1.Controls.Add(CreatePanel)
+
+            Dim CreateLabelHeader_Status As New Label
+            With CreateLabelHeader_Status
+                .Name = "lblMC1_StatusHead" + i.ToString
+                .BackColor = Color.FromArgb(52, 52, 52)
+                .BorderStyle = BorderStyle.FixedSingle
+                .Dock = DockStyle.Bottom
+                .Size = New Size(184, 19)
+
+
+                .TextAlign = ContentAlignment.MiddleLeft
+                CreatePanel.Controls.Add(CreateLabelHeader_Status)
+            End With
+
+
+
+
+            Dim CreateLabelHeader As New Label
+            With CreateLabelHeader
+                .Name = "lblMC1_Header" + i.ToString
+                .BackColor = Color.Salmon
+                .Dock = DockStyle.Bottom
+                .BorderStyle = BorderStyle.FixedSingle
+                .TextAlign = ContentAlignment.MiddleRight
+                .Size = New Size(184, 19)
+
+                If eUser = "PM" Or eUser = "CC" Or eUser = "EEE" Or eUser = "VIS" Then
+                    If dt1.Rows(i).Item("BMStatusID").ToString = "15" Then
+                        .Text = "OCAP BM RESOLVED"
+                        .ForeColor = Color.White
+                    ElseIf dt1.Rows(i).Item("BMStatusID").ToString = "30"
+                        .Text = "INVALID REQUEST"
+                        .ForeColor = Color.White
+                    Else
+                        If dt1.Rows(i).Item("BMContent").ToString = dt1.Rows(i).Item("AcreBMContent").ToString Then
+                            .Text = dt1.Rows(i).Item("BMContent").ToString.ToUpper
+                        Else
+
+                            If dt1.Rows(i).Item("AcreBMContent").ToString = "" Then
+
+                                .Text = dt1.Rows(i).Item("BMContent").ToString.ToUpper
+
+                            ElseIf dt1.Rows(i).Item("AcreBMContent").ToString = "0"
+
+                                .Text = dt1.Rows(i).Item("BMContent").ToString.ToUpper
+
+                            ElseIf IsDBNull(dt1.Rows(i).Item("AcreBMContent").ToString)
+
+                                .Text = dt1.Rows(i).Item("BMContent").ToString.ToUpper
+
+                            Else
+                                .Text = dt1.Rows(i).Item("AcreBMContent").ToString.ToUpper
+                            End If
+                        End If
+
+                    End If
+
+                Else
+                    .Text = dt1.Rows(i).Item("Priority").ToString
+
+                End If
+
+
+
+                .Font = New Font("Microsoft Sans Serif", 7)
+
+
+                .TextAlign = ContentAlignment.MiddleLeft
+                CreatePanel.Controls.Add(CreateLabelHeader)
+            End With
+
+
+            Dim CreateLabelHeader_MCD As New Label
+            With CreateLabelHeader_MCD
+                .Name = "lblMC1_MCD" + i.ToString
+
+
+                .Dock = DockStyle.Right
+                .TextAlign = ContentAlignment.MiddleCenter
+                .Cursor = Cursors.PanNE
+                .Size = New Size(50, 19)
+
+                If dt1.Rows(i).Item("isMCD").ToString = "Yes" Then
+
+                    .Text = "★★★"
+
+
+
+                    .BackColor = Color.WhiteSmoke
+                    .Font = New Font("Microsoft Sans Serif", 9, FontStyle.Bold)
+                    .ForeColor = Color.Black
+                    Dim ToolTip1 As New ToolTip()
+                    ToolTip1.Active = True
+
+                    Me.ToolTip1.AutoPopDelay = 1000000
+                    Me.ToolTip1.InitialDelay = 500
+                    Me.ToolTip1.IsBalloon = True
+                    Me.ToolTip1.ReshowDelay = 100
+                    Me.ToolTip1.ToolTipIcon = ToolTipIcon.Info
+                    Me.ToolTip1.ToolTipTitle = "Major Customer Device:"
+
+                    Me.ToolTip1.SetToolTip(CreateLabelHeader_MCD, dt1.Rows(i).Item("Devicename").ToString.ToUpper)
+
+                End If
+
+                CreateLabelHeader.Controls.Add(CreateLabelHeader_MCD)
+
+            End With
+
+
+
+            Dim CreateLabelHeader_Status_Green As New Label
+            With CreateLabelHeader_Status_Green
+                .Name = "lblMC1_HeaderGreen" + i.ToString
+                .BackColor = Color.LimeGreen
+                .BorderStyle = BorderStyle.FixedSingle
+                .Dock = DockStyle.Left
+                .Text = "DV"
+                .Visible = False
+                .TextAlign = ContentAlignment.MiddleCenter
+                .Size = New Size(33, 19)
+                CreateLabelHeader_Status.Controls.Add(CreateLabelHeader_Status_Green)
+            End With
+
+
+            Dim CreateLabelHeader_Status_Purple As New Label
+            With CreateLabelHeader_Status_Purple
+                .Name = "lblMC1_HeaderPurple" + i.ToString
+                .BackColor = Color.MediumPurple
+                .BorderStyle = BorderStyle.FixedSingle
+                .Dock = DockStyle.Left
+                .Text = "DM"
+                .Visible = False
+                .TextAlign = ContentAlignment.MiddleCenter
+                .Size = New Size(33, 19)
+                CreateLabelHeader_Status.Controls.Add(CreateLabelHeader_Status_Purple)
+            End With
+
+
+
+
+            Dim CreateLabelHeader_Status_Blue As New Label
+            With CreateLabelHeader_Status_Blue
+                .Name = "lblMC1_HeaderBLue" + i.ToString
+                .BackColor = Color.DeepSkyBlue
+                .BorderStyle = BorderStyle.FixedSingle
+                .Dock = DockStyle.Left
+                .Text = "SM"
+                .Visible = False
+                .TextAlign = ContentAlignment.MiddleCenter
+                .Size = New Size(33, 19)
+                CreateLabelHeader_Status.Controls.Add(CreateLabelHeader_Status_Blue)
+            End With
+
+
+            Dim CreateLabelHeader_Status_Red As New Label
+            With CreateLabelHeader_Status_Red
+                .Name = "lblMC1_HeaderRed" + i.ToString
+                .BackColor = Color.Tomato
+                .BorderStyle = BorderStyle.FixedSingle
+                .Text = "AC"
+                .Visible = False
+                .TextAlign = ContentAlignment.MiddleCenter
+                .Dock = DockStyle.Left
+                .Size = New Size(33, 19)
+                CreateLabelHeader_Status.Controls.Add(CreateLabelHeader_Status_Red)
+            End With
+
+            Dim CreateLabelCase As New Label
+            With CreateLabelCase
+                .Name = "lblMC1_Case" + i.ToString
+                .BackColor = Color.MistyRose
+                .BorderStyle = BorderStyle.FixedSingle
+                .Dock = DockStyle.Bottom
+                .Cursor = Cursors.Hand
+                .Size = New Size(184, 37)
+                .Font = New Font("Microsoft Sans Serif", 8.5, FontStyle.Bold)
+                .TextAlign = ContentAlignment.MiddleCenter
+
+                CreatePanel.Controls.Add(CreateLabelCase)
+            End With
+
+
+
+
+            Dim CreateLabelDate As New Label
+            With CreateLabelDate
+                .Name = "lblMC1_Date" + i.ToString
+                .BackColor = Color.Salmon
+                .BorderStyle = BorderStyle.FixedSingle
+                .Dock = DockStyle.Bottom
+                .Size = New Size(184, 22)
+                .Font = New Font("Microsoft Sans Serif", 8.5)
+                .TextAlign = ContentAlignment.MiddleCenter
+                CreatePanel.Controls.Add(CreateLabelDate)
+            End With
+
+            Dim CreateLabelFooter_Status As New Label
+            With CreateLabelFooter_Status
+                .Name = "lblMC1_StatusFooter" + i.ToString
+                .BackColor = Color.FromArgb(52, 52, 52)
+                .BorderStyle = BorderStyle.FixedSingle
+                .Dock = DockStyle.Bottom
+                .Size = New Size(184, 21)
+
+
+                .TextAlign = ContentAlignment.MiddleLeft
+                CreatePanel.Controls.Add(CreateLabelFooter_Status)
+            End With
+
+            'Dim CreateLabelFooter_OCAP As New Label
+            'With CreateLabelFooter_OCAP
+            '    .Name = "lblMC1_OCAP" + i.ToString
+            '    .BackColor = Color.FromArgb(52, 52, 52)
+            '    .BorderStyle = BorderStyle.FixedSingle
+            '    .Dock = DockStyle.Bottom
+            '    .Size = New Size(184, 21)
+            '    .Visible = False
+            '    .Text = dt1.Rows(i).Item("OCAPData").ToString
+            '    .TextAlign = ContentAlignment.MiddleLeft
+            '    CreatePanel.Controls.Add(CreateLabelFooter_OCAP)
+            'End With
+
+            Dim CreateButton_Footer_OCAP As New Button
+            With CreateButton_Footer_OCAP
+                .Name = dt1.Rows(i).Item("BMCASEID").ToString + "_" + i.ToString()
+                .Visible = False
+                .Cursor = Cursors.PanSouth
+                .Dock = DockStyle.Right
+                .BackColor = Color.Gray
+                .ForeColor = Color.White
+                .Size = New Size(53, 21)
+                .FlatStyle = FlatStyle.Popup
+                .Text = "O→"
+                .Font = New Font("Microsoft Sans Serif", 8)
+                .TextAlign = ContentAlignment.MiddleCenter
+
+
+                If CInt(dt1.Rows(i).Item("OCAPCount").ToString) <> 0 Then
+                    .Visible = True
+                End If
+                'If dt1.Rows(i).Item("BMStatusID").ToString = "15" Then
+                '    If CInt(dt1.Rows(i).Item("OCAPCount").ToString) <> 0 Then
+                '        .Visible = True
+                '    End If
+                'ElseIf dt1.Rows(i).Item("BMStatusID").ToString = "14" Then
+                '    If CInt(dt1.Rows(i).Item("OCAPCount").ToString) <> 0 Then
+                '        .Visible = True
+                '    End If
+                'Else
+                '    .Visible = False
+                'End If
+
+                CreateLabelFooter_Status.Controls.Add(CreateButton_Footer_OCAP)
+            End With
+
+            Dim CreateButton_Footer As New Button
+            With CreateButton_Footer
+                .Name = "btn" + i.ToString
+                .Visible = True
+                .Cursor = Cursors.PanSouth
+                .Dock = DockStyle.Right
+                .BackColor = Color.Gray
+                .ForeColor = Color.White
+                .Size = New Size(53, 21)
+                .FlatStyle = FlatStyle.Popup
+                .Text = "R→"
+                .Font = New Font("Microsoft Sans Serif", 8)
+                .TextAlign = ContentAlignment.MiddleCenter
+                CreateLabelFooter_Status.Controls.Add(CreateButton_Footer)
+            End With
+
+            Dim CreateButton_Footer_Evidence As New Button
+            With CreateButton_Footer_Evidence
+                .Name = "btnEvidence" + i.ToString
+                .Visible = True
+                .Cursor = Cursors.PanSouth
+                .Dock = DockStyle.Right
+                .BackColor = Color.Gray
+                .ForeColor = Color.White
+                .Size = New Size(53, 21)
+                .FlatStyle = FlatStyle.Popup
+                .Text = "E→"
+                .Font = New Font("Microsoft Sans Serif", 8)
+                .TextAlign = ContentAlignment.MiddleCenter
+
+                CreateLabelFooter_Status.Controls.Add(CreateButton_Footer_Evidence)
+            End With
+
+
+            Dim CreateLabelID As New Label
+            With CreateLabelID
+                .Name = "lblBMID_" + i.ToString()
+                .Visible = False
+                .BackColor = Color.Gray
+                .BorderStyle = BorderStyle.FixedSingle
+                .Dock = DockStyle.Bottom
+                .Font = New Font("Microsoft Sans Serif", 8.5, FontStyle.Bold)
+                .TextAlign = ContentAlignment.MiddleCenter
+                CreatePanel.Controls.Add(CreateLabelID)
+            End With
+
+
+            Dim CreateLabelColor As New Label
+            With CreateLabelColor
+                .Name = "lblMC1_Color" + i.ToString
+                .Visible = False
+                .Text = "Label1"
+                .TextAlign = ContentAlignment.MiddleCenter
+                CreatePanel.Controls.Add(CreateLabelColor)
+            End With
+
+
+
+
+            Dim CreateButton As New Button
+            With CreateButton
+                .Name = "btn" + i.ToString
+                .Visible = False
+                .Cursor = Cursors.PanNW
+                .BackColor = Color.Red
+                .ForeColor = Color.White
+                .Size = New Size(53, 19)
+                .Location = New Point(131, -1)
+                .FlatStyle = FlatStyle.Popup
+                .Text = "Action"
+                .Font = New Font("Microsoft Sans Serif", 8)
+                .TextAlign = ContentAlignment.MiddleCenter
+                CreateLabelHeader_Status.Controls.Add(CreateButton)
+            End With
+
+
+            Dim CreateLabelContent As New Label
+            With CreateLabelContent
+                .Name = "lblBMContent_" + i.ToString
+                .Visible = False
+                .Text = "-"
+                .BackColor = Color.White
+                .BorderStyle = BorderStyle.FixedSingle
+                .Dock = DockStyle.Bottom
+                .Font = New Font("Microsoft Sans Serif", 8.5, FontStyle.Bold)
+                .TextAlign = ContentAlignment.MiddleCenter
+                CreatePanel.Controls.Add(CreateLabelContent)
+            End With
+
+
+
+            For Each ctrl As Control In CreateLabelHeader_Status.Controls
+                If TypeOf ctrl Is Button Then
+                    CreateButton = DirectCast(ctrl, Button)
+                    AddHandler CreateButton.Click, AddressOf Me.Button_Click
+                End If
+            Next
+
+            For Each ctrl As Control In CreatePanel.Controls
+                If TypeOf ctrl Is Label Then
+                    CreateLabelCase = DirectCast(ctrl, Label)
+                    AddHandler CreateLabelCase.Click, AddressOf Me.Label_Click
+
+                End If
+            Next
+
+
+
+
+            For Each ctrl As Control In CreateLabelFooter_Status.Controls
+                If TypeOf ctrl Is Button Then
+                    CreateButton_Footer = DirectCast(ctrl, Button)
+                    AddHandler CreateButton_Footer.Click, AddressOf Me.CreateButton_Footer_Click
+                End If
+            Next
+
+
+
+
+            CType(CreatePanel.Controls.Find("lblMC1_Case" & i, True).First, Label).Text = dt1.Rows(i).Item("BMCase").ToString
+
+
+            CType(CreatePanel.Controls.Find("lblMC1_Date" & i, True).First, Label).Text = dt1.Rows(i).Item("Timeofrequest").ToString
+            CType(CreatePanel.Controls.Find("lblBMID_" & i, True).First, Label).Text = dt1.Rows(i).Item("bmid").ToString
+
+            If (dt1.Rows(i).Item("HaveAction").ToString) <> "No" Then
+                CType(Me.Controls.Find("btn" & i, True).First, Button).Visible = True
+
+                dt1.Rows(i).Item("ButtonName") = "btn" & i
+
+                If (dt1.Rows(i).Item("Accre").ToString) <> "" Then
+                    CType(Me.Controls.Find("lblMC1_HeaderRed" & i, True).First, Label).Visible = True
+                End If
+
+                If (dt1.Rows(i).Item("Sect").ToString) <> "" Then
+                    CType(Me.Controls.Find("lblMC1_HeaderBlue" & i, True).First, Label).Visible = True
+                End If
+
+                If (dt1.Rows(i).Item("Dept").ToString) <> "" Then
+                    CType(Me.Controls.Find("lblMC1_HeaderPurple" & i, True).First, Label).Visible = True
+                End If
+
+                If (dt1.Rows(i).Item("Div").ToString) <> "" Then
+                    CType(Me.Controls.Find("lblMC1_HeaderGreen" & i, True).First, Label).Visible = True
+                End If
+                If (dt1.Rows(i).Item("MCStatus").ToString) <> "" Then
+                    If (dt1.Rows(i).Item("MCStatus").ToString) = "RUNNING (ONGOING INVESTIGATION/MONITORING)" Then
+                        CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor = Color.DarkGray
+                        CType(Me.Controls.Find("btn" & i, True).First, Button).ForeColor = Color.White
+
+                    ElseIf (dt1.Rows(i).Item("MCStatus").ToString) = "RUNNING (UNDER 100% INSPECTION)" Then
+                        CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor = Color.DarkOrange
+                        CType(Me.Controls.Find("btn" & i, True).First, Button).ForeColor = Color.White
+
+                    ElseIf (dt1.Rows(i).Item("MCStatus").ToString) = "STOP (ONGOING INVESTIGATION)" Then
+                        CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor = Color.Red
+                        CType(Me.Controls.Find("btn" & i, True).First, Button).ForeColor = Color.White
+
+                    ElseIf (dt1.Rows(i).Item("MCStatus").ToString) = "RUNNING (LOT EVALUATION)" Then
+                        CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor = Color.LightGreen
+                        CType(Me.Controls.Find("btn" & i, True).First, Button).ForeColor = Color.White
+
+                    ElseIf (dt1.Rows(i).Item("MCStatus").ToString) = "NO RE-OCCURRENCE AFTER 7 DAYS" Then
+                        CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor = Color.Green
+                        CType(Me.Controls.Find("btn" & i, True).First, Button).ForeColor = Color.White
+
+
+                    ElseIf (dt1.Rows(i).Item("MCStatus").ToString) = "STOP (WAITING FOR INSPECTION RESULTS)" Then
+                        CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor = Color.Violet
+                        CType(Me.Controls.Find("btn" & i, True).First, Button).ForeColor = Color.White
+
+
+
+                    ElseIf (dt1.Rows(i).Item("MCStatus").ToString) = "STOP (WAITING FOR QC INSTRUCTION)" Then
+                        CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor = Color.Aqua 
+                        CType(Me.Controls.Find("btn" & i, True).First, Button).ForeColor = Color.White
+
+                    End If
+                End If
+            End If
+        Next
+        LoadProcessCapa(ActionLine, Rowcount)
+        CheckIfSolve(dt1)
+        If eUser = "TE" Then
+            LoadColor_TE(dt1, MCProcess)
+        Else
+            LoadColor(dt1, MCProcess)
+        End If
+
+
+        Dim UCNum As New uC_Panel
+        UCNum.lblMC1.Text = MCMCNo
+        UCNum.lblLocation1.Text = MCLocation
+        UCNum.lblMctype1.Text = MCtype
+        UCNum.lblNeedAction1.Text = NeedActionCount
+        Dim uCWidth As Integer
+        uCWidth = UCNum.Width
+        UCNum.Left = uCWidth * PanelCount_Temp
+
+
+
+        Form1.Panel4.Controls.Add(UCNum)
+    End Sub
+
+
+    Function CheckifSevendays(dt As DataTable, FontColor As String, count As Integer, index As Integer) As DataTable
+
+        Dim counttemp As Integer = count
+
+        If counttemp = 1 Then
+
+            Dim currentRowDate As DataRow = dt.Rows(index)
+            Dim NextRowDate As DataRow
+
+
+            NextRowDate = dt.Rows(index + 1)
+
+
+            Dim currentValue As Object = currentRowDate("Timeofrequest")
+            Dim nextValue As Object = NextRowDate("Timeofrequest")
+
+            Dim date1 As DateTime = DateTime.ParseExact(currentValue, "MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+            Dim date2 As DateTime = DateTime.ParseExact(nextValue, "MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+            Dim tempdate As TimeSpan = date1 - date2
+
+            If tempdate.Days <= 7 And tempdate.Days >= 0 Then
+                CType(Me.Controls.Find("lblMC1_Color" & index, True).First, Label).Text = FontColor
+                CType(Me.Controls.Find("lblMC1_Color" & index + 1, True).First, Label).Text = FontColor
+            End If
+
+        Else
+            Dim Plus As Integer = 0
+            For x = 0 To count
+                Dim currentRowDate As DataRow = dt.Rows(index)
+                Dim NextRowDate As DataRow
+                Plus += 1
+                If x = count Then
+                    NextRowDate = dt.Rows(count)
+                    Plus -= 1
+                Else
+
+                    NextRowDate = dt.Rows(index + (Plus))
+                End If
+
+                Dim currentValue As Object = currentRowDate("Timeofrequest")
+                Dim nextValue As Object = NextRowDate("Timeofrequest")
+
+                Dim date1 As DateTime = DateTime.ParseExact(currentValue, "MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+                Dim date2 As DateTime = DateTime.ParseExact(nextValue, "MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+                Dim tempdate As TimeSpan = date1 - date2
+
+                If tempdate.Days <= 7 And tempdate.Days >= 0 Then
+                    If x = 0 Then
+                        CType(Me.Controls.Find("lblMC1_Color" & index, True).First, Label).Text = FontColor
+                    End If
+                    CType(Me.Controls.Find("lblMC1_Color" & index + Plus, True).First, Label).Text = FontColor
+                End If
+
+            Next
+        End If
+
+        Return dt
+    End Function
+    Private Sub LoadColor_TE(dt1 As DataTable, MCProcess As String)
+        dt1.Columns.Add("FontColor", Type.GetType("System.String"))
+        For i = 0 To dt1.Rows.Count - 1
+            Dim currentRowIndex As Integer = 0
+            Dim targetColumn_Case As String = "BMCase"
+            Dim currentRow As DataRow = dt1.Rows(i)
+            Dim Priority As String = dt1.Rows(i).Item("Priority").ToString
+            Dim targetColumn_Content As String = "Priority"
+
+            If i + 4 < dt1.Rows.Count Then
+
+
+                If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text = "Label1" Then
+
+                    If Priority = "QUALITY BM" Then
+                        Dim FontColor As String = "Red"
+                        If AreNextFourColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1) Then
+                            If AreNextFourColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+
+                                dt1 = CheckifSevendays(dt1, FontColor, 4, i)
+                                If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text = FontColor Then
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                            NeedActionCount += 1
+
+                                            CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                            CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                        End If
+                                    Else
+                                        If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                        Else
+                                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                        End If
+                                    End If
+                                End If
+                            ElseIf AreNextThreeColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                                dt1 = CheckifSevendays(dt1, FontColor, 3, i)
+                                If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text = FontColor Then
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                            NeedActionCount += 1
+
+                                            CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                            CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                        End If
+                                    Else
+                                        If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                        Else
+                                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                        End If
+                                    End If
+                                End If
+
+                            ElseIf AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                                dt1 = CheckifSevendays(dt1, FontColor, 2, i)
+                                If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text = FontColor Then
+
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                            NeedActionCount += 1
+
+                                            CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                            CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                        End If
+                                    Else
+                                        If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                        Else
+                                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                        End If
+                                    End If
+                                End If
+
+                            ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                                dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                                If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text = FontColor Then
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                            NeedActionCount += 1
+
+                                            CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                            CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                        End If
+                                    Else
+                                        If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                        Else
+                                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                        End If
+                                    End If
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            End If
+                        ElseIf AreNextThreeColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1) Then
+
+                            If AreNextThreeColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                                dt1 = CheckifSevendays(dt1, FontColor, 3, i)
+                                If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text = FontColor Then
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                            NeedActionCount += 1
+
+                                            CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                            CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                        End If
+                                    Else
+                                        If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                        Else
+                                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                        End If
+                                    End If
+                                End If
+
+                            ElseIf AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                                dt1 = CheckifSevendays(dt1, FontColor, 2, i)
+                                If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text = FontColor Then
+
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                            NeedActionCount += 1
+
+                                            CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                            CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                        End If
+                                    Else
+                                        If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                        Else
+                                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                        End If
+                                    End If
+                                End If
+
+                            ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                                dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                                If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text = FontColor Then
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                            NeedActionCount += 1
+
+                                            CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                            CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                        End If
+                                    Else
+                                        If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                        Else
+                                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                        End If
+                                    End If
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            End If
+                        ElseIf AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1) Then
+
+                            If AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                                dt1 = CheckifSevendays(dt1, FontColor, 2, i)
+                                If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text = FontColor Then
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                            NeedActionCount += 1
+
+                                            CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                            CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                        End If
+                                    Else
+                                        If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                        Else
+                                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                        End If
+                                    End If
+                                End If
+
+
+                            ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                                dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                                If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text = FontColor Then
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                            NeedActionCount += 1
+
+                                            CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                            CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                        End If
+                                    Else
+                                        If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                        Else
+                                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                        End If
+                                    End If
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+
+                            End If
+                        ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1) Then
+
+                            If AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                                dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                                If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text = FontColor Then
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                            NeedActionCount += 1
+
+                                            CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                            CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                        End If
+                                    Else
+                                        If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                        Else
+                                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                        End If
+                                    End If
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+
+                            End If
+                        Else
+                            If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                            Else
+                                CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                            End If
+                        End If
+                    Else
+                        If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                        Else
+                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                        End If
+                    End If
+                End If
+
+            ElseIf i + 3 < dt1.Rows.Count Then
+
+
+                If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text = "Label1" Then
+
+                    If Priority = "QUALITY BM" Then
+                        Dim FontColor As String = "Red"
+                        If AreNextThreeColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1) Then
+
+                            If AreNextThreeColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                                dt1 = CheckifSevendays(dt1, FontColor, 3, i)
+                                If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text = FontColor Then
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                            NeedActionCount += 1
+
+                                            CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                            CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                        End If
+                                    Else
+                                        If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                        Else
+                                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                        End If
+                                    End If
+                                End If
+
+                            ElseIf AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                                dt1 = CheckifSevendays(dt1, FontColor, 2, i)
+                                If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text = FontColor Then
+
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                            NeedActionCount += 1
+
+                                            CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                            CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                        End If
+                                    Else
+                                        If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                        Else
+                                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                        End If
+                                    End If
+                                End If
+
+                            ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                                dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                                If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text = FontColor Then
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                            NeedActionCount += 1
+
+                                            CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                            CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                        End If
+                                    Else
+                                        If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                        Else
+                                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                        End If
+                                    End If
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+
+                            End If
+                        ElseIf AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1) Then
+
+                            If AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                                dt1 = CheckifSevendays(dt1, FontColor, 2, i)
+                                If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text = FontColor Then
+
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                            NeedActionCount += 1
+
+                                            CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                            CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                        End If
+                                    Else
+                                        If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                        Else
+                                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                        End If
+                                    End If
+                                End If
+
+                            ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                                dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                                If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text = FontColor Then
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                            NeedActionCount += 1
+
+                                            CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                            CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                        End If
+                                    Else
+                                        If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                        Else
+                                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                        End If
+                                    End If
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+
+                            End If
+                        ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1) Then
+
+                            If AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                                dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                                If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text = FontColor Then
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                            NeedActionCount += 1
+
+                                            CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                            CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                        End If
+                                    Else
+                                        If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                        Else
+                                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                        End If
+                                    End If
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+
+                            End If
+                        Else
+                            If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                            Else
+                                CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                            End If
+                        End If
+                    Else
+                        If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                        Else
+                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                        End If
+                    End If
+                End If
+
+
+
+            ElseIf i + 2 < dt1.Rows.Count Then
+
+
+                If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text = "Label1" Then
+                    If Priority = "QUALITY BM" Then
+                        Dim FontColor As String = "Red"
+                        If AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1) Then
+
+                            If AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                                dt1 = CheckifSevendays(dt1, FontColor, 2, i)
+                                If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text = FontColor Then
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                            NeedActionCount += 1
+
+                                            CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                            CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                        End If
+                                    Else
+                                        If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                        Else
+                                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                        End If
+                                    End If
+                                End If
+
+
+                            ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                                dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                                If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text = FontColor Then
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                            NeedActionCount += 1
+
+                                            CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                            CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                        End If
+                                    Else
+                                        If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                        Else
+                                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                        End If
+                                    End If
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+
+
+                            End If
+                        ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1) Then
+
+                            If AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                                dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                                If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text = FontColor Then
+
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                            NeedActionCount += 1
+
+                                            CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                            CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                        End If
+                                    Else
+                                        If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                        Else
+                                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                        End If
+                                    End If
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+
+                            End If
+                        Else
+                            If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                            Else
+                                CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                            End If
+                        End If
+                    Else
+                        If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                        Else
+                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                        End If
+                    End If
+                End If
+
+            ElseIf i + 1 < dt1.Rows.Count Then
+
+                If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text = "Label1" Then
+                    If Priority = "QUALITY BM" Then
+                        Dim FontColor As String = "Red"
+                        If AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1) Then
+
+                            If AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                                dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                                If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text = FontColor Then
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                            NeedActionCount += 1
+
+                                            CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                            CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                        End If
+                                    Else
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                    End If
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+
+                            End If
+                        Else
+                            If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                            Else
+                                CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                            End If
+                        End If
+                    Else
+                        If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                        Else
+                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                        End If
+                    End If
+                End If
+            Else
+                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                Else
+                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                End If
+            End If
+        Next
+
+        For i = 0 To dt1.Rows.Count - 1
+            If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text = "Blue" Then
+                CType(Me.Controls.Find("lblMC1_Case" & i, True).First, Label).ForeColor = Color.Blue
+                CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).ForeColor = Color.Blue
+            ElseIf CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text = "Red" Then
+                CType(Me.Controls.Find("lblMC1_Case" & i, True).First, Label).ForeColor = Color.Red
+                CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).ForeColor = Color.Red
+            ElseIf CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text = "Black" Then
+                CType(Me.Controls.Find("lblMC1_Case" & i, True).First, Label).ForeColor = Color.Black
+                CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).ForeColor = Color.Black
+            End If
+        Next
+    End Sub
+    'Private Sub InsertIntoReBM(bmidTemp As Integer, ProcessTemp As String, McnoTemp As String, BMCaseTemp As String, BMContentTemp As String, reBMCount As Integer, isMCDTemp As String)
+
+    '    If CheckifExistingReBM(bmidTemp, ProcessTemp, McnoTemp) = False Then
+
+    '        Dim strQuery As String = String.Empty
+    '        strQuery = " Insert into [eMaintenanceSystemDB].[dbo].[MachineKarte_ReBM] (BMID,Process,Mcno,BMCase,BMContent,ReoccurenceCount,isMCD,isDone) values (@BMID,@Process,@MCNO,@BMCASE,@BMCONTENT,@ReoccurenceCount,@ISMCD,@ISDONE)"
+    '        Using cmd = New SqlCommand(strQuery, conn)
+    '            cmd.CommandType = CommandType.Text
+    '            cmd.Parameters.AddWithValue("@BMID", bmidTemp)
+    '            cmd.Parameters.AddWithValue("@Process", ProcessTemp)
+    '            cmd.Parameters.AddWithValue("@Mcno", McnoTemp)
+    '            cmd.Parameters.AddWithValue("@BMCase", BMCaseTemp)
+    '            cmd.Parameters.AddWithValue("@BMContent", BMContentTemp)
+    '            cmd.Parameters.AddWithValue("@ReoccurenceCount", reBMCount)
+    '            cmd.Parameters.AddWithValue("@isMCD", isMCDTemp)
+    '            cmd.Parameters.AddWithValue("@isDone", False)
+    '            conn.Open()
+    '            cmd.ExecuteNonQuery()
+    '            conn.Close()
+
+    '        End Using
+
+    '    End If
+
+    'End Sub
+
+    'Private Function CheckifExistingReBM(bmidTemp As Integer, ProcessTemp As String, McnoTemp As String) As Boolean
+    '    Try
+    '        Dim dt As New DataTable
+    '        Dim strQuery As String = String.Empty
+    '        strQuery = " Select Seqno from  [eMaintenanceSystemDB].[dbo].[MachineKarte_ReBM] where BMID = @BMID and Process = @PROCESS and MCNO = @MCNO and isDone = @ISDONE"
+    '        Using cmd = New SqlCommand(strQuery, conn)
+    '            cmd.CommandType = CommandType.Text
+    '            cmd.Parameters.AddWithValue("@BMID", bmidTemp)
+    '            cmd.Parameters.AddWithValue("@PROCESS", ProcessTemp)
+    '            cmd.Parameters.AddWithValue("@MCNO", McnoTemp)
+    '            cmd.Parameters.AddWithValue("@ISDONE", False)
+    '            Dim da = New SqlDataAdapter(cmd)
+    '            da.Fill(dt)
+    '        End Using
+
+    '        If dt.Rows.Count > 0 Then
+    '            CheckifExistingReBM = True
+    '        Else
+    '            CheckifExistingReBM = False
+    '        End If
+
+    '        Return CheckifExistingReBM
+
+    '    Catch ex As Exception
+    '        CheckifExistingReBM = False
+    '    End Try
+    'End Function
+
+    Private Sub LoadColor(dt1 As DataTable, MCprocess As String)
+        dt1.Columns.Add("FontColor", Type.GetType("System.String"))
+        For i = 0 To dt1.Rows.Count - 1
+            Dim currentRowIndex As Integer = 0
+            Dim targetColumn_Case As String = "BMCase"
+            Dim currentRow As DataRow = dt1.Rows(i)
+            Dim ContentID As Integer = dt1.Rows(i).Item("bmcontentid")
+            Dim targetColumn_Content As String = "bmcontentid"
+
+            Dim bmid_ As Integer = dt1.Rows(i).Item("bmid")
+            Dim Process_ As String = MCprocess
+            Dim Mcno_ As String = dt1.Rows(i).Item("mcno").ToString
+            Dim BMContent_ As String = dt1.Rows(i).Item("bmcontent").ToString
+            Dim isMCD_ As String = dt1.Rows(i).Item("ismcd").ToString
+            Dim BMCase_ As String = dt1.Rows(i).Item("BMCase").ToString
+
+
+            If i + 5 < dt1.Rows.Count Then
+                If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text = "Label1" Then
+
+                    Dim FontColor As String = GetFontColor(ContentID, Form1.cbProcess.Text)
+                    If AreNextFiveColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1) Then
+                        If AreNextFiveColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 5, i)
+                            If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Black" And CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Label1" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                        NeedActionCount += 1
+                                        CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                        CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                    End If
+                                Else
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                    Else
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                    End If
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            End If
+                        ElseIf AreNextFourColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 4, i)
+                            If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Black" And CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Label1" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                        NeedActionCount += 1
+                                        CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                        CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                    End If
+                                Else
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                    Else
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                    End If
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            End If
+                        ElseIf AreNextThreeColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 3, i)
+                            If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Black" And CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Label1" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                        NeedActionCount += 1
+                                        CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                        CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                    End If
+                                Else
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                    Else
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                    End If
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            End If
+
+                        ElseIf AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 2, i)
+                            If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Black" And CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Label1" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                        NeedActionCount += 1
+                                        CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                        CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                    End If
+                                Else
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                    Else
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                    End If
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            End If
+                        ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                            If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Black" And CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Label1" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                        NeedActionCount += 1
+                                        CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                        CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                    End If
+                                Else
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                    Else
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                    End If
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            End If
+                        Else
+                            If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                            Else
+                                CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                            End If
+                        End If
+                    ElseIf AreNextFourColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1) Then
+                        If AreNextFourColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 4, i)
+                            If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Black" And CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Label1" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                        NeedActionCount += 1
+                                        CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                        CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                    End If
+                                Else
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                    Else
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                    End If
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            End If
+                        ElseIf AreNextThreeColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 3, i)
+                            If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Black" And CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Label1" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                        NeedActionCount += 1
+                                        CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                        CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                    End If
+                                Else
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                    Else
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                    End If
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            End If
+
+                        ElseIf AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 2, i)
+                            If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Black" And CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Label1" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                        NeedActionCount += 1
+                                        CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                        CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                    End If
+                                Else
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                    Else
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                    End If
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            End If
+                        ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                            If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Black" And CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Label1" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                        NeedActionCount += 1
+                                        CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                        CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                    End If
+                                Else
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                    Else
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                    End If
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            End If
+                        Else
+                            If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                            Else
+                                CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                            End If
+                        End If
+                    ElseIf AreNextThreeColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1) Then
+
+                        If AreNextThreeColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 3, i)
+                            If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Black" And CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Label1" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                        NeedActionCount += 1
+                                        CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                        CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                    End If
+                                Else
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                    Else
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                    End If
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+
+                            End If
+                        ElseIf AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 2, i)
+                            If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Black" And CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Label1" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                        NeedActionCount += 1
+                                        CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                        CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                    End If
+                                Else
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                    Else
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                    End If
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            End If
+                        ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                            If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Black" And CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Label1" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                        NeedActionCount += 1
+                                        CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                        CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                    End If
+                                Else
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                    Else
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                    End If
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            End If
+
+                        End If
+                    ElseIf AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1) Then
+                        If AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 2, i)
+                            If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Black" And CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Label1" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                        NeedActionCount += 1
+                                        CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                        CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                    End If
+                                Else
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                    Else
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                    End If
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            End If
+                        ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                            If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Black" And CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Label1" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                        NeedActionCount += 1
+
+                                        CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                        CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                    End If
+                                Else
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                    Else
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                    End If
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            End If
+                        Else
+                            If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                            Else
+                                CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                            End If
+                        End If
+                    ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1) Then
+
+                        If AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                            If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Black" And CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Label1" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                        NeedActionCount += 1
+
+                                        CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                        CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                    End If
+                                Else
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                    Else
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                    End If
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            End If
+                        Else
+                            If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                            Else
+                                CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                            End If
+                        End If
+                    Else
+                        If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                        Else
+                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                        End If
+                    End If
+
+                End If
+            ElseIf i + 4 < dt1.Rows.Count Then
+                If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text = "Label1" Then
+
+                    Dim FontColor As String = GetFontColor(ContentID, Form1.cbProcess.Text)
+                    If AreNextFourColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1) Then
+                        If AreNextFourColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 4, i)
+                            If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Black" And CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Label1" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                        NeedActionCount += 1
+                                        CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                        CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                    End If
+                                Else
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                    Else
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                    End If
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            End If
+                        ElseIf AreNextThreeColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 3, i)
+                            If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Black" And CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Label1" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                        NeedActionCount += 1
+                                        CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                        CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                    End If
+                                Else
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                    Else
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                    End If
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            End If
+
+                        ElseIf AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 2, i)
+                            If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Black" And CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Label1" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                        NeedActionCount += 1
+                                        CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                        CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                    End If
+                                Else
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                    Else
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                    End If
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            End If
+                        ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                            If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Black" And CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Label1" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                        NeedActionCount += 1
+                                        CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                        CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                    End If
+                                Else
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                    Else
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                    End If
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            End If
+                        Else
+                            If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                            Else
+                                CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                            End If
+                        End If
+                    ElseIf AreNextThreeColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1) Then
+
+                        If AreNextThreeColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 3, i)
+                            If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Black" And CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Label1" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                        NeedActionCount += 1
+                                        CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                        CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                    End If
+                                Else
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                    Else
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                    End If
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+
+                            End If
+                        ElseIf AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 2, i)
+                            If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Black" And CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Label1" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                        NeedActionCount += 1
+                                        CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                        CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                    End If
+                                Else
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                    Else
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                    End If
+
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            End If
+                        ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                            If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Black" And CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Label1" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                        NeedActionCount += 1
+                                        CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                        CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                    End If
+                                Else
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                    Else
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                    End If
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            End If
+                        Else
+                            If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                            Else
+                                CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                            End If
+                        End If
+                    ElseIf AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1) Then
+                        If AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 2, i)
+                            If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Black" And CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Label1" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                        NeedActionCount += 1
+                                        CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                        CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                    End If
+                                Else
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                    Else
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                    End If
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            End If
+                        ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                            If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Black" And CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Label1" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                        NeedActionCount += 1
+
+                                        CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                        CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                    End If
+                                Else
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                    Else
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                    End If
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            End If
+                        Else
+                            If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                            Else
+                                CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                            End If
+                        End If
+                    ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1) Then
+
+                        If AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                            If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Black" And CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Label1" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                        NeedActionCount += 1
+
+                                        CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                        CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                    End If
+                                Else
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                    Else
+                                        CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                    End If
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            End If
+                        Else
+                            If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                            Else
+                                CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                            End If
+                        End If
+                    Else
+                        If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                        Else
+                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                        End If
+                    End If
+                End If
+
+            ElseIf i + 3 < dt1.Rows.Count Then
+                If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text = "Label1" Then
+
+                    Dim FontColor As String = GetFontColor(ContentID, Form1.cbProcess.Text)
+                    If AreNextThreeColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1) Then
+
+                        If AreNextThreeColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 3, i)
+
+                            If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Black" And CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Label1" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                        NeedActionCount += 1
+
+                                        CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                        CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+
+
+                                    End If
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            End If
+
+
+                        ElseIf AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 2, i)
+                            If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Black" And CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Label1" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                        NeedActionCount += 1
+
+                                        CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                        CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+
+
+                                    End If
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+
+                            End If
+
+
+                        ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                            If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Black" And CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Label1" Then
+
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                        NeedActionCount += 1
+
+                                        CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                        CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                    End If
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            End If
+                        Else
+                            If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                            Else
+                                CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                            End If
+                        End If
+                    ElseIf AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1) Then
+
+                        If AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 2, i)
+                            If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Black" And CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Label1" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                        NeedActionCount += 1
+
+                                        CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                        CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+
+                                    End If
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+
+                            End If
+
+                        ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                            If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Black" And CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Label1" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                        NeedActionCount += 1
+
+                                        CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                        CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                    End If
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            End If
+                        Else
+                            If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                            Else
+                                CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                            End If
+                        End If
+                    ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1) Then
+
+                        If AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                            If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Black" And CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Label1" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                        NeedActionCount += 1
+
+                                        CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                        CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                    End If
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            End If
+                        Else
+                            If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                            Else
+                                CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                            End If
+                        End If
+                    Else
+                        If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                        Else
+                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                        End If
+                    End If
+
+                End If
+
+
+
+            ElseIf i + 2 < dt1.Rows.Count Then
+                If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text = "Label1" Then
+                    Dim FontColor As String = GetFontColor(ContentID, Form1.cbProcess.Text)
+                    If AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1) Then
+
+                        If AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 2, i)
+                            If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Black" And CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Label1" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                        NeedActionCount += 1
+
+                                        CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                        CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+
+
+                                    End If
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+
+                            End If
+
+
+                        ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                            If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Black" And CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Label1" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                        NeedActionCount += 1
+
+                                        CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                        CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                    End If
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            End If
+                        Else
+                            If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                            Else
+                                CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                            End If
+                        End If
+                    ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1) Then
+
+                        If AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                            If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Black" And CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Label1" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                        NeedActionCount += 1
+
+                                        CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                        CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                    End If
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            End If
+                        Else
+                            If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                            Else
+                                CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                            End If
+                        End If
+                    Else
+                        If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                        Else
+                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                        End If
+                    End If
+
+                End If
+
+            ElseIf i + 1 < dt1.Rows.Count Then
+
+                If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text = "Label1" Then
+                    Dim FontColor As String = GetFontColor(ContentID, Form1.cbProcess.Text)
+                    If AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1) Then
+
+                        If AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                            If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Black" And CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text <> "Label1" Then
+
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If CType(Me.Controls.Find("btn" & i, True).First, Button).BackColor <> Color.Green Then
+                                        NeedActionCount += 1
+
+                                        CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+                                        CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+                                    End If
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            Else
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                                Else
+                                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                                End If
+                            End If
+                        Else
+                            If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                            Else
+                                CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                            End If
+                        End If
+                    Else
+                        If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                        Else
+                            CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                        End If
+                    End If
+
+                End If
+            Else
+                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue
+                Else
+                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Black
+                End If
+            End If
+        Next
+
+        For i = 0 To dt1.Rows.Count - 1
+            If CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text = "Blue" Then
+                CType(Me.Controls.Find("lblMC1_Case" & i, True).First, Label).ForeColor = Color.Blue
+                CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).ForeColor = Color.Blue
+            ElseIf CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text = "Red" Then
+                CType(Me.Controls.Find("lblMC1_Case" & i, True).First, Label).ForeColor = Color.Red
+                CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).ForeColor = Color.Red
+            ElseIf CType(Me.Controls.Find("lblMC1_Color" & i, True).First, Label).Text = "Black" Then
+                CType(Me.Controls.Find("lblMC1_Case" & i, True).First, Label).ForeColor = Color.Black
+                CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).ForeColor = Color.Black
+            End If
+        Next
+    End Sub
+
+    Function IsQorM(ByVal ID As Integer, ByVal Process As String) As String
+        Dim Str As String = ""
+        Select Case Process
+            Case "EDS"
+                'If ID = AcreID Then
+
+                If ID = 13 Then
+                    Str = "Meka"
+                ElseIf ID = 16 Then
+                    Str = "Quality"
+                Else
+                    Str = "N/A"
+                End If
+
+            'Else
+
+            '    If AcreID = 13 Then
+            '        Str = "Meka"
+            '    ElseIf AcreID = 16 Then
+            '        Str = "Quality"
+            '    Else
+            '        Str = "N/A"
+            '    End If
+
+            'End If
+
+            Case "DC"
+
+                'If ID = AcreID Then
+
+                If ID = 48 Then
+                    Str = "Meka"
+                ElseIf ID = 49 Then
+                    Str = "Quality"
+                Else
+                    Str = "N/A"
+                End If
+
+            'Else
+            '    If AcreID = 48 Then
+            '        Str = "Meka"
+            '    ElseIf AcreID = 49 Then
+            '        Str = "Quality"
+            '    Else
+            '        If ID = 48 Then
+            '            Str = "Meka"
+            '        ElseIf ID = 49 Then
+            '            Str = "Quality"
+            '        Else
+            '            Str = "N/A"
+            '        End If
+            '    End If
+            'End If
+
+            Case "DB"
+
+                'If ID = AcreID Then
+                If ID = 18 Then
+                    Str = "Meka"
+                ElseIf ID = 19 Then
+                    Str = "Quality"
+                Else
+                    Str = "N/A"
+                End If
+            'Else
+            '    If AcreID = 18 Then
+            '        Str = "Meka"
+            '    ElseIf AcreID = 19 Then
+            '        Str = "Quality"
+            '    Else
+            '        If ID = 18 Then
+            '            Str = "Meka"
+            '        ElseIf ID = 19 Then
+            '            Str = "Quality"
+            '        Else
+            '            Str = "N/A"
+            '        End If
+            '    End If
+            'End If
+
+
+
+            Case "WB"
+
+                ' If ID = AcreID Then
+                If ID = 45 Then
+                    Str = "Meka"
+                ElseIf ID = 46 Then
+                    Str = "Quality"
+                Else
+                    Str = "N/A"
+                End If
+            'Else
+            '    If AcreID = 45 Then
+            '        Str = "Meka"
+            '    ElseIf AcreID = 46 Then
+            '        Str = "Quality"
+            '    Else
+            '        If ID = 45 Then
+            '            Str = "Meka"
+            '        ElseIf ID = 46 Then
+            '            Str = "Quality"
+            '        Else
+            '            Str = "N/A"
+            '        End If
+            '    End If
+            'End If
+
+
+
+            Case "MP"
+
+                ' If ID = AcreID Then
+
+                If ID = 24 Then
+                    Str = "Meka"
+                ElseIf ID = 25 Then
+                    Str = "Quality"
+                Else
+                    Str = "N/A"
+                End If
+
+            'Else
+
+            '    If AcreID = 24 Then
+            '        Str = "Meka"
+            '    ElseIf AcreID = 25 Then
+            '        Str = "Quality"
+            '    Else
+
+            '        If ID = 24 Then
+            '            Str = "Meka"
+            '        ElseIf ID = 25 Then
+            '            Str = "Quality"
+            '        Else
+            '            Str = "N/A"
+            '        End If
+
+            '    End If
+
+            'End If
+
+            Case "PL"
+                'If ID = AcreID Then
+                If ID = 42 Then
+                    Str = "Meka"
+                ElseIf ID = 43 Then
+                    Str = "Quality"
+                Else
+                    Str = "N/A"
+                End If
+            'Else
+            '    If AcreID = 42 Then
+            '        Str = "Meka"
+            '    ElseIf AcreID = 43 Then
+            '        Str = "Quality"
+            '    Else
+            '        If ID = 42 Then
+            '            Str = "Meka"
+            '        ElseIf ID = 43 Then
+            '            Str = "Quality"
+            '        Else
+            '            Str = "N/A"
+            '        End If
+            '    End If
+            'End If
+
+
+
+            Case "FL", "SING", "ATC"
+
+                'If ID = AcreID Then
+                If ID = 1 Then
+                    Str = "Meka"
+                ElseIf ID = 2 Then
+                    Str = "Quality"
+                Else
+                    Str = "N/A"
+                End If
+            'Else
+            '    If AcreID = 1 Then
+            '        Str = "Meka"
+            '    ElseIf AcreID = 2 Then
+            '        Str = "Quality"
+            '    Else
+            '        If ID = 1 Then
+            '            Str = "Meka"
+            '        ElseIf ID = 2 Then
+            '            Str = "Quality"
+            '        Else
+            '            Str = "N/A"
+            '        End If
+            '    End If
+            'End If
+
+
+            Case "FT"
+                'If ID = AcreID Then
+                If ID = 31 Then
+                    Str = "Meka"
+                ElseIf ID = 33 Then
+                    Str = "Quality"
+                Else
+                    Str = "N/A"
+                End If
+            'Else
+            '    If AcreID = 31 Then
+            '        Str = "Meka"
+            '    ElseIf AcreID = 33 Then
+            '        Str = "Quality"
+            '    Else
+            '        If ID = 31 Then
+            '            Str = "Meka"
+            '        ElseIf ID = 33 Then
+            '            Str = "Quality"
+            '        Else
+            '            Str = "N/A"
+            '        End If
+            '    End If
+            'End If
+
+
+
+            Case "TP"
+
+                '   If ID = AcreID Then
+                If ID = 9 Then
+                    Str = "Meka"
+                ElseIf ID = 30 Then
+                    Str = "Quality"
+                Else
+                    Str = "N/A"
+                End If
+            'Else
+            '    If AcreID = 9 Then
+            '        Str = "Meka"
+            '    ElseIf AcreID = 30 Then
+            '        Str = "Quality"
+            '    Else
+            '        If ID = 9 Then
+            '            Str = "Meka"
+            '        ElseIf ID = 30 Then
+            '            Str = "Quality"
+            '        Else
+            '            Str = "N/A"
+            '        End If
+            '    End If
+            'End If
+
+
+
+            Case "MEMS"
+
+                ' If ID = AcreID Then
+                If ID = 72 Then
+                    Str = "Meka"
+                ElseIf ID = 74 Then
+                    Str = "Quality"
+                Else
+                    Str = "N/A"
+                End If
+                'Else
+                '    If AcreID = 72 Then
+                '        Str = "Meka"
+                '    ElseIf AcreID = 74 Then
+                '        Str = "Quality"
+                '    Else
+                '        If ID = 72 Then
+                '            Str = "Meka"
+                '        ElseIf ID = 74 Then
+                '            Str = "Quality"
+                '        Else
+                '            Str = "N/A"
+                '        End If
+                '    End If
+                'End If
+
+
+        End Select
+        Return Str
+    End Function
+    Function GetFontColor(ByVal ID As Integer, ByVal Process As String) As String
+        Dim FontColor As String = ""
+        Select Case Process
+            Case "EDS"
+                If ID = 13 Then
+                    FontColor = "Blue"
+                ElseIf ID = 16 Then
+                    FontColor = "Red"
+                Else
+                    FontColor = "Black"
+                End If
+
+            Case "DC"
+                If ID = 48 Then
+                    FontColor = "Blue"
+                ElseIf ID = 49 Then
+                    FontColor = "Red"
+                Else
+                    FontColor = "Black"
+                End If
+
+            Case "DB"
+                If ID = 18 Then
+                    FontColor = "Blue"
+                ElseIf ID = 19 Then
+                    FontColor = "Red"
+                Else
+                    FontColor = "Black"
+                End If
+
+            Case "WB"
+                If ID = 45 Then
+                    FontColor = "Blue"
+                ElseIf ID = 46 Then
+                    FontColor = "Red"
+                Else
+                    FontColor = "Black"
+                End If
+
+            Case "MP"
+                If ID = 24 Then
+                    FontColor = "Blue"
+                ElseIf ID = 25 Then
+                    FontColor = "Red"
+                Else
+                    FontColor = "Black"
+                End If
+
+            Case "PL"
+                If ID = 42 Then
+                    FontColor = "Blue"
+                ElseIf ID = 43 Then
+                    FontColor = "Red"
+                Else
+                    FontColor = "Black"
+                End If
+
+            Case "FL", "SING", "ATC"
+                If ID = 1 Then
+                    FontColor = "Blue"
+                ElseIf ID = 2 Then
+                    FontColor = "Red"
+                Else
+                    FontColor = "Black"
+                End If
+            Case "FT"
+                If ID = 31 Then
+                    FontColor = "Blue"
+                ElseIf ID = 33 Then
+                    FontColor = "Red"
+                Else
+                    FontColor = "Black"
+                End If
+
+            Case "TP"
+                If ID = 9 Then
+                    FontColor = "Blue"
+                ElseIf ID = 30 Then
+                    FontColor = "Red"
+                Else
+                    FontColor = "Black"
+                End If
+
+            Case "MEMS"
+                If ID = 72 Then
+                    FontColor = "Blue"
+                ElseIf ID = 74 Then
+                    FontColor = "Red"
+                Else
+                    FontColor = "Black"
+                End If
+        End Select
+
+
+
+
+
+        Return FontColor
+    End Function
+
+
+    '-------------------------------------------------------------
+
+
+    Function AreNextFiveColumnValuesEqual(currentRow As DataRow, dataTable As DataTable, column As String, startIndex As Integer) As Boolean
+        For i As Integer = startIndex To startIndex + 4
+            If Not currentRow(column).Equals(dataTable.Rows(i)(column)) Then
+                Return False
+            End If
+        Next
+        Return True
+    End Function
+
+    '5 count rebm
+    Function AreNextFourColumnValuesEqual(currentRow As DataRow, dataTable As DataTable, column As String, startIndex As Integer) As Boolean
+        For i As Integer = startIndex To startIndex + 3
+            If Not currentRow(column).Equals(dataTable.Rows(i)(column)) Then
+                Return False
+            End If
+        Next
+        Return True
+    End Function
+
+    '4 count rebm
+    Function AreNextThreeColumnValuesEqual(currentRow As DataRow, dataTable As DataTable, column As String, startIndex As Integer) As Boolean
+        For i As Integer = startIndex To startIndex + 2
+            If Not currentRow(column).Equals(dataTable.Rows(i)(column)) Then
+                Return False
+            End If
+        Next
+        Return True
+    End Function
+
+    '3 count rebm
+    Function AreNextTwoColumnValuesEqual(currentRow As DataRow, dataTable As DataTable, column As String, startIndex As Integer) As Boolean
+        For i As Integer = startIndex To startIndex + 1
+            If Not currentRow(column).Equals(dataTable.Rows(i)(column)) Then
+                Return False
+            End If
+        Next
+        Return True
+    End Function
+    Function AreNextOneColumnValuesEqual(currentRow As DataRow, dataTable As DataTable, column As String, startIndex As Integer) As Boolean
+        For i As Integer = startIndex To startIndex
+            If Not currentRow(column).Equals(dataTable.Rows(i)(column)) Then
+                Return False
+            End If
+        Next
+        Return True
+    End Function
+    Function RowsAreEqual(row1 As DataRow, row2 As DataRow) As Boolean
+        For Each column As DataColumn In row1.Table.Columns
+            If Not row1(column).Equals(row2(column)) Then
+                Return False
+            End If
+        Next
+        Return True
+    End Function
+
+    Private Sub Label_Click(ByVal sender As System.Object, ByVal e As System.EventArgs)
+        If Application.OpenForms().OfType(Of Form_Input).Any Then
+            Exit Sub
+        End If
+        Dim myLabel = DirectCast(sender, Label)
+        If myLabel.Name.Contains("lblMC1_Header") Then
+            Exit Sub
+        End If
+        If myLabel.Name.Contains("lblMC1_Date") Then
+            Exit Sub
+        End If
+        If myLabel.Name.Contains("lblMC1_StatusHead") Then
+            Exit Sub
+        End If
+        If myLabel.Name.Contains("lblMC1_StatusFooter") Then
+            Exit Sub
+        End If
+        Dim Count As Integer = myLabel.Name.Length
+        Dim Test As Integer = 0
+
+        If Count = 12 Then
+            Test = CInt(myLabel.Name.ToString.Substring(myLabel.Name.Length - 1))
+        ElseIf Count = 13
+            Test = CInt(myLabel.Name.ToString.Substring(myLabel.Name.Length - 2))
+        End If
+
+        If CType(Me.Controls.Find("btn" & Test, True).First, Button).Visible = "False" Then
+            '   If MsgBox("Are you sure?", MsgBoxStyle.YesNo, "Input Action") = MsgBoxResult.Yes Then
+            Form_Input.LoadData(CType(Me.Controls.Find("lblBMID_" & Test, True).First, Label).Text, "New", lblMC1.Text, CType(Me.Controls.Find("btn" & Test, True).First, Button).BackColor, CType(Me.Controls.Find("lblMC1_Case" & Test, True).First, Label).Text)
+            Form_Input.Show()
+            'End If
+        End If
+    End Sub
+    Private Sub CreateButton_Footer_Click(ByVal sender As System.Object, ByVal e As System.EventArgs)
+        Dim myButton = DirectCast(sender, Button)
+        If myButton.Text = "R→" Then
+
+            If globalUser = "TE" Then
+                If Application.OpenForms().OfType(Of Form9).Any Then
+                Else
+                    Dim Count As Integer = myButton.Name.Length
+                    Dim Test As Integer = 0
+
+                    If Count = 4 Then
+                        Test = CInt(myButton.Name.ToString.Substring(myButton.Name.Length - 1))
+                    ElseIf Count = 5
+                        Test = CInt(myButton.Name.ToString.Substring(myButton.Name.Length - 2))
+                    End If
+
+                    Form9.LoadData(Form1.cbProcess.Text, CType(Me.Controls.Find("lblBMID_" & Test, True).First, Label).Text, CType(Me.Controls.Find("lblMC1_Date" & Test, True).First, Label).Text, lblMC1.Text)
+
+                End If
+            Else
+                If Application.OpenForms().OfType(Of Form3).Any Then
+                Else
+                    Dim Count As Integer = myButton.Name.Length
+                    Dim Test As Integer = 0
+
+                    If Count = 4 Then
+                        Test = CInt(myButton.Name.ToString.Substring(myButton.Name.Length - 1))
+                    ElseIf Count = 5
+                        Test = CInt(myButton.Name.ToString.Substring(myButton.Name.Length - 2))
+                    End If
+
+                    Form3.LoadData(Form1.cbProcess.Text, CType(Me.Controls.Find("lblBMID_" & Test, True).First, Label).Text, CType(Me.Controls.Find("lblMC1_Date" & Test, True).First, Label).Text, lblMC1.Text)
+
+                End If
+            End If
+
+
+        ElseIf myButton.Text = "E→" Then
+            If globalUser = "TE" Then
+                If Application.OpenForms().OfType(Of Form10).Any Then
+                Else
+                    Dim Count As Integer = myButton.Name.Length
+                    Dim Test As Integer = 0
+
+                    If Count = 12 Then
+                        Test = CInt(myButton.Name.ToString.Substring(myButton.Name.Length - 1))
+                    ElseIf Count = 13
+                        Test = CInt(myButton.Name.ToString.Substring(myButton.Name.Length - 2))
+                    End If
+
+                    Form10.EMakingPrint(Form1.cbProcess.Text, CType(Me.Controls.Find("lblBMID_" & Test, True).First, Label).Text)
+
+                End If
+            Else
+                If Application.OpenForms().OfType(Of Form4).Any Then
+                Else
+                    Dim Count As Integer = myButton.Name.Length
+                    Dim Test As Integer = 0
+
+                    If Count = 12 Then
+                        Test = CInt(myButton.Name.ToString.Substring(myButton.Name.Length - 1))
+                    ElseIf Count = 13
+                        Test = CInt(myButton.Name.ToString.Substring(myButton.Name.Length - 2))
+                    End If
+
+                    Form4.EMakingPrint(Form1.cbProcess.Text, CType(Me.Controls.Find("lblBMID_" & Test, True).First, Label).Text)
+
+                End If
+            End If
+
+        Else
+            If Application.OpenForms().OfType(Of Form6).Any Or Application.OpenForms().OfType(Of Form3).Any Or Application.OpenForms().OfType(Of Form4).Any Then
+                MsgBox("Please close all opened forms ( BM RECORD, EVIDENCE RECORD, OCAP ) first to proceed. Thank you")
+            Else
+
+                Dim bmID As Integer = 0
+                Dim ocapData As String = String.Empty
+                Dim Test As String = String.Empty
+                Test = myButton.Name.ToString
+
+                Dim arrData() As String = myButton.Name.ToString().Split("_")
+
+                If arrData.Length = 2 Then
+
+                    bmID = arrData(1).ToString
+                    ocapData = arrData(0).ToString
+                End If
+
+                Form6.LoadOCAP(CType(Me.Controls.Find("lblBMID_" & bmID, True).First, Label).Text, Form1.cbProcess.Text, ocapData)
+                Form6.ShowDialog()
+            End If
+        End If
+
+    End Sub
+    Private Sub Button_Click(ByVal sender As System.Object, ByVal e As System.EventArgs)
+        Dim myButton = DirectCast(sender, Button)
+        Try
+            If Application.OpenForms().OfType(Of Form_Input).Any Then
+            Else
+                Dim Count As Integer = myButton.Name.Length
+                Dim Test As Integer = 0
+
+                If Count = 4 Then
+                    Test = CInt(myButton.Name.ToString.Substring(myButton.Name.Length - 1))
+                ElseIf Count = 5
+                    Test = CInt(myButton.Name.ToString.Substring(myButton.Name.Length - 2))
+                End If
+
+                Form_Input.LoadData(CType(Me.Controls.Find("lblBMID_" & Test, True).First, Label).Text, "Existing", lblMC1.Text, CType(Me.Controls.Find("btn" & Test, True).First, Button).BackColor, CType(Me.Controls.Find("lblMC1_Case" & Test, True).First, Label).Text)
+                Form_Input.Show()
+            End If
+
+        Catch ex As Exception
+            MsgBox(ex.ToString)
+        End Try
+    End Sub
+
+    Private Sub Timer1_Tick_1(sender As Object, e As EventArgs) Handles Timer1.Tick
+
+        For i = 0 To TimerNum
+
+            If CType(Me.Controls.Find("lblMC1_Case" & i, True).First, Label).ForeColor = Color.Blue Then
+                CType(Me.Controls.Find("lblMC1_Case" & i, True).First, Label).ForeColor = SystemColors.Desktop
+            ElseIf CType(Me.Controls.Find("lblMC1_Case" & i, True).First, Label).ForeColor = SystemColors.Desktop Then
+                CType(Me.Controls.Find("lblMC1_Case" & i, True).First, Label).ForeColor = Color.Blue
+            End If
+
+
+            If CType(Me.Controls.Find("lblMC1_Case" & i, True).First, Label).ForeColor = Color.Red Then
+                CType(Me.Controls.Find("lblMC1_Case" & i, True).First, Label).ForeColor = SystemColors.InactiveCaptionText
+            ElseIf CType(Me.Controls.Find("lblMC1_Case" & i, True).First, Label).ForeColor = SystemColors.InactiveCaptionText Then
+                CType(Me.Controls.Find("lblMC1_Case" & i, True).First, Label).ForeColor = Color.Red
+            End If
+
+            If CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red Then
+                CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.White
+            ElseIf CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.White Then
+                CType(Me.Controls.Find("lblMC1_Header" & i, True).First, Label).BackColor = Color.Red
+            End If
+
+            If CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red Then
+                CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.White
+            ElseIf CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.White Then
+                CType(Me.Controls.Find("lblMC1_Date" & i, True).First, Label).BackColor = Color.Red
+            End If
+
+            If CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).ForeColor = Color.Blue Then
+                If CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).BackColor = Color.WhiteSmoke Then
+
+                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).BackColor = Color.DarkRed
+                ElseIf CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).BackColor = Color.DarkRed
+                    CType(Me.Controls.Find("lblMC1_MCD" & i, True).First, Label).BackColor = Color.WhiteSmoke
+                End If
+            End If
+
+
+        Next
+    End Sub
+
+End Class

@@ -1,0 +1,2060 @@
+﻿<Global.Microsoft.VisualBasic.CompilerServices.DesignerGenerated()>
+Partial Class Form1
+    Inherits System.Windows.Forms.Form
+
+    'Form overrides dispose to clean up the component list.
+    <System.Diagnostics.DebuggerNonUserCode()>
+    Protected Overrides Sub Dispose(ByVal disposing As Boolean)
+        Try
+            If disposing AndAlso components IsNot Nothing Then
+                components.Dispose()
+            End If
+        Finally
+            MyBase.Dispose(disposing)
+        End Try
+    End Sub
+
+    'Required by the Windows Form Designer
+    Private components As System.ComponentModel.IContainer
+
+    'NOTE: The following procedure is required by the Windows Form Designer
+    'It can be modified using the Windows Form Designer.  
+    'Do not modify it using the code editor.
+    <System.Diagnostics.DebuggerStepThrough()>
+    Private Sub InitializeComponent()
+        Me.components = New System.ComponentModel.Container()
+        Me.lblTimer = New System.Windows.Forms.Label()
+        Me.btnSearch = New System.Windows.Forms.Button()
+        Me.lblPrev = New System.Windows.Forms.Button()
+        Me.dt2 = New System.Windows.Forms.DateTimePicker()
+        Me.dt1 = New System.Windows.Forms.DateTimePicker()
+        Me.lblPageNumber = New System.Windows.Forms.Label()
+        Me.lblNext = New System.Windows.Forms.Button()
+        Me.cbMachine = New System.Windows.Forms.ComboBox()
+        Me.Label3 = New System.Windows.Forms.Label()
+        Me.cbFloor = New System.Windows.Forms.ComboBox()
+        Me.Label2 = New System.Windows.Forms.Label()
+        Me.cbProcess = New System.Windows.Forms.ComboBox()
+        Me.Label1 = New System.Windows.Forms.Label()
+        Me.Label54 = New System.Windows.Forms.Label()
+        Me.Panel3 = New System.Windows.Forms.Panel()
+        Me.Panel8 = New System.Windows.Forms.Panel()
+        Me.Panel6 = New System.Windows.Forms.Panel()
+        Me.ListBox1_8 = New System.Windows.Forms.ListBox()
+        Me.Panel7 = New System.Windows.Forms.Panel()
+        Me.ListBox1_1 = New System.Windows.Forms.ListBox()
+        Me.ListBox1_2 = New System.Windows.Forms.ListBox()
+        Me.ListBox1_3 = New System.Windows.Forms.ListBox()
+        Me.ListBox1_4 = New System.Windows.Forms.ListBox()
+        Me.ListBox1_5 = New System.Windows.Forms.ListBox()
+        Me.ListBox1_6 = New System.Windows.Forms.ListBox()
+        Me.ListBox1_7 = New System.Windows.Forms.ListBox()
+        Me.ListBox_1 = New System.Windows.Forms.ListBox()
+        Me.ListBox_5 = New System.Windows.Forms.ListBox()
+        Me.ListBox_2 = New System.Windows.Forms.ListBox()
+        Me.ListBox_6 = New System.Windows.Forms.ListBox()
+        Me.ListBox_4 = New System.Windows.Forms.ListBox()
+        Me.LB_7 = New System.Windows.Forms.ListBox()
+        Me.LB_5 = New System.Windows.Forms.ListBox()
+        Me.ListBox_7 = New System.Windows.Forms.ListBox()
+        Me.LB_4 = New System.Windows.Forms.ListBox()
+        Me.ListBox_3 = New System.Windows.Forms.ListBox()
+        Me.LB_1 = New System.Windows.Forms.ListBox()
+        Me.LB_3 = New System.Windows.Forms.ListBox()
+        Me.LB_2 = New System.Windows.Forms.ListBox()
+        Me.LB_6 = New System.Windows.Forms.ListBox()
+        Me.ListBox1_9 = New System.Windows.Forms.ListBox()
+        Me.Label7 = New System.Windows.Forms.Label()
+        Me.ListBox_9 = New System.Windows.Forms.ListBox()
+        Me.ListBox_8 = New System.Windows.Forms.ListBox()
+        Me.cbUser = New System.Windows.Forms.ComboBox()
+        Me.LB_9 = New System.Windows.Forms.ListBox()
+        Me.LB_8 = New System.Windows.Forms.ListBox()
+        Me.Label41 = New System.Windows.Forms.Label()
+        Me.Panel2 = New System.Windows.Forms.Panel()
+        Me.Label1_9 = New System.Windows.Forms.Label()
+        Me.lbl_9 = New System.Windows.Forms.Label()
+        Me.Label47 = New System.Windows.Forms.Label()
+        Me.Label_9 = New System.Windows.Forms.Label()
+        Me.Label1_8 = New System.Windows.Forms.Label()
+        Me.lbl_8 = New System.Windows.Forms.Label()
+        Me.Label43 = New System.Windows.Forms.Label()
+        Me.Label_8 = New System.Windows.Forms.Label()
+        Me.Label40 = New System.Windows.Forms.Label()
+        Me.Label1_5 = New System.Windows.Forms.Label()
+        Me.Label1_1 = New System.Windows.Forms.Label()
+        Me.Label1_4 = New System.Windows.Forms.Label()
+        Me.Label1_6 = New System.Windows.Forms.Label()
+        Me.btnWithAction = New System.Windows.Forms.Button()
+        Me.Label1_2 = New System.Windows.Forms.Label()
+        Me.Label1_7 = New System.Windows.Forms.Label()
+        Me.Label1_3 = New System.Windows.Forms.Label()
+        Me.Button5 = New System.Windows.Forms.Button()
+        Me.lbl_5 = New System.Windows.Forms.Label()
+        Me.Label33 = New System.Windows.Forms.Label()
+        Me.Button6 = New System.Windows.Forms.Button()
+        Me.Label5 = New System.Windows.Forms.Label()
+        Me.lbl_4 = New System.Windows.Forms.Label()
+        Me.lbl_6 = New System.Windows.Forms.Label()
+        Me.Button2 = New System.Windows.Forms.Button()
+        Me.Label35 = New System.Windows.Forms.Label()
+        Me.Listbox_main = New System.Windows.Forms.ListBox()
+        Me.lbl_7 = New System.Windows.Forms.Label()
+        Me.Label39 = New System.Windows.Forms.Label()
+        Me.lbl_3 = New System.Windows.Forms.Label()
+        Me.Label34 = New System.Windows.Forms.Label()
+        Me.lbl_2 = New System.Windows.Forms.Label()
+        Me.Label36 = New System.Windows.Forms.Label()
+        Me.lbl_1 = New System.Windows.Forms.Label()
+        Me.Label37 = New System.Windows.Forms.Label()
+        Me.Label38 = New System.Windows.Forms.Label()
+        Me.Label_5 = New System.Windows.Forms.Label()
+        Me.Label_1 = New System.Windows.Forms.Label()
+        Me.Label_4 = New System.Windows.Forms.Label()
+        Me.Label_6 = New System.Windows.Forms.Label()
+        Me.btnMCD = New System.Windows.Forms.Button()
+        Me.Label_2 = New System.Windows.Forms.Label()
+        Me.Label_7 = New System.Windows.Forms.Label()
+        Me.Label_3 = New System.Windows.Forms.Label()
+        Me.Panel5 = New System.Windows.Forms.Panel()
+        Me.Button3 = New System.Windows.Forms.Button()
+        Me.Label29 = New System.Windows.Forms.Label()
+        Me.Label25 = New System.Windows.Forms.Label()
+        Me.Label30 = New System.Windows.Forms.Label()
+        Me.Label26 = New System.Windows.Forms.Label()
+        Me.Label31 = New System.Windows.Forms.Label()
+        Me.Label27 = New System.Windows.Forms.Label()
+        Me.Label32 = New System.Windows.Forms.Label()
+        Me.Label28 = New System.Windows.Forms.Label()
+        Me.Label21 = New System.Windows.Forms.Label()
+        Me.Label22 = New System.Windows.Forms.Label()
+        Me.Label23 = New System.Windows.Forms.Label()
+        Me.Label24 = New System.Windows.Forms.Label()
+        Me.Label20 = New System.Windows.Forms.Label()
+        Me.Label6 = New System.Windows.Forms.Label()
+        Me.Label17 = New System.Windows.Forms.Label()
+        Me.Label18 = New System.Windows.Forms.Label()
+        Me.Label15 = New System.Windows.Forms.Label()
+        Me.Label16 = New System.Windows.Forms.Label()
+        Me.Label13 = New System.Windows.Forms.Label()
+        Me.Label14 = New System.Windows.Forms.Label()
+        Me.Label11 = New System.Windows.Forms.Label()
+        Me.Label12 = New System.Windows.Forms.Label()
+        Me.Label9 = New System.Windows.Forms.Label()
+        Me.Label10 = New System.Windows.Forms.Label()
+        Me.Button1 = New System.Windows.Forms.Button()
+        Me.Label19 = New System.Windows.Forms.Label()
+        Me.Label8 = New System.Windows.Forms.Label()
+        Me.Button4 = New System.Windows.Forms.Button()
+        Me.Panel1 = New System.Windows.Forms.Panel()
+        Me.Panel4 = New System.Windows.Forms.Panel()
+        Me.Timer1 = New System.Windows.Forms.Timer(Me.components)
+        Me.Timer2 = New System.Windows.Forms.Timer(Me.components)
+        Me.Panel3.SuspendLayout()
+        Me.Panel8.SuspendLayout()
+        Me.Panel6.SuspendLayout()
+        Me.Panel7.SuspendLayout()
+        Me.Panel2.SuspendLayout()
+        Me.Panel5.SuspendLayout()
+        Me.SuspendLayout()
+        '
+        'lblTimer
+        '
+        Me.lblTimer.BackColor = System.Drawing.Color.LightGray
+        Me.lblTimer.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.lblTimer.Font = New System.Drawing.Font("Microsoft Sans Serif", 14.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.lblTimer.ForeColor = System.Drawing.Color.Red
+        Me.lblTimer.Location = New System.Drawing.Point(-1, 12)
+        Me.lblTimer.Name = "lblTimer"
+        Me.lblTimer.Size = New System.Drawing.Size(218, 28)
+        Me.lblTimer.TabIndex = 24
+        Me.lblTimer.Text = "600"
+        Me.lblTimer.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        Me.lblTimer.Visible = False
+        '
+        'btnSearch
+        '
+        Me.btnSearch.BackColor = System.Drawing.Color.Green
+        Me.btnSearch.Cursor = System.Windows.Forms.Cursors.Hand
+        Me.btnSearch.FlatStyle = System.Windows.Forms.FlatStyle.Popup
+        Me.btnSearch.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Bold)
+        Me.btnSearch.ForeColor = System.Drawing.Color.White
+        Me.btnSearch.Location = New System.Drawing.Point(421, 41)
+        Me.btnSearch.Name = "btnSearch"
+        Me.btnSearch.Size = New System.Drawing.Size(81, 57)
+        Me.btnSearch.TabIndex = 23
+        Me.btnSearch.Text = "Search"
+        Me.btnSearch.UseVisualStyleBackColor = False
+        '
+        'lblPrev
+        '
+        Me.lblPrev.BackColor = System.Drawing.Color.DeepSkyBlue
+        Me.lblPrev.Cursor = System.Windows.Forms.Cursors.Hand
+        Me.lblPrev.FlatStyle = System.Windows.Forms.FlatStyle.Popup
+        Me.lblPrev.Font = New System.Drawing.Font("Microsoft Tai Le", 14.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.lblPrev.ForeColor = System.Drawing.Color.Black
+        Me.lblPrev.Location = New System.Drawing.Point(178, 70)
+        Me.lblPrev.Name = "lblPrev"
+        Me.lblPrev.Size = New System.Drawing.Size(81, 28)
+        Me.lblPrev.TabIndex = 0
+        Me.lblPrev.Text = "◄"
+        Me.lblPrev.UseVisualStyleBackColor = False
+        '
+        'dt2
+        '
+        Me.dt2.Font = New System.Drawing.Font("Microsoft Sans Serif", 14.25!)
+        Me.dt2.Location = New System.Drawing.Point(303, 41)
+        Me.dt2.Name = "dt2"
+        Me.dt2.Size = New System.Drawing.Size(117, 29)
+        Me.dt2.TabIndex = 7
+        '
+        'dt1
+        '
+        Me.dt1.Font = New System.Drawing.Font("Microsoft Sans Serif", 14.25!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.dt1.Location = New System.Drawing.Point(178, 41)
+        Me.dt1.Name = "dt1"
+        Me.dt1.Size = New System.Drawing.Size(127, 29)
+        Me.dt1.TabIndex = 16
+        '
+        'lblPageNumber
+        '
+        Me.lblPageNumber.BackColor = System.Drawing.Color.PowderBlue
+        Me.lblPageNumber.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.lblPageNumber.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.lblPageNumber.ForeColor = System.Drawing.Color.Black
+        Me.lblPageNumber.Location = New System.Drawing.Point(260, 70)
+        Me.lblPageNumber.Name = "lblPageNumber"
+        Me.lblPageNumber.Size = New System.Drawing.Size(82, 28)
+        Me.lblPageNumber.TabIndex = 2
+        Me.lblPageNumber.Text = "1"
+        Me.lblPageNumber.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'lblNext
+        '
+        Me.lblNext.BackColor = System.Drawing.Color.DeepSkyBlue
+        Me.lblNext.Cursor = System.Windows.Forms.Cursors.Hand
+        Me.lblNext.FlatStyle = System.Windows.Forms.FlatStyle.Popup
+        Me.lblNext.Font = New System.Drawing.Font("Microsoft Tai Le", 14.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.lblNext.ForeColor = System.Drawing.Color.Black
+        Me.lblNext.Location = New System.Drawing.Point(343, 70)
+        Me.lblNext.Name = "lblNext"
+        Me.lblNext.Size = New System.Drawing.Size(77, 28)
+        Me.lblNext.TabIndex = 1
+        Me.lblNext.Text = "►"
+        Me.lblNext.UseVisualStyleBackColor = False
+        '
+        'cbMachine
+        '
+        Me.cbMachine.Cursor = System.Windows.Forms.Cursors.Hand
+        Me.cbMachine.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList
+        Me.cbMachine.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.cbMachine.FormattingEnabled = True
+        Me.cbMachine.Location = New System.Drawing.Point(260, 12)
+        Me.cbMachine.Name = "cbMachine"
+        Me.cbMachine.Size = New System.Drawing.Size(242, 28)
+        Me.cbMachine.TabIndex = 12
+        '
+        'Label3
+        '
+        Me.Label3.BackColor = System.Drawing.Color.DarkGray
+        Me.Label3.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label3.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.Label3.ForeColor = System.Drawing.Color.Black
+        Me.Label3.Location = New System.Drawing.Point(178, 12)
+        Me.Label3.Name = "Label3"
+        Me.Label3.Size = New System.Drawing.Size(81, 28)
+        Me.Label3.TabIndex = 13
+        Me.Label3.Text = "Machine"
+        Me.Label3.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'cbFloor
+        '
+        Me.cbFloor.Cursor = System.Windows.Forms.Cursors.Hand
+        Me.cbFloor.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList
+        Me.cbFloor.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.cbFloor.FormattingEnabled = True
+        Me.cbFloor.Items.AddRange(New Object() {"-Select-", "LSI1-1F", "LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-1F", "LSI3-2F", "LSI3-3F", "LSI3-4F"})
+        Me.cbFloor.Location = New System.Drawing.Point(89, 70)
+        Me.cbFloor.Name = "cbFloor"
+        Me.cbFloor.Size = New System.Drawing.Size(88, 28)
+        Me.cbFloor.TabIndex = 11
+        '
+        'Label2
+        '
+        Me.Label2.BackColor = System.Drawing.Color.DarkGray
+        Me.Label2.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label2.Font = New System.Drawing.Font("Microsoft Sans Serif", 11.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.Label2.ForeColor = System.Drawing.Color.Black
+        Me.Label2.Location = New System.Drawing.Point(15, 70)
+        Me.Label2.Name = "Label2"
+        Me.Label2.Size = New System.Drawing.Size(75, 28)
+        Me.Label2.TabIndex = 10
+        Me.Label2.Text = "Location"
+        Me.Label2.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'cbProcess
+        '
+        Me.cbProcess.Cursor = System.Windows.Forms.Cursors.Hand
+        Me.cbProcess.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList
+        Me.cbProcess.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.cbProcess.FormattingEnabled = True
+        Me.cbProcess.Items.AddRange(New Object() {"-Select-", "DC", "DB", "WB", "MP", "PL", "FL", "ATC", "SING", "FT", "TP", "EDS", "MEMS"})
+        Me.cbProcess.Location = New System.Drawing.Point(89, 41)
+        Me.cbProcess.Name = "cbProcess"
+        Me.cbProcess.Size = New System.Drawing.Size(88, 28)
+        Me.cbProcess.TabIndex = 4
+        '
+        'Label1
+        '
+        Me.Label1.BackColor = System.Drawing.Color.DarkGray
+        Me.Label1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label1.Font = New System.Drawing.Font("Microsoft Sans Serif", 11.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.Label1.ForeColor = System.Drawing.Color.Black
+        Me.Label1.Location = New System.Drawing.Point(15, 41)
+        Me.Label1.Name = "Label1"
+        Me.Label1.Size = New System.Drawing.Size(75, 28)
+        Me.Label1.TabIndex = 9
+        Me.Label1.Text = "Process"
+        Me.Label1.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label54
+        '
+        Me.Label54.BackColor = System.Drawing.Color.Transparent
+        Me.Label54.Font = New System.Drawing.Font("Verdana", 18.0!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.Label54.ForeColor = System.Drawing.Color.White
+        Me.Label54.Location = New System.Drawing.Point(1158, 2)
+        Me.Label54.Name = "Label54"
+        Me.Label54.Size = New System.Drawing.Size(229, 106)
+        Me.Label54.TabIndex = 25
+        Me.Label54.Text = "E-Karte System"
+        Me.Label54.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Panel3
+        '
+        Me.Panel3.AutoSize = True
+        Me.Panel3.BackgroundImageLayout = System.Windows.Forms.ImageLayout.None
+        Me.Panel3.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Panel3.Controls.Add(Me.Panel8)
+        Me.Panel3.Controls.Add(Me.Panel1)
+        Me.Panel3.Controls.Add(Me.Panel4)
+        Me.Panel3.Dock = System.Windows.Forms.DockStyle.Fill
+        Me.Panel3.Location = New System.Drawing.Point(0, 0)
+        Me.Panel3.Name = "Panel3"
+        Me.Panel3.Size = New System.Drawing.Size(1907, 862)
+        Me.Panel3.TabIndex = 8
+        '
+        'Panel8
+        '
+        Me.Panel8.BackColor = System.Drawing.Color.FromArgb(CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer))
+        Me.Panel8.Controls.Add(Me.Label54)
+        Me.Panel8.Controls.Add(Me.Panel6)
+        Me.Panel8.Controls.Add(Me.Panel2)
+        Me.Panel8.Controls.Add(Me.Panel5)
+        Me.Panel8.Controls.Add(Me.Label19)
+        Me.Panel8.Controls.Add(Me.Label8)
+        Me.Panel8.Controls.Add(Me.Button4)
+        Me.Panel8.Dock = System.Windows.Forms.DockStyle.Top
+        Me.Panel8.Location = New System.Drawing.Point(0, 0)
+        Me.Panel8.Name = "Panel8"
+        Me.Panel8.Size = New System.Drawing.Size(1905, 112)
+        Me.Panel8.TabIndex = 22
+        '
+        'Panel6
+        '
+        Me.Panel6.BackColor = System.Drawing.Color.FromArgb(CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer))
+        Me.Panel6.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Panel6.Controls.Add(Me.ListBox1_8)
+        Me.Panel6.Controls.Add(Me.Panel7)
+        Me.Panel6.Controls.Add(Me.ListBox1_9)
+        Me.Panel6.Controls.Add(Me.Label7)
+        Me.Panel6.Controls.Add(Me.ListBox_9)
+        Me.Panel6.Controls.Add(Me.ListBox_8)
+        Me.Panel6.Controls.Add(Me.cbUser)
+        Me.Panel6.Controls.Add(Me.LB_9)
+        Me.Panel6.Controls.Add(Me.Label1)
+        Me.Panel6.Controls.Add(Me.LB_8)
+        Me.Panel6.Controls.Add(Me.Label3)
+        Me.Panel6.Controls.Add(Me.lblTimer)
+        Me.Panel6.Controls.Add(Me.lblPrev)
+        Me.Panel6.Controls.Add(Me.cbMachine)
+        Me.Panel6.Controls.Add(Me.Label2)
+        Me.Panel6.Controls.Add(Me.dt1)
+        Me.Panel6.Controls.Add(Me.cbFloor)
+        Me.Panel6.Controls.Add(Me.lblPageNumber)
+        Me.Panel6.Controls.Add(Me.lblNext)
+        Me.Panel6.Controls.Add(Me.btnSearch)
+        Me.Panel6.Controls.Add(Me.cbProcess)
+        Me.Panel6.Controls.Add(Me.dt2)
+        Me.Panel6.Controls.Add(Me.Label41)
+        Me.Panel6.Dock = System.Windows.Forms.DockStyle.Right
+        Me.Panel6.Location = New System.Drawing.Point(1391, 0)
+        Me.Panel6.Margin = New System.Windows.Forms.Padding(2)
+        Me.Panel6.Name = "Panel6"
+        Me.Panel6.Size = New System.Drawing.Size(514, 112)
+        Me.Panel6.TabIndex = 0
+        '
+        'ListBox1_8
+        '
+        Me.ListBox1_8.BackColor = System.Drawing.Color.FromArgb(CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer))
+        Me.ListBox1_8.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.ListBox1_8.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.ListBox1_8.ForeColor = System.Drawing.Color.White
+        Me.ListBox1_8.FormattingEnabled = True
+        Me.ListBox1_8.ItemHeight = 20
+        Me.ListBox1_8.Location = New System.Drawing.Point(214, 112)
+        Me.ListBox1_8.Name = "ListBox1_8"
+        Me.ListBox1_8.RightToLeft = System.Windows.Forms.RightToLeft.No
+        Me.ListBox1_8.ScrollAlwaysVisible = True
+        Me.ListBox1_8.Size = New System.Drawing.Size(121, 82)
+        Me.ListBox1_8.TabIndex = 162
+        Me.ListBox1_8.Visible = False
+        '
+        'Panel7
+        '
+        Me.Panel7.BackColor = System.Drawing.Color.FromArgb(CType(CType(224, Byte), Integer), CType(CType(224, Byte), Integer), CType(CType(224, Byte), Integer))
+        Me.Panel7.Controls.Add(Me.ListBox1_1)
+        Me.Panel7.Controls.Add(Me.ListBox1_2)
+        Me.Panel7.Controls.Add(Me.ListBox1_3)
+        Me.Panel7.Controls.Add(Me.ListBox1_4)
+        Me.Panel7.Controls.Add(Me.ListBox1_5)
+        Me.Panel7.Controls.Add(Me.ListBox1_6)
+        Me.Panel7.Controls.Add(Me.ListBox1_7)
+        Me.Panel7.Controls.Add(Me.ListBox_1)
+        Me.Panel7.Controls.Add(Me.ListBox_5)
+        Me.Panel7.Controls.Add(Me.ListBox_2)
+        Me.Panel7.Controls.Add(Me.ListBox_6)
+        Me.Panel7.Controls.Add(Me.ListBox_4)
+        Me.Panel7.Controls.Add(Me.LB_7)
+        Me.Panel7.Controls.Add(Me.LB_5)
+        Me.Panel7.Controls.Add(Me.ListBox_7)
+        Me.Panel7.Controls.Add(Me.LB_4)
+        Me.Panel7.Controls.Add(Me.ListBox_3)
+        Me.Panel7.Controls.Add(Me.LB_1)
+        Me.Panel7.Controls.Add(Me.LB_3)
+        Me.Panel7.Controls.Add(Me.LB_2)
+        Me.Panel7.Controls.Add(Me.LB_6)
+        Me.Panel7.Location = New System.Drawing.Point(24, 126)
+        Me.Panel7.Margin = New System.Windows.Forms.Padding(2)
+        Me.Panel7.Name = "Panel7"
+        Me.Panel7.Size = New System.Drawing.Size(12, 8)
+        Me.Panel7.TabIndex = 159
+        Me.Panel7.Visible = False
+        '
+        'ListBox1_1
+        '
+        Me.ListBox1_1.BackColor = System.Drawing.Color.FromArgb(CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer))
+        Me.ListBox1_1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.ListBox1_1.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.ListBox1_1.ForeColor = System.Drawing.Color.White
+        Me.ListBox1_1.FormattingEnabled = True
+        Me.ListBox1_1.ItemHeight = 20
+        Me.ListBox1_1.Location = New System.Drawing.Point(504, 20)
+        Me.ListBox1_1.Name = "ListBox1_1"
+        Me.ListBox1_1.RightToLeft = System.Windows.Forms.RightToLeft.No
+        Me.ListBox1_1.ScrollAlwaysVisible = True
+        Me.ListBox1_1.Size = New System.Drawing.Size(234, 82)
+        Me.ListBox1_1.TabIndex = 159
+        Me.ListBox1_1.Visible = False
+        '
+        'ListBox1_2
+        '
+        Me.ListBox1_2.BackColor = System.Drawing.Color.FromArgb(CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer))
+        Me.ListBox1_2.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.ListBox1_2.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.ListBox1_2.ForeColor = System.Drawing.Color.White
+        Me.ListBox1_2.FormattingEnabled = True
+        Me.ListBox1_2.ItemHeight = 20
+        Me.ListBox1_2.Location = New System.Drawing.Point(745, 198)
+        Me.ListBox1_2.Name = "ListBox1_2"
+        Me.ListBox1_2.RightToLeft = System.Windows.Forms.RightToLeft.No
+        Me.ListBox1_2.ScrollAlwaysVisible = True
+        Me.ListBox1_2.Size = New System.Drawing.Size(234, 82)
+        Me.ListBox1_2.TabIndex = 165
+        Me.ListBox1_2.Visible = False
+        '
+        'ListBox1_3
+        '
+        Me.ListBox1_3.BackColor = System.Drawing.Color.FromArgb(CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer))
+        Me.ListBox1_3.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.ListBox1_3.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.ListBox1_3.ForeColor = System.Drawing.Color.White
+        Me.ListBox1_3.FormattingEnabled = True
+        Me.ListBox1_3.ItemHeight = 20
+        Me.ListBox1_3.Location = New System.Drawing.Point(504, 109)
+        Me.ListBox1_3.Name = "ListBox1_3"
+        Me.ListBox1_3.RightToLeft = System.Windows.Forms.RightToLeft.No
+        Me.ListBox1_3.ScrollAlwaysVisible = True
+        Me.ListBox1_3.Size = New System.Drawing.Size(234, 82)
+        Me.ListBox1_3.TabIndex = 160
+        Me.ListBox1_3.Visible = False
+        '
+        'ListBox1_4
+        '
+        Me.ListBox1_4.BackColor = System.Drawing.Color.FromArgb(CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer))
+        Me.ListBox1_4.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.ListBox1_4.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.ListBox1_4.ForeColor = System.Drawing.Color.White
+        Me.ListBox1_4.FormattingEnabled = True
+        Me.ListBox1_4.ItemHeight = 20
+        Me.ListBox1_4.Location = New System.Drawing.Point(745, 109)
+        Me.ListBox1_4.Name = "ListBox1_4"
+        Me.ListBox1_4.RightToLeft = System.Windows.Forms.RightToLeft.No
+        Me.ListBox1_4.ScrollAlwaysVisible = True
+        Me.ListBox1_4.Size = New System.Drawing.Size(234, 82)
+        Me.ListBox1_4.TabIndex = 164
+        Me.ListBox1_4.Visible = False
+        '
+        'ListBox1_5
+        '
+        Me.ListBox1_5.BackColor = System.Drawing.Color.FromArgb(CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer))
+        Me.ListBox1_5.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.ListBox1_5.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.ListBox1_5.ForeColor = System.Drawing.Color.White
+        Me.ListBox1_5.FormattingEnabled = True
+        Me.ListBox1_5.ItemHeight = 20
+        Me.ListBox1_5.Location = New System.Drawing.Point(504, 198)
+        Me.ListBox1_5.Name = "ListBox1_5"
+        Me.ListBox1_5.RightToLeft = System.Windows.Forms.RightToLeft.No
+        Me.ListBox1_5.ScrollAlwaysVisible = True
+        Me.ListBox1_5.Size = New System.Drawing.Size(234, 82)
+        Me.ListBox1_5.TabIndex = 161
+        Me.ListBox1_5.Visible = False
+        '
+        'ListBox1_6
+        '
+        Me.ListBox1_6.BackColor = System.Drawing.Color.FromArgb(CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer))
+        Me.ListBox1_6.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.ListBox1_6.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.ListBox1_6.ForeColor = System.Drawing.Color.White
+        Me.ListBox1_6.FormattingEnabled = True
+        Me.ListBox1_6.ItemHeight = 20
+        Me.ListBox1_6.Location = New System.Drawing.Point(745, 20)
+        Me.ListBox1_6.Name = "ListBox1_6"
+        Me.ListBox1_6.RightToLeft = System.Windows.Forms.RightToLeft.No
+        Me.ListBox1_6.ScrollAlwaysVisible = True
+        Me.ListBox1_6.Size = New System.Drawing.Size(234, 82)
+        Me.ListBox1_6.TabIndex = 163
+        Me.ListBox1_6.Visible = False
+        '
+        'ListBox1_7
+        '
+        Me.ListBox1_7.BackColor = System.Drawing.Color.FromArgb(CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer))
+        Me.ListBox1_7.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.ListBox1_7.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.ListBox1_7.ForeColor = System.Drawing.Color.White
+        Me.ListBox1_7.FormattingEnabled = True
+        Me.ListBox1_7.ItemHeight = 20
+        Me.ListBox1_7.Location = New System.Drawing.Point(504, 288)
+        Me.ListBox1_7.Name = "ListBox1_7"
+        Me.ListBox1_7.RightToLeft = System.Windows.Forms.RightToLeft.No
+        Me.ListBox1_7.ScrollAlwaysVisible = True
+        Me.ListBox1_7.Size = New System.Drawing.Size(234, 82)
+        Me.ListBox1_7.TabIndex = 162
+        Me.ListBox1_7.Visible = False
+        '
+        'ListBox_1
+        '
+        Me.ListBox_1.BackColor = System.Drawing.Color.FromArgb(CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer))
+        Me.ListBox_1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.ListBox_1.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.ListBox_1.ForeColor = System.Drawing.Color.White
+        Me.ListBox_1.FormattingEnabled = True
+        Me.ListBox_1.ItemHeight = 20
+        Me.ListBox_1.Location = New System.Drawing.Point(18, 20)
+        Me.ListBox_1.Name = "ListBox_1"
+        Me.ListBox_1.RightToLeft = System.Windows.Forms.RightToLeft.No
+        Me.ListBox_1.ScrollAlwaysVisible = True
+        Me.ListBox_1.Size = New System.Drawing.Size(234, 82)
+        Me.ListBox_1.TabIndex = 152
+        Me.ListBox_1.Visible = False
+        '
+        'ListBox_5
+        '
+        Me.ListBox_5.BackColor = System.Drawing.Color.FromArgb(CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer))
+        Me.ListBox_5.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.ListBox_5.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.ListBox_5.ForeColor = System.Drawing.Color.White
+        Me.ListBox_5.FormattingEnabled = True
+        Me.ListBox_5.ItemHeight = 20
+        Me.ListBox_5.Location = New System.Drawing.Point(259, 198)
+        Me.ListBox_5.Name = "ListBox_5"
+        Me.ListBox_5.RightToLeft = System.Windows.Forms.RightToLeft.No
+        Me.ListBox_5.ScrollAlwaysVisible = True
+        Me.ListBox_5.Size = New System.Drawing.Size(234, 82)
+        Me.ListBox_5.TabIndex = 158
+        Me.ListBox_5.Visible = False
+        '
+        'ListBox_2
+        '
+        Me.ListBox_2.BackColor = System.Drawing.Color.FromArgb(CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer))
+        Me.ListBox_2.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.ListBox_2.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.ListBox_2.ForeColor = System.Drawing.Color.White
+        Me.ListBox_2.FormattingEnabled = True
+        Me.ListBox_2.ItemHeight = 20
+        Me.ListBox_2.Location = New System.Drawing.Point(18, 109)
+        Me.ListBox_2.Name = "ListBox_2"
+        Me.ListBox_2.RightToLeft = System.Windows.Forms.RightToLeft.No
+        Me.ListBox_2.ScrollAlwaysVisible = True
+        Me.ListBox_2.Size = New System.Drawing.Size(234, 82)
+        Me.ListBox_2.TabIndex = 153
+        Me.ListBox_2.Visible = False
+        '
+        'ListBox_6
+        '
+        Me.ListBox_6.BackColor = System.Drawing.Color.FromArgb(CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer))
+        Me.ListBox_6.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.ListBox_6.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.ListBox_6.ForeColor = System.Drawing.Color.White
+        Me.ListBox_6.FormattingEnabled = True
+        Me.ListBox_6.ItemHeight = 20
+        Me.ListBox_6.Location = New System.Drawing.Point(259, 109)
+        Me.ListBox_6.Name = "ListBox_6"
+        Me.ListBox_6.RightToLeft = System.Windows.Forms.RightToLeft.No
+        Me.ListBox_6.ScrollAlwaysVisible = True
+        Me.ListBox_6.Size = New System.Drawing.Size(234, 82)
+        Me.ListBox_6.TabIndex = 157
+        Me.ListBox_6.Visible = False
+        '
+        'ListBox_4
+        '
+        Me.ListBox_4.BackColor = System.Drawing.Color.FromArgb(CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer))
+        Me.ListBox_4.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.ListBox_4.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.ListBox_4.ForeColor = System.Drawing.Color.White
+        Me.ListBox_4.FormattingEnabled = True
+        Me.ListBox_4.ItemHeight = 20
+        Me.ListBox_4.Location = New System.Drawing.Point(18, 198)
+        Me.ListBox_4.Name = "ListBox_4"
+        Me.ListBox_4.RightToLeft = System.Windows.Forms.RightToLeft.No
+        Me.ListBox_4.ScrollAlwaysVisible = True
+        Me.ListBox_4.Size = New System.Drawing.Size(234, 82)
+        Me.ListBox_4.TabIndex = 154
+        Me.ListBox_4.Visible = False
+        '
+        'LB_7
+        '
+        Me.LB_7.BackColor = System.Drawing.Color.FromArgb(CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer))
+        Me.LB_7.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.LB_7.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.LB_7.ForeColor = System.Drawing.Color.White
+        Me.LB_7.FormattingEnabled = True
+        Me.LB_7.ItemHeight = 20
+        Me.LB_7.Location = New System.Drawing.Point(160, 384)
+        Me.LB_7.Name = "LB_7"
+        Me.LB_7.RightToLeft = System.Windows.Forms.RightToLeft.No
+        Me.LB_7.ScrollAlwaysVisible = True
+        Me.LB_7.Size = New System.Drawing.Size(121, 82)
+        Me.LB_7.TabIndex = 156
+        Me.LB_7.Visible = False
+        '
+        'LB_5
+        '
+        Me.LB_5.BackColor = System.Drawing.Color.FromArgb(CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer))
+        Me.LB_5.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.LB_5.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.LB_5.ForeColor = System.Drawing.Color.White
+        Me.LB_5.FormattingEnabled = True
+        Me.LB_5.ItemHeight = 20
+        Me.LB_5.Location = New System.Drawing.Point(30, 396)
+        Me.LB_5.Name = "LB_5"
+        Me.LB_5.RightToLeft = System.Windows.Forms.RightToLeft.No
+        Me.LB_5.ScrollAlwaysVisible = True
+        Me.LB_5.Size = New System.Drawing.Size(121, 82)
+        Me.LB_5.TabIndex = 155
+        Me.LB_5.Visible = False
+        '
+        'ListBox_7
+        '
+        Me.ListBox_7.BackColor = System.Drawing.Color.FromArgb(CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer))
+        Me.ListBox_7.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.ListBox_7.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.ListBox_7.ForeColor = System.Drawing.Color.White
+        Me.ListBox_7.FormattingEnabled = True
+        Me.ListBox_7.ItemHeight = 20
+        Me.ListBox_7.Location = New System.Drawing.Point(259, 20)
+        Me.ListBox_7.Name = "ListBox_7"
+        Me.ListBox_7.RightToLeft = System.Windows.Forms.RightToLeft.No
+        Me.ListBox_7.ScrollAlwaysVisible = True
+        Me.ListBox_7.Size = New System.Drawing.Size(234, 82)
+        Me.ListBox_7.TabIndex = 156
+        Me.ListBox_7.Visible = False
+        '
+        'LB_4
+        '
+        Me.LB_4.BackColor = System.Drawing.Color.FromArgb(CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer))
+        Me.LB_4.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.LB_4.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.LB_4.ForeColor = System.Drawing.Color.White
+        Me.LB_4.FormattingEnabled = True
+        Me.LB_4.ItemHeight = 20
+        Me.LB_4.Location = New System.Drawing.Point(18, 485)
+        Me.LB_4.Name = "LB_4"
+        Me.LB_4.RightToLeft = System.Windows.Forms.RightToLeft.No
+        Me.LB_4.ScrollAlwaysVisible = True
+        Me.LB_4.Size = New System.Drawing.Size(121, 82)
+        Me.LB_4.TabIndex = 154
+        Me.LB_4.Visible = False
+        '
+        'ListBox_3
+        '
+        Me.ListBox_3.BackColor = System.Drawing.Color.FromArgb(CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer))
+        Me.ListBox_3.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.ListBox_3.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.ListBox_3.ForeColor = System.Drawing.Color.White
+        Me.ListBox_3.FormattingEnabled = True
+        Me.ListBox_3.ItemHeight = 20
+        Me.ListBox_3.Location = New System.Drawing.Point(18, 288)
+        Me.ListBox_3.Name = "ListBox_3"
+        Me.ListBox_3.RightToLeft = System.Windows.Forms.RightToLeft.No
+        Me.ListBox_3.ScrollAlwaysVisible = True
+        Me.ListBox_3.Size = New System.Drawing.Size(234, 82)
+        Me.ListBox_3.TabIndex = 155
+        Me.ListBox_3.Visible = False
+        '
+        'LB_1
+        '
+        Me.LB_1.BackColor = System.Drawing.Color.FromArgb(CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer))
+        Me.LB_1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.LB_1.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.LB_1.ForeColor = System.Drawing.Color.White
+        Me.LB_1.FormattingEnabled = True
+        Me.LB_1.ItemHeight = 20
+        Me.LB_1.Location = New System.Drawing.Point(312, 485)
+        Me.LB_1.Name = "LB_1"
+        Me.LB_1.RightToLeft = System.Windows.Forms.RightToLeft.No
+        Me.LB_1.ScrollAlwaysVisible = True
+        Me.LB_1.Size = New System.Drawing.Size(121, 82)
+        Me.LB_1.TabIndex = 151
+        Me.LB_1.Visible = False
+        '
+        'LB_3
+        '
+        Me.LB_3.BackColor = System.Drawing.Color.FromArgb(CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer))
+        Me.LB_3.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.LB_3.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.LB_3.ForeColor = System.Drawing.Color.White
+        Me.LB_3.FormattingEnabled = True
+        Me.LB_3.ItemHeight = 20
+        Me.LB_3.Location = New System.Drawing.Point(340, 288)
+        Me.LB_3.Name = "LB_3"
+        Me.LB_3.RightToLeft = System.Windows.Forms.RightToLeft.No
+        Me.LB_3.ScrollAlwaysVisible = True
+        Me.LB_3.Size = New System.Drawing.Size(121, 82)
+        Me.LB_3.TabIndex = 153
+        Me.LB_3.Visible = False
+        '
+        'LB_2
+        '
+        Me.LB_2.BackColor = System.Drawing.Color.FromArgb(CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer))
+        Me.LB_2.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.LB_2.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.LB_2.ForeColor = System.Drawing.Color.White
+        Me.LB_2.FormattingEnabled = True
+        Me.LB_2.ItemHeight = 20
+        Me.LB_2.Location = New System.Drawing.Point(340, 384)
+        Me.LB_2.Name = "LB_2"
+        Me.LB_2.RightToLeft = System.Windows.Forms.RightToLeft.No
+        Me.LB_2.ScrollAlwaysVisible = True
+        Me.LB_2.Size = New System.Drawing.Size(121, 82)
+        Me.LB_2.TabIndex = 152
+        Me.LB_2.Visible = False
+        '
+        'LB_6
+        '
+        Me.LB_6.BackColor = System.Drawing.Color.FromArgb(CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer))
+        Me.LB_6.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.LB_6.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.LB_6.ForeColor = System.Drawing.Color.White
+        Me.LB_6.FormattingEnabled = True
+        Me.LB_6.ItemHeight = 20
+        Me.LB_6.Location = New System.Drawing.Point(160, 485)
+        Me.LB_6.Name = "LB_6"
+        Me.LB_6.RightToLeft = System.Windows.Forms.RightToLeft.No
+        Me.LB_6.ScrollAlwaysVisible = True
+        Me.LB_6.Size = New System.Drawing.Size(121, 82)
+        Me.LB_6.TabIndex = 150
+        Me.LB_6.Visible = False
+        '
+        'ListBox1_9
+        '
+        Me.ListBox1_9.BackColor = System.Drawing.Color.FromArgb(CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer))
+        Me.ListBox1_9.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.ListBox1_9.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.ListBox1_9.ForeColor = System.Drawing.Color.White
+        Me.ListBox1_9.FormattingEnabled = True
+        Me.ListBox1_9.ItemHeight = 20
+        Me.ListBox1_9.Location = New System.Drawing.Point(359, 112)
+        Me.ListBox1_9.Name = "ListBox1_9"
+        Me.ListBox1_9.RightToLeft = System.Windows.Forms.RightToLeft.No
+        Me.ListBox1_9.ScrollAlwaysVisible = True
+        Me.ListBox1_9.Size = New System.Drawing.Size(121, 82)
+        Me.ListBox1_9.TabIndex = 161
+        Me.ListBox1_9.Visible = False
+        '
+        'Label7
+        '
+        Me.Label7.BackColor = System.Drawing.Color.DarkGray
+        Me.Label7.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label7.Font = New System.Drawing.Font("Microsoft Sans Serif", 11.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.Label7.ForeColor = System.Drawing.Color.Black
+        Me.Label7.Location = New System.Drawing.Point(15, 12)
+        Me.Label7.Name = "Label7"
+        Me.Label7.Size = New System.Drawing.Size(75, 28)
+        Me.Label7.TabIndex = 161
+        Me.Label7.Text = "User"
+        Me.Label7.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'ListBox_9
+        '
+        Me.ListBox_9.BackColor = System.Drawing.Color.FromArgb(CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer))
+        Me.ListBox_9.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.ListBox_9.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.ListBox_9.ForeColor = System.Drawing.Color.White
+        Me.ListBox_9.FormattingEnabled = True
+        Me.ListBox_9.ItemHeight = 20
+        Me.ListBox_9.Location = New System.Drawing.Point(-31, 112)
+        Me.ListBox_9.Name = "ListBox_9"
+        Me.ListBox_9.RightToLeft = System.Windows.Forms.RightToLeft.No
+        Me.ListBox_9.ScrollAlwaysVisible = True
+        Me.ListBox_9.Size = New System.Drawing.Size(121, 82)
+        Me.ListBox_9.TabIndex = 160
+        Me.ListBox_9.Visible = False
+        '
+        'ListBox_8
+        '
+        Me.ListBox_8.BackColor = System.Drawing.Color.FromArgb(CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer))
+        Me.ListBox_8.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.ListBox_8.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.ListBox_8.ForeColor = System.Drawing.Color.White
+        Me.ListBox_8.FormattingEnabled = True
+        Me.ListBox_8.ItemHeight = 20
+        Me.ListBox_8.Location = New System.Drawing.Point(-183, 112)
+        Me.ListBox_8.Name = "ListBox_8"
+        Me.ListBox_8.RightToLeft = System.Windows.Forms.RightToLeft.No
+        Me.ListBox_8.ScrollAlwaysVisible = True
+        Me.ListBox_8.Size = New System.Drawing.Size(121, 82)
+        Me.ListBox_8.TabIndex = 159
+        Me.ListBox_8.Visible = False
+        '
+        'cbUser
+        '
+        Me.cbUser.Cursor = System.Windows.Forms.Cursors.Hand
+        Me.cbUser.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList
+        Me.cbUser.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.cbUser.FormattingEnabled = True
+        Me.cbUser.Items.AddRange(New Object() {"-Select-", "PM", "TE", "CC", "EEE", "VIS"})
+        Me.cbUser.Location = New System.Drawing.Point(89, 12)
+        Me.cbUser.Name = "cbUser"
+        Me.cbUser.Size = New System.Drawing.Size(88, 28)
+        Me.cbUser.TabIndex = 160
+        '
+        'LB_9
+        '
+        Me.LB_9.BackColor = System.Drawing.Color.FromArgb(CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer))
+        Me.LB_9.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.LB_9.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.LB_9.ForeColor = System.Drawing.Color.White
+        Me.LB_9.FormattingEnabled = True
+        Me.LB_9.ItemHeight = 20
+        Me.LB_9.Location = New System.Drawing.Point(533, 123)
+        Me.LB_9.Name = "LB_9"
+        Me.LB_9.RightToLeft = System.Windows.Forms.RightToLeft.No
+        Me.LB_9.ScrollAlwaysVisible = True
+        Me.LB_9.Size = New System.Drawing.Size(121, 82)
+        Me.LB_9.TabIndex = 158
+        Me.LB_9.Visible = False
+        '
+        'LB_8
+        '
+        Me.LB_8.BackColor = System.Drawing.Color.FromArgb(CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer))
+        Me.LB_8.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.LB_8.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.LB_8.ForeColor = System.Drawing.Color.White
+        Me.LB_8.FormattingEnabled = True
+        Me.LB_8.ItemHeight = 20
+        Me.LB_8.Location = New System.Drawing.Point(660, 123)
+        Me.LB_8.Name = "LB_8"
+        Me.LB_8.RightToLeft = System.Windows.Forms.RightToLeft.No
+        Me.LB_8.ScrollAlwaysVisible = True
+        Me.LB_8.Size = New System.Drawing.Size(121, 82)
+        Me.LB_8.TabIndex = 157
+        Me.LB_8.Visible = False
+        '
+        'Label41
+        '
+        Me.Label41.BackColor = System.Drawing.Color.Transparent
+        Me.Label41.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.25!)
+        Me.Label41.ForeColor = System.Drawing.Color.White
+        Me.Label41.Location = New System.Drawing.Point(-4, 12)
+        Me.Label41.Name = "Label41"
+        Me.Label41.Size = New System.Drawing.Size(64, 24)
+        Me.Label41.TabIndex = 32
+        Me.Label41.Text = "PM/TE"
+        Me.Label41.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        Me.Label41.Visible = False
+        '
+        'Panel2
+        '
+        Me.Panel2.BackColor = System.Drawing.Color.FromArgb(CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer))
+        Me.Panel2.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Panel2.Controls.Add(Me.Label1_9)
+        Me.Panel2.Controls.Add(Me.lbl_9)
+        Me.Panel2.Controls.Add(Me.Label47)
+        Me.Panel2.Controls.Add(Me.Label_9)
+        Me.Panel2.Controls.Add(Me.Label1_8)
+        Me.Panel2.Controls.Add(Me.lbl_8)
+        Me.Panel2.Controls.Add(Me.Label43)
+        Me.Panel2.Controls.Add(Me.Label_8)
+        Me.Panel2.Controls.Add(Me.Label40)
+        Me.Panel2.Controls.Add(Me.Label1_5)
+        Me.Panel2.Controls.Add(Me.Label1_1)
+        Me.Panel2.Controls.Add(Me.Label1_4)
+        Me.Panel2.Controls.Add(Me.Label1_6)
+        Me.Panel2.Controls.Add(Me.btnWithAction)
+        Me.Panel2.Controls.Add(Me.Label1_2)
+        Me.Panel2.Controls.Add(Me.Label1_7)
+        Me.Panel2.Controls.Add(Me.Label1_3)
+        Me.Panel2.Controls.Add(Me.Button5)
+        Me.Panel2.Controls.Add(Me.lbl_5)
+        Me.Panel2.Controls.Add(Me.Label33)
+        Me.Panel2.Controls.Add(Me.Button6)
+        Me.Panel2.Controls.Add(Me.Label5)
+        Me.Panel2.Controls.Add(Me.lbl_4)
+        Me.Panel2.Controls.Add(Me.lbl_6)
+        Me.Panel2.Controls.Add(Me.Button2)
+        Me.Panel2.Controls.Add(Me.Label35)
+        Me.Panel2.Controls.Add(Me.Listbox_main)
+        Me.Panel2.Controls.Add(Me.lbl_7)
+        Me.Panel2.Controls.Add(Me.Label39)
+        Me.Panel2.Controls.Add(Me.lbl_3)
+        Me.Panel2.Controls.Add(Me.Label34)
+        Me.Panel2.Controls.Add(Me.lbl_2)
+        Me.Panel2.Controls.Add(Me.Label36)
+        Me.Panel2.Controls.Add(Me.lbl_1)
+        Me.Panel2.Controls.Add(Me.Label37)
+        Me.Panel2.Controls.Add(Me.Label38)
+        Me.Panel2.Controls.Add(Me.Label_5)
+        Me.Panel2.Controls.Add(Me.Label_1)
+        Me.Panel2.Controls.Add(Me.Label_4)
+        Me.Panel2.Controls.Add(Me.Label_6)
+        Me.Panel2.Controls.Add(Me.btnMCD)
+        Me.Panel2.Controls.Add(Me.Label_2)
+        Me.Panel2.Controls.Add(Me.Label_7)
+        Me.Panel2.Controls.Add(Me.Label_3)
+        Me.Panel2.Dock = System.Windows.Forms.DockStyle.Left
+        Me.Panel2.Location = New System.Drawing.Point(0, 0)
+        Me.Panel2.Margin = New System.Windows.Forms.Padding(2)
+        Me.Panel2.Name = "Panel2"
+        Me.Panel2.Size = New System.Drawing.Size(1156, 112)
+        Me.Panel2.TabIndex = 27
+        '
+        'Label1_9
+        '
+        Me.Label1_9.BackColor = System.Drawing.Color.White
+        Me.Label1_9.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label1_9.Font = New System.Drawing.Font("Microsoft Sans Serif", 15.75!, System.Drawing.FontStyle.Bold)
+        Me.Label1_9.Location = New System.Drawing.Point(719, 77)
+        Me.Label1_9.Name = "Label1_9"
+        Me.Label1_9.Size = New System.Drawing.Size(108, 29)
+        Me.Label1_9.TabIndex = 188
+        Me.Label1_9.Text = "0"
+        Me.Label1_9.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'lbl_9
+        '
+        Me.lbl_9.BackColor = System.Drawing.Color.White
+        Me.lbl_9.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.lbl_9.Cursor = System.Windows.Forms.Cursors.Hand
+        Me.lbl_9.Font = New System.Drawing.Font("Microsoft Sans Serif", 15.75!, System.Drawing.FontStyle.Bold)
+        Me.lbl_9.Location = New System.Drawing.Point(719, 17)
+        Me.lbl_9.Name = "lbl_9"
+        Me.lbl_9.Size = New System.Drawing.Size(108, 29)
+        Me.lbl_9.TabIndex = 185
+        Me.lbl_9.Text = "0"
+        Me.lbl_9.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label47
+        '
+        Me.Label47.BackColor = System.Drawing.Color.LightGray
+        Me.Label47.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.Label47.ForeColor = System.Drawing.Color.Black
+        Me.Label47.Location = New System.Drawing.Point(720, 5)
+        Me.Label47.Name = "Label47"
+        Me.Label47.Size = New System.Drawing.Size(106, 12)
+        Me.Label47.TabIndex = 186
+        Me.Label47.Text = "LSI3-1F"
+        Me.Label47.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label_9
+        '
+        Me.Label_9.BackColor = System.Drawing.Color.White
+        Me.Label_9.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label_9.Font = New System.Drawing.Font("Microsoft Sans Serif", 15.75!, System.Drawing.FontStyle.Bold)
+        Me.Label_9.Location = New System.Drawing.Point(719, 47)
+        Me.Label_9.Name = "Label_9"
+        Me.Label_9.Size = New System.Drawing.Size(108, 29)
+        Me.Label_9.TabIndex = 187
+        Me.Label_9.Text = "0"
+        Me.Label_9.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label1_8
+        '
+        Me.Label1_8.BackColor = System.Drawing.Color.White
+        Me.Label1_8.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label1_8.Font = New System.Drawing.Font("Microsoft Sans Serif", 15.75!, System.Drawing.FontStyle.Bold)
+        Me.Label1_8.Location = New System.Drawing.Point(935, 77)
+        Me.Label1_8.Name = "Label1_8"
+        Me.Label1_8.Size = New System.Drawing.Size(108, 29)
+        Me.Label1_8.TabIndex = 184
+        Me.Label1_8.Text = "0"
+        Me.Label1_8.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'lbl_8
+        '
+        Me.lbl_8.BackColor = System.Drawing.Color.White
+        Me.lbl_8.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.lbl_8.Cursor = System.Windows.Forms.Cursors.Hand
+        Me.lbl_8.Font = New System.Drawing.Font("Microsoft Sans Serif", 15.75!, System.Drawing.FontStyle.Bold)
+        Me.lbl_8.Location = New System.Drawing.Point(935, 17)
+        Me.lbl_8.Name = "lbl_8"
+        Me.lbl_8.Size = New System.Drawing.Size(108, 29)
+        Me.lbl_8.TabIndex = 181
+        Me.lbl_8.Text = "0"
+        Me.lbl_8.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label43
+        '
+        Me.Label43.BackColor = System.Drawing.Color.LightGray
+        Me.Label43.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.Label43.ForeColor = System.Drawing.Color.Black
+        Me.Label43.Location = New System.Drawing.Point(936, 5)
+        Me.Label43.Name = "Label43"
+        Me.Label43.Size = New System.Drawing.Size(106, 12)
+        Me.Label43.TabIndex = 182
+        Me.Label43.Text = "LSI3-3F"
+        Me.Label43.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label_8
+        '
+        Me.Label_8.BackColor = System.Drawing.Color.White
+        Me.Label_8.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label_8.Font = New System.Drawing.Font("Microsoft Sans Serif", 15.75!, System.Drawing.FontStyle.Bold)
+        Me.Label_8.Location = New System.Drawing.Point(935, 47)
+        Me.Label_8.Name = "Label_8"
+        Me.Label_8.Size = New System.Drawing.Size(108, 29)
+        Me.Label_8.TabIndex = 183
+        Me.Label_8.Text = "0"
+        Me.Label_8.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label40
+        '
+        Me.Label40.BackColor = System.Drawing.Color.LightGray
+        Me.Label40.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.Label40.ForeColor = System.Drawing.Color.Black
+        Me.Label40.Location = New System.Drawing.Point(2, 5)
+        Me.Label40.Name = "Label40"
+        Me.Label40.Size = New System.Drawing.Size(177, 12)
+        Me.Label40.TabIndex = 180
+        Me.Label40.Text = "Action Item"
+        Me.Label40.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label1_5
+        '
+        Me.Label1_5.BackColor = System.Drawing.Color.White
+        Me.Label1_5.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label1_5.Font = New System.Drawing.Font("Microsoft Sans Serif", 15.75!, System.Drawing.FontStyle.Bold)
+        Me.Label1_5.Location = New System.Drawing.Point(611, 77)
+        Me.Label1_5.Name = "Label1_5"
+        Me.Label1_5.Size = New System.Drawing.Size(108, 29)
+        Me.Label1_5.TabIndex = 177
+        Me.Label1_5.Text = "0"
+        Me.Label1_5.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label1_1
+        '
+        Me.Label1_1.BackColor = System.Drawing.Color.White
+        Me.Label1_1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label1_1.FlatStyle = System.Windows.Forms.FlatStyle.Popup
+        Me.Label1_1.Font = New System.Drawing.Font("Microsoft Sans Serif", 15.75!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.Label1_1.Location = New System.Drawing.Point(179, 77)
+        Me.Label1_1.Name = "Label1_1"
+        Me.Label1_1.Size = New System.Drawing.Size(108, 29)
+        Me.Label1_1.TabIndex = 173
+        Me.Label1_1.Text = "0"
+        Me.Label1_1.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label1_4
+        '
+        Me.Label1_4.BackColor = System.Drawing.Color.White
+        Me.Label1_4.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label1_4.Font = New System.Drawing.Font("Microsoft Sans Serif", 15.75!, System.Drawing.FontStyle.Bold)
+        Me.Label1_4.Location = New System.Drawing.Point(503, 77)
+        Me.Label1_4.Name = "Label1_4"
+        Me.Label1_4.Size = New System.Drawing.Size(108, 29)
+        Me.Label1_4.TabIndex = 176
+        Me.Label1_4.Text = "0"
+        Me.Label1_4.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label1_6
+        '
+        Me.Label1_6.BackColor = System.Drawing.Color.White
+        Me.Label1_6.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label1_6.Font = New System.Drawing.Font("Microsoft Sans Serif", 15.75!, System.Drawing.FontStyle.Bold)
+        Me.Label1_6.Location = New System.Drawing.Point(827, 77)
+        Me.Label1_6.Name = "Label1_6"
+        Me.Label1_6.Size = New System.Drawing.Size(108, 29)
+        Me.Label1_6.TabIndex = 178
+        Me.Label1_6.Text = "0"
+        Me.Label1_6.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'btnWithAction
+        '
+        Me.btnWithAction.BackColor = System.Drawing.Color.White
+        Me.btnWithAction.Cursor = System.Windows.Forms.Cursors.Hand
+        Me.btnWithAction.FlatStyle = System.Windows.Forms.FlatStyle.Popup
+        Me.btnWithAction.Font = New System.Drawing.Font("Microsoft Sans Serif", 6.75!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.btnWithAction.ForeColor = System.Drawing.Color.Black
+        Me.btnWithAction.Location = New System.Drawing.Point(1, 77)
+        Me.btnWithAction.Name = "btnWithAction"
+        Me.btnWithAction.Size = New System.Drawing.Size(178, 29)
+        Me.btnWithAction.TabIndex = 172
+        Me.btnWithAction.Text = "Important Device (With Action)"
+        Me.btnWithAction.UseVisualStyleBackColor = False
+        '
+        'Label1_2
+        '
+        Me.Label1_2.BackColor = System.Drawing.Color.White
+        Me.Label1_2.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label1_2.Font = New System.Drawing.Font("Microsoft Sans Serif", 15.75!, System.Drawing.FontStyle.Bold)
+        Me.Label1_2.Location = New System.Drawing.Point(287, 77)
+        Me.Label1_2.Name = "Label1_2"
+        Me.Label1_2.Size = New System.Drawing.Size(108, 29)
+        Me.Label1_2.TabIndex = 174
+        Me.Label1_2.Text = "0"
+        Me.Label1_2.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label1_7
+        '
+        Me.Label1_7.BackColor = System.Drawing.Color.White
+        Me.Label1_7.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label1_7.Font = New System.Drawing.Font("Microsoft Sans Serif", 15.75!, System.Drawing.FontStyle.Bold)
+        Me.Label1_7.Location = New System.Drawing.Point(1043, 77)
+        Me.Label1_7.Name = "Label1_7"
+        Me.Label1_7.Size = New System.Drawing.Size(108, 29)
+        Me.Label1_7.TabIndex = 179
+        Me.Label1_7.Text = "0"
+        Me.Label1_7.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label1_3
+        '
+        Me.Label1_3.BackColor = System.Drawing.Color.White
+        Me.Label1_3.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label1_3.Font = New System.Drawing.Font("Microsoft Sans Serif", 15.75!, System.Drawing.FontStyle.Bold)
+        Me.Label1_3.Location = New System.Drawing.Point(395, 77)
+        Me.Label1_3.Name = "Label1_3"
+        Me.Label1_3.Size = New System.Drawing.Size(108, 29)
+        Me.Label1_3.TabIndex = 175
+        Me.Label1_3.Text = "0"
+        Me.Label1_3.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Button5
+        '
+        Me.Button5.BackColor = System.Drawing.Color.White
+        Me.Button5.Cursor = System.Windows.Forms.Cursors.Hand
+        Me.Button5.FlatStyle = System.Windows.Forms.FlatStyle.Popup
+        Me.Button5.Font = New System.Drawing.Font("Microsoft Sans Serif", 6.75!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.Button5.ForeColor = System.Drawing.Color.Red
+        Me.Button5.Location = New System.Drawing.Point(1, 17)
+        Me.Button5.Name = "Button5"
+        Me.Button5.Size = New System.Drawing.Size(178, 29)
+        Me.Button5.TabIndex = 29
+        Me.Button5.Text = "Re-Occuring BM Case"
+        Me.Button5.UseVisualStyleBackColor = False
+        '
+        'lbl_5
+        '
+        Me.lbl_5.BackColor = System.Drawing.Color.White
+        Me.lbl_5.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.lbl_5.Cursor = System.Windows.Forms.Cursors.Hand
+        Me.lbl_5.Font = New System.Drawing.Font("Microsoft Sans Serif", 15.75!, System.Drawing.FontStyle.Bold)
+        Me.lbl_5.Location = New System.Drawing.Point(611, 17)
+        Me.lbl_5.Name = "lbl_5"
+        Me.lbl_5.Size = New System.Drawing.Size(108, 29)
+        Me.lbl_5.TabIndex = 133
+        Me.lbl_5.Text = "0"
+        Me.lbl_5.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label33
+        '
+        Me.Label33.BackColor = System.Drawing.Color.LightGray
+        Me.Label33.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.Label33.ForeColor = System.Drawing.Color.Black
+        Me.Label33.Location = New System.Drawing.Point(288, 5)
+        Me.Label33.Name = "Label33"
+        Me.Label33.Size = New System.Drawing.Size(106, 12)
+        Me.Label33.TabIndex = 137
+        Me.Label33.Text = "LSI1-2F"
+        Me.Label33.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Button6
+        '
+        Me.Button6.BackColor = System.Drawing.Color.Tomato
+        Me.Button6.FlatStyle = System.Windows.Forms.FlatStyle.Popup
+        Me.Button6.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Bold)
+        Me.Button6.ForeColor = System.Drawing.Color.White
+        Me.Button6.Location = New System.Drawing.Point(4, 467)
+        Me.Button6.Name = "Button6"
+        Me.Button6.Size = New System.Drawing.Size(229, 41)
+        Me.Button6.TabIndex = 4
+        Me.Button6.Text = "Close"
+        Me.Button6.UseVisualStyleBackColor = False
+        Me.Button6.Visible = False
+        '
+        'Label5
+        '
+        Me.Label5.BackColor = System.Drawing.Color.LightGray
+        Me.Label5.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.Label5.ForeColor = System.Drawing.Color.Black
+        Me.Label5.Location = New System.Drawing.Point(180, 5)
+        Me.Label5.Name = "Label5"
+        Me.Label5.Size = New System.Drawing.Size(106, 12)
+        Me.Label5.TabIndex = 136
+        Me.Label5.Text = "LSI1-1F"
+        Me.Label5.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'lbl_4
+        '
+        Me.lbl_4.BackColor = System.Drawing.Color.White
+        Me.lbl_4.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.lbl_4.Cursor = System.Windows.Forms.Cursors.Hand
+        Me.lbl_4.Font = New System.Drawing.Font("Microsoft Sans Serif", 15.75!, System.Drawing.FontStyle.Bold)
+        Me.lbl_4.Location = New System.Drawing.Point(503, 17)
+        Me.lbl_4.Name = "lbl_4"
+        Me.lbl_4.Size = New System.Drawing.Size(108, 29)
+        Me.lbl_4.TabIndex = 132
+        Me.lbl_4.Text = "0"
+        Me.lbl_4.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'lbl_6
+        '
+        Me.lbl_6.BackColor = System.Drawing.Color.White
+        Me.lbl_6.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.lbl_6.Cursor = System.Windows.Forms.Cursors.Hand
+        Me.lbl_6.Font = New System.Drawing.Font("Microsoft Sans Serif", 15.75!, System.Drawing.FontStyle.Bold)
+        Me.lbl_6.Location = New System.Drawing.Point(827, 17)
+        Me.lbl_6.Name = "lbl_6"
+        Me.lbl_6.Size = New System.Drawing.Size(108, 29)
+        Me.lbl_6.TabIndex = 134
+        Me.lbl_6.Text = "0"
+        Me.lbl_6.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Button2
+        '
+        Me.Button2.BackColor = System.Drawing.Color.Green
+        Me.Button2.FlatStyle = System.Windows.Forms.FlatStyle.Flat
+        Me.Button2.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Bold)
+        Me.Button2.ForeColor = System.Drawing.Color.White
+        Me.Button2.Location = New System.Drawing.Point(237, 468)
+        Me.Button2.Name = "Button2"
+        Me.Button2.Size = New System.Drawing.Size(680, 40)
+        Me.Button2.TabIndex = 7
+        Me.Button2.Text = "Search"
+        Me.Button2.UseVisualStyleBackColor = False
+        '
+        'Label35
+        '
+        Me.Label35.BackColor = System.Drawing.Color.LightGray
+        Me.Label35.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.Label35.ForeColor = System.Drawing.Color.Black
+        Me.Label35.Location = New System.Drawing.Point(396, 5)
+        Me.Label35.Name = "Label35"
+        Me.Label35.Size = New System.Drawing.Size(106, 12)
+        Me.Label35.TabIndex = 138
+        Me.Label35.Text = "LSI2-1F"
+        Me.Label35.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Listbox_main
+        '
+        Me.Listbox_main.BackColor = System.Drawing.Color.White
+        Me.Listbox_main.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Listbox_main.Font = New System.Drawing.Font("Microsoft Sans Serif", 20.25!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.Listbox_main.ForeColor = System.Drawing.Color.Black
+        Me.Listbox_main.FormattingEnabled = True
+        Me.Listbox_main.ItemHeight = 31
+        Me.Listbox_main.Location = New System.Drawing.Point(237, 114)
+        Me.Listbox_main.Name = "Listbox_main"
+        Me.Listbox_main.RightToLeft = System.Windows.Forms.RightToLeft.No
+        Me.Listbox_main.ScrollAlwaysVisible = True
+        Me.Listbox_main.Size = New System.Drawing.Size(682, 343)
+        Me.Listbox_main.TabIndex = 10
+        '
+        'lbl_7
+        '
+        Me.lbl_7.BackColor = System.Drawing.Color.White
+        Me.lbl_7.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.lbl_7.Cursor = System.Windows.Forms.Cursors.Hand
+        Me.lbl_7.Font = New System.Drawing.Font("Microsoft Sans Serif", 15.75!, System.Drawing.FontStyle.Bold)
+        Me.lbl_7.Location = New System.Drawing.Point(1043, 17)
+        Me.lbl_7.Name = "lbl_7"
+        Me.lbl_7.Size = New System.Drawing.Size(108, 29)
+        Me.lbl_7.TabIndex = 135
+        Me.lbl_7.Text = "0"
+        Me.lbl_7.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label39
+        '
+        Me.Label39.BackColor = System.Drawing.Color.FromArgb(CType(CType(221, Byte), Integer), CType(CType(230, Byte), Integer), CType(CType(237, Byte), Integer))
+        Me.Label39.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label39.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.Label39.Location = New System.Drawing.Point(5, 114)
+        Me.Label39.Name = "Label39"
+        Me.Label39.Size = New System.Drawing.Size(231, 49)
+        Me.Label39.TabIndex = 9
+        Me.Label39.Text = "Select a machine:"
+        Me.Label39.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'lbl_3
+        '
+        Me.lbl_3.BackColor = System.Drawing.Color.White
+        Me.lbl_3.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.lbl_3.Cursor = System.Windows.Forms.Cursors.Hand
+        Me.lbl_3.Font = New System.Drawing.Font("Microsoft Sans Serif", 15.75!, System.Drawing.FontStyle.Bold)
+        Me.lbl_3.Location = New System.Drawing.Point(395, 17)
+        Me.lbl_3.Name = "lbl_3"
+        Me.lbl_3.Size = New System.Drawing.Size(108, 29)
+        Me.lbl_3.TabIndex = 131
+        Me.lbl_3.Text = "0"
+        Me.lbl_3.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label34
+        '
+        Me.Label34.BackColor = System.Drawing.Color.LightGray
+        Me.Label34.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.Label34.ForeColor = System.Drawing.Color.Black
+        Me.Label34.Location = New System.Drawing.Point(504, 5)
+        Me.Label34.Name = "Label34"
+        Me.Label34.Size = New System.Drawing.Size(106, 12)
+        Me.Label34.TabIndex = 139
+        Me.Label34.Text = "LSI2-2F"
+        Me.Label34.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'lbl_2
+        '
+        Me.lbl_2.BackColor = System.Drawing.Color.White
+        Me.lbl_2.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.lbl_2.Cursor = System.Windows.Forms.Cursors.Hand
+        Me.lbl_2.Font = New System.Drawing.Font("Microsoft Sans Serif", 15.75!, System.Drawing.FontStyle.Bold)
+        Me.lbl_2.Location = New System.Drawing.Point(287, 17)
+        Me.lbl_2.Name = "lbl_2"
+        Me.lbl_2.Size = New System.Drawing.Size(108, 29)
+        Me.lbl_2.TabIndex = 130
+        Me.lbl_2.Text = "0"
+        Me.lbl_2.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label36
+        '
+        Me.Label36.BackColor = System.Drawing.Color.LightGray
+        Me.Label36.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.Label36.ForeColor = System.Drawing.Color.Black
+        Me.Label36.Location = New System.Drawing.Point(612, 5)
+        Me.Label36.Name = "Label36"
+        Me.Label36.Size = New System.Drawing.Size(106, 12)
+        Me.Label36.TabIndex = 140
+        Me.Label36.Text = "LSI2-3F"
+        Me.Label36.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'lbl_1
+        '
+        Me.lbl_1.BackColor = System.Drawing.Color.White
+        Me.lbl_1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.lbl_1.Cursor = System.Windows.Forms.Cursors.Hand
+        Me.lbl_1.FlatStyle = System.Windows.Forms.FlatStyle.Popup
+        Me.lbl_1.Font = New System.Drawing.Font("Microsoft Sans Serif", 15.75!, System.Drawing.FontStyle.Bold)
+        Me.lbl_1.Location = New System.Drawing.Point(179, 17)
+        Me.lbl_1.Name = "lbl_1"
+        Me.lbl_1.Size = New System.Drawing.Size(108, 29)
+        Me.lbl_1.TabIndex = 129
+        Me.lbl_1.Text = "0"
+        Me.lbl_1.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label37
+        '
+        Me.Label37.BackColor = System.Drawing.Color.LightGray
+        Me.Label37.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.Label37.ForeColor = System.Drawing.Color.Black
+        Me.Label37.Location = New System.Drawing.Point(828, 5)
+        Me.Label37.Name = "Label37"
+        Me.Label37.Size = New System.Drawing.Size(106, 12)
+        Me.Label37.TabIndex = 141
+        Me.Label37.Text = "LSI3-2F"
+        Me.Label37.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label38
+        '
+        Me.Label38.BackColor = System.Drawing.Color.LightGray
+        Me.Label38.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.Label38.ForeColor = System.Drawing.Color.Black
+        Me.Label38.Location = New System.Drawing.Point(1044, 5)
+        Me.Label38.Name = "Label38"
+        Me.Label38.Size = New System.Drawing.Size(106, 12)
+        Me.Label38.TabIndex = 142
+        Me.Label38.Text = "LSI3-4F"
+        Me.Label38.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label_5
+        '
+        Me.Label_5.BackColor = System.Drawing.Color.White
+        Me.Label_5.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label_5.Font = New System.Drawing.Font("Microsoft Sans Serif", 15.75!, System.Drawing.FontStyle.Bold)
+        Me.Label_5.Location = New System.Drawing.Point(611, 47)
+        Me.Label_5.Name = "Label_5"
+        Me.Label_5.Size = New System.Drawing.Size(108, 29)
+        Me.Label_5.TabIndex = 162
+        Me.Label_5.Text = "0"
+        Me.Label_5.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label_1
+        '
+        Me.Label_1.BackColor = System.Drawing.Color.White
+        Me.Label_1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label_1.FlatStyle = System.Windows.Forms.FlatStyle.Popup
+        Me.Label_1.Font = New System.Drawing.Font("Microsoft Sans Serif", 15.75!, System.Drawing.FontStyle.Bold)
+        Me.Label_1.Location = New System.Drawing.Point(179, 47)
+        Me.Label_1.Name = "Label_1"
+        Me.Label_1.Size = New System.Drawing.Size(108, 29)
+        Me.Label_1.TabIndex = 158
+        Me.Label_1.Text = "0"
+        Me.Label_1.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label_4
+        '
+        Me.Label_4.BackColor = System.Drawing.Color.White
+        Me.Label_4.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label_4.Font = New System.Drawing.Font("Microsoft Sans Serif", 15.75!, System.Drawing.FontStyle.Bold)
+        Me.Label_4.Location = New System.Drawing.Point(503, 47)
+        Me.Label_4.Name = "Label_4"
+        Me.Label_4.Size = New System.Drawing.Size(108, 29)
+        Me.Label_4.TabIndex = 161
+        Me.Label_4.Text = "0"
+        Me.Label_4.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label_6
+        '
+        Me.Label_6.BackColor = System.Drawing.Color.White
+        Me.Label_6.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label_6.Font = New System.Drawing.Font("Microsoft Sans Serif", 15.75!, System.Drawing.FontStyle.Bold)
+        Me.Label_6.Location = New System.Drawing.Point(827, 47)
+        Me.Label_6.Name = "Label_6"
+        Me.Label_6.Size = New System.Drawing.Size(108, 29)
+        Me.Label_6.TabIndex = 163
+        Me.Label_6.Text = "0"
+        Me.Label_6.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'btnMCD
+        '
+        Me.btnMCD.BackColor = System.Drawing.Color.White
+        Me.btnMCD.Cursor = System.Windows.Forms.Cursors.Hand
+        Me.btnMCD.FlatStyle = System.Windows.Forms.FlatStyle.Popup
+        Me.btnMCD.Font = New System.Drawing.Font("Microsoft Sans Serif", 6.75!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.btnMCD.ForeColor = System.Drawing.Color.Blue
+        Me.btnMCD.Location = New System.Drawing.Point(1, 47)
+        Me.btnMCD.Name = "btnMCD"
+        Me.btnMCD.Size = New System.Drawing.Size(178, 29)
+        Me.btnMCD.TabIndex = 157
+        Me.btnMCD.Text = "Important Device (Need Action)"
+        Me.btnMCD.UseVisualStyleBackColor = False
+        '
+        'Label_2
+        '
+        Me.Label_2.BackColor = System.Drawing.Color.White
+        Me.Label_2.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label_2.Font = New System.Drawing.Font("Microsoft Sans Serif", 15.75!, System.Drawing.FontStyle.Bold)
+        Me.Label_2.Location = New System.Drawing.Point(287, 47)
+        Me.Label_2.Name = "Label_2"
+        Me.Label_2.Size = New System.Drawing.Size(108, 29)
+        Me.Label_2.TabIndex = 159
+        Me.Label_2.Text = "0"
+        Me.Label_2.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label_7
+        '
+        Me.Label_7.BackColor = System.Drawing.Color.White
+        Me.Label_7.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label_7.Font = New System.Drawing.Font("Microsoft Sans Serif", 15.75!, System.Drawing.FontStyle.Bold)
+        Me.Label_7.Location = New System.Drawing.Point(1043, 47)
+        Me.Label_7.Name = "Label_7"
+        Me.Label_7.Size = New System.Drawing.Size(108, 29)
+        Me.Label_7.TabIndex = 164
+        Me.Label_7.Text = "0"
+        Me.Label_7.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label_3
+        '
+        Me.Label_3.BackColor = System.Drawing.Color.White
+        Me.Label_3.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label_3.Font = New System.Drawing.Font("Microsoft Sans Serif", 15.75!, System.Drawing.FontStyle.Bold)
+        Me.Label_3.Location = New System.Drawing.Point(395, 47)
+        Me.Label_3.Name = "Label_3"
+        Me.Label_3.Size = New System.Drawing.Size(108, 29)
+        Me.Label_3.TabIndex = 160
+        Me.Label_3.Text = "0"
+        Me.Label_3.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Panel5
+        '
+        Me.Panel5.BackColor = System.Drawing.Color.FromArgb(CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer))
+        Me.Panel5.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Panel5.Controls.Add(Me.Button3)
+        Me.Panel5.Controls.Add(Me.Label29)
+        Me.Panel5.Controls.Add(Me.Label25)
+        Me.Panel5.Controls.Add(Me.Label30)
+        Me.Panel5.Controls.Add(Me.Label26)
+        Me.Panel5.Controls.Add(Me.Label31)
+        Me.Panel5.Controls.Add(Me.Label27)
+        Me.Panel5.Controls.Add(Me.Label32)
+        Me.Panel5.Controls.Add(Me.Label28)
+        Me.Panel5.Controls.Add(Me.Label21)
+        Me.Panel5.Controls.Add(Me.Label22)
+        Me.Panel5.Controls.Add(Me.Label23)
+        Me.Panel5.Controls.Add(Me.Label24)
+        Me.Panel5.Controls.Add(Me.Label20)
+        Me.Panel5.Controls.Add(Me.Label6)
+        Me.Panel5.Controls.Add(Me.Label17)
+        Me.Panel5.Controls.Add(Me.Label18)
+        Me.Panel5.Controls.Add(Me.Label15)
+        Me.Panel5.Controls.Add(Me.Label16)
+        Me.Panel5.Controls.Add(Me.Label13)
+        Me.Panel5.Controls.Add(Me.Label14)
+        Me.Panel5.Controls.Add(Me.Label11)
+        Me.Panel5.Controls.Add(Me.Label12)
+        Me.Panel5.Controls.Add(Me.Label9)
+        Me.Panel5.Controls.Add(Me.Label10)
+        Me.Panel5.Controls.Add(Me.Button1)
+        Me.Panel5.Location = New System.Drawing.Point(33, 20)
+        Me.Panel5.Name = "Panel5"
+        Me.Panel5.Size = New System.Drawing.Size(59, 42)
+        Me.Panel5.TabIndex = 16
+        Me.Panel5.Visible = False
+        '
+        'Button3
+        '
+        Me.Button3.BackColor = System.Drawing.Color.Tomato
+        Me.Button3.FlatStyle = System.Windows.Forms.FlatStyle.Popup
+        Me.Button3.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Bold)
+        Me.Button3.ForeColor = System.Drawing.Color.White
+        Me.Button3.Location = New System.Drawing.Point(1438, -1)
+        Me.Button3.Name = "Button3"
+        Me.Button3.Size = New System.Drawing.Size(248, 43)
+        Me.Button3.TabIndex = 23
+        Me.Button3.Text = "Hide►"
+        Me.Button3.UseVisualStyleBackColor = False
+        '
+        'Label29
+        '
+        Me.Label29.BackColor = System.Drawing.Color.White
+        Me.Label29.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label29.Font = New System.Drawing.Font("Microsoft Sans Serif", 9.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.Label29.Location = New System.Drawing.Point(510, 2)
+        Me.Label29.Name = "Label29"
+        Me.Label29.Size = New System.Drawing.Size(78, 38)
+        Me.Label29.TabIndex = 15
+        Me.Label29.Text = "Division Manager"
+        Me.Label29.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label25
+        '
+        Me.Label25.BackColor = System.Drawing.Color.White
+        Me.Label25.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label25.Font = New System.Drawing.Font("Microsoft Sans Serif", 9.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.Label25.Location = New System.Drawing.Point(365, 2)
+        Me.Label25.Name = "Label25"
+        Me.Label25.Size = New System.Drawing.Size(78, 38)
+        Me.Label25.TabIndex = 19
+        Me.Label25.Text = "Department Manager"
+        Me.Label25.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label30
+        '
+        Me.Label30.BackColor = System.Drawing.Color.LimeGreen
+        Me.Label30.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label30.ForeColor = System.Drawing.Color.White
+        Me.Label30.Location = New System.Drawing.Point(442, 28)
+        Me.Label30.Name = "Label30"
+        Me.Label30.Size = New System.Drawing.Size(69, 12)
+        Me.Label30.TabIndex = 18
+        Me.Label30.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label26
+        '
+        Me.Label26.BackColor = System.Drawing.Color.MediumPurple
+        Me.Label26.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label26.ForeColor = System.Drawing.Color.White
+        Me.Label26.Location = New System.Drawing.Point(293, 28)
+        Me.Label26.Name = "Label26"
+        Me.Label26.Size = New System.Drawing.Size(73, 12)
+        Me.Label26.TabIndex = 22
+        Me.Label26.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label31
+        '
+        Me.Label31.BackColor = System.Drawing.Color.Honeydew
+        Me.Label31.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label31.ForeColor = System.Drawing.Color.White
+        Me.Label31.Location = New System.Drawing.Point(442, 13)
+        Me.Label31.Name = "Label31"
+        Me.Label31.Size = New System.Drawing.Size(69, 16)
+        Me.Label31.TabIndex = 17
+        Me.Label31.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label27
+        '
+        Me.Label27.BackColor = System.Drawing.Color.Lavender
+        Me.Label27.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label27.ForeColor = System.Drawing.Color.White
+        Me.Label27.Location = New System.Drawing.Point(293, 13)
+        Me.Label27.Name = "Label27"
+        Me.Label27.Size = New System.Drawing.Size(73, 16)
+        Me.Label27.TabIndex = 21
+        Me.Label27.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label32
+        '
+        Me.Label32.BackColor = System.Drawing.Color.LimeGreen
+        Me.Label32.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label32.ForeColor = System.Drawing.Color.White
+        Me.Label32.Location = New System.Drawing.Point(442, 2)
+        Me.Label32.Name = "Label32"
+        Me.Label32.Size = New System.Drawing.Size(69, 12)
+        Me.Label32.TabIndex = 16
+        Me.Label32.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label28
+        '
+        Me.Label28.BackColor = System.Drawing.Color.MediumPurple
+        Me.Label28.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label28.ForeColor = System.Drawing.Color.White
+        Me.Label28.Location = New System.Drawing.Point(293, 2)
+        Me.Label28.Name = "Label28"
+        Me.Label28.Size = New System.Drawing.Size(73, 12)
+        Me.Label28.TabIndex = 20
+        Me.Label28.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label21
+        '
+        Me.Label21.BackColor = System.Drawing.Color.White
+        Me.Label21.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label21.Font = New System.Drawing.Font("Microsoft Sans Serif", 9.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.Label21.Location = New System.Drawing.Point(216, 1)
+        Me.Label21.Name = "Label21"
+        Me.Label21.Size = New System.Drawing.Size(78, 38)
+        Me.Label21.TabIndex = 15
+        Me.Label21.Text = "Section Manager"
+        Me.Label21.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label22
+        '
+        Me.Label22.BackColor = System.Drawing.Color.DeepSkyBlue
+        Me.Label22.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label22.ForeColor = System.Drawing.Color.White
+        Me.Label22.Location = New System.Drawing.Point(144, 27)
+        Me.Label22.Name = "Label22"
+        Me.Label22.Size = New System.Drawing.Size(73, 12)
+        Me.Label22.TabIndex = 18
+        Me.Label22.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label23
+        '
+        Me.Label23.BackColor = System.Drawing.Color.LightCyan
+        Me.Label23.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label23.ForeColor = System.Drawing.Color.White
+        Me.Label23.Location = New System.Drawing.Point(144, 12)
+        Me.Label23.Name = "Label23"
+        Me.Label23.Size = New System.Drawing.Size(73, 16)
+        Me.Label23.TabIndex = 17
+        Me.Label23.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label24
+        '
+        Me.Label24.BackColor = System.Drawing.Color.DeepSkyBlue
+        Me.Label24.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label24.ForeColor = System.Drawing.Color.White
+        Me.Label24.Location = New System.Drawing.Point(144, 1)
+        Me.Label24.Name = "Label24"
+        Me.Label24.Size = New System.Drawing.Size(73, 12)
+        Me.Label24.TabIndex = 16
+        Me.Label24.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label20
+        '
+        Me.Label20.BackColor = System.Drawing.Color.White
+        Me.Label20.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label20.Font = New System.Drawing.Font("Microsoft Sans Serif", 9.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.Label20.Location = New System.Drawing.Point(68, 1)
+        Me.Label20.Name = "Label20"
+        Me.Label20.Size = New System.Drawing.Size(78, 38)
+        Me.Label20.TabIndex = 12
+        Me.Label20.Text = "Accreditor"
+        Me.Label20.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label6
+        '
+        Me.Label6.BackColor = System.Drawing.Color.Salmon
+        Me.Label6.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label6.ForeColor = System.Drawing.Color.White
+        Me.Label6.Location = New System.Drawing.Point(1, 1)
+        Me.Label6.Name = "Label6"
+        Me.Label6.Size = New System.Drawing.Size(68, 12)
+        Me.Label6.TabIndex = 12
+        Me.Label6.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label17
+        '
+        Me.Label17.BackColor = System.Drawing.Color.White
+        Me.Label17.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label17.Font = New System.Drawing.Font("Microsoft Sans Serif", 9.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.Label17.Location = New System.Drawing.Point(633, 3)
+        Me.Label17.Name = "Label17"
+        Me.Label17.Size = New System.Drawing.Size(125, 37)
+        Me.Label17.TabIndex = 11
+        Me.Label17.Text = "Running (Ongoing Investigation)"
+        Me.Label17.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label18
+        '
+        Me.Label18.BackColor = System.Drawing.Color.Gray
+        Me.Label18.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label18.ForeColor = System.Drawing.Color.White
+        Me.Label18.Location = New System.Drawing.Point(587, 3)
+        Me.Label18.Name = "Label18"
+        Me.Label18.Size = New System.Drawing.Size(47, 37)
+        Me.Label18.TabIndex = 10
+        Me.Label18.Text = "Action"
+        Me.Label18.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label15
+        '
+        Me.Label15.BackColor = System.Drawing.Color.White
+        Me.Label15.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label15.Font = New System.Drawing.Font("Microsoft Sans Serif", 9.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.Label15.Location = New System.Drawing.Point(803, 3)
+        Me.Label15.Name = "Label15"
+        Me.Label15.Size = New System.Drawing.Size(125, 37)
+        Me.Label15.TabIndex = 9
+        Me.Label15.Text = "Running (Under 100% Inspection)"
+        Me.Label15.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label16
+        '
+        Me.Label16.BackColor = System.Drawing.Color.Orange
+        Me.Label16.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label16.ForeColor = System.Drawing.Color.White
+        Me.Label16.Location = New System.Drawing.Point(757, 3)
+        Me.Label16.Name = "Label16"
+        Me.Label16.Size = New System.Drawing.Size(47, 37)
+        Me.Label16.TabIndex = 8
+        Me.Label16.Text = "Action"
+        Me.Label16.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label13
+        '
+        Me.Label13.BackColor = System.Drawing.Color.White
+        Me.Label13.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label13.Font = New System.Drawing.Font("Microsoft Sans Serif", 9.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.Label13.Location = New System.Drawing.Point(973, 3)
+        Me.Label13.Name = "Label13"
+        Me.Label13.Size = New System.Drawing.Size(125, 37)
+        Me.Label13.TabIndex = 7
+        Me.Label13.Text = "Stop (Ongoing Investigation)"
+        Me.Label13.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label14
+        '
+        Me.Label14.BackColor = System.Drawing.Color.Red
+        Me.Label14.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label14.ForeColor = System.Drawing.Color.White
+        Me.Label14.Location = New System.Drawing.Point(927, 3)
+        Me.Label14.Name = "Label14"
+        Me.Label14.Size = New System.Drawing.Size(47, 37)
+        Me.Label14.TabIndex = 6
+        Me.Label14.Text = "Action"
+        Me.Label14.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label11
+        '
+        Me.Label11.BackColor = System.Drawing.Color.White
+        Me.Label11.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label11.Font = New System.Drawing.Font("Microsoft Sans Serif", 9.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.Label11.Location = New System.Drawing.Point(1142, 3)
+        Me.Label11.Name = "Label11"
+        Me.Label11.Size = New System.Drawing.Size(125, 37)
+        Me.Label11.TabIndex = 5
+        Me.Label11.Text = "Running (Lot Evaluation)"
+        Me.Label11.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label12
+        '
+        Me.Label12.BackColor = System.Drawing.Color.LightGreen
+        Me.Label12.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label12.ForeColor = System.Drawing.Color.White
+        Me.Label12.Location = New System.Drawing.Point(1096, 3)
+        Me.Label12.Name = "Label12"
+        Me.Label12.Size = New System.Drawing.Size(47, 37)
+        Me.Label12.TabIndex = 4
+        Me.Label12.Text = "Action"
+        Me.Label12.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label9
+        '
+        Me.Label9.BackColor = System.Drawing.Color.White
+        Me.Label9.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label9.Font = New System.Drawing.Font("Microsoft Sans Serif", 9.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.Label9.Location = New System.Drawing.Point(1312, 3)
+        Me.Label9.Name = "Label9"
+        Me.Label9.Size = New System.Drawing.Size(125, 37)
+        Me.Label9.TabIndex = 3
+        Me.Label9.Text = "No Re-Occurrence After 7 Days"
+        Me.Label9.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label10
+        '
+        Me.Label10.BackColor = System.Drawing.Color.Green
+        Me.Label10.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label10.ForeColor = System.Drawing.Color.White
+        Me.Label10.Location = New System.Drawing.Point(1266, 3)
+        Me.Label10.Name = "Label10"
+        Me.Label10.Size = New System.Drawing.Size(47, 37)
+        Me.Label10.TabIndex = 2
+        Me.Label10.Text = "Action"
+        Me.Label10.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Button1
+        '
+        Me.Button1.BackColor = System.Drawing.Color.DeepSkyBlue
+        Me.Button1.FlatStyle = System.Windows.Forms.FlatStyle.Popup
+        Me.Button1.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Bold)
+        Me.Button1.ForeColor = System.Drawing.Color.White
+        Me.Button1.Location = New System.Drawing.Point(11, 12)
+        Me.Button1.Name = "Button1"
+        Me.Button1.Size = New System.Drawing.Size(21, 28)
+        Me.Button1.TabIndex = 30
+        Me.Button1.Text = "Raw Data"
+        Me.Button1.UseVisualStyleBackColor = False
+        Me.Button1.Visible = False
+        '
+        'Label19
+        '
+        Me.Label19.BackColor = System.Drawing.Color.Salmon
+        Me.Label19.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label19.ForeColor = System.Drawing.Color.White
+        Me.Label19.Location = New System.Drawing.Point(24, 32)
+        Me.Label19.Name = "Label19"
+        Me.Label19.Size = New System.Drawing.Size(68, 12)
+        Me.Label19.TabIndex = 14
+        Me.Label19.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Label8
+        '
+        Me.Label8.BackColor = System.Drawing.Color.MistyRose
+        Me.Label8.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Label8.ForeColor = System.Drawing.Color.White
+        Me.Label8.Location = New System.Drawing.Point(24, 18)
+        Me.Label8.Name = "Label8"
+        Me.Label8.Size = New System.Drawing.Size(68, 16)
+        Me.Label8.TabIndex = 13
+        Me.Label8.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        '
+        'Button4
+        '
+        Me.Button4.BackColor = System.Drawing.Color.Tomato
+        Me.Button4.FlatStyle = System.Windows.Forms.FlatStyle.Popup
+        Me.Button4.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Bold)
+        Me.Button4.ForeColor = System.Drawing.Color.White
+        Me.Button4.Location = New System.Drawing.Point(24, 20)
+        Me.Button4.Name = "Button4"
+        Me.Button4.Size = New System.Drawing.Size(43, 42)
+        Me.Button4.TabIndex = 31
+        Me.Button4.Text = "◄Legends"
+        Me.Button4.UseVisualStyleBackColor = False
+        Me.Button4.Visible = False
+        '
+        'Panel1
+        '
+        Me.Panel1.AutoScroll = True
+        Me.Panel1.BackColor = System.Drawing.Color.White
+        Me.Panel1.BackgroundImageLayout = System.Windows.Forms.ImageLayout.None
+        Me.Panel1.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D
+        Me.Panel1.Dock = System.Windows.Forms.DockStyle.Bottom
+        Me.Panel1.Location = New System.Drawing.Point(0, -67)
+        Me.Panel1.Name = "Panel1"
+        Me.Panel1.Size = New System.Drawing.Size(1905, 802)
+        Me.Panel1.TabIndex = 21
+        '
+        'Panel4
+        '
+        Me.Panel4.AutoScroll = True
+        Me.Panel4.BackColor = System.Drawing.Color.FromArgb(CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer), CType(CType(52, Byte), Integer))
+        Me.Panel4.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Panel4.Dock = System.Windows.Forms.DockStyle.Bottom
+        Me.Panel4.Location = New System.Drawing.Point(0, 735)
+        Me.Panel4.Name = "Panel4"
+        Me.Panel4.Size = New System.Drawing.Size(1905, 125)
+        Me.Panel4.TabIndex = 18
+        '
+        'Timer1
+        '
+        Me.Timer1.Interval = 1000
+        '
+        'Timer2
+        '
+        Me.Timer2.Interval = 1000
+        '
+        'Form1
+        '
+        Me.AutoScaleDimensions = New System.Drawing.SizeF(6.0!, 13.0!)
+        Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font
+        Me.AutoScroll = True
+        Me.ClientSize = New System.Drawing.Size(1907, 862)
+        Me.Controls.Add(Me.Panel3)
+        Me.Name = "Form1"
+        Me.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen
+        Me.Text = "`"
+        Me.WindowState = System.Windows.Forms.FormWindowState.Maximized
+        Me.Panel3.ResumeLayout(False)
+        Me.Panel8.ResumeLayout(False)
+        Me.Panel6.ResumeLayout(False)
+        Me.Panel7.ResumeLayout(False)
+        Me.Panel2.ResumeLayout(False)
+        Me.Panel5.ResumeLayout(False)
+        Me.ResumeLayout(False)
+        Me.PerformLayout()
+
+    End Sub
+    Friend WithEvents lblPageNumber As Label
+    Friend WithEvents lblNext As Button
+    Friend WithEvents lblPrev As Button
+    Friend WithEvents dt2 As DateTimePicker
+    Friend WithEvents cbProcess As ComboBox
+    Friend WithEvents dt1 As DateTimePicker
+    Friend WithEvents cbMachine As ComboBox
+    Friend WithEvents Label3 As Label
+    Friend WithEvents cbFloor As ComboBox
+    Friend WithEvents Label2 As Label
+    Friend WithEvents Label1 As Label
+    Friend WithEvents Panel3 As Panel
+    Friend WithEvents Timer1 As Timer
+    Friend WithEvents btnSearch As Button
+    Friend WithEvents Panel5 As Panel
+    Friend WithEvents Label29 As Label
+    Friend WithEvents Label25 As Label
+    Friend WithEvents Label30 As Label
+    Friend WithEvents Label26 As Label
+    Friend WithEvents Label31 As Label
+    Friend WithEvents Label27 As Label
+    Friend WithEvents Label32 As Label
+    Friend WithEvents Label28 As Label
+    Friend WithEvents Label21 As Label
+    Friend WithEvents Label22 As Label
+    Friend WithEvents Label23 As Label
+    Friend WithEvents Label24 As Label
+    Friend WithEvents Label20 As Label
+    Friend WithEvents Label19 As Label
+    Friend WithEvents Label8 As Label
+    Friend WithEvents Label6 As Label
+    Friend WithEvents Label17 As Label
+    Friend WithEvents Label18 As Label
+    Friend WithEvents Label15 As Label
+    Friend WithEvents Label16 As Label
+    Friend WithEvents Label13 As Label
+    Friend WithEvents Label14 As Label
+    Friend WithEvents Label11 As Label
+    Friend WithEvents Label12 As Label
+    Friend WithEvents Label9 As Label
+    Friend WithEvents Label10 As Label
+    Friend WithEvents Panel1 As Panel
+    Friend WithEvents Button3 As Button
+    Friend WithEvents Panel8 As Panel
+    Friend WithEvents Button1 As Button
+    Friend WithEvents Button4 As Button
+    Friend WithEvents LB_7 As ListBox
+    Friend WithEvents LB_5 As ListBox
+    Friend WithEvents LB_4 As ListBox
+    Friend WithEvents LB_3 As ListBox
+    Friend WithEvents LB_2 As ListBox
+    Friend WithEvents LB_1 As ListBox
+    Friend WithEvents LB_6 As ListBox
+    Friend WithEvents Timer2 As Timer
+    Public WithEvents lblTimer As Label
+    Friend WithEvents Label54 As Label
+    Friend WithEvents Panel6 As Panel
+    Public WithEvents Panel4 As Panel
+    Friend WithEvents ListBox_5 As ListBox
+    Friend WithEvents ListBox_6 As ListBox
+    Friend WithEvents ListBox_7 As ListBox
+    Friend WithEvents ListBox_3 As ListBox
+    Friend WithEvents ListBox_4 As ListBox
+    Friend WithEvents ListBox_2 As ListBox
+    Friend WithEvents ListBox_1 As ListBox
+    Friend WithEvents Panel7 As Panel
+    Friend WithEvents Label7 As Label
+    Friend WithEvents cbUser As ComboBox
+    Friend WithEvents Panel2 As Panel
+    Friend WithEvents Label1_5 As Label
+    Friend WithEvents Label1_1 As Label
+    Friend WithEvents Label1_4 As Label
+    Friend WithEvents Label1_6 As Label
+    Friend WithEvents btnWithAction As Button
+    Friend WithEvents Label1_2 As Label
+    Friend WithEvents Label1_7 As Label
+    Friend WithEvents Label1_3 As Label
+    Friend WithEvents Button5 As Button
+    Friend WithEvents lbl_5 As Label
+    Friend WithEvents Label33 As Label
+    Friend WithEvents Button6 As Button
+    Friend WithEvents Label5 As Label
+    Friend WithEvents lbl_4 As Label
+    Friend WithEvents lbl_6 As Label
+    Friend WithEvents Button2 As Button
+    Friend WithEvents Label35 As Label
+    Friend WithEvents Listbox_main As ListBox
+    Friend WithEvents lbl_7 As Label
+    Friend WithEvents Label39 As Label
+    Friend WithEvents lbl_3 As Label
+    Friend WithEvents Label34 As Label
+    Friend WithEvents lbl_2 As Label
+    Friend WithEvents Label36 As Label
+    Friend WithEvents lbl_1 As Label
+    Friend WithEvents Label37 As Label
+    Friend WithEvents Label38 As Label
+    Friend WithEvents Label_5 As Label
+    Friend WithEvents Label_1 As Label
+    Friend WithEvents Label_4 As Label
+    Friend WithEvents Label_6 As Label
+    Friend WithEvents btnMCD As Button
+    Friend WithEvents Label_2 As Label
+    Friend WithEvents Label_7 As Label
+    Friend WithEvents Label_3 As Label
+    Friend WithEvents Label40 As Label
+    Friend WithEvents Label41 As Label
+    Friend WithEvents ListBox1_1 As ListBox
+    Friend WithEvents ListBox1_2 As ListBox
+    Friend WithEvents ListBox1_3 As ListBox
+    Friend WithEvents ListBox1_4 As ListBox
+    Friend WithEvents ListBox1_5 As ListBox
+    Friend WithEvents ListBox1_6 As ListBox
+    Friend WithEvents ListBox1_7 As ListBox
+    Friend WithEvents Label1_9 As Label
+    Friend WithEvents lbl_9 As Label
+    Friend WithEvents Label47 As Label
+    Friend WithEvents Label_9 As Label
+    Friend WithEvents Label1_8 As Label
+    Friend WithEvents lbl_8 As Label
+    Friend WithEvents Label43 As Label
+    Friend WithEvents Label_8 As Label
+    Friend WithEvents LB_9 As ListBox
+    Friend WithEvents LB_8 As ListBox
+    Friend WithEvents ListBox1_8 As ListBox
+    Friend WithEvents ListBox1_9 As ListBox
+    Friend WithEvents ListBox_9 As ListBox
+    Friend WithEvents ListBox_8 As ListBox
+End Class

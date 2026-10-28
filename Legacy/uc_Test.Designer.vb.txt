@@ -1,0 +1,135 @@
+<Global.Microsoft.VisualBasic.CompilerServices.DesignerGenerated()>
+Partial Class uC_Test
+    Inherits System.Windows.Forms.UserControl
+
+    'UserControl overrides dispose to clean up the component list.
+    <System.Diagnostics.DebuggerNonUserCode()>
+    Protected Overrides Sub Dispose(ByVal disposing As Boolean)
+        Try
+            If disposing AndAlso components IsNot Nothing Then
+                components.Dispose()
+            End If
+        Finally
+            MyBase.Dispose(disposing)
+        End Try
+    End Sub
+
+    'Required by the Windows Form Designer
+    Private components As System.ComponentModel.IContainer
+
+    'NOTE: The following procedure is required by the Windows Form Designer
+    'It can be modified using the Windows Form Designer.  
+    'Do not modify it using the code editor.
+    <System.Diagnostics.DebuggerStepThrough()>
+    Private Sub InitializeComponent()
+        Me.components = New System.ComponentModel.Container()
+        Me.ToolTip1 = New System.Windows.Forms.ToolTip(Me.components)
+        Me.Timer1 = New System.Windows.Forms.Timer(Me.components)
+        Me.Panel1 = New System.Windows.Forms.Panel()
+        Me.lblLocation1 = New System.Windows.Forms.Label()
+        Me.lblMC1 = New System.Windows.Forms.Label()
+        Me.lblMctype1 = New System.Windows.Forms.Label()
+        Me.ContextMenuStrip1 = New System.Windows.Forms.ContextMenuStrip(Me.components)
+        Me.MaintenanceRecordToolStripMenuItem = New System.Windows.Forms.ToolStripMenuItem()
+        Me.Panel1.SuspendLayout()
+        Me.ContextMenuStrip1.SuspendLayout()
+        Me.SuspendLayout()
+        '
+        'ToolTip1
+        '
+        Me.ToolTip1.AutoPopDelay = 1000000
+        Me.ToolTip1.InitialDelay = 500
+        Me.ToolTip1.IsBalloon = True
+        Me.ToolTip1.ReshowDelay = 100
+        Me.ToolTip1.ToolTipIcon = System.Windows.Forms.ToolTipIcon.Info
+        Me.ToolTip1.ToolTipTitle = "Machine Details"
+        '
+        'Timer1
+        '
+        Me.Timer1.Interval = 1000
+        '
+        'Panel1
+        '
+        Me.Panel1.Controls.Add(Me.lblLocation1)
+        Me.Panel1.Controls.Add(Me.lblMC1)
+        Me.Panel1.Controls.Add(Me.lblMctype1)
+        Me.Panel1.Dock = System.Windows.Forms.DockStyle.Fill
+        Me.Panel1.Location = New System.Drawing.Point(0, 0)
+        Me.Panel1.Name = "Panel1"
+        Me.Panel1.Size = New System.Drawing.Size(188, 4000)
+        Me.Panel1.TabIndex = 2
+        '
+        'lblLocation1
+        '
+        Me.lblLocation1.BackColor = System.Drawing.Color.LimeGreen
+        Me.lblLocation1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.lblLocation1.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.lblLocation1.Location = New System.Drawing.Point(1, 3970)
+        Me.lblLocation1.Name = "lblLocation1"
+        Me.lblLocation1.Size = New System.Drawing.Size(186, 30)
+        Me.lblLocation1.TabIndex = 61
+        Me.lblLocation1.Text = "Location"
+        Me.lblLocation1.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        Me.lblLocation1.Visible = False
+        '
+        'lblMC1
+        '
+        Me.lblMC1.BackColor = System.Drawing.Color.Honeydew
+        Me.lblMC1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.lblMC1.Font = New System.Drawing.Font("Microsoft Sans Serif", 14.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.lblMC1.Location = New System.Drawing.Point(0, 3939)
+        Me.lblMC1.Name = "lblMC1"
+        Me.lblMC1.Size = New System.Drawing.Size(186, 32)
+        Me.lblMC1.TabIndex = 62
+        Me.lblMC1.Text = "MachineNo"
+        Me.lblMC1.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        Me.lblMC1.Visible = False
+        '
+        'lblMctype1
+        '
+        Me.lblMctype1.BackColor = System.Drawing.Color.LightSalmon
+        Me.lblMctype1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.lblMctype1.Font = New System.Drawing.Font("Microsoft Sans Serif", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.lblMctype1.Location = New System.Drawing.Point(1, 3910)
+        Me.lblMctype1.Name = "lblMctype1"
+        Me.lblMctype1.Size = New System.Drawing.Size(186, 30)
+        Me.lblMctype1.TabIndex = 63
+        Me.lblMctype1.Text = "Location"
+        Me.lblMctype1.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+        Me.lblMctype1.Visible = False
+        '
+        'ContextMenuStrip1
+        '
+        Me.ContextMenuStrip1.Items.AddRange(New System.Windows.Forms.ToolStripItem() {Me.MaintenanceRecordToolStripMenuItem})
+        Me.ContextMenuStrip1.Name = "ContextMenuStrip1"
+        Me.ContextMenuStrip1.Size = New System.Drawing.Size(184, 26)
+        '
+        'MaintenanceRecordToolStripMenuItem
+        '
+        Me.MaintenanceRecordToolStripMenuItem.Name = "MaintenanceRecordToolStripMenuItem"
+        Me.MaintenanceRecordToolStripMenuItem.Size = New System.Drawing.Size(183, 22)
+        Me.MaintenanceRecordToolStripMenuItem.Text = "Maintenance Record"
+        '
+        'uC_Test
+        '
+        Me.AutoScaleDimensions = New System.Drawing.SizeF(6.0!, 13.0!)
+        Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font
+        Me.AutoSize = True
+        Me.ContextMenuStrip = Me.ContextMenuStrip1
+        Me.Controls.Add(Me.Panel1)
+        Me.Name = "uC_Test"
+        Me.Size = New System.Drawing.Size(188, 4000)
+        Me.Panel1.ResumeLayout(False)
+        Me.ContextMenuStrip1.ResumeLayout(False)
+        Me.ResumeLayout(False)
+
+    End Sub
+    Friend WithEvents ToolTip1 As ToolTip
+    Public WithEvents Timer1 As Timer
+    Friend WithEvents Panel1 As Panel
+    Friend WithEvents lblMctype1 As Label
+    Friend WithEvents lblMC1 As Label
+    Friend WithEvents lblLocation1 As Label
+    Friend WithEvents ContextMenuStrip1 As ContextMenuStrip
+    Friend WithEvents MaintenanceRecordToolStripMenuItem As ToolStripMenuItem
+End Class

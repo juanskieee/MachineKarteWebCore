@@ -1,0 +1,2716 @@
+Imports System.Data.SqlClient
+Imports System.IO
+Imports System.Net
+Imports System
+Imports System.Globalization
+Imports System.Drawing.Imaging
+Imports System.Runtime.InteropServices
+Imports System.Security.Principal
+Imports System.Deployment.Application
+Public Class Form1
+    Private conn As SqlConnection = New SqlConnection(My.Settings.DBConnection)
+    Dim userControlsList1 As New List(Of uC_Test)
+    Dim userControlsList2 As New List(Of uC_Panel)
+    Dim GlobalVersion As String
+    <DllImport("advapi32.dll", SetLastError:=True)>
+    Private Shared Function LogonUser(lpszUsername As String, lpszDomain As String, lpszPassword As String, dwLogonType As Integer, dwLogonProvider As Integer, ByRef phToken As IntPtr) As Boolean
+    End Function
+
+
+    Private Sub UpdateUpdater()
+
+        '        Dim ProgramPath As String = System.IO.Directory.GetCurrentDirectory()
+        '        Dim NewProgramPath As String = "\\" & My.Settings.PathServer & "\KarteUpdater\UpdateProgram\Updater\AutoUpdater.exe"
+        '        Dim ConfigPath As String = "\\" & My.Settings.PathServer & "\KarteUpdater\UpdateProgram\Updater\AutoUpdater.exe.config"
+
+
+        '        Dim token As IntPtr = IntPtr.Zero
+        '        LogonUser(My.Settings.PathUserName, My.Settings.PathServer, My.Settings.PathPassword, 9, 0, token)
+        '        If LogonUser(My.Settings.PathUserName, My.Settings.PathServer, My.Settings.PathPassword, 9, 0, token) = True Then
+        '            Using person As WindowsImpersonationContext = New WindowsIdentity(token).Impersonate()
+
+        '                Try
+        '                    Dim src As String = My.Computer.FileSystem.ReadAllText(My.Settings.VersionPath)
+        '                    If (src.Contains(GetFileVersionInfo(ProgramPath + "\AutoUpdater.exe").ToString)) Then
+        '                        Exit Sub
+        '                    Else
+        '                        GoTo this
+        '                    End If
+        '                Catch ex As Exception
+        '                    MsgBox("Updater: " & ex.ToString)
+        '                End Try
+        'this:
+
+        '                Try
+        '                    If My.Computer.FileSystem.FileExists(ProgramPath + "\AutoUpdater.exe") = True Then
+
+        '                        If My.Computer.FileSystem.FileExists(ProgramPath + "\AutoUpdater_Old.exe") Then
+        '                            My.Computer.FileSystem.DeleteFile(ProgramPath + "\AutoUpdater_Old.exe")
+        '                        End If
+
+        '                        My.Computer.FileSystem.RenameFile(ProgramPath + "\AutoUpdater.exe", "AutoUpdater_Old.exe")
+        '                    End If
+
+        '                    If My.Computer.FileSystem.FileExists(ProgramPath + "\AutoUpdater.exe.config") = True Then
+
+        '                        If My.Computer.FileSystem.FileExists(ProgramPath + "\AutoUpdater_OldConf.exe.config") Then
+        '                            My.Computer.FileSystem.DeleteFile(ProgramPath + "\AutoUpdater_OldConf.exe.config")
+        '                        End If
+
+        '                        My.Computer.FileSystem.RenameFile(ProgramPath + "\AutoUpdater.exe.config", "AutoUpdater_OldConf.exe.config")
+        '                    End If
+
+        '                Catch ex As Exception
+        '                    MsgBox("Updater: " & ex.ToString)
+        '                End Try
+
+        '                Try
+        '                    My.Computer.Network.DownloadFile(NewProgramPath, ProgramPath + "\AutoUpdater.exe", My.Settings.PathUserName, My.Settings.PathPassword)
+        '                    My.Computer.Network.DownloadFile(ConfigPath, ProgramPath + "\AutoUpdater.exe.config", My.Settings.PathUserName, My.Settings.PathPassword)
+        '                Catch ex As Exception
+        '                    MsgBox("Updater: " & ex.ToString)
+        '                End Try
+        '            End Using
+        '        End If
+    End Sub
+
+    Private Function GetFileVersionInfo(ByVal filename As String) As Version
+        Return Version.Parse(FileVersionInfo.GetVersionInfo(filename).FileVersion)
+    End Function
+    Private Function CheckVerion() As Boolean
+        Try
+            Dim dt As New DataTable
+            Dim strQuery As String = String.Empty
+            strQuery = " Select currentversion from  [eMaintenanceSystemDB].[dbo].[MachineKarte_Version] where SystemName = @SystemName"
+            Using cmd = New SqlCommand(strQuery, conn)
+                cmd.CommandType = CommandType.Text
+                cmd.Parameters.AddWithValue("@SystemName", "E-Karte System")
+                Dim da = New SqlDataAdapter(cmd)
+                da.Fill(dt)
+            End Using
+
+            GlobalVersion = dt.Rows(0).Item(0).ToString
+            If dt.Rows(0).Item(0).ToString = Me.ProductVersion Then
+                CheckVerion = True
+            Else
+                CheckVerion = False
+            End If
+
+            Return CheckVerion
+
+        Catch ex As Exception
+            CheckVerion = False
+        End Try
+    End Function
+    Private Sub LabelMain_Click(ByVal sender As System.Object, ByVal e As System.EventArgs)
+        Dim myButton = DirectCast(sender, Label)
+        Try
+
+            If myButton.Text <> "0" Then
+                Dim Test As String = String.Empty
+                Listbox_main.Items.Clear()
+
+                If myButton.Name.ToString.Contains("lbl") Then
+                    Test = "LB" & (myButton.Name.ToString.Substring(3))
+                ElseIf myButton.Name.ToString.Contains("Label1") Then
+                    Test = "ListBox1" & (myButton.Name.ToString.Substring(6))
+                Else
+                    Test = "ListBox" & (myButton.Name.ToString.Substring(5))
+                End If
+
+
+                checkProcessAndLocation(Test)
+                Listbox_main.Items.AddRange(CType(Me.Controls.Find(Test, True).First, ListBox).Items)
+
+                Button6.Visible = True
+                Panel8.Size = New Size(2541, 515)
+            End If
+        Catch ex As Exception
+            MsgBox(ex.ToString)
+        End Try
+    End Sub
+    Private Sub checkProcessAndLocation(Temp As String)
+        Try
+
+
+            Dim testArr() As String = Temp.Split("_")
+            Dim Location As String = testArr(1)
+            Dim tempLoc As String = ""
+            If Location = "1" Then
+                tempLoc = "LSI1-1F"
+
+            ElseIf Location = "2" Then
+                tempLoc = "LSI1-2F"
+
+            ElseIf Location = "3" Then
+                tempLoc = "LSI2-1F"
+
+            ElseIf Location = "4" Then
+                tempLoc = "LSI2-2F"
+
+            ElseIf Location = "5" Then
+                tempLoc = "LSI2-3F"
+
+            ElseIf Location = "6" Then
+                tempLoc = "LSI3-2F"
+
+            ElseIf Location = "7" Then
+                tempLoc = "LSI3-4F"
+            ElseIf Location = "8" Then
+                tempLoc = "LSI3-3F"
+            ElseIf Location = "9" Then
+                tempLoc = "LSI3-1F"
+
+            End If
+
+
+            cbFloor.SelectedItem = tempLoc
+        Catch ex As Exception
+            MsgBox(ex.ToString)
+        End Try
+    End Sub
+    Private Sub UpdatePCStatus()
+        Try
+            Dim PCName As String = Environment.MachineName
+            Dim dt As New DataTable
+            Dim strQuery As String = String.Empty
+            If CheckIfExisting(PCName) = False Then
+
+                strQuery = " Insert into [eMaintenanceSystemDB].[dbo].[MachineKarte_PCStatus] (PCname,IPAdd,LastOpen,Version,UserType) values (@PCname,@IPAdd,@LastOpen,@Version,@UserType)"
+                Using cmd = New SqlCommand(strQuery, conn)
+                    cmd.CommandType = CommandType.Text
+                    cmd.Parameters.AddWithValue("@PCname", PCName)
+                    cmd.Parameters.AddWithValue("@IPAdd", GetIP())
+                    cmd.Parameters.AddWithValue("@LastOpen", Date.Now.ToString("MM/dd/yyyy hh:mm:ss"))
+                    cmd.Parameters.AddWithValue("@Version", "v." & Me.ProductVersion)
+                    cmd.Parameters.AddWithValue("@UserType", "PM")
+                    Dim da = New SqlDataAdapter(cmd)
+                    da.Fill(dt)
+                End Using
+            Else
+                strQuery = " Update [eMaintenanceSystemDB].[dbo].[MachineKarte_PCStatus] set IPADD=@IPAdd,Lastopen=@Lastopen,Version=@Version,UserType=@UserType where PCname=@PCname"
+                Using cmd = New SqlCommand(strQuery, conn)
+                    cmd.CommandType = CommandType.Text
+                    cmd.Parameters.AddWithValue("@PCname", PCName)
+                    cmd.Parameters.AddWithValue("@IPAdd", GetIP())
+                    cmd.Parameters.AddWithValue("@LastOpen", Date.Now.ToString("MM/dd/yyyy hh:mm:ss"))
+                    cmd.Parameters.AddWithValue("@Version", "v." & Me.ProductVersion)
+                    cmd.Parameters.AddWithValue("@UserType", "PM")
+                    Dim da = New SqlDataAdapter(cmd)
+                    da.Fill(dt)
+                End Using
+            End If
+        Catch ex As Exception
+
+        End Try
+    End Sub
+    Private Function CheckIfExisting(PCName_Temp As String) As Boolean
+        Dim dt As New DataTable
+        Dim strQuery As String = String.Empty
+        strQuery = " Select Seqno from  [eMaintenanceSystemDB].[dbo].[MachineKarte_PCStatus] where PCName = @PCname"
+        Using cmd = New SqlCommand(strQuery, conn)
+            cmd.CommandType = CommandType.Text
+            cmd.Parameters.AddWithValue("@PCname", PCName_Temp)
+            Dim da = New SqlDataAdapter(cmd)
+            da.Fill(dt)
+        End Using
+
+        If dt.Rows.Count > 0 Then
+            CheckIfExisting = True
+        Else
+            CheckIfExisting = False
+        End If
+
+        Return CheckIfExisting
+    End Function
+
+    Private Function GetIP() As String
+        Dim IPADDTEMP As String = ""
+
+        Dim hostName As String = Dns.GetHostName()
+        Dim ipEntry As IPHostEntry = Dns.GetHostByName(hostName)
+        Dim ipAddress As String = ""
+        Try
+            For i = 0 To 6
+                ipAddress += ipEntry.AddressList(i).ToString() & " , "
+            Next
+        Catch ex As Exception
+            ipAddress += "|"
+            ipAddress += ipEntry.AddressList(0).ToString()
+        End Try
+
+
+
+
+        IPADDTEMP = ipAddress
+
+        Return IPADDTEMP
+    End Function
+
+    Private Sub Button2_Click(sender As Object, e As EventArgs) Handles lblNext.Click
+
+        If Panel1.Controls.Count <> 0 Then
+            Panel1.Controls.Clear()
+            For Each control As Control In Panel1.Controls
+                control.Dispose()
+            Next
+
+
+            Panel4.Controls.Clear()
+            For Each control As Control In Panel4.Controls
+                control.Dispose()
+            Next
+            For Each userControl As uC_Test In userControlsList1
+                userControl.Dispose()
+            Next
+
+            For Each userControl As uC_Panel In userControlsList2
+                userControl.Dispose()
+            Next
+
+
+        End If
+
+        lblPageNumber.Text += 1
+        LoadMCName(cbProcess.Text, cbFloor.Text, cbMachine.Text, dt1.Value.ToString("MM/dd/yyyy hh:mm:ss"), dt2.Value.ToString("MM/dd/yyyy hh:mm:ss"))
+        Panel1.VerticalScroll.Value = Panel1.VerticalScroll.Maximum
+        Panel1.AutoScrollPosition = New Point(0, Panel1.VerticalScroll.Maximum)
+    End Sub
+
+    Private Sub Button1_Click(sender As Object, e As EventArgs) Handles lblPrev.Click
+        If CInt(lblPageNumber.Text) <> 1 Then
+            If Panel1.Controls.Count <> 0 Then
+                Panel1.Controls.Clear()
+                For Each control As Control In Panel1.Controls
+                    control.Dispose()
+                Next
+
+                Panel4.Controls.Clear()
+                For Each control As Control In Panel4.Controls
+                    control.Dispose()
+
+                Next
+                For Each userControl As uC_Test In userControlsList1
+                    userControl.Dispose()
+                Next
+
+                For Each userControl As uC_Panel In userControlsList2
+                    userControl.Dispose()
+                Next
+
+
+            End If
+
+            lblPageNumber.Text -= 1
+            LoadMCName(cbProcess.Text, cbFloor.Text, cbMachine.Text, dt1.Value.ToString("MM/dd/yyyy hh:mm:ss"), dt2.Value.ToString("MM/dd/yyyy hh:mm:ss"))
+            Panel1.VerticalScroll.Value = Panel1.VerticalScroll.Maximum
+            Panel1.AutoScrollPosition = New Point(0, Panel1.VerticalScroll.Maximum)
+        End If
+    End Sub
+
+    Private Sub cbFloor_SelectedIndexChanged(sender As Object, e As EventArgs) Handles cbFloor.SelectedIndexChanged
+
+        If cbProcess.Text = "-Select-" Then
+            MsgBox("Please select a process.", MsgBoxStyle.Information, "E-Karte System")
+            Exit Sub
+        End If
+
+        If cbFloor.Text = "-Select-" Then
+            Exit Sub
+        End If
+
+        If cbFloor.Text = "All" Then
+            cbMachine.Items.Clear()
+            cbMachine.Items.Add("All")
+            cbMachine.SelectedItem = "All"
+        Else
+            Dim dt As New DataTable
+            Dim strQuery As String = String.Empty
+            If cbUser.Text = "PM" Or cbUser.Text = "CC" Or cbUser.Text = "EEE" Or cbUser.Text = "VIS" Then
+
+                strQuery = "  select distinct(mcno) as 'Mcno' FROM [eMaintenanceSystemDB].[dbo].[MCList] a inner join 
+                      [eMaintenanceSystemDB].[dbo].[Process] b on a.ProcessID = b.ProcessID
+                      where b.ProcessName = @Process and a.MCLocation  = @Location order by a.mcno asc"
+            Else
+                strQuery = "  select distinct(testerno) as 'testerNo' FROM [eMaintenanceSystemDB].[dbo].[TEBMMaintenance]
+                      where process = @process and location  = @Location and testerno <> '' order by testerno asc"
+            End If
+
+
+
+            Using cmd = New SqlCommand(strQuery, conn)
+                cmd.CommandType = CommandType.Text
+                cmd.Parameters.AddWithValue("@Process", cbProcess.Text)
+                cmd.Parameters.AddWithValue("@Location", cbFloor.Text)
+                Dim da = New SqlDataAdapter(cmd)
+                da.Fill(dt)
+            End Using
+            If dt.Rows.Count <> 0 Then
+                cbMachine.Items.Clear()
+                cbMachine.Items.Add("All")
+                For i = 0 To dt.Rows.Count - 1
+                    If cbUser.Text = "PM" Or cbUser.Text = "CC" Or cbUser.Text = "EEE" Or cbUser.Text = "VIS" Then
+                        cbMachine.Items.Add(dt.Rows(i).Item("Mcno").ToString)
+                    Else
+                        cbMachine.Items.Add(dt.Rows(i).Item("testerno").ToString)
+                    End If
+                Next
+                cbMachine.SelectedItem = "All"
+            Else
+                cbMachine.Items.Clear()
+            End If
+        End If
+
+    End Sub
+    Private Sub btnSearch_Click(sender As Object, e As EventArgs)
+        If cbMachine.Text = "" Then
+            MsgBox("Please select a machine number.", MsgBoxStyle.Information, "E-Karte System")
+            Exit Sub
+        End If
+
+        lblTimer.Text = "600"
+        lblPageNumber.Text = 1
+        LoadMCName(cbProcess.Text, cbFloor.Text, cbMachine.Text, dt1.Value.ToString("MM/dd/yyyy hh:mm:ss"), dt2.Value.ToString("MM/dd/yyyy hh:mm:ss"))
+        Panel1.VerticalScroll.Value = Panel1.VerticalScroll.Maximum
+        Panel1.AutoScrollPosition = New Point(0, Panel1.VerticalScroll.Maximum)
+    End Sub
+    Public Sub LoadMCName(ByVal MCProcess As String, ByVal MCLocation As String, ByVal MCMcno As String, ByVal MCDate1 As String, ByVal MCDate2 As String)
+        Dim dt1 As New DataTable
+        Dim topNum1 As Integer = 0
+        Dim topNum2 As Integer = 0
+        Dim dt2 As New DataTable
+        Dim addLocation As String = String.Empty
+        Dim strQuery2 As String = String.Empty
+
+        topNum2 = lblPageNumber.Text * 10
+        topNum1 = (lblPageNumber.Text * 10) - 10
+
+        Dim AddQuery As String = ""
+
+        If cbUser.Text = "PM" Then
+            AddQuery = "(a.BMStatusID not in ('30','31'))"
+        ElseIf cbUser.Text = "CC"
+            AddQuery = "(Turnover IN ('CC') AND BMStatusID IN (6,7,8,9,11,20,19,14))"
+        ElseIf cbUser.Text = "EEE"
+            AddQuery = "(Turnover IN ('PE') AND BMStatusID IN (6,7,8,9,11,20,19,14))"
+        ElseIf cbUser.Text = "VIS"
+            AddQuery = "(Turnover IN ('VIS') AND BMStatusID IN (6,7,8,9,11,20,19,14))"
+        End If
+
+        If cbUser.Text = "PM" Or cbUser.Text = "CC" Or cbUser.Text = "EEE" Or cbUser.Text = "VIS" Then
+            If MCMcno = "All" Then
+
+                strQuery2 = " select * from (select TOP  " & topNum2 & " count((mcno)) as 'MACHINENAME',MCNO,COALESCE(c.actionline,4) as actionline,a.MCType   from [eMaintenanceSystemDB].[dbo].[" & MCProcess & "BMMaintenance] a INNER JOIN  [eMaintenanceSystemDB].[dbo].[Process] D on a.Process = d.Processname
+                                       inner join [eMaintenanceSystemDB].[dbo].[MCType] c on a.MCType = c.MCType and c.ProcessID = d.ProcessID inner join [eMaintenanceSystemDB].[dbo].[BMCase] b  on a.BMCaseID = b.BMCaseID   where (TimeOfRequest  between  @Range1 and @Range2) AND (PMCategoryID = 1 and d.processname = @Process) and (a.Location = @Location) and  " & AddQuery & "  and a.bmcaseid <> 0  GROUP BY MCNO,actionline,a.MCType  ORDER BY MACHINENAME desc,MCNO asc) X
+                         except
+                         select * from (select TOP " & topNum1 & " count((mcno)) as 'MACHINENAME',MCNO,COALESCE(c.actionline,4) as actionline,a.MCType   from [eMaintenanceSystemDB].[dbo].[" & MCProcess & "BMMaintenance] a INNER JOIN  [eMaintenanceSystemDB].[dbo].[Process] D on a.Process = d.Processname
+                                      inner join [eMaintenanceSystemDB].[dbo].[MCType] c on a.MCType = c.MCType and c.ProcessID = d.ProcessID  inner join [eMaintenanceSystemDB].[dbo].[BMCase] b  on a.BMCaseID = b.BMCaseID  where  (TimeOfRequest  between  @Range1 and @Range2) AND (PMCategoryID = 1 and d.processname = @Process) and (a.Location = @Location) and  " & AddQuery & "  and a.bmcaseid <> 0   GROUP BY MCNO,actionline,a.MCType  ORDER BY MACHINENAME desc,MCNO asc) Y order by MACHINENAME desc,MCNO asc"
+            Else
+
+                strQuery2 = " select * from (select TOP  " & topNum2 & " count((mcno)) as 'MACHINENAME',MCNO,COALESCE(c.actionline,4) as actionline,a.MCType   from [eMaintenanceSystemDB].[dbo].[" & MCProcess & "BMMaintenance] a INNER JOIN  [eMaintenanceSystemDB].[dbo].[Process] D on a.Process = d.Processname
+                                      inner join [eMaintenanceSystemDB].[dbo].[MCType] c on a.MCType = c.MCType and c.ProcessID = d.ProcessID  inner join [eMaintenanceSystemDB].[dbo].[BMCase] b  on a.BMCaseID = b.BMCaseID  where (TimeOfRequest  between  @Range1 and @Range2) AND (PMCategoryID = 1 and d.processname = @Process) and (a.Location = @Location) and (Mcno = @Mcno) and  " & AddQuery & "  and a.bmcaseid <> 0  GROUP BY MCNO,actionline,a.MCType  ORDER BY MACHINENAME desc,MCNO asc) X
+                         except
+                         select * from (select TOP " & topNum1 & " count((mcno)) as 'MACHINENAME',MCNO,COALESCE(c.actionline,4) as actionline,a.MCType   from [eMaintenanceSystemDB].[dbo].[" & MCProcess & "BMMaintenance] a INNER JOIN  [eMaintenanceSystemDB].[dbo].[Process] D on a.Process = d.Processname
+                                  inner join [eMaintenanceSystemDB].[dbo].[MCType] c on a.MCType = c.MCType and c.ProcessID = d.ProcessID inner join [eMaintenanceSystemDB].[dbo].[BMCase] b  on a.BMCaseID = b.BMCaseID  where  (TimeOfRequest  between  @Range1 and @Range2) AND (PMCategoryID = 1 and d.processname = @Process) and (a.Location = @Location) and (Mcno = @Mcno) and  " & AddQuery & "  and a.bmcaseid <> 0   GROUP BY MCNO,actionline,a.MCType  ORDER BY MACHINENAME desc,MCNO asc) Y order by MACHINENAME desc,MCNO asc"
+
+
+            End If
+        Else
+            If MCMcno = "All" Then
+
+                strQuery2 = " select * from (select top " & topNum2 & " count((MCType)) as 'machinename',MCType,testerno,COALESCE(c.actionline,4) as actionline
+                            from [eMaintenanceSystemDB].[dbo].[teBMMaintenance] a 
+                                 INNER JOIN  [eMaintenanceSystemDB].[dbo].[Process] D on a.Process = d.Processname
+                                 INNER JOIN [eMaintenanceSystemDB].[dbo].[testertype] c on a.MCType = c.testertype and c.ProcessID = d.ProcessID  and c.location = @Location
+	                             where (TimeOfRequest  between  @Range1 and @Range2 ) AND ((PMCategoryID = 1 or PMCategoryID = 4) and d.processname = @Process) 
+	                             and (a.Location = @Location) and (a.BMStatusID not in ('30','31','1','2','3','7','17')) and bmunitid <> 0 
+	                             GROUP BY MCType,testerno,actionline  ORDER BY machinename desc,a.MCType asc) x
+
+	                             except
+
+	                      Select * from (select TOP  " & topNum1 & " count((MCType)) as 'machinename',MCType,testerno,COALESCE(c.actionline,4) as actionline
+                            from [eMaintenanceSystemDB].[dbo].[teBMMaintenance] a 
+                                 INNER JOIN  [eMaintenanceSystemDB].[dbo].[Process] D on a.Process = d.Processname
+                                 INNER JOIN [eMaintenanceSystemDB].[dbo].[testertype] c on a.MCType = c.testertype and c.ProcessID = d.ProcessID  and c.location = @Location
+	                             where (TimeOfRequest  between @Range1 and @Range2 ) AND ((PMCategoryID = 1 or PMCategoryID = 4) and d.processname = @Process) 
+	                             and (a.Location = @Location) and (a.BMStatusID not in ('30','31','1','2','3','7','17')) and bmunitid <> 0 
+	                             GROUP BY MCType,testerno,actionline  ORDER BY machinename desc,a.MCType asc) y order by machinename desc"
+            Else
+
+                strQuery2 = " select * from (select  top " & topNum2 & " count((MCType)) as 'machinename',MCType,testerno,COALESCE(c.actionline,4) as actionline
+                                    from [eMaintenanceSystemDB].[dbo].[teBMMaintenance] a 
+                                         INNER JOIN  [eMaintenanceSystemDB].[dbo].[Process] D on a.Process = d.Processname
+                                         INNER JOIN [eMaintenanceSystemDB].[dbo].[testertype] c on a.MCType = c.testertype and c.ProcessID = d.ProcessID  and c.location = @Location
+	                                     where (TimeOfRequest  between  @Range1 and @Range2 ) AND ((PMCategoryID = 1 or PMCategoryID = 4) and d.processname = @Process) 
+	                                     and (a.Location = @Location) and (testerno = @Mcno) and (a.BMStatusID not in ('30','31','1','2','3','7','17')) and bmunitid <> 0 
+	                                     GROUP BY MCType,testerno,actionline  ORDER BY machinename desc,a.MCType asc) x
+
+	                                     except
+
+	                              Select * from (select TOP  " & topNum1 & " count((MCType)) as 'machinename',MCType,testerno,COALESCE(c.actionline,4) as actionline
+                                    from [eMaintenanceSystemDB].[dbo].[teBMMaintenance] a 
+                                         INNER JOIN  [eMaintenanceSystemDB].[dbo].[Process] D on a.Process = d.Processname
+                                         INNER JOIN [eMaintenanceSystemDB].[dbo].[testertype] c on a.MCType = c.testertype and c.ProcessID = d.ProcessID  and c.location = @Location
+	                                     where (TimeOfRequest  between @Range1 and @Range2 ) AND ((PMCategoryID = 1 or PMCategoryID = 4) and d.processname = @Process) 
+	                                     and (a.Location = @Location) and (testerno = @Mcno) and (a.BMStatusID not in ('30','31','1','2','3','7','17')) and bmunitid <> 0 
+	                                     GROUP BY MCType,testerno,actionline  ORDER BY machinename desc,a.MCType asc) y order by machinename desc,MCtype asc"
+
+            End If
+        End If
+
+
+        Using cmd = New SqlCommand(strQuery2, conn)
+            cmd.CommandType = CommandType.Text
+            cmd.Parameters.AddWithValue("@Range1", MCDate1)
+            cmd.Parameters.AddWithValue("@Range2", MCDate2)
+            cmd.Parameters.AddWithValue("@Location", MCLocation)
+            cmd.Parameters.AddWithValue("@Process", MCProcess)
+            cmd.Parameters.AddWithValue("@Mcno", MCMcno)
+            Dim da = New SqlDataAdapter(cmd)
+            da.Fill(dt2)
+        End Using
+
+        For Each control As Control In Panel1.Controls
+            control.Dispose()
+        Next
+
+        For Each control As Control In Panel4.Controls
+            control.Dispose()
+        Next
+        For Each userControl As uC_Test In userControlsList1
+            userControl.Dispose()
+        Next
+
+        For Each userControl As uC_Panel In userControlsList2
+            userControl.Dispose()
+        Next
+
+        Panel4.Controls.Clear()
+        Panel1.Controls.Clear()
+        userControlsList1.Clear()
+        userControlsList2.Clear()
+
+        For x = 0 To dt2.Rows.Count - 1
+            Dim uCWidth As Integer
+            Dim UCNum As New uC_Test
+            If cbUser.Text = "PM" Or cbUser.Text = "CC" Or cbUser.Text = "EEE" Or cbUser.Text = "VIS" Then
+                UCNum.LoadMain(cbProcess.Text, cbFloor.Text, dt2.Rows(x).Item("Mcno").ToString, MCDate1, MCDate2, dt2.Rows(x).Item("actionline"), dt2.Rows(x).Item("MCtype").ToString, dt2.Rows(x).Item("machinename").ToString, x, cbUser.Text)
+            Else
+                UCNum.LoadMain(cbProcess.Text, cbFloor.Text, dt2.Rows(x).Item("testerno").ToString, MCDate1, MCDate2, dt2.Rows(x).Item("actionline"), dt2.Rows(x).Item("MCtype").ToString, dt2.Rows(x).Item("machinename").ToString, x, cbUser.Text)
+            End If
+            userControlsList1.Add(UCNum)
+            Panel1.Controls.Add(UCNum)
+            If CInt(dt2.Rows(0).Item("machinename")) > 50 Then
+                UCNum.Size = New Size(188, CInt(dt2.Rows(0).Item("machinename")) * 85)
+            End If
+            uCWidth = UCNum.Width
+            UCNum.Left = uCWidth * x
+        Next
+
+
+        '
+
+        EnableAllTimersInAllUserControls()
+    End Sub
+    Private Sub EnableAllTimersInAllUserControls()
+        For Each userControl As uC_Test In userControlsList1
+            userControl.Timer1.Enabled = True
+        Next
+    End Sub
+
+    Private Sub Timer1_Tick(sender As Object, e As EventArgs) Handles Timer1.Tick
+        If lblTimer.Text = "0" Then
+
+            If TimeOfDay.Minute < 59 And TimeOfDay.Hour = 8 Then
+                If dt2.Value.ToString("MM/dd/yyyy") <> Date.Now.ToString("MM/dd/yyyy") Then
+                    SetDate()
+                End If
+            End If
+
+            If cbMachine.Text = "" Then
+
+                lblTimer.Text = "600"
+                Exit Sub
+            End If
+
+
+            LoadMCName(cbProcess.Text, cbFloor.Text, cbMachine.Text, dt1.Value.ToString("MM/dd/yyyy hh:mm:ss"), dt2.Value.ToString("MM/dd/yyyy hh:mm:ss"))
+            Panel1.VerticalScroll.Value = Panel1.VerticalScroll.Maximum
+            Panel1.AutoScrollPosition = New Point(0, Panel1.VerticalScroll.Maximum)
+            lblTimer.Text = "600"
+        End If
+
+        lblTimer.Text = CInt(lblTimer.Text) - 1
+    End Sub
+    Private Sub SetDate()
+        dt2.Value = Date.Now.ToString("MM/dd/yyyy")
+        dt1.Value = dt2.Value.AddDays(-30).ToString()
+    End Sub
+
+    Private Sub cbProcess_SelectedIndexChanged(sender As Object, e As EventArgs) Handles cbProcess.SelectedIndexChanged
+
+        cbMachine.Items.Clear()
+        cbFloor.Items.Clear()
+
+
+        cbFloor.Items.Add("-Select-")
+        cbFloor.Items.Add("LSI1-1F")
+        cbFloor.Items.Add("LSI1-2F")
+        cbFloor.Items.Add("LSI2-1F")
+        cbFloor.Items.Add("LSI2-2F")
+        cbFloor.Items.Add("LSI2-3F")
+        cbFloor.Items.Add("LSI3-1F")
+        cbFloor.Items.Add("LSI3-2F")
+        cbFloor.Items.Add("LSI3-3F")
+        cbFloor.Items.Add("LSI3-4F")
+
+        cbFloor.SelectedItem = " -Select-"
+    End Sub
+
+    Public Sub btnSearch_Click_1(sender As Object, e As EventArgs) Handles btnSearch.Click
+        If cbMachine.Text = "" Then
+            MsgBox("Please select a machine number.", MsgBoxStyle.Information, "E-Karte System")
+            Exit Sub
+        End If
+
+        lblTimer.Text = "600"
+        lblPageNumber.Text = 1
+        LoadMCName(cbProcess.Text, cbFloor.Text, cbMachine.Text, dt1.Value.ToString("MM/dd/yyyy hh:mm:ss"), dt2.Value.ToString("MM/dd/yyyy hh:mm:ss"))
+        Panel1.VerticalScroll.Value = Panel1.VerticalScroll.Maximum
+        Panel1.AutoScrollPosition = New Point(0, Panel1.VerticalScroll.Maximum)
+
+        ClearLabel()
+        LoadMCName1()
+
+        Button6_Click(sender, e)
+    End Sub
+
+    Private Sub Button1_Click_1(sender As Object, e As EventArgs)
+
+    End Sub
+    Private Sub Panel1_Scroll(ByVal sender As Object, ByVal e As System.Windows.Forms.ScrollEventArgs) Handles Panel1.Scroll
+        If e.ScrollOrientation = ScrollOrientation.HorizontalScroll Then
+            Panel4.AutoScrollPosition = New Point(e.NewValue, Panel4.AutoScrollPosition.Y)
+        End If
+    End Sub
+
+    Private Sub Panel4_Scroll(ByVal sender As Object, ByVal e As System.Windows.Forms.ScrollEventArgs) Handles Panel4.Scroll
+        If e.ScrollOrientation = ScrollOrientation.HorizontalScroll Then
+            Panel1.AutoScrollPosition = New Point(e.NewValue, Panel1.VerticalScroll.Maximum)
+        End If
+    End Sub
+
+
+
+    Private Sub Button3_Click(sender As Object, e As EventArgs) Handles Button3.Click
+        Panel5.Visible = False
+        CType(Me.Controls.Find("Button4", True).First, Button).Visible = True
+
+        Panel8.Size = New System.Drawing.Size(77, 42)
+
+    End Sub
+
+
+
+    Private Sub Button5_Click(sender As Object, e As EventArgs) Handles Button5.Click
+        If Application.OpenForms().OfType(Of Form_Input).Any Then
+            Exit Sub
+        Else
+            Listbox_main.Items.Clear()
+            Panel8.Size = New Size(2541, 112)
+
+            Button6.Visible = False
+
+            If cbUser.Text = String.Empty Then
+                MsgBox("Please select a User first.")
+                Exit Sub
+            End If
+
+            Form2.Show()
+        End If
+
+    End Sub
+
+    Private Sub Button4_Click_2(sender As Object, e As EventArgs) Handles Button4.Click
+        Dim myButton = DirectCast(sender, Button)
+        'Panel5.Visible = True
+        myButton.Visible = False
+
+        Panel8.Size = New System.Drawing.Size(2541, 112)
+    End Sub
+
+    'Private Sub Button1_Click_2(sender As Object, e As EventArgs) Handles Button1.Click
+    '    If Application.OpenForms().OfType(Of Form_Input).Any Then
+    '        Exit Sub
+    '    Else
+    '        If cbMachine.Text = "" Then
+    '            MsgBox("Please select a machine number.", MsgBoxStyle.Information, "Machine Karte")
+    '            Exit Sub
+    '        End If
+
+
+    '        Form5.Show()
+    '        Form5.LoadData(cbProcess.Text, cbFloor.Text, cbMachine.Text, dt1.Value.ToString("MM/dd/yyyy hh:mm:ss"), dt2.Value.ToString("MM/dd/yyyy hh:mm:ss"))
+    '    End If
+    'End Sub
+    Dim dtNewRowSame As New DataTable
+    Dim dtNotEquals As New DataTable
+
+    Dim strLocation() As String = {"LSI1-1F", "LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-2F", "LSI3-4F", "LSI3-1F", "LSI3-3F"}
+    Private Sub LoadMCName1()
+
+        Dim datatable1 As New DataTable
+        Dim topNum1 As Integer = 0
+        Dim topNum2 As Integer = 0
+        Dim datatable2 As New DataTable
+        Dim strQuery As String = String.Empty
+        Dim strQuery2 As String = String.Empty
+
+        If cbProcess.Text = "DC" Then
+            ReDim strLocation(4)
+            strLocation(0) = "LSI1-1F"
+            strLocation(1) = "LSI2-1F"
+            strLocation(2) = "LSI2-2F"
+            strLocation(3) = "LSI2-3F"
+            strLocation(4) = "LSI3-2F"
+        ElseIf cbProcess.Text = "DB" Then
+            ReDim strLocation(4)
+            strLocation(0) = "LSI1-1F"
+            strLocation(1) = "LSI2-1F"
+            strLocation(2) = "LSI2-2F"
+            strLocation(3) = "LSI2-3F"
+            strLocation(4) = "LSI3-2F"
+        ElseIf cbProcess.Text = "WB" Then
+            ReDim strLocation(4)
+            strLocation(0) = "LSI1-1F"
+            strLocation(1) = "LSI2-1F"
+            strLocation(2) = "LSI2-2F"
+            strLocation(3) = "LSI2-3F"
+            strLocation(4) = "LSI3-2F"
+        ElseIf cbProcess.Text = "MP" Then
+            ReDim strLocation(4)
+            strLocation(0) = "LSI1-1F"
+            strLocation(1) = "LSI2-1F"
+            strLocation(2) = "LSI2-2F"
+            strLocation(3) = "LSI2-3F"
+            strLocation(4) = "LSI3-1F"
+        ElseIf cbProcess.Text = "PL" Then
+            ReDim strLocation(2)
+            strLocation(0) = "LSI1-1F"
+            strLocation(1) = "LSI2-1F"
+            strLocation(2) = "LSI3-1F"
+        ElseIf cbProcess.Text = "FL" Then
+            ReDim strLocation(4)
+            strLocation(0) = "LSI1-2F"
+            strLocation(1) = "LSI2-1F"
+            strLocation(2) = "LSI2-2F"
+            strLocation(3) = "LSI2-3F"
+            strLocation(4) = "LSI3-3F"
+        ElseIf cbProcess.Text = "SING" Then
+            ReDim strLocation(5)
+            strLocation(0) = "LSI1-2F"
+            strLocation(1) = "LSI1-1F"
+            strLocation(2) = "LSI2-1F"
+            strLocation(3) = "LSI2-2F"
+            strLocation(4) = "LSI2-3F"
+            strLocation(5) = "LSI3-3F"
+        ElseIf cbProcess.Text = "ATC" Then
+            ReDim strLocation(5)
+            strLocation(0) = "LSI1-2F"
+            strLocation(1) = "LSI1-1F"
+            strLocation(2) = "LSI2-1F"
+            strLocation(3) = "LSI2-2F"
+            strLocation(4) = "LSI2-3F"
+            strLocation(5) = "LSI3-3F"
+        ElseIf cbProcess.Text = "FT" Then
+            ReDim strLocation(4)
+            strLocation(0) = "LSI1-2F"
+            strLocation(1) = "LSI2-1F"
+            strLocation(2) = "LSI2-2F"
+            strLocation(3) = "LSI2-3F"
+            strLocation(4) = "LSI3-3F"
+        ElseIf cbProcess.Text = "TP" Then
+            ReDim strLocation(4)
+            strLocation(0) = "LSI1-2F"
+            strLocation(1) = "LSI2-1F"
+            strLocation(2) = "LSI2-2F"
+            strLocation(3) = "LSI2-3F"
+            strLocation(4) = "LSI3-3F"
+        ElseIf cbProcess.Text = "EDS" Then
+            ReDim strLocation(0)
+            strLocation(0) = "LSI3-4F"
+        ElseIf cbProcess.Text = "MEMS" Then
+            ReDim strLocation(0)
+            strLocation(0) = "LSI3-2F"
+        End If
+
+
+        For x = 0 To strLocation.Count - 1
+            datatable1 = New DataTable
+
+
+            If cbUser.Text = "TE" Then
+
+                strQuery = " select a.Devicename, isnull((select 'Yes' from MachineKarte_MCD  where replace(Devicename,' ','') = replace(a.devicename,' ','') and isactive = 1 ),'No') as 'isMCD',a.process,a.location,a.testerNo as 'Mcno',a.mctype,format(a.Timeofrequest,'MM/dd/yyyy HH:mm:ss') as 'Timeofrequest', b.bmteunit as 'BMCase',a.bmid, isnull((select 'Yes' from MachineKarte_ActionCard_TE  where bmid = a.bmID),'No') as 'HaveAction', 
+                            COALESCE( CASE 
+                            WHEN a.AcredBMContentID  <> a.BMContentID THEN 
+	                            Case when a.AcredBMContentID = '' then
+	                            a.BMContentID 
+	                             when a.AcredBMContentID = '0' then 
+	                            a.BMContentID 
+	                             when a.AcredBMContentID is null then
+	                            a.BMContentID 
+	                            else
+	                            a.AcredBMContentID
+	                            end
+                            ELSE 
+                            a.BMContentID 
+                            end,0) as 'BMContentID',Priority,(select BMContent from BMContent  where BMContentID = a.BMContentID and process = '" & cbProcess.Text & "') as 'BMContent',
+                              c.mcstatus as 'MCStatus','None' as 'FontColor'                                       
+                                                          from [eMaintenanceSystemDB].[dbo].[TEBMMaintenance] a inner join [eMaintenanceSystemDB].[dbo].[BMTEUnit] b 
+                                                          on a.bmunitid = b.bmteunitid
+                                                          left join [eMaintenanceSystemDB].[dbo].[MachineKarte_ActionCard_TE] c
+										                  on a.bmID = c.bmID and a.testerno = c.machineno
+                                                          where (a.timeofrequest between @Range1 and @Range2) and a.process = '" & cbProcess.Text & "'  and (a.Pmcategoryid = '1' or a.Pmcategoryid = '4') and (a.BMStatusID not in ('30','31','1','2','3','7','17'))  and (a.bmunitid <> 0) and (a.Location = @Location) 
+                                                           order by a.testerNo desc,a.MCType desc,a.Timeofrequest desc,b.bmteunit "
+
+            ElseIf cbUser.Text = "CC" Or cbUser.Text = "EEE" Or cbUser.Text = "VIS" Then
+
+                Dim AddQuery As String = ""
+                Dim ActionQuery As String = ""
+                If cbUser.Text = "CC" Then
+                    AddQuery = "(Turnover IN ('CC') AND BMStatusID IN (6,7,8,9,11,20,19,14))"
+                    ActionQuery = "MachineKarte_ActionCard_CC"
+                ElseIf cbUser.Text = "EEE"
+                    AddQuery = "(Turnover IN ('PE') AND BMStatusID IN (6,7,8,9,11,20,19,14))"
+                    ActionQuery = "MachineKarte_ActionCard_EEE"
+                ElseIf cbUser.Text = "VIS"
+                    AddQuery = "(Turnover IN ('VIS') AND BMStatusID IN (6,7,8,9,11,20,19,14))"
+                    ActionQuery = "MachineKarte_ActionCard_VIS"
+                End If
+
+                strQuery = " select a.Devicename, isnull((select 'Yes' from MachineKarte_MCD  where replace(Devicename,' ','') = replace(a.devicename,' ','')  and isactive = 1 ),'No') as 'isMCD',a.process,a.location,a.Mcno as 'Mcno',format(a.Timeofrequest,'MM/dd/yyyy HH:mm:ss') as 'Timeofrequest', b.BMWhy as 'BMCase',a.bmid, isnull((select 'Yes' from " & ActionQuery & "  where bmid = a.bmID and machineno =a.mcno),'No') as 'HaveAction', 
+                            COALESCE( CASE 
+                            WHEN a.AcredBMContentID  <> a.BMContentID THEN 
+	                            Case when a.AcredBMContentID = '' then
+	                            a.BMContentID 
+	                             when a.AcredBMContentID = '0' then 
+	                            a.BMContentID 
+	                             when a.AcredBMContentID is null then
+	                            a.BMContentID 
+	                            else
+	                            a.AcredBMContentID
+	                            end
+                            ELSE 
+                            a.BMContentID 
+                            end,0) as 'BMContentID',(select BMContent from BMContent  where BMContentID = a.BMContentID and process = '" & cbProcess.Text & "') as 'BMContent',
+                              c.mcstatus as 'MCStatus','None' as 'FontColor'                                       
+                                                          from [eMaintenanceSystemDB].[dbo].[" & cbProcess.Text & "BMMaintenance] a inner join [eMaintenanceSystemDB].[dbo].[BMWhy] b 
+                                                            on a.Why4  = b.BMWhyID
+                                                          left join [eMaintenanceSystemDB].[dbo].[" & ActionQuery & "] c
+										                  on a.bmID = c.bmID  and a.mcno = c.machineno
+                                                          where (a.timeofrequest between @Range1 and @Range2)  and (a.Pmcategoryid = '1') and " & AddQuery & "  and (a.why4 <> 0) and (a.Location = @Location) 
+                                                          order by a.mcno desc,a.Timeofrequest desc,b.BMWhy "
+
+            Else
+
+
+                strQuery = " select a.Devicename, isnull((select 'Yes' from MachineKarte_MCD  where replace(Devicename,' ','') = replace(a.devicename,' ','')  and isactive = 1 ),'No') as 'isMCD',a.process,a.location,a.Mcno as 'Mcno',format(a.Timeofrequest,'MM/dd/yyyy HH:mm:ss') as 'Timeofrequest', b.BMCase as 'BMCase',a.bmid, isnull((select 'Yes' from MachineKarte_ActionCard  where bmid = a.bmID and machineno =a.mcno),'No') as 'HaveAction', 
+                            COALESCE( CASE 
+                            WHEN a.AcredBMContentID  <> a.BMContentID THEN 
+	                            Case when a.AcredBMContentID = '' then
+	                            a.BMContentID 
+	                             when a.AcredBMContentID = '0' then 
+	                            a.BMContentID 
+	                             when a.AcredBMContentID is null then
+	                            a.BMContentID 
+	                            else
+	                            a.AcredBMContentID
+	                            end
+                            ELSE 
+                            a.BMContentID 
+                            end,0) as 'BMContentID',(select BMContent from BMContent  where BMContentID = a.BMContentID and process = '" & cbProcess.Text & "') as 'BMContent',
+                              c.mcstatus as 'MCStatus','None' as 'FontColor'                                       
+                                                          from [eMaintenanceSystemDB].[dbo].[" & cbProcess.Text & "BMMaintenance] a inner join [eMaintenanceSystemDB].[dbo].[BMCase] b 
+                                                          on a.BMCaseID = b.BMCaseID
+                                                          left join [eMaintenanceSystemDB].[dbo].[MachineKarte_ActionCard] c
+										                  on a.bmID = c.bmID  and a.mcno = c.machineno
+                                                          where (a.timeofrequest between @Range1 and @Range2)  and (a.Pmcategoryid = '1') and (a.BMStatusID not in ('30','31'))  and (a.bmcaseid <> 0) and (a.Location = @Location) 
+                                                          order by a.mcno desc,a.Timeofrequest desc,b.BMCase "
+            End If
+
+
+
+            Using cmd = New SqlCommand(strQuery, conn)
+                cmd.CommandType = CommandType.Text
+                cmd.Parameters.AddWithValue("@Range1", dt1.Value.ToString("MM/dd/yyyy hh:mm:ss"))
+                cmd.Parameters.AddWithValue("@Range2", dt2.Value.ToString("MM/dd/yyyy hh:mm:ss"))
+                cmd.Parameters.AddWithValue("@Location", strLocation(x))
+
+                Dim da = New SqlDataAdapter(cmd)
+                da.Fill(datatable1)
+
+
+            End Using
+
+            If datatable1.Rows.Count > 0 Then
+
+                NewLoadColor(datatable1)
+                NewLoadColor_WithAction(datatable1)
+
+
+
+                datatable1.Columns.Add("Color", Type.GetType("System.String"))
+                CheckIfSolve(datatable1)
+
+
+                dtNewRowSame.Merge(dtNotEquals)
+                dtNewRowSame.DefaultView.Sort = "Mcno DESC,bmid desc,BMCase ASC"
+                Dim sortedDt As DataTable = dtNewRowSame.DefaultView.ToTable()
+                If cbUser.Text = "TE" Then
+                    LoadColor_TE(sortedDt)
+                Else
+                    LoadColor(sortedDt)
+                End If
+
+            End If
+        Next
+
+
+        For i = 1 To 9
+            If CInt(CType(Me.Controls.Find("lbl_" & i, True).First, Label).Text) <> 0 Then
+                CType(Me.Controls.Find("lbl_" & i, True).First, Label).ForeColor = Color.Tomato
+                CType(Me.Controls.Find("lbl_" & i, True).First, Label).BackColor = Color.MistyRose
+            End If
+
+            If CInt(CType(Me.Controls.Find("Label_" & i, True).First, Label).Text) <> 0 Then
+                CType(Me.Controls.Find("Label_" & i, True).First, Label).ForeColor = Color.Tomato
+                CType(Me.Controls.Find("Label_" & i, True).First, Label).BackColor = Color.MistyRose
+            End If
+
+            'If CInt(CType(Me.Controls.Find("Label1_" & i, True).First, Label).Text) <> 0 Then
+            '    CType(Me.Controls.Find("Label1_" & i, True).First, Label).ForeColor = Color.Black
+            '    CType(Me.Controls.Find("Label1_" & i, True).First, Label).BackColor = Color.MistyRose
+            'End If
+
+        Next
+
+    End Sub
+    Private Sub NewLoadColor(dt1 As DataTable)
+        For i = 0 To dt1.Rows.Count - 1
+            Dim McnoTemp As String = dt1.Rows(i).Item("mcno").ToString
+            Dim ProcessTemp As String = dt1.Rows(i).Item("Process").ToString
+            Dim LocationTemp As String = dt1.Rows(i).Item("Location").ToString
+            Dim HaveActionTemp As String = dt1.Rows(i).Item("HaveAction").ToString
+            Dim MCDTemp As String = dt1.Rows(i).Item("isMCD").ToString
+
+            If MCDTemp = "Yes" Then
+                If HaveActionTemp = "No" Then
+                    InputToLabel_MCD(ProcessTemp, LocationTemp, McnoTemp)
+                End If
+            End If
+        Next
+
+        RemoveDuplicates()
+    End Sub
+    Private Sub NewLoadColor_WithAction(dt1 As DataTable)
+        For i = 0 To dt1.Rows.Count - 1
+            Dim McnoTemp As String = dt1.Rows(i).Item("mcno").ToString
+            Dim ProcessTemp As String = dt1.Rows(i).Item("Process").ToString
+            Dim LocationTemp As String = dt1.Rows(i).Item("Location").ToString
+            Dim HaveActionTemp As String = dt1.Rows(i).Item("HaveAction").ToString
+            Dim MCDTemp As String = dt1.Rows(i).Item("isMCD").ToString
+
+            If MCDTemp = "Yes" Then
+                If HaveActionTemp = "Yes" Then
+                    InputToLabel_MCDWithAction(ProcessTemp, LocationTemp, McnoTemp)
+                End If
+            End If
+        Next
+
+        RemoveDuplicates()
+    End Sub
+    Private Sub ClearLabel()
+        For i = 1 To 9
+            CType(Me.Controls.Find("lbl_" & i, True).First, Label).Text = "0"
+            CType(Me.Controls.Find("lbl_" & i, True).First, Label).ForeColor = Color.Black
+            CType(Me.Controls.Find("lbl_" & i, True).First, Label).BackColor = Color.White
+        Next
+
+        For i = 1 To 9
+            CType(Me.Controls.Find("Label_" & i, True).First, Label).Text = "0"
+            CType(Me.Controls.Find("Label_" & i, True).First, Label).ForeColor = Color.Black
+            CType(Me.Controls.Find("Label_" & i, True).First, Label).BackColor = Color.White
+        Next
+
+        For i = 1 To 9
+            CType(Me.Controls.Find("Label1_" & i, True).First, Label).Text = "0"
+            CType(Me.Controls.Find("Label1_" & i, True).First, Label).ForeColor = Color.Black
+            CType(Me.Controls.Find("Label1_" & i, True).First, Label).BackColor = Color.White
+        Next
+
+        LB_1.Items.Clear()
+        LB_2.Items.Clear()
+        LB_3.Items.Clear()
+        LB_4.Items.Clear()
+        LB_5.Items.Clear()
+        LB_6.Items.Clear()
+        LB_7.Items.Clear()
+        LB_8.Items.Clear()
+        LB_9.Items.Clear()
+
+        ListBox_1.Items.Clear()
+        ListBox_2.Items.Clear()
+        ListBox_3.Items.Clear()
+        ListBox_4.Items.Clear()
+        ListBox_5.Items.Clear()
+        ListBox_6.Items.Clear()
+        ListBox_7.Items.Clear()
+        ListBox_8.Items.Clear()
+                ListBox_9.Items.Clear()
+
+        ListBox1_1.Items.Clear()
+        ListBox1_2.Items.Clear()
+        ListBox1_3.Items.Clear()
+        ListBox1_4.Items.Clear()
+        ListBox1_5.Items.Clear()
+        ListBox1_6.Items.Clear()
+        ListBox1_7.Items.Clear()
+        ListBox1_8.Items.Clear()
+        ListBox1_9.Items.Clear()
+    End Sub
+    Private Sub CheckIfSolve(dtSolve As DataTable)
+        Dim FirstColumn As String = dtSolve.Rows(0).Item("TimeofRequest").ToString
+        dtSolve.DefaultView.Sort = "Mcno DESC,BMCase ASC,TimeofRequest DESC"
+        Dim sortedDt As DataTable = dtSolve.DefaultView.ToTable()
+        GetDuplicateRowsByColumn(sortedDt, "BMCase", FirstColumn)
+
+        'AreOtherRowsSame(sortedDt)
+    End Sub
+    Function IsQorM(ByVal ID As Integer, ByVal Process As String) As String
+        Dim Str As String = ""
+        Select Case Process
+            Case "EDS"
+                If ID = 13 Then
+                    Str = "Meka"
+                ElseIf ID = 16 Then
+                    Str = "Quality"
+                Else
+                    Str = "N/A"
+                End If
+
+            Case "DC"
+                If ID = 48 Then
+                    Str = "Meka"
+                ElseIf ID = 49 Then
+                    Str = "Quality"
+                Else
+                    Str = "N/A"
+                End If
+
+            Case "DB"
+                If ID = 18 Then
+                    Str = "Meka"
+                ElseIf ID = 19 Then
+                    Str = "Quality"
+                Else
+                    Str = "N/A"
+                End If
+
+            Case "WB"
+                If ID = 45 Then
+                    Str = "Meka"
+                ElseIf ID = 46 Then
+                    Str = "Quality"
+                Else
+                    Str = "N/A"
+                End If
+
+            Case "MP"
+                If ID = 24 Then
+                    Str = "Meka"
+                ElseIf ID = 25 Then
+                    Str = "Quality"
+                Else
+                    Str = "N/A"
+                End If
+
+            Case "PL"
+                If ID = 42 Then
+                    Str = "Meka"
+                ElseIf ID = 43 Then
+                    Str = "Quality"
+                Else
+                    Str = "N/A"
+                End If
+
+            Case "FL"
+                If ID = 1 Then
+                    Str = "Meka"
+                ElseIf ID = 2 Then
+                    Str = "Quality"
+                Else
+                    Str = "N/A"
+                End If
+            Case "FT"
+                If ID = 31 Then
+                    Str = "Meka"
+                ElseIf ID = 33 Then
+                    Str = "Quality"
+                Else
+                    Str = "N/A"
+                End If
+
+            Case "TP"
+                If ID = 9 Then
+                    Str = "Meka"
+                ElseIf ID = 30 Then
+                    Str = "Quality"
+                Else
+                    Str = "N/A"
+                End If
+
+            Case "MEMS"
+                If ID = 72 Then
+                    Str = "Meka"
+                ElseIf ID = 74 Then
+                    Str = "Quality"
+                Else
+                    Str = "N/A"
+                End If
+        End Select
+        Return Str
+    End Function
+    Function AreNextFiveColumnValuesEqual(currentRow As DataRow, dataTable As DataTable, column As String, startIndex As Integer, columnMcno As String) As Boolean
+        For i As Integer = startIndex To startIndex + 4
+
+
+            If Not currentRow(columnMcno).Equals(dataTable.Rows(i)(columnMcno)) Then
+                Return False
+            End If
+
+            If Not currentRow(column).Equals(dataTable.Rows(i)(column)) Then
+                Return False
+            End If
+
+        Next
+        Return True
+    End Function
+    Function AreNextFourColumnValuesEqual(currentRow As DataRow, dataTable As DataTable, column As String, startIndex As Integer, columnMcno As String) As Boolean
+        For i As Integer = startIndex To startIndex + 3
+
+
+            If Not currentRow(columnMcno).Equals(dataTable.Rows(i)(columnMcno)) Then
+                Return False
+            End If
+
+            If Not currentRow(column).Equals(dataTable.Rows(i)(column)) Then
+                Return False
+            End If
+
+        Next
+        Return True
+    End Function
+    Function AreNextThreeColumnValuesEqual(currentRow As DataRow, dataTable As DataTable, column As String, startIndex As Integer, columnMcno As String) As Boolean
+        For i As Integer = startIndex To startIndex + 2
+
+            If Not currentRow(columnMcno).Equals(dataTable.Rows(i)(columnMcno)) Then
+                Return False
+            End If
+
+
+            If Not currentRow(column).Equals(dataTable.Rows(i)(column)) Then
+                Return False
+            End If
+        Next
+        Return True
+    End Function
+    Function AreNextTwoColumnValuesEqual(currentRow As DataRow, dataTable As DataTable, column As String, startIndex As Integer, columnMcno As String) As Boolean
+        For i As Integer = startIndex To startIndex + 1
+            If Not currentRow(columnMcno).Equals(dataTable.Rows(i)(columnMcno)) Then
+                Return False
+            End If
+
+            If Not currentRow(column).Equals(dataTable.Rows(i)(column)) Then
+                Return False
+            End If
+        Next
+        Return True
+    End Function
+    Function AreNextOneColumnValuesEqual(currentRow As DataRow, dataTable As DataTable, column As String, startIndex As Integer, columnMcno As String) As Boolean
+        For i As Integer = startIndex To startIndex
+
+            If Not currentRow(columnMcno).Equals(dataTable.Rows(i)(columnMcno)) Then
+                Return False
+            End If
+
+            If Not currentRow(column).Equals(dataTable.Rows(i)(column)) Then
+                Return False
+            End If
+        Next
+        Return True
+    End Function
+    Function GetFontColor(ByVal ID As Integer, ByVal Process As String) As String
+        Dim FontColor As String = ""
+        Select Case Process
+            Case "EDS"
+                If ID = 13 Then
+                    FontColor = "Blue"
+                ElseIf ID = 16 Then
+                    FontColor = "Red"
+                Else
+                    FontColor = "Black"
+                End If
+
+            Case "DC"
+                If ID = 48 Then
+                    FontColor = "Blue"
+                ElseIf ID = 49 Then
+                    FontColor = "Red"
+                Else
+                    FontColor = "Black"
+                End If
+
+            Case "DB"
+                If ID = 18 Then
+                    FontColor = "Blue"
+                ElseIf ID = 19 Then
+                    FontColor = "Red"
+                Else
+                    FontColor = "Black"
+                End If
+
+            Case "WB"
+                If ID = 45 Then
+                    FontColor = "Blue"
+                ElseIf ID = 46 Then
+                    FontColor = "Red"
+                Else
+                    FontColor = "Black"
+                End If
+
+            Case "MP"
+                If ID = 24 Then
+                    FontColor = "Blue"
+                ElseIf ID = 25 Then
+                    FontColor = "Red"
+                Else
+                    FontColor = "Black"
+                End If
+
+            Case "PL"
+                If ID = 42 Then
+                    FontColor = "Blue"
+                ElseIf ID = 43 Then
+                    FontColor = "Red"
+                Else
+                    FontColor = "Black"
+                End If
+
+            Case "FL", "SING", "ATC"
+                If ID = 1 Then
+                    FontColor = "Blue"
+                ElseIf ID = 2 Then
+                    FontColor = "Red"
+                Else
+                    FontColor = "Black"
+                End If
+            Case "FT"
+                If ID = 31 Then
+                    FontColor = "Blue"
+                ElseIf ID = 33 Then
+                    FontColor = "Red"
+                Else
+                    FontColor = "Black"
+                End If
+
+            Case "TP"
+                If ID = 9 Then
+                    FontColor = "Blue"
+                ElseIf ID = 30 Then
+                    FontColor = "Red"
+                Else
+                    FontColor = "Black"
+                End If
+
+            Case "MEMS"
+                If ID = 72 Then
+                    FontColor = "Blue"
+                ElseIf ID = 74 Then
+                    FontColor = "Red"
+                Else
+                    FontColor = "Black"
+                End If
+        End Select
+
+
+
+
+
+        Return FontColor
+    End Function
+    Function CheckifSevendays(dt As DataTable, FontColor As String, count As Integer, index As Integer) As DataTable
+        Dim counttemp As Integer = count
+
+        If counttemp = 1 Then
+
+            Dim currentRowDate As DataRow = dt.Rows(index)
+            Dim NextRowDate As DataRow
+
+
+            NextRowDate = dt.Rows(index + 1)
+
+
+            Dim currentValue As Object = currentRowDate("Timeofrequest")
+            Dim nextValue As Object = NextRowDate("Timeofrequest")
+
+            Dim date1 As DateTime = DateTime.ParseExact(currentValue, "MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+            Dim date2 As DateTime = DateTime.ParseExact(nextValue, "MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+            Dim tempdate As TimeSpan = date1 - date2
+
+            If tempdate.Days <= 7 And tempdate.Days >= 0 Then
+                dt.Rows(index).Item("FontColor") = FontColor
+                dt.Rows(index + 1).Item("FontColor") = FontColor
+            End If
+
+        Else
+            Dim Plus As Integer = 0
+            For x = 0 To count
+                Dim currentRowDate As DataRow = dt.Rows(index)
+                Dim NextRowDate As DataRow
+                Plus += 1
+                If x = count Then
+                    NextRowDate = dt.Rows(count)
+                    Plus -= 1
+                Else
+
+                    NextRowDate = dt.Rows(index + (Plus))
+                End If
+
+                Dim currentValue As Object = currentRowDate("Timeofrequest")
+                Dim nextValue As Object = NextRowDate("Timeofrequest")
+
+                Dim date1 As DateTime = DateTime.ParseExact(currentValue, "MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+                Dim date2 As DateTime = DateTime.ParseExact(nextValue, "MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+                Dim tempdate As TimeSpan = date1 - date2
+
+                If tempdate.Days <= 7 And tempdate.Days >= 0 Then
+                    If x = 0 Then
+                        dt.Rows(index).Item("FontColor") = FontColor
+                    End If
+                    dt.Rows(index + Plus).Item("FontColor") = FontColor
+                End If
+
+            Next
+        End If
+        Return dt
+
+    End Function
+    Private Sub InputToLabel_MCDWithAction(Process As String, Location As String, mcno As String)
+        Select Case Location
+            Case "LSI1-1F"
+                Label1_1.Text = CInt(Label1_1.Text) + 1
+                ListBox1_1.Items.Add(mcno)
+            Case "LSI1-2F"
+                Label1_2.Text = CInt(Label1_2.Text) + 1
+                ListBox1_2.Items.Add(mcno)
+            Case "LSI2-1F"
+                Label1_3.Text = CInt(Label1_3.Text) + 1
+                ListBox1_3.Items.Add(mcno)
+            Case "LSI2-2F"
+                Label1_4.Text = CInt(Label1_4.Text) + 1
+                ListBox1_4.Items.Add(mcno)
+            Case "LSI2-3F"
+                Label1_5.Text = CInt(Label1_5.Text) + 1
+                ListBox1_5.Items.Add(mcno)
+            Case "LSI3-2F"
+                Label1_6.Text = CInt(Label1_6.Text) + 1
+                ListBox1_6.Items.Add(mcno)
+            Case "LSI3-4F"
+                Label1_7.Text = CInt(Label1_7.Text) + 1
+                ListBox1_7.Items.Add(mcno)
+
+            Case "LSI3-1F"
+                Label1_9.Text = CInt(Label1_9.Text) + 1
+                ListBox1_9.Items.Add(mcno)
+            Case "LSI3-3F"
+                Label1_8.Text = CInt(Label1_8.Text) + 1
+                ListBox1_8.Items.Add(mcno)
+        End Select
+    End Sub
+    Private Sub InputToLabel_MCD(Process As String, Location As String, mcno As String)
+        Select Case Location
+            Case "LSI1-1F"
+                Label_1.Text = CInt(Label_1.Text) + 1
+                ListBox_1.Items.Add(mcno)
+            Case "LSI1-2F"
+                Label_2.Text = CInt(Label_2.Text) + 1
+                ListBox_2.Items.Add(mcno)
+            Case "LSI2-1F"
+                Label_3.Text = CInt(Label_3.Text) + 1
+                ListBox_3.Items.Add(mcno)
+            Case "LSI2-2F"
+                Label_4.Text = CInt(Label_4.Text) + 1
+                ListBox_4.Items.Add(mcno)
+            Case "LSI2-3F"
+                Label_5.Text = CInt(Label_5.Text) + 1
+                ListBox_5.Items.Add(mcno)
+            Case "LSI3-2F"
+                Label_6.Text = CInt(Label_6.Text) + 1
+                ListBox_6.Items.Add(mcno)
+            Case "LSI3-4F"
+                Label_7.Text = CInt(Label_7.Text) + 1
+                ListBox_7.Items.Add(mcno)
+
+            Case "LSI3-1F"
+                Label_9.Text = CInt(Label_9.Text) + 1
+                ListBox_9.Items.Add(mcno)
+            Case "LSI3-3F"
+                Label_8.Text = CInt(Label_8.Text) + 1
+                ListBox_8.Items.Add(mcno)
+        End Select
+    End Sub
+    Private Sub InputToLabel(Process As String, Location As String, mcno As String)
+        Select Case Location
+            Case "LSI1-1F"
+                lbl_1.Text = CInt(lbl_1.Text) + 1
+                LB_1.Items.Add(mcno)
+            Case "LSI1-2F"
+                lbl_2.Text = CInt(lbl_2.Text) + 1
+                LB_2.Items.Add(mcno)
+            Case "LSI2-1F"
+                lbl_3.Text = CInt(lbl_3.Text) + 1
+                LB_3.Items.Add(mcno)
+            Case "LSI2-2F"
+                lbl_4.Text = CInt(lbl_4.Text) + 1
+                LB_4.Items.Add(mcno)
+            Case "LSI2-3F"
+                lbl_5.Text = CInt(lbl_5.Text) + 1
+                LB_5.Items.Add(mcno)
+            Case "LSI3-2F"
+                lbl_6.Text = CInt(lbl_6.Text) + 1
+                LB_6.Items.Add(mcno)
+            Case "LSI3-4F"
+                lbl_7.Text = CInt(lbl_7.Text) + 1
+                LB_7.Items.Add(mcno)
+
+            Case "LSI3-1F"
+                lbl_9.Text = CInt(lbl_9.Text) + 1
+                LB_9.Items.Add(mcno)
+
+            Case "LSI3-3F"
+                lbl_8.Text = CInt(lbl_8.Text) + 1
+                LB_8.Items.Add(mcno)
+
+        End Select
+    End Sub
+    Private Sub LoadColor_TE(dt1 As DataTable)
+        For i = 0 To dt1.Rows.Count - 1
+            Dim McnoTemp As String = dt1.Rows(i).Item("mcno").ToString
+            Dim ProcessTemp As String = dt1.Rows(i).Item("Process").ToString
+            Dim LocationTemp As String = dt1.Rows(i).Item("Location").ToString
+            Dim currentRowIndex As Integer = 0
+            Dim targetColumn_Case As String = "Bmcase"
+            Dim targetColumn_Content As String = "Priority"
+            Dim targetColumn_Mcno As String = "mcno"
+            Dim currentRow As DataRow = dt1.Rows(i)
+            Dim Priority As String = dt1.Rows(i).Item("Priority").ToString
+
+            If i + 4 < dt1.Rows.Count Then
+                If dt1.Rows(i).Item("FontColor").ToString = "None" Then
+                    If Priority = "QUALITY BM" Then
+                        Dim FontColor As String = "Red"
+                        If AreNextFourColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1, targetColumn_Mcno) Then
+                            If AreNextFourColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                                dt1 = CheckifSevendays(dt1, FontColor, 4, i)
+
+                                If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                            InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+
+                                        End If
+                                    End If
+                                End If
+                            ElseIf AreNextThreeColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                                dt1 = CheckifSevendays(dt1, FontColor, 3, i)
+
+                                If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                            InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+
+                                        End If
+                                    End If
+                                End If
+                            ElseIf AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                                dt1 = CheckifSevendays(dt1, FontColor, 2, i)
+                                If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                            InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+
+                                        End If
+                                    End If
+                                End If
+                            ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                                dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                                If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                            InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+
+                                        End If
+                                    End If
+                                End If
+                            End If
+
+                        ElseIf AreNextThreeColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1, targetColumn_Mcno) Then
+
+                            If AreNextThreeColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                                dt1 = CheckifSevendays(dt1, FontColor, 3, i)
+
+                                If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                            InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+
+                                        End If
+                                    End If
+                                End If
+                            ElseIf AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                                dt1 = CheckifSevendays(dt1, FontColor, 2, i)
+                                If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                            InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+
+                                        End If
+                                    End If
+                                End If
+                            ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                                dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                                If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                            InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+
+                                        End If
+                                    End If
+                                End If
+                            End If
+                        ElseIf AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1, targetColumn_Mcno) Then
+
+                            If AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                                dt1 = CheckifSevendays(dt1, FontColor, 2, i)
+                                If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                            InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+
+                                        End If
+                                    End If
+                                End If
+                            ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                                dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                                If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                            InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+
+                                        End If
+                                    End If
+                                End If
+                            End If
+                        ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1, targetColumn_Mcno) Then
+
+                            If AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                                dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                                If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                            InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+
+                                        End If
+                                    End If
+                                End If
+                            End If
+                        End If
+                    End If
+                End If
+
+            ElseIf i + 3 < dt1.Rows.Count Then
+
+                If dt1.Rows(i).Item("FontColor").ToString = "None" Then
+
+                    If Priority = "QUALITY BM" Then
+                        Dim FontColor As String = "Red"
+                        If AreNextThreeColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1, targetColumn_Mcno) Then
+
+                            If AreNextThreeColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                                dt1 = CheckifSevendays(dt1, FontColor, 3, i)
+                                If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                            InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+
+                                        End If
+                                    End If
+                                End If
+                            ElseIf AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                                dt1 = CheckifSevendays(dt1, FontColor, 2, i)
+                                If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                            InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+
+                                        End If
+                                    End If
+                                End If
+                            ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                                dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                                If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                            InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+
+                                        End If
+                                    End If
+                                End If
+                            End If
+                        ElseIf AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1, targetColumn_Mcno) Then
+
+                            If AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                                dt1 = CheckifSevendays(dt1, FontColor, 2, i)
+                                If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                            InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+
+                                        End If
+                                    End If
+                                End If
+                            ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                                dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                                If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                            InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+
+                                        End If
+                                    End If
+                                End If
+                            End If
+                        ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1, targetColumn_Mcno) Then
+
+                            If AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                                dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                                If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                            InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+
+                                        End If
+                                    End If
+                                End If
+                            End If
+                        End If
+                    End If
+                End If
+
+
+
+            ElseIf i + 2 < dt1.Rows.Count Then
+
+                If dt1.Rows(i).Item("FontColor").ToString = "None" Then
+                    If Priority = "QUALITY BM" Then
+                        Dim FontColor As String = "Red"
+                        If AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1, targetColumn_Mcno) Then
+
+                            If AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                                dt1 = CheckifSevendays(dt1, FontColor, 2, i)
+                                If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                            InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+
+                                        End If
+                                    End If
+                                End If
+                            ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                                dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                                If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                            InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+
+                                        End If
+                                    End If
+                                End If
+                            End If
+                        ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1, targetColumn_Mcno) Then
+
+                            If AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                                dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                                If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                            InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+
+                                        End If
+                                    End If
+                                End If
+                            End If
+                        End If
+                    End If
+                End If
+
+            ElseIf i + 1 < dt1.Rows.Count Then
+
+                If dt1.Rows(i).Item("FontColor").ToString = "None" Then
+                    If Priority = "QUALITY BM" Then
+                        Dim FontColor As String = "Red"
+                        If AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1, targetColumn_Mcno) Then
+
+                            If AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                                dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                                If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                    If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                        If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                            InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+
+                                        End If
+                                    End If
+                                End If
+                            End If
+                        End If
+                    End If
+                End If
+            End If
+        Next
+    End Sub
+    Private Sub LoadColor(dt1 As DataTable)
+
+
+
+        For i = 0 To dt1.Rows.Count - 1
+
+
+            Dim McnoTemp As String = dt1.Rows(i).Item("mcno").ToString
+            Dim ProcessTemp As String = dt1.Rows(i).Item("Process").ToString
+            Dim LocationTemp As String = dt1.Rows(i).Item("Location").ToString
+            Dim currentRowIndex As Integer = 0
+            Dim targetColumn_Case As String = "BMCase"
+            Dim targetColumn_Content As String = "bmcontentid"
+            Dim targetColumn_Mcno As String = "MCno"
+            Dim currentRow As DataRow = dt1.Rows(i)
+            Dim ContentID As Integer = dt1.Rows(i).Item("bmcontentid")
+            If i + 5 < dt1.Rows.Count Then
+                If dt1.Rows(i).Item("FontColor").ToString = "None" Then
+
+                    Dim FontColor As String = GetFontColor(ContentID, ProcessTemp)
+                    If AreNextFiveColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1, targetColumn_Mcno) Then
+                        If AreNextFiveColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 5, i)
+                            If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                        InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+                                    End If
+                                End If
+                            End If
+
+                        ElseIf AreNextFourColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 4, i)
+                            If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                        InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+                                    End If
+                                End If
+                            End If
+
+                        ElseIf AreNextThreeColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 3, i)
+                            If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                        InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+                                    End If
+                                End If
+                            End If
+                        ElseIf AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 2, i)
+                            If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                        InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+                                    End If
+                                End If
+                            End If
+                        ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                            If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                        InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+                                    End If
+                                End If
+                            End If
+
+                        End If
+
+                    ElseIf AreNextFourColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1, targetColumn_Mcno) Then
+
+                        If AreNextFourColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 4, i)
+                            If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                        InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+                                    End If
+                                End If
+                            End If
+
+                        ElseIf AreNextThreeColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 3, i)
+                            If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                        InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+                                    End If
+                                End If
+                            End If
+                        ElseIf AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 2, i)
+                            If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                        InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+                                    End If
+                                End If
+                            End If
+                        ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                            If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                        InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+                                    End If
+                                End If
+                            End If
+
+                        End If
+                    ElseIf AreNextThreeColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1, targetColumn_Mcno) Then
+
+                        If AreNextThreeColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 3, i)
+                            If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                        InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+                                    End If
+                                End If
+                            End If
+                        ElseIf AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 2, i)
+                            If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                        InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+                                    End If
+                                End If
+                            End If
+                        ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                            If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                        InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+                                    End If
+                                End If
+                            End If
+
+                        End If
+                    ElseIf AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1, targetColumn_Mcno) Then
+
+                        If AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 2, i)
+                            If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                        InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+                                    End If
+                                End If
+                            End If
+                        ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                            If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                        InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+                                    End If
+                                End If
+                            End If
+                        End If
+                    ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1, targetColumn_Mcno) Then
+
+                        If AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                            If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                        InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+                                    End If
+                                End If
+                            End If
+                        End If
+                    End If
+
+                End If
+
+
+
+            ElseIf i + 4 < dt1.Rows.Count Then
+                If dt1.Rows(i).Item("FontColor").ToString = "None" Then
+
+                    Dim FontColor As String = GetFontColor(ContentID, ProcessTemp)
+                    If AreNextFourColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1, targetColumn_Mcno) Then
+
+                        If AreNextFourColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 4, i)
+                            If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                        InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+                                    End If
+                                End If
+                            End If
+
+                        ElseIf AreNextThreeColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 3, i)
+                            If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                        InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+                                    End If
+                                End If
+                            End If
+                        ElseIf AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 2, i)
+                            If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                        InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+                                    End If
+                                End If
+                            End If
+                        ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                            If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                        InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+                                    End If
+                                End If
+                            End If
+
+                        End If
+                    ElseIf AreNextThreeColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1, targetColumn_Mcno) Then
+
+                        If AreNextThreeColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 3, i)
+                            If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                        InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+                                    End If
+                                End If
+                            End If
+                        ElseIf AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 2, i)
+                            If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                        InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+                                    End If
+                                End If
+                            End If
+                        ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                            If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                        InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+                                    End If
+                                End If
+                            End If
+
+                        End If
+                    ElseIf AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1, targetColumn_Mcno) Then
+
+                        If AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 2, i)
+                            If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                        InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+                                    End If
+                                End If
+                            End If
+                        ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                            If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                        InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+                                    End If
+                                End If
+                            End If
+                        End If
+                    ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1, targetColumn_Mcno) Then
+
+                        If AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                            If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                        InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+                                    End If
+                                End If
+                            End If
+                        End If
+                    End If
+
+                End If
+
+            ElseIf i + 3 < dt1.Rows.Count Then
+                If dt1.Rows(i).Item("FontColor").ToString = "None" Then
+
+                    Dim FontColor As String = GetFontColor(ContentID, ProcessTemp)
+                    If AreNextThreeColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1, targetColumn_Mcno) Then
+
+                        If AreNextThreeColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 3, i)
+                            If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                        InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+                                    End If
+                                End If
+                            End If
+                        ElseIf AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 2, i)
+                            If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                        InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+                                    End If
+                                End If
+                            End If
+                        ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                            If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                        InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+                                    End If
+                                End If
+                            End If
+                        End If
+                    ElseIf AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1, targetColumn_Mcno) Then
+
+                        If AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 2, i)
+                            If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                        InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+                                    End If
+                                End If
+                            End If
+                        ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                            If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                        InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+                                    End If
+                                End If
+                            End If
+                        End If
+                    ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1, targetColumn_Mcno) Then
+
+                        If AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                            If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                        InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+                                    End If
+                                End If
+                            End If
+                        End If
+                    End If
+
+                End If
+            ElseIf i + 2 < dt1.Rows.Count Then
+                If dt1.Rows(i).Item("FontColor").ToString = "None" Then
+
+                    Dim FontColor As String = GetFontColor(ContentID, ProcessTemp)
+                    If AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1, targetColumn_Mcno) Then
+
+                        If AreNextTwoColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 2, i)
+                            If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                        InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+                                    End If
+                                End If
+                            End If
+
+                        ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                            If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                        InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+                                    End If
+                                End If
+                            End If
+                        End If
+                    ElseIf AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1, targetColumn_Mcno) Then
+
+                        If AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                            If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                        InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+                                    End If
+                                End If
+                            End If
+                        End If
+                    End If
+
+                End If
+
+            ElseIf i + 1 < dt1.Rows.Count Then
+                If dt1.Rows(i).Item("FontColor").ToString = "None" Then
+
+                    Dim FontColor As String = GetFontColor(ContentID, ProcessTemp)
+                    If AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Content, i + 1, targetColumn_Mcno) Then
+
+                        If AreNextOneColumnValuesEqual(currentRow, dt1, targetColumn_Case, i + 1, targetColumn_Mcno) Then
+                            dt1 = CheckifSevendays(dt1, FontColor, 1, i)
+                            If dt1.Rows(i).Item("FontColor") <> "Black" And dt1.Rows(i).Item("FontColor") <> "None" Then
+                                If (dt1.Rows(i).Item("HaveAction").ToString) <> "Yes" Then
+                                    If (dt1.Rows(i).Item("Color").ToString) <> "Green" Then
+                                        InputToLabel(ProcessTemp, LocationTemp, McnoTemp)
+                                    End If
+                                End If
+                            End If
+                        End If
+                    End If
+
+                End If
+            End If
+        Next
+    End Sub
+    Sub GetDuplicateRowsByColumn(table As DataTable, columnName As String, FirstColumn As String)
+        Dim duplicateRows As New List(Of DataRow)()
+        Dim NotduplicateRows As New List(Of DataRow)()
+        dtNotEquals = table.Clone()
+        Dim dt As DataTable = table.Clone()
+        Dim uniqueValues As New HashSet(Of Object)()
+
+        Dim rowCount = table.Rows.Count
+        For i As Integer = 0 To rowCount - 2
+            Dim currentRow As DataRow = table.Rows(i)
+            Dim nextRow As DataRow = table.Rows(i + 1)
+            Dim PrevRow As DataRow = Nothing
+            Dim currentValue As Object = currentRow(columnName)
+            Dim nextValue As Object = nextRow(columnName)
+            Dim PrevValue As Object = Nothing
+
+            If currentValue.Equals(nextValue) Then
+                duplicateRows.Add(currentRow)
+            Else
+                If i <> 0 Then
+                    PrevRow = table.Rows(i - 1)
+                    PrevValue = PrevRow(columnName)
+                    If currentValue.Equals(PrevValue) Then
+                        duplicateRows.Add(currentRow)
+                    Else
+                        NotduplicateRows.Add(currentRow)
+                    End If
+                End If
+                uniqueValues.Add(currentValue)
+            End If
+
+            If i = rowCount - 2 Then
+                Dim lastRow As DataRow = table.Rows(rowCount - 1)
+                Dim lastValue As Object = lastRow(columnName)
+                If currentValue.Equals(lastValue) Then
+                    duplicateRows.Add(lastRow)
+                    'Else
+                    '    NotduplicateRows.Add(currentRow)
+                End If
+            End If
+
+        Next
+
+        For Each duplicateRow As DataRow In duplicateRows
+            dt.ImportRow(duplicateRow)
+        Next
+
+        For Each duplicateRow As DataRow In NotduplicateRows
+            dtNotEquals.ImportRow(duplicateRow)
+        Next
+
+        AreOtherRowsSame(dt, FirstColumn)
+    End Sub
+    Sub AreOtherRowsSame(table As DataTable, firstColumn As String)
+        Dim SolveCase As Boolean = False
+        Dim TempDateTest As Date
+        Dim ItemCount As Integer = 0
+        Dim rowCount = table.Rows.Count
+        Dim newDt As New DataTable
+
+
+        dtNewRowSame = table.Clone
+        newDt = table.Clone
+
+
+        For i As Integer = 0 To rowCount - 2
+            Dim currentRow As DataRow = table.Rows(i)
+            Dim nextRow As DataRow = table.Rows(i + 1)
+            Dim currentValue As Object = currentRow("BMCase")
+            Dim nextValue As Object = nextRow("BMCase")
+
+            If i = 0 Then
+                newDt.ImportRow(currentRow)
+            End If
+            If Not currentValue.Equals(nextValue) Then
+                newDt.ImportRow(nextRow)
+            End If
+        Next
+
+        For x As Integer = 0 To rowCount - 1
+            Dim XcurrentRow As DataRow = table.Rows(x)
+            Dim XcurrentValue As Object = XcurrentRow("BMCase")
+            Dim XcurrentTime As Object = XcurrentRow("Timeofrequest")
+
+            For y As Integer = 0 To newDt.Rows.Count - 1
+                Dim YcurrentRow As DataRow = newDt.Rows(y)
+                Dim YcurrentValue As Object = YcurrentRow("BMCase")
+                Dim YcurrentTime As Object = YcurrentRow("Timeofrequest")
+
+                If YcurrentValue.Equals(XcurrentValue) Then
+                    Dim DateNow_temp As DateTime = DateTime.ParseExact(firstColumn, "MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+                    Dim dateY As DateTime = DateTime.ParseExact(YcurrentTime, "MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+                    Dim daysTemp As TimeSpan = DateNow_temp - dateY
+
+                    If daysTemp.Days >= 7 Then
+                        If (table.Rows(x).Item("HaveAction").ToString) = "Yes" Then
+                            table.Rows(x).Item("Color") = "Green"
+                        End If
+
+                        Exit For
+                    Else
+                        If Not YcurrentTime.Equals(XcurrentTime) Then
+                            Dim date1 As DateTime = DateTime.ParseExact(YcurrentTime, "MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+                            Dim date2 As DateTime = DateTime.ParseExact(XcurrentTime, "MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+                            Dim tempdate As TimeSpan = date1 - date2
+                            If tempdate.Days >= 7 Then
+
+                                If (table.Rows(x).Item("HaveAction").ToString) = "Yes" Then
+                                    table.Rows(x).Item("Color") = "Green"
+                                End If
+
+                            End If
+                        End If
+                    End If
+                End If
+            Next
+        Next
+
+        'For i As Integer = 0 To rowCount - 2
+        '    Dim currentRow As DataRow = table.Rows(i)
+        '    Dim nextRow As DataRow = table.Rows(i + 1)
+        '    Dim PrevRow As DataRow = Nothing
+        '    Dim currentValue_ID As Object = currentRow("buttonname")
+        '    Dim currentValue As Object = currentRow("BMCase")
+        '    Dim nextValue As Object = nextRow("BMCase")
+        '    Dim PrevValue As Object = Nothing
+        '    Dim currentValueDate As Object = currentRow("Timeofrequest")
+        '    Dim nextValueDate As Object = nextRow("Timeofrequest")
+        '    Dim PrevValueDate As Object = Nothing
+
+
+        '    If currentValue.Equals(nextValue) Then
+        '        ItemCount += 1
+        '        If SolveCase = True Then
+        '            If Not currentValue.Equals(nextValue) Then
+        '                SolveCase = False
+        '            Else
+        '                If (table.Rows(i).Item("HaveAction").ToString) = "Yes" Then
+        '                    CType(Me.Controls.Find(currentValue_ID, True).First, Button).BackColor = Color.Green
+        '                    CType(Me.Controls.Find(currentValue_ID, True).First, Button).ForeColor = Color.White
+        '                    table.Rows(i).Item("HaveAction") = "Green"
+        '                End If
+        '                table.Rows(i).Item("isSame") = "Yes"
+        '            End If
+        '        Else
+        '            Dim date1 As DateTime
+        '            If TempDateTest = Nothing Then
+        '                date1 = DateTime.ParseExact(currentValueDate, "MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+        '            Else
+        '                date1 = TempDateTest
+        '            End If
+        '            Dim date2 As DateTime = DateTime.ParseExact(nextValueDate, "MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+        '            Dim tempdate As TimeSpan = date1 - date2
+        '            If tempdate.Days >= 7 Then
+        '                SolveCase = True
+        '            Else
+        '                TempDateTest = DateTime.ParseExact(currentValueDate, "MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+        '            End If
+        '        End If
+
+        '    Else
+
+        '        If ItemCount = 1 Then
+        '            Dim date1 As DateTime = DateTime.ParseExact(currentValueDate, "MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+        '            Dim date2 As DateTime = DateTime.ParseExact(nextValueDate, "MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+        '            Dim tempdate As TimeSpan = date1 - date2
+        '            If tempdate.Days >= 7 Then
+        '                If (table.Rows(i).Item("HaveAction").ToString) <> "No" Then
+        '                    table.Rows(i).Item("HaveAction") = "Green"
+        '                    CType(Me.Controls.Find(currentValue_ID, True).First, Button).BackColor = Color.Green
+        '                    CType(Me.Controls.Find(currentValue_ID, True).First, Button).ForeColor = Color.White
+        '                End If
+
+        '                table.Rows(i).Item("isSame") = "Yes"
+        '            End If
+        '        Else
+
+        '            If (table.Rows(i).Item("HaveAction").ToString) <> "No" Then
+        '                table.Rows(i).Item("HaveAction") = "Green"
+        '                CType(Me.Controls.Find(currentValue_ID, True).First, Button).BackColor = Color.Green
+        '                CType(Me.Controls.Find(currentValue_ID, True).First, Button).ForeColor = Color.White
+        '            End If
+
+        '            table.Rows(i).Item("isSame") = "Yes"
+
+
+        '        End If
+
+        '        TempDateTest = Nothing
+        '        SolveCase = False
+
+        '        ItemCount = 0
+
+        '    End If
+
+        'If i = rowCount - 1 Then
+        '    Dim lastRow As DataRow = table.Rows(rowCount - 1)
+        '    Dim last2Row As DataRow = table.Rows(i)
+        '    Dim currentValueDateLast As Object = currentRow("Timeofrequest")
+        '    Dim nextValueDateLast As Object = last2Row("Timeofrequest")
+        '    Dim currentValue_IDLast As Object = lastRow("buttonname")
+        '    Dim lastValue As Object = lastRow("BMCase")
+        '    If table.Rows.Count <= 3 Then
+
+
+        '        'If Not IsDBNull(currentValue_IDLast) Then
+        '        If currentValue.Equals(lastValue) Then
+        '            Dim date1 As DateTime = DateTime.ParseExact(currentValueDateLast, "MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+        '            Dim date2 As DateTime = DateTime.ParseExact(nextValueDateLast, "MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+        '            Dim tempdate As TimeSpan = date1 - date2
+        '            If tempdate.Days >= 7 Then
+        '                If (table.Rows(i).Item("HaveAction").ToString) = "Yes" Then
+        '                    table.Rows(i).Item("HaveAction") = "Green"
+        '                    CType(Me.Controls.Find(currentValue_IDLast, True).First, Button).BackColor = Color.Green
+        '                    CType(Me.Controls.Find(currentValue_IDLast, True).First, Button).ForeColor = Color.White
+        '                End If
+
+        '                table.Rows(i).Item("isSame") = "Yes"
+        '                '  End If
+
+        '            End If
+        '        End If
+        '    Else
+
+        '    End If
+        'End If
+        'Next
+
+
+        dtNewRowSame = table
+
+    End Sub
+    'Sub AreOtherRowsSame(table As DataTable)
+    '    Dim SolveCase As Boolean = False
+    '    Dim TempDateTest As Date
+    '    Dim ItemCount As Integer = 0
+    '    Dim rowCount = table.Rows.Count
+
+    '    dtNewRowSame = table.Clone
+
+    '    For i As Integer = 0 To rowCount - 2
+    '        Dim currentRow As DataRow = table.Rows(i)
+    '        Dim nextRow As DataRow = table.Rows(i + 1)
+    '        Dim PrevRow As DataRow = Nothing
+
+    '        Dim currentValueMcno As Object = currentRow("MCno")
+    '        Dim nextValueMcno As Object = nextRow("Mcno")
+
+    '        Dim currentValue As Object = currentRow("BMCase")
+    '        Dim nextValue As Object = nextRow("BMCase")
+    '        Dim PrevValue As Object = Nothing
+    '        Dim currentValueDate As Object = currentRow("Timeofrequest")
+    '        Dim nextValueDate As Object = nextRow("Timeofrequest")
+    '        Dim PrevValueDate As Object = Nothing
+
+
+
+    '        If currentValue.Equals(nextValue) Then
+    '            ItemCount += 1
+    '            If SolveCase = True Then
+    '                If Not currentValue.Equals(nextValue) Then
+    '                    SolveCase = False
+    '                Else
+    '                    If (table.Rows(i).Item("HaveAction").ToString) = "Yes" Then
+    '                        table.Rows(i).Item("Color") = "Green"
+    '                    End If
+    '                End If
+    '            Else
+    '                Dim date1 As DateTime
+    '                If TempDateTest = Nothing Then
+    '                    date1 = DateTime.ParseExact(currentValueDate, "MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+    '                Else
+    '                    date1 = TempDateTest
+    '                End If
+    '                Dim date2 As DateTime = DateTime.ParseExact(nextValueDate, "MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+    '                Dim tempdate As TimeSpan = date1 - date2
+    '                If tempdate.Days >= 7 Then
+    '                    SolveCase = True
+    '                Else
+    '                    TempDateTest = DateTime.ParseExact(currentValueDate, "MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+    '                End If
+
+
+    '                If (table.Rows(i).Item("HaveAction").ToString) = "Yes" Then
+    '                    table.Rows(i).Item("Color") = "Green"
+    '                End If
+
+    '            End If
+    '        Else
+
+    '            If ItemCount = 1 Then
+    '                Dim date1 As DateTime = DateTime.ParseExact(currentValueDate, "MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+    '                Dim date2 As DateTime = DateTime.ParseExact(nextValueDate, "MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+    '                Dim tempdate As TimeSpan = date1 - date2
+    '                If tempdate.Days >= 7 Then
+    '                    If (table.Rows(i).Item("HaveAction").ToString) = "Yes" Then
+    '                        table.Rows(i).Item("Color") = "Green"
+    '                    End If
+    '                End If
+    '            Else
+    '                If (table.Rows(i).Item("HaveAction").ToString) = "Yes" Then
+    '                    table.Rows(i).Item("Color") = "Green"
+    '                End If
+    '            End If
+
+
+
+
+    '            TempDateTest = Nothing
+    '            SolveCase = False
+
+    '            ItemCount = 0
+
+    '        End If
+
+    '        If i = rowCount - 2 Then
+    '            Dim lastRow As DataRow = table.Rows(rowCount - 1)
+    '            Dim currentValueDateLast As Object = currentRow("Timeofrequest")
+    '            Dim nextValueDateLast As Object = lastRow("Timeofrequest")
+    '            Dim currentValue_IDLast As Object = lastRow("Color")
+    '            Dim lastValue As Object = lastRow("BMCase")
+    '            If Not IsDBNull(currentValue_IDLast) Then
+    '                If currentValue.Equals(lastValue) Then
+    '                    Dim date1 As DateTime = DateTime.ParseExact(currentValueDateLast, "MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+    '                    Dim date2 As DateTime = DateTime.ParseExact(nextValueDateLast, "MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+    '                    Dim tempdate As TimeSpan = date1 - date2
+    '                    If tempdate.Days >= 7 Then
+    '                        If (table.Rows(i).Item("HaveAction").ToString) = "Yes" Then
+    '                            CType(Me.Controls.Find(currentValue_IDLast, True).First, Button).BackColor = Color.Green
+    '                            CType(Me.Controls.Find(currentValue_IDLast, True).First, Button).ForeColor = Color.White
+    '                        End If
+    '                    End If
+
+    '                End If
+    '            End If
+    '        End If
+
+    '    Next
+
+    '    dtNewRowSame = table
+    '    ' LoadColor(table)
+    'End Sub
+
+    Private Sub Button6_Click(sender As Object, e As EventArgs) Handles Button6.Click
+        Listbox_main.Items.Clear()
+        Panel8.Size = New Size(2541, 112)
+        Button6.Visible = False
+    End Sub
+
+    Private Sub Button2_Click_1(sender As Object, e As EventArgs) Handles Button2.Click
+        Try
+            If Listbox_main.SelectedItems.Count <> 0 Then
+                cbMachine.Text = Listbox_main.GetItemText(Listbox_main.SelectedItem)
+                btnSearch_Click_1(sender, e)
+                Button6_Click(sender, e)
+            End If
+        Catch ex As Exception
+            MsgBox(ex.ToString)
+        End Try
+    End Sub
+
+    Private Sub Timer2_Tick(sender As Object, e As EventArgs) Handles Timer2.Tick
+        For i = 1 To 9
+            If CInt(CType(Me.Controls.Find("lbl_" & i, True).First, Label).Text) <> 0 Then
+                If CType(Me.Controls.Find("lbl_" & i, True).First, Label).BackColor = Color.MistyRose Then
+                    CType(Me.Controls.Find("lbl_" & i, True).First, Label).BackColor = Color.Red
+                    CType(Me.Controls.Find("lbl_" & i, True).First, Label).ForeColor = Color.MistyRose
+                ElseIf CType(Me.Controls.Find("lbl_" & i, True).First, Label).BackColor = Color.Red
+                    CType(Me.Controls.Find("lbl_" & i, True).First, Label).BackColor = Color.MistyRose
+                    CType(Me.Controls.Find("lbl_" & i, True).First, Label).ForeColor = Color.Red
+                End If
+            End If
+
+
+            If CInt(CType(Me.Controls.Find("Label_" & i, True).First, Label).Text) <> 0 Then
+                If CType(Me.Controls.Find("Label_" & i, True).First, Label).BackColor = Color.MistyRose Then
+                    CType(Me.Controls.Find("Label_" & i, True).First, Label).BackColor = Color.Blue
+                    CType(Me.Controls.Find("Label_" & i, True).First, Label).ForeColor = Color.MistyRose
+                ElseIf CType(Me.Controls.Find("Label_" & i, True).First, Label).BackColor = Color.Blue
+                    CType(Me.Controls.Find("Label_" & i, True).First, Label).BackColor = Color.MistyRose
+                    CType(Me.Controls.Find("Label_" & i, True).First, Label).ForeColor = Color.Blue
+                End If
+            End If
+
+            'If CInt(CType(Me.Controls.Find("Label1_" & i, True).First, Label).Text) <> 0 Then
+            '    If CType(Me.Controls.Find("Label1_" & i, True).First, Label).BackColor = Color.MistyRose Then
+            '        CType(Me.Controls.Find("Label1_" & i, True).First, Label).BackColor = Color.DarkOrange
+            '        CType(Me.Controls.Find("Label1_" & i, True).First, Label).ForeColor = Color.MistyRose
+            '    ElseIf CType(Me.Controls.Find("Label1_" & i, True).First, Label).BackColor = Color.DarkOrange
+            '        CType(Me.Controls.Find("Label1_" & i, True).First, Label).BackColor = Color.MistyRose
+            '        CType(Me.Controls.Find("Label1_" & i, True).First, Label).ForeColor = Color.DarkOrange
+            '    End If
+            'End If
+
+        Next
+
+
+    End Sub
+
+    Private Sub btnMCD_Click(sender As Object, e As EventArgs) Handles btnMCD.Click
+        If Application.OpenForms().OfType(Of Form_Input).Any Then
+            Exit Sub
+        Else
+            Listbox_main.Items.Clear()
+            Panel8.Size = New Size(2541, 112)
+
+            Button6.Visible = False
+
+
+            If cbUser.Text = String.Empty Then
+                MsgBox("Please select a User first.")
+                Exit Sub
+            End If
+
+            Form11.Show()
+        End If
+    End Sub
+    Private Sub RemoveDuplicates()
+
+
+        For Each ctrl As ListBox In Panel7.Controls
+            If TypeOf ctrl Is ListBox Then
+
+                For i As Integer = 0 To ctrl.Items.Count - 2
+                    For j As Integer = ctrl.Items.Count - 1 To i + 1 Step -1
+                        If ctrl.Items(i).ToString() = ctrl.Items(j).ToString() Then
+                            ctrl.Items.RemoveAt(j)
+                        End If
+                    Next
+                Next
+
+            End If
+        Next
+
+    End Sub
+
+
+    Private Sub cbUser_SelectedIndexChanged(sender As Object, e As EventArgs) Handles cbUser.SelectedIndexChanged
+        cbProcess.Items.Clear()
+        cbMachine.Items.Clear()
+        cbFloor.Items.Clear()
+
+        If cbUser.Text = "TE" Then
+            Label3.Text = "Tester"
+            cbProcess.Items.Clear()
+            cbProcess.Items.Add("-Select-")
+            cbProcess.Items.Add("FL")
+            cbProcess.Items.Add("FT")
+            cbProcess.Items.Add("TP")
+            cbProcess.Items.Add("EDS")
+            cbProcess.Items.Add("MEMS")
+        Else
+            Label3.Text = "Machine"
+            cbProcess.Items.Clear()
+            cbProcess.Items.Add("-Select-")
+            cbProcess.Items.Add("DC")
+            cbProcess.Items.Add("DB")
+            cbProcess.Items.Add("WB")
+            cbProcess.Items.Add("MP")
+            cbProcess.Items.Add("PL")
+            cbProcess.Items.Add("FL")
+            cbProcess.Items.Add("ATC")
+            cbProcess.Items.Add("SING")
+            cbProcess.Items.Add("FT")
+            cbProcess.Items.Add("TP")
+            cbProcess.Items.Add("EDS")
+            cbProcess.Items.Add("MEMS")
+        End If
+    End Sub
+
+
+
+    Private Sub Button5_MouseLeave(sender As Object, e As EventArgs) Handles Button5.MouseLeave
+        Button5.BackColor = Color.White
+        Button5.ForeColor = Color.Red
+    End Sub
+
+    Private Sub Button5_MouseMove(sender As Object, e As MouseEventArgs) Handles Button5.MouseMove
+        Button5.BackColor = Color.Red
+        Button5.ForeColor = Color.White
+    End Sub
+
+    Private Sub btnMCD_MouseMove(sender As Object, e As EventArgs) Handles btnMCD.MouseMove
+        btnMCD.BackColor = Color.Blue
+        btnMCD.ForeColor = Color.White
+
+    End Sub
+    Private Sub btnMCD_MouseLeave(sender As Object, e As EventArgs) Handles btnMCD.MouseLeave
+        btnMCD.BackColor = Color.White
+        btnMCD.ForeColor = Color.Blue
+
+    End Sub
+    Private Sub btnWithAction_MouseLeave(sender As Object, e As EventArgs) Handles btnWithAction.MouseLeave
+        btnWithAction.BackColor = Color.White
+        btnWithAction.ForeColor = Color.Black
+
+    End Sub
+    Private Sub btnWithAction_MouseMove(sender As Object, e As MouseEventArgs) Handles btnWithAction.MouseMove
+        btnWithAction.BackColor = Color.DarkOrange
+        btnWithAction.ForeColor = Color.White
+
+    End Sub
+
+    Private Sub btnWithAction_Click(sender As Object, e As EventArgs) Handles btnWithAction.Click
+        If Application.OpenForms().OfType(Of Form_Input).Any Then
+            Exit Sub
+        Else
+            Listbox_main.Items.Clear()
+            Panel8.Size = New Size(2541, 112)
+
+            Button6.Visible = False
+
+
+            If cbUser.Text = String.Empty Then
+                MsgBox("Please select a User first.")
+                Exit Sub
+            End If
+
+            Form12.Show()
+        End If
+    End Sub
+
+    Private Sub Form1_Load(sender As Object, e As EventArgs) Handles MyBase.Load
+
+        'UpdateUpdater()
+
+        'If CheckVerion() = False Then
+        '    MsgBox("Program version is not updated. Kindly update it first." & vbNewLine & vbNewLine & "Updated version: " & GlobalVersion & vbNewLine & "Current Version:  " & Me.ProductVersion, MsgBoxStyle.Information, "E-Karte System")
+        '    Application.Exit()
+        'End If
+
+        dt1.Format = DateTimePickerFormat.Custom
+        dt1.CustomFormat = "MM/dd/yyyy"
+        dt2.Format = DateTimePickerFormat.Custom
+        dt2.CustomFormat = "MM/dd/yyyy"
+
+        dt1.Value = dt1.Value.AddDays(-30).ToString()
+        dt2.Value = dt2.Value.AddDays(1).ToString()
+
+        Timer1.Enabled = True
+        Timer2.Enabled = True
+
+
+
+
+        Try
+            Dim version As Version = ApplicationDeployment.CurrentDeployment.CurrentVersion
+            Me.Text = "E-Karte System v." & $"{version.Major}.{version.Minor}.{version.Revision}"
+        Catch ex As Exception
+            Me.Text = "E-Karte System v." & Me.ProductVersion
+        End Try
+
+
+        For Each ctrl As Control In Panel2.Controls
+            If TypeOf ctrl Is Label Then
+
+                If ctrl.BackColor = Color.White Then
+                    ctrl.Cursor = Cursors.Hand
+                    AddHandler ctrl.Click, AddressOf Me.LabelMain_Click
+                Else
+                    ctrl.Cursor = Cursors.No
+                End If
+
+            End If
+        Next
+
+        UpdatePCStatus()
+    End Sub
+
+    Private Sub Label7_Click(sender As Object, e As EventArgs) Handles Label7.Click
+        'If Application.OpenForms().OfType(Of Form_Input).Any Then
+        '    Exit Sub
+        'Else
+        '    If cbMachine.Text = "" Then
+        '        MsgBox("Please select a machine number.", MsgBoxStyle.Information, "Machine Karte")
+        '        Exit Sub
+        '    End If
+
+
+        '    Form5.Show()
+        '    Form5.LoadData(cbProcess.Text, cbFloor.Text, cbMachine.Text, dt1.Value.ToString("MM/dd/yyyy hh:mm:ss"), dt2.Value.ToString("MM/dd/yyyy hh:mm:ss"))
+        'End If
+    End Sub
+
+    Private Sub lblPageNumber_Click(sender As Object, e As EventArgs) Handles lblPageNumber.Click
+        'Form5.Show()
+        'Form5.LoadData(cbProcess.Text, cbFloor.Text, cbMachine.Text, dt1.Value.ToString("MM/dd/yyyy hh:mm:ss"), dt2.Value.ToString("MM/dd/yyyy hh:mm:ss"))
+    End Sub
+
+
+    'Private Sub Form1_FormClosing(sender As Object, e As FormClosingEventArgs) Handles MyBase.FormClosing
+    '    If MsgBox("Are you sure you want to close this application?", MsgBoxStyle.YesNo, "Exit Application") = MsgBoxResult.No Then
+    '        e.Cancel = True
+    '    End If
+    'End Sub
+End Class

@@ -1,0 +1,263 @@
+﻿/**
+ * AlertBoard.js
+ * Handles the BM Alert Board (Form2 → AlertBoard.cshtml).
+ *
+ * Responsibilities:
+ *  • Build & POST the LoadBoard request
+ *  • Render count cells with alert colour
+ *  • Handle cell clicks → drilldown panel
+ *  • "View in Monitoring" navigates with querystring params
+ *  • Auto-refresh when Monitoring signals timer=0 via sessionStorage
+ */
+
+(function () {
+    'use strict';
+
+    // ── Token ────────────────────────────────────────────────────────────────
+    const token = () =>
+        document.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '';
+
+    // ── Element refs ─────────────────────────────────────────────────────────
+    const dtFrom = document.getElementById('dtFrom');
+    const dtTo = document.getElementById('dtTo');
+    const selUser = document.getElementById('selUser');
+    const btnSearch = document.getElementById('btnSearch');
+    const progress = document.getElementById('progressBar');
+    const progressInner = document.getElementById('progressInner');
+    const panelDrill = document.getElementById('panelDrilldown');
+    const drillTitle = document.getElementById('drilldownTitle');
+    const drillList = document.getElementById('drilldownList');
+    const btnClose = document.getElementById('btnDrillClose');
+    const btnGo = document.getElementById('btnDrillGo');
+
+    // State
+    let _selectedMachine = null;
+    let _selectedCell = null;   // e.g. "DC_0"
+
+    // ── Defaults ─────────────────────────────────────────────────────────────
+    (function initDefaults() {
+        const now = new Date();
+        const from = new Date(now);
+        from.setMonth(from.getMonth() - 1);
+        dtFrom.value = toLocalInput(from);
+        dtTo.value = toLocalInput(now);
+    })();
+
+    function toLocalInput(d) {
+        const pad = n => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    // ── Search ───────────────────────────────────────────────────────────────
+    btnSearch.addEventListener('click', loadBoard);
+
+    async function loadBoard() {
+        setProgress(true);
+        resetBoard();
+
+        const body = {
+            dateFrom: fmtForServer(dtFrom.value),
+            dateTo: fmtForServer(dtTo.value),
+            user: selUser.value
+        };
+
+        try {
+            const res = await fetch('/AlertBoard?handler=LoadBoard', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': token()
+                },
+                body: JSON.stringify(body)
+            });
+            const json = await res.json();
+            if (!json.success) throw new Error(json.message);
+            renderBoard(json.data);
+        } catch (err) {
+            alert('Error loading board: ' + err.message);
+        } finally {
+            setProgress(false);
+        }
+    }
+
+    function fmtForServer(dtLocal) {
+        // Convert "YYYY-MM-DDTHH:mm" → "MM/dd/yyyy HH:mm:ss"
+        if (!dtLocal) return '';
+        const d = new Date(dtLocal);
+        const pad = n => String(n).padStart(2, '0');
+        return `${pad(d.getMonth() + 1)}/${pad(d.getDate())}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:00`;
+    }
+
+    // ── Board rendering ───────────────────────────────────────────────────────
+
+    function resetBoard() {
+        document.querySelectorAll('.ab-cell-active').forEach(el => {
+            el.textContent = '0';
+            el.classList.remove('ab-alert');
+        });
+        document.querySelectorAll('[id^="ptotal_"], [id^="ltotal_"], #grandTotal').forEach(el => {
+            el.textContent = '0';
+        });
+        closeDrilldown();
+    }
+
+    function renderBoard(data) {
+        // data.cells: { "DC_0": { count, machines }, … }
+        // data.locationTotals: { "LSI1-1F": n, … }
+        // data.grandTotal: n
+
+        const cells = data.cells || {};
+
+        for (const [key, cell] of Object.entries(cells)) {
+            const el = document.getElementById('cell_' + key);
+            if (!el) continue;
+            el.textContent = cell.count;
+            if (cell.count > 0) el.classList.add('ab-alert');
+        }
+
+        // Location totals
+        const locTotals = data.locationTotals || {};
+        for (const [loc, n] of Object.entries(locTotals)) {
+            const el = document.getElementById('ltotal_' + loc);
+            if (el) el.textContent = n;
+        }
+
+        // Process row totals (sum across all cells for that process)
+        const processes = ['DC', 'DB', 'WB', 'MP', 'PL', 'ATC', 'SING', 'FL', 'FT', 'TP', 'EDS', 'MEMS'];
+        for (const proc of processes) {
+            let total = 0;
+            for (const [key, cell] of Object.entries(cells)) {
+                if (key.startsWith(proc + '_')) total += cell.count;
+            }
+            const el = document.getElementById('ptotal_' + proc);
+            if (el) el.textContent = total;
+        }
+
+        const grand = document.getElementById('grandTotal');
+        if (grand) grand.textContent = data.grandTotal ?? 0;
+    }
+
+    // ── Cell click → drilldown ─────────────────────────────────────────────
+
+    document.addEventListener('click', async function (e) {
+        const cell = e.target.closest('.ab-cell-active');
+        if (!cell) return;
+        const count = parseInt(cell.textContent, 10);
+        if (!count || count === 0) return;
+
+        _selectedCell = cell.dataset.cell;
+        await openDrilldown(_selectedCell);
+    });
+
+    async function openDrilldown(cellKey) {
+        try {
+            const res = await fetch('/AlertBoard?handler=Drilldown&cellKey=' + encodeURIComponent(cellKey));
+            const json = await res.json();
+            if (!json.success) throw new Error(json.message);
+
+            const { machines, title } = json.data;
+            drillTitle.textContent = title;
+            drillList.innerHTML = '';
+            _selectedMachine = null;
+
+            machines.forEach(m => {
+                const li = document.createElement('li');
+                li.textContent = m;
+                li.classList.add('ab-machine-item');
+                li.addEventListener('click', () => {
+                    drillList.querySelectorAll('li').forEach(x => x.classList.remove('selected'));
+                    li.classList.add('selected');
+                    _selectedMachine = m;
+                });
+                drillList.appendChild(li);
+            });
+
+            panelDrill.style.display = 'flex';
+        } catch (err) {
+            alert('Drilldown error: ' + err.message);
+        }
+    }
+
+    // ── Drilldown panel controls ───────────────────────────────────────────
+
+    btnClose.addEventListener('click', closeDrilldown);
+
+    btnGo.addEventListener('click', () => {
+        if (!_selectedMachine) return;
+        // Navigate to Monitoring with the machine pre-selected
+        // Monitoring.js reads ?machine=<value> on load (mirrors VB Form1 navigation)
+        const [proc, locKey] = resolveProcessLocation(_selectedCell);
+        const params = new URLSearchParams({
+            machine: _selectedMachine,
+            process: proc,
+            location: locKey
+        });
+        window.location.href = '/Monitoring?' + params.toString();
+        closeDrilldown();
+    });
+
+    function closeDrilldown() {
+        panelDrill.style.display = 'none';
+        drillList.innerHTML = '';
+        _selectedMachine = null;
+    }
+
+    // Maps cell key → { process, location } for Monitoring navigation
+    function resolveProcessLocation(key) {
+        const map = {
+            DC_0: 'DC|LSI1-1F', DC_2: 'DC|LSI2-1F', DC_3: 'DC|LSI2-2F', DC_4: 'DC|LSI2-3F', DC_6: 'DC|LSI3-2F',
+            DB_0: 'DB|LSI1-1F', DB_2: 'DB|LSI2-1F', DB_3: 'DB|LSI2-2F', DB_4: 'DB|LSI2-3F', DB_6: 'DB|LSI3-2F',
+            WB_0: 'WB|LSI1-1F', WB_2: 'WB|LSI2-1F', WB_3: 'WB|LSI2-2F', WB_4: 'WB|LSI2-3F', WB_6: 'WB|LSI3-2F',
+            MP_0: 'MP|LSI1-1F', MP_2: 'MP|LSI2-1F', MP_3: 'MP|LSI2-2F', MP_4: 'MP|LSI2-3F', MP_6: 'MP|LSI3-2F',
+            PL_0: 'PL|LSI1-1F', PL_2: 'PL|LSI2-1F', PL_3: 'PL|LSI2-2F', PL_4: 'PL|LSI2-3F', PL_5: 'PL|LSI3-1F',
+            ATC_0: 'ATC|LSI1-1F', ATC_1: 'ATC|LSI1-2F', ATC_2: 'ATC|LSI2-1F', ATC_3: 'ATC|LSI2-2F',
+            ATC_4: 'ATC|LSI2-3F', ATC_65: 'ATC|LSI3-1F', ATC_6: 'ATC|LSI3-3F',
+            FL_1: 'FL|LSI1-2F', FL_2: 'FL|LSI2-1F', FL_3: 'FL|LSI2-2F', FL_4: 'FL|LSI2-3F', FL_5: 'FL|LSI3-3F',
+            SING_1: 'SING|LSI1-2F', SING_2: 'SING|LSI2-1F', SING_3: 'SING|LSI2-2F',
+            SING_4: 'SING|LSI2-3F', SING_5: 'SING|LSI3-3F',
+            FT_1: 'FT|LSI1-2F', FT_2: 'FT|LSI2-1F', FT_3: 'FT|LSI2-2F', FT_4: 'FT|LSI2-3F', FT_5: 'FT|LSI3-3F',
+            TP_1: 'TP|LSI1-2F', TP_2: 'TP|LSI2-1F', TP_3: 'TP|LSI2-2F', TP_4: 'TP|LSI2-3F', TP_5: 'TP|LSI3-3F',
+            EDS_1: 'EDS|LSI3-4F', MEMS_1: 'MEMS|LSI3-2F'
+        };
+        const val = map[key] ?? '|';
+        const [p, l] = val.split('|');
+        return [p, l];
+    }
+
+    // ── Progress bar ─────────────────────────────────────────────────────────
+
+    let _progressInterval = null;
+
+    function setProgress(active) {
+        if (active) {
+            progress.style.display = 'block';
+            let pct = 0;
+            _progressInterval = setInterval(() => {
+                pct = Math.min(pct + 2, 90);
+                progressInner.style.width = pct + '%';
+            }, 100);
+        } else {
+            clearInterval(_progressInterval);
+            progressInner.style.width = '100%';
+            setTimeout(() => {
+                progress.style.display = 'none';
+                progressInner.style.width = '0';
+            }, 300);
+        }
+    }
+
+    // ── Auto-refresh (mirrors VB tmrRefresh_Tick) ─────────────────────────
+    // Monitoring page writes sessionStorage.monitoringTimer = "0" when its
+    // countdown hits zero.  AlertBoard polls that and auto-reloads.
+
+    setInterval(() => {
+        if (sessionStorage.getItem('monitoringTimer') === '0') {
+            sessionStorage.removeItem('monitoringTimer');
+            loadBoard();
+        }
+    }, 5000);
+
+    // Initial load on page show
+    loadBoard();
+
+})();

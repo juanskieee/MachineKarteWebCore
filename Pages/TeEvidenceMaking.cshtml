@@ -1,0 +1,135 @@
+﻿@page
+@model MachineKarte.Web.Pages.TeEvidenceMakingModel
+@{
+    ViewData["Title"] = "TE Evidence Making";
+    Layout = null; // No chrome — this page is opened as a popup/new tab
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BM Maintenance Evidence (TE)</title>
+    <style>
+        body {
+            font-family: Segoe UI, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .te-card {
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            padding: 36px 48px;
+            text-align: center;
+            box-shadow: 0 2px 12px rgba(0,0,0,.12);
+            min-width: 340px;
+        }
+
+        h2 {
+            margin: 0 0 8px;
+            font-size: 18px;
+        }
+
+        p {
+            margin: 0 0 24px;
+            color: #666;
+            font-size: 13px;
+        }
+
+        #status {
+            margin-top: 16px;
+            font-size: 13px;
+            color: #555;
+            min-height: 20px;
+        }
+
+        .te-btn {
+            padding: 8px 24px;
+            background: #1a73e8;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+            .te-btn:disabled {
+                background: #aaa;
+                cursor: not-allowed;
+            }
+
+        .te-spinner {
+            display: none;
+            margin: 12px auto 0;
+            width: 28px;
+            height: 28px;
+            border: 3px solid #ddd;
+            border-top-color: #1a73e8;
+            border-radius: 50%;
+            animation: spin .7s linear infinite;
+        }
+
+        @@keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="te-card">
+        <h2>TE Evidence Making</h2>
+        <p id="bmLabel">BM Maintenance Evidence</p>
+        <button class="te-btn" id="btnGenerate">Generate &amp; Download</button>
+        <div class="te-spinner" id="spinner"></div>
+        <div id="status"></div>
+    </div>
+
+    <script>
+        // Extract bmId from query string
+        const params = new URLSearchParams(location.search);
+        const bmId   = params.get('bmId') || '';
+        if (bmId) document.getElementById('bmLabel').textContent =
+            'BM ID: ' + bmId;
+
+        document.getElementById('btnGenerate').addEventListener('click', async () => {
+            if (!bmId) { setStatus('No BM ID provided.', 'red'); return; }
+            setLoading(true);
+            try {
+                const res  = await fetch(`/TeEvidenceMaking?handler=Generate&bmId=${encodeURIComponent(bmId)}`);
+                const json = await res.json();
+                if (!json.success) throw new Error(json.message);
+                setStatus('Generated! Download starting…', 'green');
+                window.location.href = `/TeEvidenceMaking?handler=Download&bmId=${encodeURIComponent(bmId)}`;
+            } catch (err) {
+                setStatus('Error: ' + err.message, 'red');
+            } finally {
+                setLoading(false);
+            }
+        });
+
+        // Auto-generate when opened with ?autoGenerate=1 (called from BmRecord "E→" button)
+        if (params.get('autoGenerate') === '1' && bmId) {
+            document.getElementById('btnGenerate').click();
+        }
+
+        function setLoading(on) {
+            document.getElementById('btnGenerate').disabled = on;
+            document.getElementById('spinner').style.display = on ? 'block' : 'none';
+        }
+        function setStatus(msg, color) {
+            const el = document.getElementById('status');
+            el.textContent = msg;
+            el.style.color = color || '#555';
+        }
+    </script>
+</body>
+</html>
