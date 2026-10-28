@@ -65,7 +65,9 @@ namespace MachineKarte.Web.Models
         public int TotalLsi2_1F { get; set; }   // LSI2-1F  – all processes
         public int TotalLsi2_2F { get; set; }   // LSI2-2F
         public int TotalLsi2_3F { get; set; }   // LSI2-3F
+        public int TotalLsi3_1F { get; set; }   // LSI3-1F
         public int TotalLsi3 { get; set; }   // LSI3 combined (MEMS+FT5+TP5+MP5)
+        public int TotalLsi3_3F { get; set; }   // LSI3-3F
         public int TotalLsi3_4F { get; set; }   // EDS only
         public int GrandTotal { get; set; }
     }

@@ -150,6 +150,15 @@ namespace MachineKarte.Web.Services.Reporting
             var images = await imagesTask;
             FillCategoryImages(ws, images, _imagesRoot);
 
+            var telekoImages = await telekoTask;
+            FillTelekoImages(ws, telekoImages, _imagesRoot);
+
+            if (ws_3 != null)
+            {
+                var qualityImages = await qualityTask;
+                FillQualityImages(ws_3, qualityImages, _imagesRoot);
+            }
+
             // 7. Save output
             Directory.CreateDirectory(_outputRoot);
             string fileName = $"TE_Evidence_{bmId}.xlsx";
@@ -265,6 +274,61 @@ namespace MachineKarte.Web.Services.Reporting
                     pic.Height = (int)(h * 96);
                 }
                 catch { /* skip unreadable images */ }
+            }
+        }
+
+        private static void FillTelekoImages(
+            IXLWorksheet ws,
+            List<TelekoEvidenceImage> images,
+            string imagesRoot)
+        {
+            var cells = new[] { "B70", "D70", "F70", "H70" };
+            for (var index = 0; index < Math.Min(images.Count, cells.Length); index++)
+                AddPicture(ws, images[index].TelekoEvidence, cells[index], 125, 125, imagesRoot);
+        }
+
+        private static void FillQualityImages(
+            IXLWorksheet ws,
+            List<QualityConditionImage> images,
+            string imagesRoot)
+        {
+            var cells = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["BEFORE QUALITY CONDITION"] = "F3",
+                ["AFTER QUALITY CONDITION"] = "K3",
+                ["IDEAL QUALITY CONDITION"] = "P3"
+            };
+
+            foreach (var image in images)
+            {
+                if (cells.TryGetValue(image.Category, out var cell))
+                    AddPicture(ws, image.ImgFile, cell, 150, 150, imagesRoot);
+            }
+        }
+
+        private static void AddPicture(
+            IXLWorksheet ws,
+            string relativePath,
+            string cell,
+            int width,
+            int height,
+            string imagesRoot)
+        {
+            if (string.IsNullOrWhiteSpace(relativePath)) return;
+
+            var fullPath = Path.Combine(imagesRoot, relativePath.TrimStart('/', '\\'));
+            if (!File.Exists(fullPath)) return;
+
+            try
+            {
+                var picture = ws.AddPicture(fullPath);
+                picture.MoveTo(ws.Cell(cell));
+                picture.Width = width;
+                picture.Height = height;
+            }
+            catch
+            {
+                // Preserve workbook generation when an individual image is unavailable.
             }
         }
     }

@@ -62,6 +62,13 @@ builder.Services.AddScoped<BmReportRepository>();
 builder.Services.AddScoped<BmReportService>();
 
 // ─────────────────────────────────────────────────────────────
+// PM Report (Form3)
+// ─────────────────────────────────────────────────────────────
+
+builder.Services.AddScoped<PmReportRepository>();
+builder.Services.AddScoped<PmReportService>();
+
+// ─────────────────────────────────────────────────────────────
 // MCD Monitoring (Form7)
 // ─────────────────────────────────────────────────────────────
 
@@ -72,8 +79,8 @@ builder.Services.AddScoped<McdMonitoringService>();
 // Alert Board
 // ─────────────────────────────────────────────────────────────
 
-builder.Services.AddSingleton<AlertBoardRepository>();
-builder.Services.AddSingleton<AlertBoardService>();
+builder.Services.AddScoped<AlertBoardRepository>();
+builder.Services.AddScoped<AlertBoardService>();
 
 // ─────────────────────────────────────────────────────────────
 // Anti-Forgery

@@ -44,7 +44,9 @@ namespace MachineKarte.Web.Models
         public string MachineType { get; set; } = string.Empty;
         public string TimeOfRequest { get; set; } = string.Empty;
         public string BMCase { get; set; } = string.Empty;
+        public string BMCaseId { get; set; } = string.Empty;
         public int BMId { get; set; }
+        public int OcapCount { get; set; }
         public string HaveAction { get; set; } = "No";
         public string BMContentId { get; set; } = string.Empty;
         public string BMContent { get; set; } = string.Empty;

@@ -14,16 +14,23 @@
     // ── Process / location layout (mirrors VB grid design) ──────────────────
     const GRID_ROWS = [
         // { process, cells: [ { cellKey, loc } ] }
+        { process: 'ATC', cells: [{ k: 'ATC_1', loc: 'LSI1-1F' }, { k: 'ATC_2', loc: 'LSI1-2F' }, { k: 'ATC_3', loc: 'LSI2-1F' }, { k: 'ATC_4', loc: 'LSI2-2F' }, { k: 'ATC_5', loc: 'LSI2-3F' }, { k: 'ATC_65', loc: 'LSI3-1F' }, { k: 'ATC_6', loc: 'LSI3-3F' }] },
+        { process: 'SING', cells: [{ k: null, loc: 'LSI1-1F' }, { k: 'SING_1', loc: 'LSI1-2F' }, { k: 'SING_2', loc: 'LSI2-1F' }, { k: 'SING_3', loc: 'LSI2-2F' }, { k: 'SING_4', loc: 'LSI2-3F' }, { k: 'SING_5', loc: 'LSI3-3F' }] },
         { process: 'DC', cells: [{ k: 'DC_1', loc: 'LSI1-1F' }, { k: null, loc: 'LSI1-2F' }, { k: 'DC_2', loc: 'LSI2-1F' }, { k: 'DC_3', loc: 'LSI2-2F' }, { k: 'DC_4', loc: 'LSI2-3F' }, { k: null, loc: 'LSI3-2F' }, { k: null, loc: 'LSI3-4F' }] },
         { process: 'DB', cells: [{ k: 'DB_1', loc: 'LSI1-1F' }, { k: null, loc: 'LSI1-2F' }, { k: 'DB_2', loc: 'LSI2-1F' }, { k: 'DB_3', loc: 'LSI2-2F' }, { k: 'DB_4', loc: 'LSI2-3F' }, { k: null, loc: 'LSI3-2F' }, { k: null, loc: 'LSI3-4F' }] },
         { process: 'WB', cells: [{ k: 'WB_1', loc: 'LSI1-1F' }, { k: null, loc: 'LSI1-2F' }, { k: 'WB_2', loc: 'LSI2-1F' }, { k: 'WB_3', loc: 'LSI2-2F' }, { k: 'WB_4', loc: 'LSI2-3F' }, { k: null, loc: 'LSI3-2F' }, { k: null, loc: 'LSI3-4F' }] },
-        { process: 'MP', cells: [{ k: 'MP_1', loc: 'LSI1-1F' }, { k: null, loc: 'LSI1-2F' }, { k: 'MP_2', loc: 'LSI2-1F' }, { k: 'MP_3', loc: 'LSI2-2F' }, { k: 'MP_4', loc: 'LSI2-3F' }, { k: 'MP_5', loc: 'LSI3-2F' }, { k: null, loc: 'LSI3-4F' }] },
+        { process: 'MP', cells: [{ k: 'MP_1', loc: 'LSI1-1F' }, { k: null, loc: 'LSI1-2F' }, { k: 'MP_2', loc: 'LSI2-1F' }, { k: 'MP_3', loc: 'LSI2-2F' }, { k: 'MP_4', loc: 'LSI2-3F' }, { k: null, loc: 'LSI3-2F' }, { k: null, loc: 'LSI3-4F' }] },
         { process: 'PL', cells: [{ k: 'PL_1', loc: 'LSI1-1F' }, { k: null, loc: 'LSI1-2F' }, { k: 'PL_2', loc: 'LSI2-1F' }, { k: null, loc: 'LSI2-2F' }, { k: null, loc: 'LSI2-3F' }, { k: null, loc: 'LSI3-2F' }, { k: null, loc: 'LSI3-4F' }] },
         { process: 'FL', cells: [{ k: null, loc: 'LSI1-1F' }, { k: 'FL_1', loc: 'LSI1-2F' }, { k: 'FL_2', loc: 'LSI2-1F' }, { k: 'FL_3', loc: 'LSI2-2F' }, { k: 'FL_4', loc: 'LSI2-3F' }, { k: null, loc: 'LSI3-2F' }, { k: null, loc: 'LSI3-4F' }] },
         { process: 'FT', cells: [{ k: null, loc: 'LSI1-1F' }, { k: 'FT_1', loc: 'LSI1-2F' }, { k: 'FT_2', loc: 'LSI2-1F' }, { k: 'FT_3', loc: 'LSI2-2F' }, { k: 'FT_4', loc: 'LSI2-3F' }, { k: null, loc: 'LSI3-2F' }, { k: null, loc: 'LSI3-4F' }] },
         { process: 'TP', cells: [{ k: null, loc: 'LSI1-1F' }, { k: 'TP_1', loc: 'LSI1-2F' }, { k: 'TP_2', loc: 'LSI2-1F' }, { k: 'TP_3', loc: 'LSI2-2F' }, { k: 'TP_4', loc: 'LSI2-3F' }, { k: null, loc: 'LSI3-2F' }, { k: null, loc: 'LSI3-4F' }] },
         { process: 'MEMS', cells: [{ k: null, loc: 'LSI1-1F' }, { k: null, loc: 'LSI1-2F' }, { k: null, loc: 'LSI2-1F' }, { k: null, loc: 'LSI2-2F' }, { k: null, loc: 'LSI2-3F' }, { k: 'MEMS_1', loc: 'LSI3-2F' }, { k: null, loc: 'LSI3-4F' }] },
         { process: 'EDS', cells: [{ k: null, loc: 'LSI1-1F' }, { k: null, loc: 'LSI1-2F' }, { k: null, loc: 'LSI2-1F' }, { k: null, loc: 'LSI2-2F' }, { k: null, loc: 'LSI2-3F' }, { k: null, loc: 'LSI3-2F' }, { k: 'EDS_1', loc: 'LSI3-4F' }] },
+    ];
+
+    const LOCATION_COLUMNS = [
+        'LSI1-1F', 'LSI1-2F', 'LSI2-1F', 'LSI2-2F', 'LSI2-3F',
+        'LSI3-1F', 'LSI3-2F', 'LSI3-3F', 'LSI3-4F'
     ];
 
     // ── State ────────────────────────────────────────────────────────────────
@@ -62,6 +69,9 @@
         panelOverlay().addEventListener('click', closePanel);
 
         loadDashboard();
+            setInterval(() => {
+                if (lastFilter.dateFrom && lastFilter.dateTo) loadDashboard();
+            }, 60000);
     });
 
     // ── Build static grid shell (process rows with empty cells) ─────────────
@@ -74,7 +84,9 @@
             div.dataset.process = row.process;
 
             let html = `<div class="mcd-process-col mcd-proc-label">${row.process}</div>`;
-            row.cells.forEach(cell => {
+            const cellsByLocation = new Map(row.cells.map(cell => [cell.loc, cell]));
+            LOCATION_COLUMNS.forEach(location => {
+                const cell = cellsByLocation.get(location) || { k: null, loc: location };
                 if (cell.k) {
                     html += `<div class="mcd-loc-col mcd-cell" 
                                   id="cell_${cell.k}" 
@@ -172,7 +184,9 @@
         setTotCell('tot_LSI2_1F', data.totalLsi2_1F);
         setTotCell('tot_LSI2_2F', data.totalLsi2_2F);
         setTotCell('tot_LSI2_3F', data.totalLsi2_3F);
+        setTotCell('tot_LSI3_1F', data.totalLsi3_1F);
         setTotCell('tot_LSI3_2F', data.totalLsi3);
+        setTotCell('tot_LSI3_3F', data.totalLsi3_3F);
         setTotCell('tot_LSI3_4F', data.totalLsi3_4F);
         setTotCell('tot_Grand', data.grandTotal);
 
@@ -199,6 +213,11 @@
             'TP|LSI1-2F': 'TP_1', 'TP|LSI2-1F': 'TP_2', 'TP|LSI2-2F': 'TP_3', 'TP|LSI2-3F': 'TP_4',
             'MEMS|LSI3-2F': 'MEMS_1',
             'EDS|LSI3-4F': 'EDS_1',
+            'ATC|LSI1-1F': 'ATC_1', 'ATC|LSI1-2F': 'ATC_2',
+            'ATC|LSI2-1F': 'ATC_3', 'ATC|LSI2-2F': 'ATC_4',
+            'ATC|LSI2-3F': 'ATC_5', 'ATC|LSI3-1F': 'ATC_65', 'ATC|LSI3-3F': 'ATC_6',
+            'SING|LSI1-2F': 'SING_1', 'SING|LSI2-1F': 'SING_2',
+            'SING|LSI2-2F': 'SING_3', 'SING|LSI2-3F': 'SING_4', 'SING|LSI3-3F': 'SING_5',
         };
         return map[`${process}|${location}`] || null;
     }

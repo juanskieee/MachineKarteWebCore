@@ -192,6 +192,7 @@
     function buildCellKey(process, location, locs) {
         if (!locs.includes(location)) return null;
         if (process === 'ATC' && location === 'LSI3-1F') return 'ATC_65';
+        if (process === 'ATC' && location === 'LSI3-3F') return 'ATC_6';
         const idx = locs.indexOf(location) + 1;   // 1-based
         return `${process}_${idx}`;
     }
@@ -256,8 +257,10 @@
         if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
     }
 
-    // Start the auto-refresh as soon as data is first loaded
-    btnSearch.addEventListener('click', startAutoRefresh, { once: true });
+    document.addEventListener('DOMContentLoaded', () => {
+        triggerSearch();
+        startAutoRefresh();
+    });
 
     // -----------------------------------------------------------------------
     // Helpers

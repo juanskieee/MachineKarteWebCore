@@ -37,6 +37,8 @@ namespace MachineKarte.Web.Services
             ["TP"] = new[] { "LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F" },
             ["EDS"] = new[] { "LSI3-4F" },
             ["MEMS"] = new[] { "LSI3-2F" },
+            ["ATC"] = new[] { "LSI1-1F", "LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-1F", "LSI3-3F" },
+            ["SING"] = new[] { "LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-3F" },
         };
 
         private static readonly Dictionary<string, string[]> LocationsTe = new()
@@ -163,10 +165,19 @@ namespace MachineKarte.Web.Services
                 CellCount("PL", "LSI2-3F") + CellCount("FL", "LSI2-3F") +
                 CellCount("FT", "LSI2-3F") + CellCount("TP", "LSI2-3F");
 
+            result.TotalLsi3_1F =
+                CellCount("ATC", "LSI3-1F") + CellCount("MP", "LSI3-1F") +
+                CellCount("PL", "LSI3-1F");
+
             // LSI3 combined (MEMS + FT@LSI3-2F + TP@LSI3-2F + MP@LSI3-2F – matches lblTotal_6 in VB)
             result.TotalLsi3 =
                 CellCount("MEMS", "LSI3-2F") +
                 CellCount("FT", "LSI3-2F") + CellCount("TP", "LSI3-2F") + CellCount("MP", "LSI3-2F");
+
+            result.TotalLsi3_3F =
+                CellCount("ATC", "LSI3-3F") + CellCount("FL", "LSI3-3F") +
+                CellCount("FT", "LSI3-3F") + CellCount("TP", "LSI3-3F") +
+                CellCount("SING", "LSI3-3F");
 
             // EDS only
             result.TotalLsi3_4F = CellCount("EDS", "LSI3-4F");
@@ -235,6 +246,18 @@ namespace MachineKarte.Web.Services
 
                 ("EDS", "1") => "LSI3-4F",
                 ("MEMS", "1") => "LSI3-2F",
+                ("ATC", "1") => "LSI1-1F",
+                ("ATC", "2") => "LSI1-2F",
+                ("ATC", "3") => "LSI2-1F",
+                ("ATC", "4") => "LSI2-2F",
+                ("ATC", "5") => "LSI2-3F",
+                ("ATC", "65") => "LSI3-1F",
+                ("ATC", "6") => "LSI3-3F",
+                ("SING", "1") => "LSI1-2F",
+                ("SING", "2") => "LSI2-1F",
+                ("SING", "3") => "LSI2-2F",
+                ("SING", "4") => "LSI2-3F",
+                ("SING", "5") => "LSI3-3F",
 
                 _ => string.Empty
             };

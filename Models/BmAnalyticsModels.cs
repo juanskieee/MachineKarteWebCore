@@ -124,6 +124,9 @@ public static class BmAnalyticsMappings
             return "ATC_65";
 
         var locs = GetLocations(process, "EEE");
+        if (process == "ATC" && location == "LSI3-3F")
+            return "ATC_6";
+
         int idx = Array.IndexOf(locs, location) + 1;          // 1-based
         return idx > 0 ? $"{process}_{idx}" : $"{process}_?";
     }

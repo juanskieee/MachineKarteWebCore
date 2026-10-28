@@ -1,8 +1,9 @@
 // Repositories/MonitoringRepository.cs
-// Converted from Form1.vb SQL queries — E-Karte System
-// C# ASP.NET Core + Dapper (or plain SqlClient — swap as needed)
+// Converted from Form1.vb SQL queries ï¿½ E-Karte System
+// C# ASP.NET Core + Dapper (or plain SqlClient ï¿½ swap as needed)
 
 using System.Data;
+using System.Globalization;
 using Microsoft.Data.SqlClient;
 using MachineKarte.Web.Models;
 
@@ -89,7 +90,7 @@ namespace MachineKarte.Web.Repositories
                         INNER JOIN [eMaintenanceSystemDB].[dbo].[Process] b
                             ON a.ProcessID = b.ProcessID
                         WHERE b.ProcessName = @Process
-                          AND a.MCLocation  = @Location
+                          AND (@Location = 'All' OR a.MCLocation = @Location)
                         ORDER BY a.MCNo ASC";
                 colName = "Val";
             }
@@ -98,7 +99,7 @@ namespace MachineKarte.Web.Repositories
                 sql = @"SELECT DISTINCT TesterNo AS Val
                         FROM [eMaintenanceSystemDB].[dbo].[TEBMMaintenance]
                         WHERE Process   = @Process
-                          AND Location  = @Location
+                          AND (@Location = 'All' OR Location = @Location)
                           AND TesterNo <> ''
                         ORDER BY TesterNo ASC";
                 colName = "Val";
@@ -117,7 +118,7 @@ namespace MachineKarte.Web.Repositories
 
         // ----------------------------------------------------------------
         // Paged machine summary (drives card column headers)
-        // Mirrors LoadMCName() strQuery2 — PM/CC/EEE/VIS and TE branches
+        // Mirrors LoadMCName() strQuery2 ï¿½ PM/CC/EEE/VIS and TE branches
         // ----------------------------------------------------------------
 
         public async Task<List<MachineSummary>> GetPagedMachineSummariesAsync(
@@ -163,6 +164,72 @@ namespace MachineKarte.Web.Repositories
             return list;
         }
 
+        private static void ApplyLegacyRepeatColors(
+            List<BMCardRow> cards,
+            string userType,
+            string process)
+        {
+            for (var start = 0; start < cards.Count; start++)
+            {
+                var first = cards[start];
+                var repeatCount = 1;
+
+                while (start + repeatCount < cards.Count && repeatCount < 6)
+                {
+                    var previous = cards[start + repeatCount - 1];
+                    var current = cards[start + repeatCount];
+                    if (!string.Equals(first.MachineNo, current.MachineNo, StringComparison.OrdinalIgnoreCase) ||
+                        !string.Equals(first.BMCase, current.BMCase, StringComparison.OrdinalIgnoreCase) ||
+                        !string.Equals(first.BMContentId, current.BMContentId, StringComparison.OrdinalIgnoreCase) ||
+                        !WithinSevenDays(previous.TimeOfRequest, current.TimeOfRequest))
+                        break;
+
+                    repeatCount++;
+                }
+
+                if (repeatCount < 2) continue;
+
+                var color = userType.Equals("TE", StringComparison.OrdinalIgnoreCase)
+                    ? "Red"
+                    : GetLegacyContentColor(process, first.BMContentId);
+
+                for (var index = start; index < start + repeatCount; index++)
+                    cards[index].FontColor = color;
+            }
+        }
+
+        private static bool WithinSevenDays(string previousValue, string currentValue)
+        {
+            if (!DateTime.TryParse(previousValue, CultureInfo.InvariantCulture, DateTimeStyles.None, out var previous) ||
+                !DateTime.TryParse(currentValue, CultureInfo.InvariantCulture, DateTimeStyles.None, out var current))
+                return false;
+
+            var days = (previous - current).TotalDays;
+            return days >= 0 && days <= 7;
+        }
+
+        private static string GetLegacyContentColor(string process, string contentId)
+        {
+            if (!int.TryParse(contentId, out var id)) return "Black";
+
+            var ids = process.ToUpperInvariant() switch
+            {
+                "EDS" => (Blue: 13, Red: 16),
+                "DC" => (Blue: 48, Red: 49),
+                "DB" => (Blue: 18, Red: 19),
+                "WB" => (Blue: 45, Red: 46),
+                "MP" => (Blue: 24, Red: 25),
+                "PL" => (Blue: 42, Red: 43),
+                "FL" or "SING" or "ATC" => (Blue: 1, Red: 2),
+                "FT" => (Blue: 31, Red: 33),
+                "TP" => (Blue: 9, Red: 30),
+                "MEMS" => (Blue: 72, Red: 74),
+                _ => (Blue: -1, Red: -2)
+            };
+
+            return id == ids.Blue ? "Blue" : id == ids.Red ? "Red" : "Black";
+        }
+
         // ----------------------------------------------------------------
         // BM card rows per machine (drives uC_Test card content)
         // Mirrors LoadMCName1() strQuery
@@ -182,8 +249,7 @@ namespace MachineKarte.Web.Repositories
             cmd.Parameters.AddWithValue("@Range1", dateFrom);
             cmd.Parameters.AddWithValue("@Range2", dateTo);
             cmd.Parameters.AddWithValue("@Location", location);
-            if (userType is not "TE")
-                cmd.Parameters.AddWithValue("@Mcno", machineNo);
+            cmd.Parameters.AddWithValue("@Mcno", machineNo);
 
             await using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
@@ -199,7 +265,11 @@ namespace MachineKarte.Web.Repositories
                                     ? reader["mctype"].ToString()! : string.Empty,
                     TimeOfRequest = reader["Timeofrequest"].ToString()!,
                     BMCase = reader["BMCase"].ToString()!,
+                    BMCaseId = reader.HasColumn("BMCaseID")
+                                    ? reader["BMCaseID"].ToString()! : string.Empty,
                     BMId = reader["bmid"] is DBNull ? 0 : Convert.ToInt32(reader["bmid"]),
+                    OcapCount = reader.HasColumn("OCAPCount") && reader["OCAPCount"] is not DBNull
+                                    ? Convert.ToInt32(reader["OCAPCount"]) : 0,
                     HaveAction = reader["HaveAction"].ToString()!,
                     BMContentId = reader["BMContentID"].ToString()!,
                     BMContent = reader.HasColumn("BMContent")
@@ -212,6 +282,7 @@ namespace MachineKarte.Web.Repositories
                                     ? reader["FontColor"].ToString()! : "None"
                 });
             }
+            ApplyLegacyRepeatColors(list, userType, process);
             return list;
         }
 
@@ -340,7 +411,7 @@ namespace MachineKarte.Web.Repositories
                     INNER JOIN [eMaintenanceSystemDB].[dbo].[BMCase]  b ON a.BMCaseID = b.BMCaseID
                     WHERE (TimeOfRequest BETWEEN @Range1 AND @Range2)
                       AND PMCategoryID = 1 AND d.ProcessName = @Process
-                      AND a.Location = @Location
+                      AND (@Location = 'All' OR a.Location = @Location)
                       {machineFilter}
                       AND {addQuery}
                       AND a.BMCaseID <> 0
@@ -358,7 +429,7 @@ namespace MachineKarte.Web.Repositories
                     INNER JOIN [eMaintenanceSystemDB].[dbo].[BMCase]  b ON a.BMCaseID = b.BMCaseID
                     WHERE (TimeOfRequest BETWEEN @Range1 AND @Range2)
                       AND PMCategoryID = 1 AND d.ProcessName = @Process
-                      AND a.Location = @Location
+                      AND (@Location = 'All' OR a.Location = @Location)
                       {machineFilter}
                       AND {addQuery}
                       AND a.BMCaseID <> 0
@@ -381,11 +452,11 @@ namespace MachineKarte.Web.Repositories
                     FROM [eMaintenanceSystemDB].[dbo].[TEBMMaintenance] a
                     INNER JOIN [eMaintenanceSystemDB].[dbo].[Process] D ON a.Process = d.ProcessName
                     INNER JOIN [eMaintenanceSystemDB].[dbo].[testertype] c
-                        ON a.MCType = c.testertype AND c.ProcessID = d.ProcessID AND c.location = @Location
+                        ON a.MCType = c.testertype AND c.ProcessID = d.ProcessID AND (@Location = 'All' OR c.location = @Location)
                     WHERE (TimeOfRequest BETWEEN @Range1 AND @Range2)
                       AND (PMCategoryID = 1 OR PMCategoryID = 4)
                       AND d.ProcessName = @Process
-                      AND a.Location = @Location
+                      AND (@Location = 'All' OR a.Location = @Location)
                       {machineFilter}
                       AND a.BMStatusID NOT IN ('30','31','1','2','3','7','17')
                       AND BMUnitID <> 0
@@ -400,11 +471,11 @@ namespace MachineKarte.Web.Repositories
                     FROM [eMaintenanceSystemDB].[dbo].[TEBMMaintenance] a
                     INNER JOIN [eMaintenanceSystemDB].[dbo].[Process] D ON a.Process = d.ProcessName
                     INNER JOIN [eMaintenanceSystemDB].[dbo].[testertype] c
-                        ON a.MCType = c.testertype AND c.ProcessID = d.ProcessID AND c.location = @Location
+                        ON a.MCType = c.testertype AND c.ProcessID = d.ProcessID AND (@Location = 'All' OR c.location = @Location)
                     WHERE (TimeOfRequest BETWEEN @Range1 AND @Range2)
                       AND (PMCategoryID = 1 OR PMCategoryID = 4)
                       AND d.ProcessName = @Process
-                      AND a.Location = @Location
+                      AND (@Location = 'All' OR a.Location = @Location)
                       {machineFilter}
                       AND a.BMStatusID NOT IN ('30','31','1','2','3','7','17')
                       AND BMUnitID <> 0
@@ -424,7 +495,8 @@ namespace MachineKarte.Web.Repositories
                                    WHERE REPLACE(Devicename,' ','') = REPLACE(a.devicename,' ','') AND isactive = 1),'No') AS isMCD,
                            a.process, a.location, a.testerNo AS Mcno, a.mctype,
                            FORMAT(a.Timeofrequest,'MM/dd/yyyy HH:mm:ss') AS Timeofrequest,
-                           b.bmteunit AS BMCase, a.bmid,
+                           b.bmteunit AS BMCase, a.BMCaseID AS BMCaseID, a.bmid,
+                           (SELECT COUNT(*) FROM gridBMOCAP WHERE BMCaseID = a.BMCaseID AND Process = a.process) AS OCAPCount,
                            ISNULL((SELECT 'Yes' FROM MachineKarte_ActionCard_TE WHERE bmid = a.bmID),'No') AS HaveAction,
                            COALESCE(CASE WHEN a.AcredBMContentID <> a.BMContentID THEN
                                CASE WHEN a.AcredBMContentID = '' OR a.AcredBMContentID = '0' OR a.AcredBMContentID IS NULL
@@ -442,7 +514,8 @@ namespace MachineKarte.Web.Repositories
                       AND (a.Pmcategoryid = '1' OR a.Pmcategoryid = '4')
                       AND a.BMStatusID NOT IN ('30','31','1','2','3','7','17')
                       AND a.bmunitid <> 0
-                      AND a.Location = @Location
+                      AND (@Location = 'All' OR a.Location = @Location)
+                      AND a.testerno = @Mcno
                     ORDER BY a.testerNo DESC, a.MCType DESC, a.Timeofrequest DESC, b.bmteunit";
             }
 
@@ -468,7 +541,8 @@ namespace MachineKarte.Web.Repositories
                                WHERE REPLACE(Devicename,' ','') = REPLACE(a.devicename,' ','') AND isactive = 1),'No') AS isMCD,
                        a.process, a.location, a.Mcno AS Mcno,
                        FORMAT(a.Timeofrequest,'MM/dd/yyyy HH:mm:ss') AS Timeofrequest,
-                       b.BMWhy AS BMCase, a.bmid,
+                       b.BMWhy AS BMCase, a.BMCaseID AS BMCaseID, a.bmid,
+                       (SELECT COUNT(*) FROM gridBMOCAP WHERE BMCaseID = a.BMCaseID AND Process = a.process) AS OCAPCount,
                        ISNULL((SELECT 'Yes' FROM {actionTable} WHERE bmid = a.bmID AND machineno = a.mcno),'No') AS HaveAction,
                        COALESCE(CASE WHEN a.AcredBMContentID <> a.BMContentID THEN
                            CASE WHEN a.AcredBMContentID = '' OR a.AcredBMContentID = '0' OR a.AcredBMContentID IS NULL
@@ -485,7 +559,7 @@ namespace MachineKarte.Web.Repositories
                   AND a.PMCategoryID = 1
                   AND {addQuery}
                   AND a.BMCaseID <> 0
-                  AND a.Location = @Location
+                  AND (@Location = 'All' OR a.Location = @Location)
                   AND a.Mcno = @Mcno
                 ORDER BY a.Mcno DESC, a.MCType DESC, a.Timeofrequest DESC, b.BMWhy";
         }

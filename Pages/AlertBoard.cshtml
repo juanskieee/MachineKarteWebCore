@@ -1,0 +1,68 @@
+@page
+@model MachineKarte.Web.Pages.AlertBoardModel
+@{
+	ViewData["Title"] = "Repeat BM Alert Board";
+	ViewData["Page"] = "AlertBoard";
+	Layout = "_Layout";
+	var processes = new[] { "DC", "DB", "WB", "MP", "PL", "ATC", "SING", "FL", "FT", "TP", "EDS", "MEMS" };
+	var locations = new[] { "LSI1-1F", "LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-1F", "LSI3-2F", "LSI3-3F", "LSI3-4F" };
+}
+
+<div class="ab-container">
+	<div class="ab-toolbar">
+		<label for="dtFrom">From</label>
+		<input id="dtFrom" type="datetime-local" />
+		<label for="dtTo">To</label>
+		<input id="dtTo" type="datetime-local" />
+		<label for="selUser">User</label>
+		<select id="selUser">
+			<option value="">PM</option>
+			<option value="CC">CC</option>
+			<option value="EEE">EEE</option>
+			<option value="VIS">VIS</option>
+			<option value="TE">TE</option>
+		</select>
+		<button id="btnSearch" class="ab-btn-search" type="button">Search</button>
+		<div id="progressBar" class="ab-progress" style="display:none"><div id="progressInner" class="ab-progress-inner"></div></div>
+	</div>
+
+	<div class="ab-panel">
+		<div class="ab-header-row">
+			<div class="ab-hdr-process">Process</div>
+			@foreach (var location in locations) { <div class="ab-hdr-loc">@location</div> }
+			<div class="ab-hdr-total">Total</div>
+		</div>
+		@foreach (var process in processes)
+		{
+			<div class="ab-proc-row">
+				<div class="ab-cell-label">@process</div>
+				@for (var index = 0; index < locations.Length; index++)
+				{
+					<div id="cell_@(process)_@index" data-cell="@(process)_@index" class="ab-cell ab-cell-active">0</div>
+				}
+				<div id="ptotal_@process" class="ab-cell ab-cell-total">0</div>
+			</div>
+		}
+		<div class="ab-proc-row ab-totals-row">
+			<div class="ab-cell-label">Total</div>
+			@foreach (var location in locations) { <div id="ltotal_@location" class="ab-cell ab-cell-total">0</div> }
+			<div id="grandTotal" class="ab-cell ab-cell-grand">0</div>
+		</div>
+	</div>
+
+	<div id="panelDrilldown" class="ab-drilldown" style="display:none">
+		<div class="ab-drilldown-header">
+			<span id="drilldownTitle"></span>
+			<div class="ab-drilldown-btns">
+				<button id="btnDrillGo" class="ab-btn ab-btn-primary" type="button">View in Monitoring</button>
+				<button id="btnDrillClose" class="ab-btn" type="button">Close</button>
+			</div>
+		</div>
+		<ul id="drilldownList" class="ab-machine-list"></ul>
+	</div>
+</div>
+
+@Html.AntiForgeryToken()
+
+@section Styles { <link rel="stylesheet" href="~/Assets/css/AlertBoard.css" /> }
+@section Scripts { <script src="~/Assets/js/AlertBoard.js"></script> }

@@ -29,7 +29,36 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('dt1').value = formatDate(new Date(today.getTime() - 30 * 86400000));
 
     startRefreshTimer();
+    initializeFromQueryString();
 });
+
+async function initializeFromQueryString() {
+    const query = new URLSearchParams(window.location.search);
+    const process = query.get('process');
+    const floor = query.get('floor') || query.get('location');
+    const machine = query.get('machine');
+    const userType = query.get('userType') || 'PM';
+    if (!process || !floor || !machine) return;
+
+    const user = document.getElementById('cbUser');
+    user.value = userType;
+    await onUserChanged();
+
+    const processSelect = document.getElementById('cbProcess');
+    if (!Array.from(processSelect.options).some(option => option.value === process)) return;
+    processSelect.value = process;
+    await onProcessChanged();
+
+    const floorSelect = document.getElementById('cbFloor');
+    if (!Array.from(floorSelect.options).some(option => option.value === floor)) return;
+    floorSelect.value = floor;
+    await onFloorChanged();
+
+    const machineSelect = document.getElementById('cbMachine');
+    if (!Array.from(machineSelect.options).some(option => option.value === machine)) return;
+    machineSelect.value = machine;
+    await doSearch(1);
+}
 
 // ════════════════════════════════════════════════════════
 // DROPDOWN CASCADES
@@ -345,9 +374,47 @@ function buildBMCard(card, actionLine, userType) {
         <div class="bm-card-footer">
             <span class="bm-location">${escHtml(card.location)}</span>
             <span class="bm-id">#${card.bmId}</span>
+            <span class="bm-card-actions">
+                <button type="button" class="bm-command" data-command="report">R→</button>
+                <button type="button" class="bm-command" data-command="evidence">E→</button>
+                ${card.ocapCount > 0 ? `<button type="button" class="bm-command" data-command="ocap">O→</button>` : ''}
+            </span>
         </div>`;
 
+    div.querySelectorAll('.bm-command').forEach(button => {
+        button.addEventListener('click', event => {
+            event.stopPropagation();
+            openBMCommand(button.dataset.command, card, userType);
+        });
+    });
+
     return div;
+}
+
+function openBMCommand(command, card, userType) {
+    if (command === 'report') {
+        const page = userType === 'TE' ? '/BmReport' : '/PmReport';
+        const params = userType === 'TE'
+            ? `bmId=${enc(card.bmId)}&process=${enc(card.process)}`
+            : `bmId=${enc(card.bmId)}&process=${enc(card.process)}&timeOfRequest=${enc(card.timeOfRequest)}&machineNo=${enc(card.machineNo)}`;
+        window.open(`${page}?${params}`, '_blank');
+        return;
+    }
+
+    if (command === 'evidence') {
+        const page = userType === 'TE' ? '/TeEvidenceMaking' : '/EvidenceMaking';
+        const params = userType === 'TE'
+            ? `bmId=${enc(card.bmId)}&autoGenerate=1`
+            : `process=${enc(card.process)}&bmId=${enc(card.bmId)}`;
+        window.open(`${page}?${params}`, '_blank');
+        return;
+    }
+
+    if (command === 'ocap') {
+        window.open(
+            `/OcapViewer?bmId=${enc(card.bmId)}&bmProcess=${enc(card.process)}&bmCaseId=${enc(card.bmCaseId)}`,
+            '_blank');
+    }
 }
 function clearCards() {
     const scroller = document.getElementById('cardScroller');

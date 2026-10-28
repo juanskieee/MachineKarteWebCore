@@ -411,6 +411,24 @@ body {
     margin-top: 2px;
 }
 
+.bm-card-actions {
+    display: inline-flex;
+    gap: 2px;
+}
+
+.bm-command {
+    padding: 0 3px;
+    border: 1px solid #aaa;
+    background: #fff;
+    color: #333;
+    font-size: 10px;
+    cursor: pointer;
+}
+
+.bm-command:hover {
+    background: #e8f0fe;
+}
+
 /* Badges */
 .badge-mcd {
     background: darkorange;

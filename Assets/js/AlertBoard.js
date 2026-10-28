@@ -151,7 +151,13 @@
 
     async function openDrilldown(cellKey) {
         try {
-            const res = await fetch('/AlertBoard?handler=Drilldown&cellKey=' + encodeURIComponent(cellKey));
+            const query = new URLSearchParams({
+                cellKey,
+                dateFrom: fmtForServer(dtFrom.value),
+                dateTo: fmtForServer(dtTo.value),
+                user: selUser.value
+            });
+            const res = await fetch('/AlertBoard?handler=Drilldown&' + query.toString());
             const json = await res.json();
             if (!json.success) throw new Error(json.message);
 

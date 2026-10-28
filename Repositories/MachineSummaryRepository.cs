@@ -28,6 +28,8 @@ namespace MachineKarte.Web.Repositories
             var sql = $@"
                 SELECT DISTINCT a.Mcno
                 FROM [eMaintenanceSystemDB].[dbo].[{process}BMMaintenance] a
+                INNER JOIN [eMaintenanceSystemDB].[dbo].[BMCase] b
+                    ON a.BMCaseID = b.BMCaseID
                 WHERE EXISTS (
                     SELECT 1
                     FROM [eMaintenanceSystemDB].[dbo].[MachineKarte_MCD] mcd
@@ -44,7 +46,7 @@ namespace MachineKarte.Web.Repositories
                 AND  a.Pmcategoryid = '1'
                 AND  a.BMStatusID   NOT IN (30, 31)
                 AND  a.bmcaseid     <> 0
-                AND  a.Location     = @Location
+                AND  (@Location = 'All' OR a.Location = @Location)
                 ORDER BY a.Mcno";
 
             return await QueryMachinesAsync(sql, process, location, from, to, mcnoColumn: "Mcno");
@@ -76,7 +78,7 @@ namespace MachineKarte.Web.Repositories
                 AND (a.Pmcategoryid  = '1' OR a.Pmcategoryid = '4')
                 AND  a.BMStatusID    NOT IN (30, 31, 1, 2, 3, 7, 17)
                 AND  a.bmunitid      <> 0
-                AND  a.Location      = @Location
+                AND  (@Location = 'All' OR a.Location = @Location)
                 ORDER BY a.TesterNo";
 
             return await QueryMachinesAsync(sql, process, location, from, to, mcnoColumn: "TesterNo");

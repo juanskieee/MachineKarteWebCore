@@ -201,25 +201,60 @@ ORDER BY BMEvidenceID";
         public async Task<(string Ideas, string WaferNo, string Remarks, string TelekoCheckingData)>
             GetMiscDataAsync(string bmId)
         {
-            const string sql = @"
-SELECT DISTINCT TelekoCheckingData, Ideas, Remarks, WaferNo
-FROM   TEBMEvidenceMaking
-WHERE  bmID = @bmId
-GROUP BY TelekoCheckingData, TelekoEvidence, Ideas, Remarks, WaferNo, QualityDefect";
-
             await using var conn = new SqlConnection(_conn);
             await conn.OpenAsync();
+
+            var availableColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            const string schemaSql = @"
+SELECT COLUMN_NAME
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_SCHEMA = 'dbo'
+  AND TABLE_NAME = 'TEBMEvidenceMaking'
+  AND COLUMN_NAME IN ('TelekoCheckingData', 'Ideas', 'Remarks', 'WaferNo')";
+
+            await using (var schemaCommand = new SqlCommand(schemaSql, conn))
+            await using (var schemaReader = await schemaCommand.ExecuteReaderAsync())
+            {
+                while (await schemaReader.ReadAsync())
+                    availableColumns.Add(schemaReader.GetString(0));
+            }
+
+            var selectColumns = new[] { "TelekoCheckingData", "Ideas", "Remarks", "WaferNo" }
+                .Where(availableColumns.Contains)
+                .ToArray();
+
+            if (selectColumns.Length == 0)
+                return ("", "", "", "");
+
+            var sql = $@"
+SELECT TOP 1 {string.Join(", ", selectColumns)}
+FROM   [dbo].[TEBMEvidenceMaking]
+WHERE  bmID = @bmId";
+
             await using var cmd = new SqlCommand(sql, conn);
             cmd.Parameters.AddWithValue("@bmId", bmId);
             await using var rdr = await cmd.ExecuteReaderAsync();
             if (await rdr.ReadAsync())
                 return (
-                    rdr["Ideas"].ToString()!,
-                    rdr["WaferNo"].ToString()!,
-                    rdr["Remarks"].ToString()!,
-                    rdr["TelekoCheckingData"].ToString()!
+                    ReadOptional(rdr, "Ideas"),
+                    ReadOptional(rdr, "WaferNo"),
+                    ReadOptional(rdr, "Remarks"),
+                    ReadOptional(rdr, "TelekoCheckingData")
                 );
             return ("", "", "", "");
+        }
+
+        private static string ReadOptional(SqlDataReader reader, string columnName)
+        {
+            try
+            {
+                var ordinal = reader.GetOrdinal(columnName);
+                return reader.IsDBNull(ordinal) ? string.Empty : reader.GetValue(ordinal).ToString() ?? string.Empty;
+            }
+            catch (IndexOutOfRangeException)
+            {
+                return string.Empty;
+            }
         }
     }
 }

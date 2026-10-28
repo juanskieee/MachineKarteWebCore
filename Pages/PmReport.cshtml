@@ -1,0 +1,35 @@
+@page
+@model MachineKarte.Web.Pages.PmReportModel
+@{
+    ViewData["Title"] = "PM Maintenance Record";
+    ViewData["Page"] = "PmReport";
+    Layout = "_Layout";
+}
+
+<div class="pm-report-page">
+    <header class="pm-report-header">
+        <div>
+            <h1>PM Maintenance Record</h1>
+            <p>Process: <strong id="pmProcess">@Model.Process</strong> | BM ID: <strong id="pmBmId">@Model.BmId</strong></p>
+        </div>
+        <button id="pmGenerate" class="pm-report-button" type="button">Generate report</button>
+    </header>
+
+    <div id="pmStatus" class="pm-report-status" role="status" aria-live="polite"></div>
+    <a id="pmDownload" class="pm-report-download" href="#" download hidden>Download report</a>
+</div>
+
+@section Styles {
+    <link rel="stylesheet" href="~/Assets/css/PmReport.css" />
+}
+@section Scripts {
+    <script>
+        window.__pmReport = {
+            process: '@Model.Process',
+            bmId: '@Model.BmId',
+            timeOfRequest: '@Model.TimeOfRequest',
+            machineNo: '@Model.MachineNo'
+        };
+    </script>
+    <script src="~/Assets/js/PmReport.js"></script>
+}
