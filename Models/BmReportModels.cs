@@ -103,6 +103,7 @@
         public string AcredBMCaseID { get; set; } = "";
         public string AcredBMMCUnitID { get; set; } = "";
         public string AcredBMWorkContentID { get; set; } = "";
+        public string AcredBMCauseID { get; set; } = "";
 
         // --- Signals ---
         public string AQI { get; set; } = "";

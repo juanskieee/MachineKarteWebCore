@@ -2,10 +2,11 @@
 @model MachineKarte.Web.Pages.MachineSummaryModel
 @{
     ViewData["Title"] = "Machine Summary — Need Action with MCD";
+    Layout = "_Layout";
 }
 
 @section Styles {
-    <link rel="stylesheet" href="~/Assets/css/MachineSummary.css" />
+    <link rel="stylesheet" href="~/Assets/css/MachineSummary.css" asp-append-version="true" />
 }
 
 <div class="ms-wrapper">
@@ -23,11 +24,11 @@
         <div class="ms-toolbar-group">
             <label for="msMode">Mode</label>
             <select id="msMode">
-                <option value="EEE">EEE</option>
-                <option value="TE">TE</option>
+                <option value="EEE" selected="@(Model.DefaultMode == "EEE" ? "selected" : null)">EEE</option>
+                <option value="TE" selected="@(Model.DefaultMode == "TE" ? "selected" : null)">TE</option>
             </select>
         </div>
-        <button id="msSearch" class="ms-btn-search">&#128269; Search</button>
+        <button id="msSearch" class="ms-btn-search" type="button">&#128269; Search</button>
         <span id="msStatus" class="ms-status"></span>
     </div>
 
@@ -64,9 +65,10 @@
 @section Scripts {
     <script>
         window.__ms = {
-            summaryUrl: '@Url.Page("MachineSummary", "Summary")',
+            summaryUrl: '@Url.Page("MachineSummary")',
+            machineListUrl: '@Url.Page("MachineSummary")',
             monitoringUrl: '@Url.Page("Monitoring")'
         };
     </script>
-    <script src="~/Assets/js/MachineSummary.js"></script>
+    <script src="~/Assets/js/MachineSummary.js" asp-append-version="true"></script>
 }

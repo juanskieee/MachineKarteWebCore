@@ -149,6 +149,11 @@ namespace MachineKarte.Web.Services
             if (contentCell != null)
                 ws.Cell(contentCell).Style.Font.Underline = XLFontUnderlineValues.Single;
 
+            FillSetupMarkers(ws, d);
+            FillOptionMarkers(ws, d, process);
+            FillMachineStateMarkers(ws, d);
+            FillTestFlowMarker(ws, d);
+
             // Counts
             ws.Cell("K13").Value = d.TestNoNG;
             ws.Cell("K14").Value = d.LotNG;
@@ -165,7 +170,7 @@ namespace MachineKarte.Web.Services
             ws.Cell("AA18").Value = d.DUT;
             ws.Cell("V19").Value = d.BoxNo;
             ws.Cell(process == "EDS" ? "AG19" : "AF19").Value = d.SubDUT;
-            if (process != "EDS") ws.Cell("Z21").Value = d.Freq;
+            if (process == "EDS") ws.Cell("Z21").Value = d.Freq;
 
             // Personnel signature cells
             ws.Cell("AD4").Value = d.RequestedBy;
@@ -305,9 +310,9 @@ namespace MachineKarte.Web.Services
             // Taxonomy footer
             var footerRow = process == "EDS" ? 92 : 91;
             ws.Cell($"A{footerRow}").Value = d.RepairedByEnd;
-            ws.Cell($"F{footerRow}").Value = d.PMCategory;
             if (process == "EDS")
             {
+                ws.Cell($"F{footerRow}").Value = d.PMCategory;
                 ws.Cell($"K{footerRow}").Value = d.TEContent;
                 ws.Cell($"P{footerRow}").Value = d.BMCase;
                 ws.Cell($"U{footerRow}").Value = d.BMTEUnit;
@@ -343,6 +348,9 @@ namespace MachineKarte.Web.Services
                 ws.Cell("AI15").Value = d.EDSTotalDutCOUNT;
                 ws.Cell("M73").Value = d.OverDriveBefore;
                 ws.Cell("V73").Value = d.OverDriveAFter;
+                ws.Cell("AC73").Value = d.EDSCS1Pprod;
+                ws.Cell("M76").Value = d.OverDriveBefore;
+                ws.Cell("V76").Value = d.OverDriveAFter;
             }
 
             // TE-specific EDS cells
@@ -379,9 +387,6 @@ namespace MachineKarte.Web.Services
             FillQcData(ws, d, process);
 
             // Misc
-            ws.Cell("AC73").Value = d.EDSCS1Pprod;
-            ws.Cell(process == "EDS" ? "M76" : "M75").Value = d.OverDriveBefore;
-            ws.Cell(process == "EDS" ? "V76" : "V75").Value = d.OverDriveAFter;
             ws.Cell(process == "EDS" ? "N61" : "N60").Value = d.LotSlipvsOIS;
             ws.Cell(process == "EDS" ? "N62" : "N61").Value = d.LoadOIS;
             ws.Cell(process == "EDS" ? "Y62" : "Y61").Value = d.LoadTestFlow;
@@ -402,11 +407,11 @@ namespace MachineKarte.Web.Services
             {
                 ws.Cell("K71").Value = d.DropICCheckAfterWork;
                 ws.Cell("W71").Value = d.DropICCheckBy;
-            }
-            else
-            {
-                ws.Cell("K72").Value = d.DropICCheckAfterWork;
-                ws.Cell("W72").Value = d.DropICCheckBy;
+                if (!string.IsNullOrEmpty(d.QualityCheckData))
+                {
+                    ws.Cell("K72").Value = d.DropICCheckAfterWork;
+                    ws.Cell("W72").Value = d.DropICCheckBy;
+                }
             }
 
             ws.Cell(process == "EDS" ? "K78" : "K77").Value = d.BoxChangedfrom;
@@ -429,12 +434,107 @@ namespace MachineKarte.Web.Services
                 FillUntestedSample(ws, d);
 
             // Accreditor colour flagging when BMStatusID = 14
-            if (d.BMStatusID == "14")
-                ApplyAccreditorColours(ws, d, process);
+            if (process != "EDS" && d.BMStatusID == "14")
+                ApplyAccreditorColours(ws, d);
 
             // CP Data (TE only)
             if (process != "EDS" && !string.IsNullOrEmpty(d.CPData))
                 FillCpData(ws, d);
+
+            CenterComparisonCells(ws);
+        }
+
+        private static void SetMarker(IXLWorksheet ws, string cell, string text, double fontSize = 9)
+        {
+            var c = ws.Cell(cell);
+            c.Value = text;
+            c.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            c.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+            c.Style.Font.FontSize = fontSize;
+            c.Style.Font.FontColor = XLColor.Black;
+        }
+
+        private static void FillSetupMarkers(IXLWorksheet ws, BmReportData d)
+        {
+            switch ((d.Setup ?? "").Trim())
+            {
+                case "Newly Set-up":
+                    SetMarker(ws, "S13", "✓");
+                    break;
+                case "Lot Change only":
+                    SetMarker(ws, "S14", "✓");
+                    break;
+                case "Device changed only":
+                    SetMarker(ws, "AA13", "✓");
+                    break;
+                case "Others":
+                    SetMarker(ws, "AA14", "✓");
+                    break;
+            }
+        }
+
+        private static void FillOptionMarkers(IXLWorksheet ws, BmReportData d, string process)
+        {
+            var value = (d.OPPosition ?? "").Trim();
+            if (value != "Start of Lot" && value != "Middle of Lot" && value != "End of Lot")
+                return;
+
+            var cells = process == "EDS"
+                ? new[] { "Y16", "AD16", "AI16" }
+                : new[] { "X16", "AD16", "AI16" };
+
+            foreach (var cell in cells)
+                SetMarker(ws, cell, "□");
+
+            var index = value switch
+            {
+                "Start of Lot" => 0,
+                "Middle of Lot" => 1,
+                _ => 2
+            };
+            SetMarker(ws, cells[index], "✓");
+        }
+
+        private static void FillMachineStateMarkers(IXLWorksheet ws, BmReportData d)
+        {
+            var value = (d.MCStatus ?? "").Trim();
+            if (value != "On-Stop" && value != "Operational")
+                return;
+
+            SetMarker(ws, "AK17", "□");
+            SetMarker(ws, "AK22", "□");
+            SetMarker(ws, value == "On-Stop" ? "AK17" : "AK22", "✓");
+        }
+
+        private static void FillTestFlowMarker(IXLWorksheet ws, BmReportData d)
+        {
+            var value = (d.TestFlow ?? "").Trim();
+            if (value != "OS" && value != "A1" && value != "A2" &&
+                value != "A3" && value != "A4" && value != "A8")
+                return;
+
+            var x17 = ws.Cell("X17");
+            var merged = ws.MergedRanges.FirstOrDefault(r => r.Contains(x17));
+            if (merged != null && merged.FirstCell().Address.ToString() != x17.Address.ToString())
+            {
+                var label = ws.Cell("S17");
+                var prefix = label.GetString().TrimEnd();
+                label.Value = string.IsNullOrEmpty(prefix) ? value : $"{prefix} {value}";
+            }
+            else
+            {
+                SetMarker(ws, "X17", value, 10);
+            }
+        }
+
+        private static void CenterComparisonCells(IXLWorksheet ws)
+        {
+            foreach (var column in new[] { "H", "K", "N", "Q", "T", "W", "Y", "AB" })
+            {
+                for (var row = 60; row <= 62; row++)
+                    ws.Cell($"{column}{row}").Style.Alignment.Horizontal =
+                        XLAlignmentHorizontalValues.Center;
+            }
         }
 
         // -----------------------------------------------------------------------
@@ -516,10 +616,15 @@ namespace MachineKarte.Web.Services
             ws.Cell(cell).Value = arr.Length > idx && IsYes(arr[idx]) ? "Yes" : "N/A";
         }
 
+        private static void QcRawCell(IXLWorksheet ws, string cell, string[] arr, int idx)
+        {
+            var value = arr.Length > idx ? arr[idx] : "";
+            ws.Cell(cell).Value = IsYes(value) ? value : "N/A";
+        }
+
         private static void FillQcEds(IXLWorksheet ws, string[] arr)
         {
-            // EDS mapping (from Form9.vb EDS branch, 14/15-element vs shorter)
-            if (arr.Length >= 14)
+            if (arr.Length == 14 || arr.Length == 15)
             {
                 QcCell(ws, "AE60", arr[0].Split(','), 1);
                 QcCell(ws, "AE61", arr[1].Split(','), 1); QcCell(ws, "AC61", arr[1].Split(','), 0);
@@ -533,25 +638,33 @@ namespace MachineKarte.Web.Services
                 QcCell(ws, "AE69", arr[11].Split(','), 1); QcCell(ws, "AC69", arr[11].Split(','), 0);
                 QcCell(ws, "AE70", arr[12].Split(','), 1); QcCell(ws, "AC70", arr[12].Split(','), 0);
                 QcCell(ws, "AE71", arr[13].Split(','), 1);
-                if (arr.Length >= 16)
-                {
-                    var v15 = arr[15].Split(',');
-                    if (v15.Length > 0 && !string.IsNullOrEmpty(v15[0]) && v15[0] != "0")
-                        ws.Cell("M75").Value = v15[0];
-                }
+            }
+            else
+            {
+                QcCell(ws, "AE60", arr[0].Split(','), 1);
+                QcCell(ws, "AE61", arr[1].Split(','), 1); QcCell(ws, "AC61", arr[1].Split(','), 0);
+                QcCell(ws, "AE62", arr[2].Split(','), 1); QcCell(ws, "AC62", arr[2].Split(','), 0);
+                QcCell(ws, "AE63", arr[3].Split(','), 1);
+                QcCell(ws, "AE74", arr[4].Split(','), 1);
+                QcCell(ws, "AE65", arr[6].Split(','), 1); QcCell(ws, "AC65", arr[6].Split(','), 0);
+                QcCell(ws, "AE66", arr[8].Split(','), 1);
+                QcCell(ws, "AE67", arr[9].Split(','), 1); QcCell(ws, "AC67", arr[9].Split(','), 0);
+                QcCell(ws, "AE68", arr[10].Split(','), 1);
+                QcCell(ws, "AE69", arr[11].Split(','), 1); QcCell(ws, "AC69", arr[11].Split(','), 0);
+                QcCell(ws, "AE70", arr[12].Split(','), 1); QcCell(ws, "AC70", arr[12].Split(','), 0);
+                QcCell(ws, "AE71", arr[13].Split(','), 1);
             }
         }
 
         private static void FillQcTe(IXLWorksheet ws, string[] arr)
         {
-            // TE mapping mirrors VB TE branch
-            if (arr.Length >= 14)
+            if (arr.Length == 14 || arr.Length == 15)
             {
                 QcCell(ws, "AE59", arr[0].Split(','), 1);
                 QcCell(ws, "AE60", arr[1].Split(','), 1); QcCell(ws, "AC60", arr[1].Split(','), 0);
                 QcCell(ws, "AE61", arr[2].Split(','), 1); QcCell(ws, "AC61", arr[2].Split(','), 0);
                 QcCell(ws, "AE62", arr[3].Split(','), 1);
-                QcCell(ws, "AE63", arr[4].Split(','), 1); QcCell(ws, "AC63", arr[4].Split(','), 0);
+                QcCell(ws, "AE63", arr[4].Split(','), 1); QcRawCell(ws, "AC63", arr[4].Split(','), 0);
                 QcCell(ws, "AE72", arr[5].Split(','), 1); QcCell(ws, "AC72", arr[5].Split(','), 0);
                 QcCell(ws, "AE64", arr[6].Split(','), 1); QcCell(ws, "AC64", arr[6].Split(','), 0);
                 QcCell(ws, "AE65", arr[7].Split(','), 1);
@@ -572,17 +685,14 @@ namespace MachineKarte.Web.Services
                     ws.Cell("AE74").Value = "N/A";
                     ws.Cell("O75").Value = "";
                 }
-                ws.Cell("K72").Value = "";   // DropICCheckAfterWork handled in main
-                ws.Cell("W72").Value = "";
             }
             else
             {
-                // Shorter mapping (TE short form)
                 QcCell(ws, "AE59", arr[0].Split(','), 1);
                 QcCell(ws, "AC60", arr[1].Split(','), 0); QcCell(ws, "AE60", arr[1].Split(','), 1);
                 QcCell(ws, "AC61", arr[2].Split(','), 0); QcCell(ws, "AE61", arr[2].Split(','), 1);
                 QcCell(ws, "AE62", arr[3].Split(','), 1);
-                QcCell(ws, "AC63", arr[4].Split(','), 0); QcCell(ws, "AE63", arr[4].Split(','), 1);
+                QcRawCell(ws, "AC63", arr[4].Split(','), 0); QcCell(ws, "AE63", arr[4].Split(','), 1);
                 QcCell(ws, "AC72", arr[5].Split(','), 0); QcCell(ws, "AE72", arr[5].Split(','), 1);
                 QcCell(ws, "AC64", arr[6].Split(','), 0); QcCell(ws, "AE64", arr[6].Split(','), 1);
                 if (arr.Length > 8) { QcCell(ws, "AE65", arr[8].Split(','), 1); }
@@ -591,6 +701,8 @@ namespace MachineKarte.Web.Services
                 if (arr.Length > 11) { QcCell(ws, "AC68", arr[11].Split(','), 0); QcCell(ws, "AE68", arr[11].Split(','), 1); }
                 if (arr.Length > 12) { QcCell(ws, "AC69", arr[12].Split(','), 0); QcCell(ws, "AE69", arr[12].Split(','), 1); }
                 if (arr.Length > 13) { QcCell(ws, "AE70", arr[13].Split(','), 1); }
+                ws.Cell("AE74").Value = "N/A";
+                ws.Cell("O75").Value = "";
                 if (arr.Length > 15)
                 {
                     var v14 = arr[15].Split(',');
@@ -641,18 +753,18 @@ namespace MachineKarte.Web.Services
         // -----------------------------------------------------------------------
         // Accreditor colour flagging (BMStatusID = 14)
         // -----------------------------------------------------------------------
-        private static void ApplyAccreditorColours(IXLWorksheet ws, BmReportData d, string process)
+        private static void ApplyAccreditorColours(IXLWorksheet ws, BmReportData d)
         {
             if (d.AcredPMCategoryID != d.PMCategoryID)
-                ws.Cell(process == "EDS" ? "F92" : "F91").Style.Font.FontColor = XLColor.Red;
+                ws.Cell(72, 4).Style.Font.FontColor = XLColor.Red;
             if (d.AcredBMCaseID != d.BMCaseID)
-                ws.Cell(process == "EDS" ? "K92" : "K91").Style.Font.FontColor = XLColor.Red;
+                ws.Cell(72, 10).Style.Font.FontColor = XLColor.Red;
             if (d.AcredBMMCUnitID != d.BMUnitID)
-                ws.Cell(process == "EDS" ? "P92" : "P91").Style.Font.FontColor = XLColor.Red;
+                ws.Cell(72, 13).Style.Font.FontColor = XLColor.Red;
             if (d.AcredBMWorkContentID != d.BMWorkContentID)
-                ws.Cell(process == "EDS" ? "AE92" : "Z91").Style.Font.FontColor = XLColor.Red;
-            if (d.Why4 != d.BMCauseID)
-                ws.Cell(process == "EDS" ? "AJ92" : "AE91").Style.Font.FontColor = XLColor.Red;
+                ws.Cell(72, 19).Style.Font.FontColor = XLColor.Red;
+            if (d.Why4 != d.AcredBMCauseID)
+                ws.Cell(72, 22).Style.Font.FontColor = XLColor.Red;
         }
 
         // -----------------------------------------------------------------------

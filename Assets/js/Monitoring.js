@@ -38,6 +38,12 @@ async function initializeFromQueryString() {
     const floor = query.get('floor') || query.get('location');
     const machine = query.get('machine');
     const userType = query.get('userType') || 'PM';
+    const dateFrom = query.get('dateFrom');
+    const dateTo = query.get('dateTo');
+
+    if (dateFrom) document.getElementById('dt1').value = dateFrom.slice(0, 10);
+    if (dateTo) document.getElementById('dt2').value = dateTo.slice(0, 10);
+
     if (!process || !floor || !machine) return;
 
     const user = document.getElementById('cbUser');
@@ -474,15 +480,25 @@ function derivedColor(mcStatus) {
 // ════════════════════════════════════════════════════════
 
 function openSection(section) {
-    if (!val('cbUser')) {
+    const userType = val('cbUser');
+    if (!userType) {
         showToast('Please select a User first.');
+        return;
+    }
+
+    if (section === 'WithAction') {
+        const params = new URLSearchParams({
+            userMode: userType === 'TE' ? 'TE' : 'EEE',
+            dateFrom: val('dt1'),
+            dateTo: val('dt2')
+        });
+        window.location.href = `/MachineSummary?${params}`;
         return;
     }
 
     const urls = {
         RepeatBM: '/AlertBoard',
-        MCD: '/McdMonitoring',
-        WithAction: '/MachineSummary'
+        MCD: '/McdMonitoring'
     };
 
     window.location.href = urls[section] ?? '/Monitoring';

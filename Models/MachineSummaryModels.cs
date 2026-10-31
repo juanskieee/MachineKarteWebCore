@@ -34,11 +34,23 @@ namespace MachineKarte.Web.Models
     // ── Full grid result ──────────────────────────────────────────────────────────
     public class MachineSummaryResult
     {
+        /// <summary>"EEE" or "TE".</summary>
+        public string Mode { get; set; } = "EEE";
         public List<SummaryProcessRow> Rows { get; set; } = new();
         /// <summary>Column (location) totals; key = location.</summary>
         public Dictionary<string, int> LocationTotals { get; set; } = new();
+        /// <summary>Row totals; key = process.</summary>
+        public Dictionary<string, int> ProcessTotals { get; set; } = new();
         public int GrandTotal { get; set; }
         public string[] Columns { get; set; } = System.Array.Empty<string>();
+    }
+
+    // ── Machine list result for a clicked cell ────────────────────────────────────
+    public class MachineSummaryMachineListResult
+    {
+        public string Process { get; set; } = string.Empty;
+        public string Location { get; set; } = string.Empty;
+        public List<string> Machines { get; set; } = new();
     }
 
     // ── Static configuration (process → valid locations, column order) ────────────
@@ -69,12 +81,12 @@ namespace MachineKarte.Web.Models
         /// </summary>
         public static readonly string[] TeProcessOrder =
         {
-            "FL", "FT", "TP", "EDS", "MEMS"
+            "FL", "FT", "TP", "MEMS", "EDS"
         };
 
         /// <summary>
-        /// Process → locations actually queried in EEE mode.
-        /// Source of truth: VB LoadMCName() switch block.
+        /// Process → locations queried in EEE mode.
+        /// Mirrors the completed Form11 label layout and the MCD monitoring grid.
         /// </summary>
         public static readonly Dictionary<string, string[]> ProcessLocations =
             new(System.StringComparer.OrdinalIgnoreCase)
@@ -82,11 +94,11 @@ namespace MachineKarte.Web.Models
                 ["DC"] = new[] { "LSI1-1F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-2F" },
                 ["DB"] = new[] { "LSI1-1F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-2F" },
                 ["WB"] = new[] { "LSI1-1F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-2F" },
-                ["MP"] = new[] { "LSI1-1F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-2F" },
-                ["PL"] = new[] { "LSI1-1F", "LSI2-1F", "LSI3-1F" },
-                ["ATC"] = new[] { "LSI1-1F", "LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-3F" },
+                ["MP"] = new[] { "LSI1-1F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-1F" },
+                ["PL"] = new[] { "LSI1-1F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-1F" },
+                ["ATC"] = new[] { "LSI1-1F", "LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-1F", "LSI3-3F" },
                 ["FL"] = new[] { "LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-3F" },
-                ["SING"] = new[] { "LSI1-1F", "LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-3F" },
+                ["SING"] = new[] { "LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-3F" },
                 ["FT"] = new[] { "LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-3F" },
                 ["TP"] = new[] { "LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-3F" },
                 ["EDS"] = new[] { "LSI3-4F" },
@@ -95,7 +107,6 @@ namespace MachineKarte.Web.Models
 
         /// <summary>
         /// Process → locations queried in TE mode.
-        /// Source of truth: VB LoadMCName() strProcess_TE branch.
         /// </summary>
         public static readonly Dictionary<string, string[]> ProcessLocations_TE =
             new(System.StringComparer.OrdinalIgnoreCase)
@@ -103,8 +114,22 @@ namespace MachineKarte.Web.Models
                 ["FL"] = new[] { "LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-3F" },
                 ["FT"] = new[] { "LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-3F" },
                 ["TP"] = new[] { "LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-3F" },
-                ["EDS"] = new[] { "LSI3-4F" },
                 ["MEMS"] = new[] { "LSI3-2F" },
+                ["EDS"] = new[] { "LSI3-4F" },
             };
+
+        public static string[] GetProcesses(bool isTe)
+            => isTe ? TeProcessOrder : EeeProcessOrder;
+
+        public static string[] GetLocations(string process, bool isTe)
+        {
+            var map = isTe ? ProcessLocations_TE : ProcessLocations;
+            return map.TryGetValue(process, out var locations)
+                ? locations
+                : System.Array.Empty<string>();
+        }
+
+        public static bool IsValidProcess(string process, bool isTe)
+            => GetProcesses(isTe).Contains(process, System.StringComparer.OrdinalIgnoreCase);
     }
 }

@@ -60,8 +60,13 @@
     transition: background 0.15s;
 }
 
-    .ms-btn-search:hover {
+    .ms-btn-search:hover:not(:disabled) {
         background: #1558b0;
+    }
+
+    .ms-btn-search:disabled {
+        background: #999;
+        cursor: default;
     }
 
 .ms-status {
@@ -340,6 +345,12 @@
     .ms-panel-item.ms-selected {
         background: #1a6fdb;
         color: #fff;
+    }
+
+    .ms-panel-item.ms-panel-message {
+        color: #bbb;
+        font-style: italic;
+        cursor: default;
     }
 
 .ms-btn-go {

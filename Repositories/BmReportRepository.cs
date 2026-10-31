@@ -31,10 +31,20 @@ namespace MachineKarte.Web.Repositories
 
             var d = new BmReportData { BmId = bmId };
 
-            string S(string col) =>
-                dr.GetOrdinal(col) >= 0 && !dr.IsDBNull(dr.GetOrdinal(col))
-                    ? dr[col].ToString()!
-                    : "";
+            string S(string col)
+            {
+                int ordinal;
+                try
+                {
+                    ordinal = dr.GetOrdinal(col);
+                }
+                catch (IndexOutOfRangeException)
+                {
+                    return "";
+                }
+
+                return dr.IsDBNull(ordinal) ? "" : dr.GetValue(ordinal)?.ToString() ?? "";
+            }
 
             d.TesterNo = S("TesterNo"); d.MCNo = S("MCNo"); d.CellLine = S("CellLine");
             d.DeviceName = S("DeviceName"); d.PKGName = S("PKGName"); d.LOTNo = S("LOTNo");
@@ -74,6 +84,7 @@ namespace MachineKarte.Web.Repositories
             d.BMStatusID = S("BMStatusID"); d.AcredPMCategoryID = S("AcredPMCategoryID");
             d.AcredBMCaseID = S("AcredBMCaseID"); d.AcredBMMCUnitID = S("AcredBMMCUnitID");
             d.AcredBMWorkContentID = S("AcredBMWorkContentID");
+            d.AcredBMCauseID = S("AcredBMCauseID");
             d.AQI = S("AQI"); d.Andon = S("Andon");
             d.GLAndon = S("GLAndon"); d.GLAndon2 = S("GLAndon2");
             d.FourM = S("FourM"); d.FourMData = S("FourMData");

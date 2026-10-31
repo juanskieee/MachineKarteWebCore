@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
 using System.Threading.Tasks;
 using MachineKarte.Web.Models;
 using MachineKarte.Web.Repositories;
@@ -12,98 +14,114 @@ namespace MachineKarte.Web.Services
 
         public MachineSummaryService(MachineSummaryRepository repo) => _repo = repo;
 
-        // ─────────────────────────────────────────────────────────────────────────
-        //  Build the complete process × location grid.
-        //  Mirrors Form11.LoadSearch() → ClearLabel() + LoadMCName() + TotalLabel().
-        //  The active code path in the VB is NewLoadColor():
-        //      if isMCD="Yes" AND HaveAction="No" → count the machine
-        //  Both conditions are pushed into SQL via EXISTS / NOT EXISTS.
-        // ─────────────────────────────────────────────────────────────────────────
         public async Task<MachineSummaryResult> BuildSummaryAsync(MachineSummaryQuery query)
         {
-            if (!DateTime.TryParse(query.DateFrom, out var from))
-                throw new ArgumentException("Invalid DateFrom");
-            if (!DateTime.TryParse(query.DateTo, out var to))
-                throw new ArgumentException("Invalid DateTo");
-
-            bool isTE = string.Equals(query.UserMode, "TE", StringComparison.OrdinalIgnoreCase);
-
-            var processOrder = isTE
-                ? MachineSummaryConfig.TeProcessOrder
-                : MachineSummaryConfig.EeeProcessOrder;
-
-            var processMap = isTE
-                ? MachineSummaryConfig.ProcessLocations_TE
-                : MachineSummaryConfig.ProcessLocations;
+            var (from, to) = ParseRange(query);
+            var isTe = IsTe(query.UserMode);
 
             var result = new MachineSummaryResult
             {
+                Mode = isTe ? "TE" : "EEE",
                 Columns = MachineSummaryConfig.DisplayColumns
             };
 
-            // Pre-populate column totals dictionary
-            foreach (var col in MachineSummaryConfig.DisplayColumns)
-                result.LocationTotals[col] = 0;
+            foreach (var column in MachineSummaryConfig.DisplayColumns)
+                result.LocationTotals[column] = 0;
 
-            // ── Query each process row ─────────────────────────────────────────
-            foreach (var proc in processOrder)
+            foreach (var process in MachineSummaryConfig.GetProcesses(isTe))
             {
-                var row = new SummaryProcessRow { Process = proc };
+                var row = new SummaryProcessRow { Process = process };
 
-                // Fill every display column – default to N/A
-                foreach (var col in MachineSummaryConfig.DisplayColumns)
+                foreach (var column in MachineSummaryConfig.DisplayColumns)
                 {
-                    row.Cells[col] = new SummaryCellData
+                    row.Cells[column] = new SummaryCellData
                     {
-                        Process = proc,
-                        Location = col,
-                        Count = 0,
-                        NotApplicable = true   // will be cleared for valid locations
+                        Process = process,
+                        Location = column,
+                        NotApplicable = true
                     };
                 }
 
-                // If this process has no entry in the map, leave all cells N/A
-                if (!processMap.TryGetValue(proc, out var locations))
+                foreach (var location in MachineSummaryConfig.GetLocations(process, isTe))
                 {
-                    result.Rows.Add(row);
-                    continue;
-                }
+                    var machines = await _repo.GetMachinesAsync(process, location, from, to, isTe);
 
-                // Query each valid location in parallel for speed
-                var tasks = new List<Task<(string loc, List<string> machines)>>();
-                foreach (var loc in locations)
-                {
-                    var capturedLoc = loc;
-                    tasks.Add(Task.Run(async () =>
+                    row.Cells[location] = new SummaryCellData
                     {
-                        var machines = isTE
-                            ? await _repo.GetMachinesTEAsync(proc, capturedLoc, from, to)
-                            : await _repo.GetMachinesAsync(proc, capturedLoc, from, to);
-                        return (capturedLoc, machines);
-                    }));
-                }
-
-                var results = await Task.WhenAll(tasks);
-
-                foreach (var (loc, machines) in results)
-                {
-                    row.Cells[loc] = new SummaryCellData
-                    {
-                        Process = proc,
-                        Location = loc,
+                        Process = process,
+                        Location = location,
                         Count = machines.Count,
                         Machines = machines,
                         NotApplicable = false
                     };
+
                     row.RowTotal += machines.Count;
-                    result.LocationTotals[loc] += machines.Count;
-                    result.GrandTotal += machines.Count;
+                    result.LocationTotals[location] += machines.Count;
                 }
 
+                result.ProcessTotals[process] = row.RowTotal;
+                result.GrandTotal += row.RowTotal;
                 result.Rows.Add(row);
             }
 
             return result;
+        }
+
+        public async Task<MachineSummaryMachineListResult> GetCellAsync(
+            string process, string location, MachineSummaryQuery query)
+        {
+            var (from, to) = ParseRange(query);
+            var isTe = IsTe(query.UserMode);
+
+            var locations = MachineSummaryConfig.GetLocations(process, isTe);
+            if (!locations.Any(x => string.Equals(x, location, StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new ArgumentException(
+                    $"Location '{location}' is not valid for process '{process}'.");
+            }
+
+            var machines = await _repo.GetMachinesAsync(process, location, from, to, isTe);
+
+            return new MachineSummaryMachineListResult
+            {
+                Process = process,
+                Location = location,
+                Machines = machines
+            };
+        }
+
+        private static bool IsTe(string userMode) =>
+            string.Equals(userMode, "TE", StringComparison.OrdinalIgnoreCase);
+
+        private static (DateTime From, DateTime To) ParseRange(MachineSummaryQuery query)
+        {
+            if (!TryParseDate(query.DateFrom, out var from))
+                throw new ArgumentException("Invalid Date From value.");
+            if (!TryParseDate(query.DateTo, out var to))
+                throw new ArgumentException("Invalid Date To value.");
+            if (from > to)
+                throw new ArgumentException("Date From must be earlier than Date To.");
+
+            return (from, to);
+        }
+
+        private static bool TryParseDate(string raw, out DateTime value)
+        {
+            string[] formats =
+            {
+                "MM/dd/yyyy HH:mm:ss",
+                "MM/dd/yyyy HH:mm",
+                "yyyy-MM-ddTHH:mm:ss",
+                "yyyy-MM-ddTHH:mm",
+                "yyyy-MM-dd HH:mm:ss",
+                "yyyy-MM-dd"
+            };
+
+            return DateTime.TryParseExact(
+                       raw, formats, CultureInfo.InvariantCulture,
+                       DateTimeStyles.None, out value)
+                   || DateTime.TryParse(raw, CultureInfo.InvariantCulture,
+                       DateTimeStyles.None, out value);
         }
     }
 }

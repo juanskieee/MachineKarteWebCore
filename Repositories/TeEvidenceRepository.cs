@@ -37,11 +37,7 @@ namespace MachineKarte.Web.Repositories
 
         public async Task<TeEvidenceHeader> GetHeaderAsync(string bmId)
         {
-            const string sql = @"
-SELECT MCNo, TesterNo, DeviceName, LOTNo, TestNoNG, WaferNo,
-       StartOfRepair, EndOfRepair, Remarks
-FROM   ViewTEData
-WHERE  bmID = @bmId";
+            const string sql = "SELECT * FROM ViewTEData WHERE bmID = @bmId";
 
             var header = new TeEvidenceHeader();
             await using var conn = new SqlConnection(_conn);
@@ -51,15 +47,15 @@ WHERE  bmID = @bmId";
             await using var rdr = await cmd.ExecuteReaderAsync();
             if (await rdr.ReadAsync())
             {
-                header.MCNo = rdr["MCNo"].ToString()!;
-                header.TesterNo = rdr["TesterNo"].ToString()!;
-                header.DeviceName = rdr["DeviceName"].ToString()!;
-                header.LotNo = rdr["LOTNo"].ToString()!;
-                header.TestNoNG = rdr["TestNoNG"].ToString()!;
-                header.WaferNo = rdr["WaferNo"].ToString()!;
-                header.StartOfRepair = rdr["StartOfRepair"].ToString()!;
-                header.EndOfRepair = rdr["EndOfRepair"].ToString()!;
-                header.Remarks = rdr["Remarks"].ToString()!;
+                header.MCNo = ReadOptional(rdr, "MCNo");
+                header.TesterNo = ReadOptional(rdr, "TesterNo");
+                header.DeviceName = ReadOptional(rdr, "DeviceName");
+                header.LotNo = ReadOptional(rdr, "LOTNo");
+                header.TestNoNG = ReadOptional(rdr, "TestNoNG");
+                header.WaferNo = ReadOptional(rdr, "WaferNo");
+                header.StartOfRepair = ReadOptional(rdr, "StartOfRepair");
+                header.EndOfRepair = ReadOptional(rdr, "EndOfRepair");
+                header.Remarks = ReadOptional(rdr, "Remarks");
             }
             return header;
         }
