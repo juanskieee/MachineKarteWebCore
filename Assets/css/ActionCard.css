@@ -1,51 +1,43 @@
-﻿body {
-}
-/* ====================================================
-   ActionCards.css — E-Karte System
-   Converted from Form_Input WinForms (Panel1 #343434 bg,
-   Salmon labels, LimeGreen labels, dark panel)
-   ==================================================== */
+﻿/* ============================================================
+   ActionCard.css — E-Karte  |  BM Action Input form
+   Replaces WinForms salmon/limegreen with neutral professional tokens.
+   Depends on site.css for tokens.
+   ============================================================ */
 
-*, *::before, *::after {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-}
-
-/* ── Machine banner  (tbMachineNo — grey, large, read-only) ── */
+/* ── Machine banner ───────────────────────────────────────── */
 .mc-banner {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 12px;
-    background: #555;
-    color: #fff;
-    font-size: 22px;
-    font-weight: bold;
-    padding: 8px 16px;
-    letter-spacing: 1px;
+    background: var(--clr-dark-panel);
+    color: var(--clr-dark-text);
+    font-size: 1.25rem;
+    font-weight: 700;
+    padding: 10px 18px;
+    letter-spacing: .5px;
     flex-shrink: 0;
     min-height: 46px;
 }
 
 .banner-case {
-    font-size: 14px;
-    font-weight: normal;
-    color: #ccc;
+    font-size: var(--fz-lg);
+    font-weight: 400;
+    color: var(--clr-dark-muted);
 }
 
-/* ── Main panel  (Panel1: bg #343434) ─────────────── */
+/* ── Main dark panel ──────────────────────────────────────── */
 .ac-panel {
-    background: #343434;
+    background: var(--clr-dark-surface);
     flex: 1;
     overflow-y: auto;
-    padding: 6px;
+    padding: 8px;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 5px;
 }
 
-/* ── Rows ──────────────────────────────────────────── */
+/* ── Rows ─────────────────────────────────────────────────── */
 .ac-row {
     display: flex;
     align-items: stretch;
@@ -53,31 +45,32 @@
 }
 
 .ac-row-header {
-    min-height: 56px;
+    min-height: 54px;
 }
 
 .comment-row {
-    min-height: 76px;
+    min-height: 72px;
 }
 
 .reply-row {
-    min-height: 76px;
+    min-height: 72px;
 }
 
-/* ── Cells ─────────────────────────────────────────── */
+/* ── Cells ────────────────────────────────────────────────── */
 .ac-cell {
     display: flex;
     align-items: center;
     padding: 2px;
 }
 
-/* Salmon label  (Problem Content, Emp.#, Date, Investigation, Action, Status) */
+/* ── Labels ───────────────────────────────────────────────── */
+/* Problem Content / Status labels (was salmon) → brand-tinted */
 .label-salmon {
-    background: salmon;
-    border: 1px solid #999;
-    color: #000;
-    font-size: 10px;
-    font-weight: bold;
+    background: var(--clr-brand);
+    border: 1px solid var(--clr-brand-dark);
+    color: #fff;
+    font-size: var(--fz-xs);
+    font-weight: 700;
     justify-content: center;
     text-align: center;
     padding: 4px 6px;
@@ -90,13 +83,13 @@
     width: 100px;
 }
 
-/* LimeGreen label  (Comment, Date, Emp. for div comments + replies) */
+/* Comment labels (was limegreen) → success-tinted */
 .label-limegreen {
-    background: limegreen;
-    border: 1px solid #999;
-    color: #000;
-    font-size: 10px;
-    font-weight: bold;
+    background: var(--clr-success);
+    border: 1px solid #15803d;
+    color: #fff;
+    font-size: var(--fz-xs);
+    font-weight: 700;
     justify-content: center;
     text-align: center;
     padding: 4px 6px;
@@ -109,7 +102,7 @@
     width: 100px;
 }
 
-/* Wide / mid / sm flex cells */
+/* ── Input size variants ──────────────────────────────────── */
 .input-wide {
     flex: 1;
 }
@@ -124,25 +117,16 @@
     flex-shrink: 0;
 }
 
-/* ── Inputs / Textareas ────────────────────────────── */
+/* Inputs are styled in site.css; dark panel overrides below */
 .ac-input,
 .ac-textarea,
 .ac-select {
-    width: 100%;
-    font-family: 'Microsoft Sans Serif', Arial, sans-serif;
-    font-size: 12px;
-    background: #fff;
-    border: 1px solid #aaa;
-    border-radius: 2px;
-    padding: 3px 5px;
-    resize: vertical;
+    background: var(--clr-surface);
+    color: var(--clr-text);
+    border-color: var(--clr-border-dark);
+    border-radius: var(--radius-sm);
 }
 
-.ac-textarea {
-    resize: vertical;
-}
-
-/* CharacterCasing = Upper equivalent */
 .upper {
     text-transform: uppercase;
 }
@@ -152,65 +136,40 @@
     resize: none;
 }
 
-/* ── Section headers ───────────────────────────────── */
+/* ── Section header (was limegreen-header) ────────────────── */
 .section-header {
-    font-size: 11px;
-    font-weight: bold;
-    padding: 4px 8px;
-    color: #000;
-    margin-top: 4px;
+    font-size: var(--fz-xs);
+    font-weight: 700;
+    padding: 4px 10px;
+    background: var(--clr-success);
+    color: #fff;
+    margin-top: 5px;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    letter-spacing: .04em;
+    text-transform: uppercase;
 }
 
 .limegreen-header {
-    background: limegreen;
+    background: var(--clr-success);
 }
 
-/* ── Footer / Save ─────────────────────────────────── */
+/* ── Footer / Save ────────────────────────────────────────── */
 .ac-footer {
-    justify-content: flex-start;
+    display: flex;
     align-items: center;
     gap: 14px;
-    padding: 6px 0;
+    padding: 8px 2px;
     margin-top: 4px;
 }
 
 .btn-save {
-    background: #1a6faf;
-    color: #fff;
-    border: none;
-    border-radius: 4px;
-    font-size: 14px;
-    font-weight: bold;
-    padding: 8px 32px;
-    cursor: pointer;
-    height: 36px;
-    letter-spacing: .5px;
-    transition: background .15s;
+    /* inherits from site.css .btn-primary */
+    height: 34px;
+    padding: 0 28px;
+    font-size: var(--fz-lg);
+    letter-spacing: .3px;
 }
-
-    .btn-save:hover {
-        background: #135a8c;
-    }
-
-    .btn-save:disabled {
-        background: #888;
-        cursor: not-allowed;
-    }
 
 .save-status {
-    font-size: 13px;
-}
-
-.status-success {
-    color: limegreen;
-    font-weight: bold;
-}
-
-.status-error {
-    color: #ff6b6b;
-    font-weight: bold;
-}
-
-.status-info {
-    color: #ccc;
+    font-size: var(--fz-md);
 }

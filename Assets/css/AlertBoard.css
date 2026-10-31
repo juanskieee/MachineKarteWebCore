@@ -1,98 +1,71 @@
-﻿/* ── AlertBoard.css ─────────────────────────────────────────────────────────
-   Converts the WinForms Panel3 grid + Panel4 drilldown popup into a
-   responsive web layout.
-   ────────────────────────────────────────────────────────────────────────── */
+﻿/* ============================================================
+   AlertBoard.css — E-Karte  |  Alert Board grid + drilldown
+   Depends on site.css for tokens.
+   ============================================================ */
 
-/* Container */
 .ab-container {
     display: flex;
     flex-direction: column;
     gap: 10px;
     padding: 12px;
-    font-family: Segoe UI, sans-serif;
-    font-size: 13px;
+    font-size: var(--fz-md);
     position: relative;
 }
 
-/* ── Toolbar ──────────────────────────────────────────────────────────────── */
+/* ── Toolbar ──────────────────────────────────────────────── */
 .ab-toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 10px;
-    background: #f0f0f0;
-    border: 1px solid #ccc;
-    border-radius: 4px;
+    /* base layout from site.css shared rule */
+    border-radius: var(--radius);
+    border: 1px solid var(--clr-border);
 }
 
     .ab-toolbar label {
+        font-size: var(--fz-sm);
         font-weight: 600;
-    }
-
-    .ab-toolbar input[type="datetime-local"],
-    .ab-toolbar select {
-        padding: 3px 6px;
-        border: 1px solid #bbb;
-        border-radius: 3px;
-        font-size: 13px;
-    }
-
-.ab-btn-search {
-    padding: 4px 14px;
-    background: #1a73e8;
-    color: #fff;
-    border: none;
-    border-radius: 3px;
-    cursor: pointer;
-    font-size: 13px;
-}
-
-    .ab-btn-search:hover {
-        background: #1558b0;
+        color: var(--clr-text-muted);
     }
 
 /* Progress bar */
 .ab-progress {
     flex: 1;
     min-width: 120px;
-    height: 10px;
-    background: #ddd;
-    border-radius: 5px;
+    height: 6px;
+    background: var(--clr-border);
+    border-radius: 99px;
     overflow: hidden;
 }
 
 .ab-progress-inner {
     height: 100%;
     width: 0;
-    background: #1a73e8;
-    transition: width 0.1s linear;
+    background: var(--clr-brand);
+    transition: width .1s linear;
+    border-radius: 99px;
 }
 
-/* ── Main grid ────────────────────────────────────────────────────────────── */
+/* ── Main grid panel ──────────────────────────────────────── */
 .ab-panel {
-    border: 1px solid #ccc;
-    border-radius: 4px;
+    border: 1px solid var(--clr-border);
+    border-radius: var(--radius);
+    overflow: hidden;
     overflow-x: auto;
+    box-shadow: var(--shadow-sm);
 }
 
-/* Each row is a 12-column grid:
-   [label | 9 location cols | total] */
+/* Row layout: [label | 9 location cols | total] */
 .ab-header-row,
 .ab-proc-row {
     display: grid;
-    grid-template-columns: 60px repeat(9, 1fr) 60px;
-    border-bottom: 1px solid #e0e0e0;
+    grid-template-columns: 64px repeat(9, 1fr) 60px;
+    border-bottom: 1px solid var(--clr-border);
 }
 
-    .ab-proc-row:last-child {
-        border-bottom: none;
-    }
+    .ab-proc-row:last-child { border-bottom: none; }
 
-/* ── Header ── */
+/* Header */
 .ab-header-row {
-    background: #2c5f8a;
-    color: #fff;
+    background: var(--clr-dark-panel);
+    color: var(--clr-dark-text);
     font-weight: 700;
     text-align: center;
 }
@@ -100,101 +73,105 @@
 .ab-hdr-process,
 .ab-hdr-loc,
 .ab-hdr-total {
-    padding: 6px 2px;
-    font-size: 11px;
+    padding: 7px 4px;
+    font-size: var(--fz-xs);
+    text-transform: uppercase;
+    letter-spacing: .05em;
 }
 
-/* ── Cells ── */
+/* Cells */
 .ab-cell-label {
-    padding: 5px 6px;
+    padding: 6px 8px;
     font-weight: 700;
-    background: #e8eaf6;
-    border-right: 1px solid #ccc;
+    background: var(--clr-bg);
+    border-right: 1px solid var(--clr-border);
     display: flex;
     align-items: center;
-    justify-content: flex-start;
-    font-size: 12px;
+    font-size: var(--fz-sm);
+    color: var(--clr-text-muted);
+    text-transform: uppercase;
+    letter-spacing: .04em;
 }
 
 .ab-cell {
     text-align: center;
-    padding: 5px 2px;
-    border-right: 1px solid #e0e0e0;
+    padding: 6px 2px;
+    border-right: 1px solid var(--clr-border);
     display: flex;
     align-items: center;
     justify-content: center;
     min-width: 36px;
-    font-size: 13px;
+    font-size: var(--fz-md);
 }
 
-/* Empty (no station at this location) */
 .ab-cell-empty {
-    background: #f5f5f5;
-    color: #bbb;
+    background: var(--clr-bg);
+    color: var(--clr-text-faint);
 }
 
-/* Active (has a station) — default state */
 .ab-cell-active {
-    background: #fff;
+    background: var(--clr-surface);
     cursor: default;
 }
 
     /* Alert state — count > 0 */
     .ab-cell-active.ab-alert {
-        background: #fff3cd;
-        color: #c62828;
+        background: var(--clr-warn-bg);
+        color: var(--clr-danger);
         font-weight: 700;
         cursor: pointer;
     }
 
         .ab-cell-active.ab-alert:hover {
-            background: #ffe082;
+            background: #fde68a;
         }
 
 /* Total cells */
 .ab-cell-total {
-    background: #e3f2fd;
+    background: var(--clr-info-bg);
     font-weight: 700;
+    color: var(--clr-info);
 }
 
 .ab-cell-grand {
-    background: #1565c0;
+    background: var(--clr-brand);
     color: #fff;
     font-weight: 700;
 }
 
-/* Totals row */
+/* Totals row label */
 .ab-totals-row .ab-cell-label {
-    background: #c8e6c9;
+    background: var(--clr-success-bg);
+    color: var(--clr-success);
     font-weight: 700;
 }
 
-/* ── Drilldown panel ──────────────────────────────────────────────────────── */
+/* ── Drilldown panel ──────────────────────────────────────── */
 .ab-drilldown {
     position: absolute;
     top: 60px;
     left: 50%;
     transform: translateX(-50%);
     width: min(420px, 95vw);
-    background: #fff;
-    border: 2px solid #1a73e8;
-    border-radius: 6px;
-    box-shadow: 0 4px 20px rgba(0,0,0,.25);
+    background: var(--clr-surface);
+    border: 1px solid var(--clr-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
     display: flex;
     flex-direction: column;
     z-index: 100;
+    overflow: hidden;
 }
 
 .ab-drilldown-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 12px;
-    background: #1a73e8;
-    color: #fff;
-    border-radius: 4px 4px 0 0;
+    padding: 10px 14px;
+    background: var(--clr-dark-panel);
+    color: var(--clr-dark-text);
     font-weight: 700;
-    font-size: 14px;
+    font-size: var(--fz-lg);
 }
 
 .ab-drilldown-btns {
@@ -205,45 +182,45 @@
 .ab-btn {
     padding: 3px 10px;
     border: none;
-    border-radius: 3px;
+    border-radius: var(--radius-sm);
     cursor: pointer;
-    font-size: 12px;
-    background: rgba(255,255,255,.25);
+    font-size: var(--fz-sm);
+    font-family: var(--font-ui);
+    background: rgba(255,255,255,.15);
     color: #fff;
+    transition: background var(--t-fast);
 }
 
-    .ab-btn:hover {
-        background: rgba(255,255,255,.45);
-    }
+    .ab-btn:hover { background: rgba(255,255,255,.28); }
 
 .ab-btn-primary {
-    background: #0d47a1;
+    background: var(--clr-brand);
 }
 
-    .ab-btn-primary:hover {
-        background: #0a3270;
-    }
+    .ab-btn-primary:hover { background: var(--clr-brand-dark); }
 
 /* Machine list */
 .ab-machine-list {
     list-style: none;
-    margin: 0;
-    padding: 6px 0;
+    padding: 4px 0;
     max-height: 300px;
     overflow-y: auto;
 }
 
 .ab-machine-item {
-    padding: 6px 14px;
+    padding: 7px 14px;
     cursor: pointer;
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid var(--clr-border);
+    font-size: var(--fz-md);
+    transition: background var(--t-fast);
 }
 
-    .ab-machine-item:hover {
-        background: #e3f2fd;
-    }
+    .ab-machine-item:last-child { border-bottom: none; }
+    .ab-machine-item:hover { background: var(--clr-brand-light); }
 
     .ab-machine-item.selected {
-        background: #bbdefb;
+        background: var(--clr-brand-light);
+        color: var(--clr-brand);
         font-weight: 700;
+        border-left: 3px solid var(--clr-brand);
     }

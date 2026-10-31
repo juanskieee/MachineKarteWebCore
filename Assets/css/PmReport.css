@@ -1,53 +1,87 @@
+﻿/* ============================================================
+   PmReport.css — E-Karte  |  PM Report page
+   Depends on site.css for tokens.
+   ============================================================ */
+
 .pm-report-page {
     max-width: 900px;
-    margin: 32px auto;
-    padding: 24px;
-    background: #fff;
-    border: 1px solid #d6dbe1;
+    margin: 2rem auto;
+    padding: 1.5rem;
+    background: var(--clr-surface);
+    border: 1px solid var(--clr-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
 }
 
+/* ── Header ───────────────────────────────────────────────── */
 .pm-report-header {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
-    gap: 20px;
+    gap: 1.25rem;
+    padding-bottom: 1rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 2px solid var(--clr-brand);
 }
 
-.pm-report-header h1 {
-    margin: 0 0 8px;
-    font-size: 24px;
-}
+    .pm-report-header h1 {
+        margin: 0 0 .25rem;
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: var(--clr-text);
+    }
 
-.pm-report-header p {
-    margin: 0;
-    color: #5b6570;
-}
+    .pm-report-header p {
+        margin: 0;
+        color: var(--clr-text-muted);
+        font-size: var(--fz-md);
+    }
 
+/* ── Buttons ──────────────────────────────────────────────── */
+/* .pm-report-button and .pm-report-download inherit .btn-primary from site.css */
 .pm-report-button,
 .pm-report-download {
-    display: inline-block;
-    padding: 8px 14px;
-    border: 1px solid #1f5f8b;
-    background: #1f5f8b;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 18px;
+    background: var(--clr-brand);
     color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-ui);
+    font-size: var(--fz-md);
+    font-weight: 600;
     text-decoration: none;
     cursor: pointer;
+    height: 34px;
+    transition: background var(--t-fast);
+    white-space: nowrap;
 }
 
-.pm-report-button:disabled {
-    opacity: .6;
-    cursor: wait;
-}
+    .pm-report-button:hover:not(:disabled),
+    .pm-report-download:hover {
+        background: var(--clr-brand-dark);
+    }
 
+    .pm-report-button:disabled {
+        opacity: .5;
+        cursor: wait;
+    }
+
+/* ── Status ───────────────────────────────────────────────── */
 .pm-report-status {
-    min-height: 24px;
-    margin-top: 24px;
+    min-height: 1.4rem;
+    margin-top: 1.25rem;
+    font-size: var(--fz-md);
 }
 
-.pm-report-status[data-state="error"] {
-    color: #a12622;
-}
+    .pm-report-status[data-state="error"] {
+        color: var(--clr-danger);
+        font-weight: 600;
+    }
 
-.pm-report-status[data-state="success"] {
-    color: #176b3a;
-}
+    .pm-report-status[data-state="success"] {
+        color: var(--clr-success);
+        font-weight: 600;
+    }

@@ -1,104 +1,91 @@
-﻿/* Assets/css/OcapViewer.css */
-/* Mirrors Form6: full-width read-only grid inside a GroupBox titled "OCAP". */
+﻿/* ============================================================
+   OcapViewer.css — E-Karte  |  OCAP read-only grid
+   Depends on site.css for tokens.
+   ============================================================ */
 
 .ocap-page {
     display: flex;
     flex-direction: column;
     gap: .75rem;
     padding: 1rem 1.25rem 2rem;
-    background: #f0f0f0;
+    background: var(--clr-bg);
     min-height: 100vh;
-    font-family: "Microsoft Sans Serif", Arial, sans-serif;
 }
 
-/* ── Header ────────────────────────────────────────────────────────────────── */
+/* ── Header ───────────────────────────────────────────────── */
 .ocap-header {
     display: flex;
     align-items: baseline;
     gap: 1rem;
-    border: 2px solid #888;
-    border-radius: 4px 4px 0 0;
-    background: #e8e8e8;
-    padding: .4rem .75rem;
+    background: var(--clr-dark-panel);
+    border-radius: var(--radius);
+    padding: .6rem .9rem;
 }
 
 .ocap-title {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     font-weight: 700;
     margin: 0;
-    color: #222;
+    color: var(--clr-dark-text);
+    letter-spacing: .02em;
 }
 
 .ocap-subtitle {
-    font-size: .9rem;
-    color: #555;
+    font-size: var(--fz-md);
+    color: var(--clr-dark-muted);
 }
 
-/* ── Loading / error ───────────────────────────────────────────────────────── */
+/* ── Loading / error ──────────────────────────────────────── */
 .ocap-loading {
     display: flex;
     align-items: center;
     gap: .6rem;
-    font-size: .95rem;
-    color: #444;
+    font-size: var(--fz-md);
+    color: var(--clr-text-muted);
     padding: .4rem 0;
 }
 
+/* .ocap-spinner inherits from site.css .spinner */
 .ocap-spinner {
-    width: 20px;
-    height: 20px;
-    border: 3px solid #ccc;
-    border-top-color: #555;
-    border-radius: 50%;
-    animation: ocap-spin .8s linear infinite;
-    flex-shrink: 0;
+    border-top-color: var(--clr-brand);
 }
 
-@keyframes ocap-spin {
-    to {
-        transform: rotate(360deg);
-    }
-}
+/* .ocap-error inherits .error-block from site.css */
 
-.ocap-error {
-    background: #fde8e8;
-    border: 1px solid #f5a0a0;
-    color: #a00;
-    padding: .5rem .9rem;
-    border-radius: 4px;
-    font-size: .875rem;
-}
-
-/* ── Grid wrapper ──────────────────────────────────────────────────────────── */
+/* ── Grid wrapper ─────────────────────────────────────────── */
 .ocap-grid-wrap {
-    border: 1px solid #aaa;
-    border-top: none;
+    border: 1px solid var(--clr-border);
+    border-radius: 0 0 var(--radius) var(--radius);
     overflow-x: auto;
-    background: #fff;
+    background: var(--clr-surface);
+    box-shadow: var(--shadow-sm);
 }
 
-/* ── Table ─────────────────────────────────────────────────────────────────── */
+/* ── Table ────────────────────────────────────────────────── */
 .ocap-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: .9rem;
+    font-size: var(--fz-md);
 }
 
     .ocap-table thead th {
-        background: #e0e0e0;
-        color: #111;
-        font-size: .9rem;
+        background: var(--clr-dark-panel);
+        color: var(--clr-dark-text);
+        font-size: var(--fz-sm);
         font-weight: 700;
         text-align: left;
-        padding: .5rem .6rem;
-        border-bottom: 2px solid #aaa;
+        padding: 8px 10px;
+        border-bottom: none;
+        border-right: 1px solid var(--clr-dark-border);
         white-space: nowrap;
         position: sticky;
         top: 0;
         z-index: 1;
+        text-transform: uppercase;
+        letter-spacing: .04em;
     }
 
-/* Column width hints — mirror the FillWeight ratios from the Designer */
+/* Column widths */
 .col-check {
     width: 28%;
 }
@@ -120,24 +107,25 @@
 }
 
 .ocap-table td {
-    padding: .45rem .6rem;
-    border-bottom: 1px solid #ddd;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--clr-border);
+    border-right: 1px solid var(--clr-border);
     vertical-align: top;
-    color: #222;
+    color: var(--clr-text);
     line-height: 1.4;
 }
 
-/* Alternating rows — mirrors AlternatingRowsDefaultCellStyle (RGB 224,224,224) */
+/* Alternating rows */
 .ocap-row-odd td {
-    background: #fff;
+    background: var(--clr-surface);
 }
 
 .ocap-row-even td {
-    background: #e0e0e0;
+    background: var(--clr-bg);
 }
 
 .ocap-table tbody tr:hover td {
-    background: #d6e4f7;
+    background: var(--clr-brand-light);
 }
 
 .ocap-centre {
@@ -146,19 +134,19 @@
 
 .ocap-empty {
     text-align: center;
-    color: #999;
+    color: var(--clr-text-muted);
     font-style: italic;
     padding: 1.5rem;
 }
 
-/* ── Responsive ────────────────────────────────────────────────────────────── */
+/* ── Responsive ───────────────────────────────────────────── */
 @media (max-width: 768px) {
     .ocap-table {
-        font-size: .8rem;
+        font-size: var(--fz-xs);
     }
 
         .ocap-table thead th,
         .ocap-table td {
-            padding: .35rem .4rem;
+            padding: 4px 6px;
         }
 }

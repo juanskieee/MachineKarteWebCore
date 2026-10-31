@@ -1,137 +1,166 @@
-﻿/* =========================================================
-   BmAnalytics.css  –  BM Analytics page (Form12 conversion)
-   ========================================================= */
+﻿/* ============================================================
+   BmAnalytics.css — E-Karte  |  BM Analytics grid
+   Depends on site.css for tokens.
+   ============================================================ */
 
-/* Page wrapper */
 .bma-page {
     padding: 1rem;
     position: relative;
 }
 
-/* Toolbar card */
+/* Toolbar uses shared .card + site.css .toolbar rules */
 .bma-toolbar {
-    padding: 0.75rem 1rem;
-    background: #fff;
+    margin-bottom: 1rem;
+    padding: 8px 12px;
+    background: var(--clr-surface);
+    border: 1px solid var(--clr-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
 }
 
-/* ── Grid table ─────────────────────────────────────── */
+/* ── Grid table ───────────────────────────────────────────── */
 .bma-table {
     white-space: nowrap;
-    font-size: 0.8rem;
+    font-size: var(--fz-sm);
     border-collapse: collapse;
+    width: 100%;
 }
 
 .bma-hdr-process,
 .bma-hdr-loc {
-    background: #343a40;
-    color: #fff;
+    background: var(--clr-dark-panel);
+    color: var(--clr-dark-text);
     text-align: center;
-    font-size: 0.75rem;
-    padding: 0.4rem 0.5rem;
+    font-size: var(--fz-xs);
+    font-weight: 700;
+    padding: 7px 6px;
     position: sticky;
     top: 0;
     z-index: 2;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    border-right: 1px solid var(--clr-dark-border);
 }
 
 .bma-hdr-total {
-    background: #495057;
-    color: #fff;
+    background: var(--clr-dark-surface);
+    color: var(--clr-dark-text);
     text-align: center;
-    font-size: 0.75rem;
-    padding: 0.4rem 0.5rem;
+    font-size: var(--fz-xs);
+    font-weight: 700;
+    padding: 7px 6px;
     position: sticky;
     top: 0;
     z-index: 2;
+    border-right: 1px solid var(--clr-dark-border);
 }
 
 .bma-proc-label {
     font-weight: 600;
-    background: #f8f9fa;
-    padding: 0.35rem 0.6rem;
+    background: var(--clr-bg);
+    padding: 5px 8px;
     min-width: 60px;
+    color: var(--clr-text-muted);
+    font-size: var(--fz-xs);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    border-right: 1px solid var(--clr-border);
 }
 
 /* Individual cells */
 .bma-cell {
     text-align: center;
-    padding: 0.35rem 0.4rem;
+    padding: 5px 6px;
     min-width: 60px;
     font-weight: 700;
+    border-right: 1px solid var(--clr-border);
+    border-bottom: 1px solid var(--clr-border);
 }
 
 .bma-cell-na {
-    background: #e9ecef;
+    background: var(--clr-bg);
+    color: var(--clr-text-faint);
+    font-weight: 400;
 }
 
 .bma-cell-zero {
-    background: #fff;
-    color: #adb5bd;
+    background: var(--clr-surface);
+    color: var(--clr-text-faint);
     font-weight: 400;
 }
 
 .bma-cell-active {
-    background: #fff8e1;
-    color: #e65100;
+    background: var(--clr-warn-bg);
+    color: var(--clr-warn);
     cursor: pointer;
-    transition: background 0.15s;
+    transition: background var(--t-fast);
 }
 
-    .bma-cell-active:hover {
-        background: #ffe0b2;
-    }
+    .bma-cell-active:hover { background: #fde68a; }
 
 /* Totals */
 .bma-row-total {
     text-align: center;
     font-weight: 700;
-    background: #e3f2fd;
-    color: #0d47a1;
+    background: var(--clr-info-bg);
+    color: var(--clr-info);
 }
 
 .bma-total-row td {
-    background: #dee2e6;
+    background: var(--clr-bg);
     font-weight: 700;
     text-align: center;
+    border-top: 2px solid var(--clr-border-dark);
 }
 
-.bma-col-total {
-    color: #0d47a1;
-}
+.bma-col-total { color: var(--clr-info); }
 
 .bma-grand-total {
-    background: #0d47a1 !important;
+    background: var(--clr-brand) !important;
     color: #fff !important;
-    font-size: 1rem;
+    font-size: var(--fz-xl);
 }
 
-/* ── Flyout panel ──────────────────────────────────── */
+/* ── Flyout machine list ──────────────────────────────────── */
 .bma-flyout {
     position: fixed;
     right: 1.5rem;
     top: 120px;
     width: 260px;
     z-index: 1050;
-    border: 2px solid #0d6efd;
+    background: var(--clr-surface);
+    border: 1px solid var(--clr-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
 }
 
 .bma-mc-item {
     cursor: pointer;
-    font-size: 0.85rem;
+    font-size: var(--fz-md);
+    padding: 7px 14px;
+    border-bottom: 1px solid var(--clr-border);
+    transition: background var(--t-fast);
 }
 
+    .bma-mc-item:last-child { border-bottom: none; }
+
+    .bma-mc-item:hover { background: var(--clr-brand-light); }
+
     .bma-mc-item.active {
-        background: #0d6efd;
+        background: var(--clr-brand);
         color: #fff;
+        font-weight: 600;
     }
 
-/* Responsive */
 @media (max-width: 768px) {
     .bma-flyout {
-        right: 0.5rem;
+        right: .5rem;
         width: calc(100vw - 1rem);
     }
-
-    .bma-page {
-        padding: 0.5rem;
-    }
+    .bma-page { padding: .5rem; }
 }

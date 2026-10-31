@@ -1,47 +1,48 @@
 ﻿/* ============================================================
-   BmReport.css — BM Maintenance Record page styles
+   BmReport.css — E-Karte  |  BM Maintenance Record page
+   Depends on site.css for tokens.
    ============================================================ */
 
 .bmreport-container {
     max-width: 680px;
     margin: 2rem auto;
     padding: 0 1rem;
-    font-family: inherit;
 }
 
-/* ---- Header ------------------------------------------------ */
+/* ── Header ───────────────────────────────────────────────── */
 .bmreport-header {
     margin-bottom: 1.5rem;
-    border-bottom: 2px solid #0071bc;
-    padding-bottom: 0.75rem;
+    padding-bottom: .75rem;
+    border-bottom: 2px solid var(--clr-brand);
 }
 
     .bmreport-header h2 {
-        margin: 0 0 0.25rem;
-        font-size: 1.5rem;
-        color: #1a1a2e;
+        margin: 0 0 .2rem;
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: var(--clr-text);
     }
 
 .bmreport-subtitle {
     margin: 0;
-    font-size: 0.95rem;
-    color: #555;
+    font-size: var(--fz-lg);
+    color: var(--clr-text-muted);
 }
 
 .bmreport-process-badge {
     display: inline-block;
-    margin-left: 0.5rem;
-    padding: 0.15rem 0.55rem;
-    background: #0071bc;
+    margin-left: .5rem;
+    padding: .15rem .6rem;
+    background: var(--clr-brand);
     color: #fff;
-    border-radius: 3px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    letter-spacing: 0.04em;
+    border-radius: var(--radius-sm);
+    font-size: var(--fz-sm);
+    font-weight: 700;
+    letter-spacing: .04em;
     vertical-align: middle;
 }
 
-/* ---- Actions ----------------------------------------------- */
+/* ── Actions ──────────────────────────────────────────────── */
 .bmreport-actions {
     display: flex;
     align-items: center;
@@ -50,61 +51,45 @@
 }
 
 .btn-download {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.55rem 1.25rem;
-    background: #0071bc;
-    color: #fff;
-    border: none;
-    border-radius: 4px;
-    font-size: 0.95rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.18s;
+    /* inherits from site.css .btn-primary */
+    height: 34px;
+    padding: 0 18px;
+    font-size: var(--fz-lg);
+    gap: 6px;
 }
 
-    .btn-download:hover:not(:disabled) {
-        background: #005a96;
-    }
-
-    .btn-download:disabled {
-        background: #9ab4cc;
-        cursor: not-allowed;
-    }
-
 .btn-icon {
-    font-size: 1rem;
+    font-size: var(--fz-xl);
     line-height: 1;
 }
 
-/* ---- Status ------------------------------------------------ */
+/* ── Status ───────────────────────────────────────────────── */
 .report-status {
-    font-size: 0.88rem;
+    font-size: var(--fz-sm);
     min-height: 1.2rem;
 }
 
 .report-status--info {
-    color: #2c7a44;
+    color: var(--clr-success);
 }
 
 .report-status--error {
-    color: #c0392b;
+    color: var(--clr-danger);
 }
 
-/* ---- Info block -------------------------------------------- */
+/* ── Info block ───────────────────────────────────────────── */
 .bmreport-info {
-    background: #f4f8fc;
-    border-left: 4px solid #0071bc;
-    border-radius: 3px;
-    padding: 0.85rem 1.1rem;
-    font-size: 0.9rem;
-    color: #444;
-    line-height: 1.55;
+    background: var(--clr-brand-light);
+    border-left: 3px solid var(--clr-brand);
+    border-radius: var(--radius-sm);
+    padding: .85rem 1.1rem;
+    font-size: var(--fz-md);
+    color: var(--clr-text);
+    line-height: 1.6;
 }
 
     .bmreport-info p {
-        margin: 0 0 0.5rem;
+        margin: 0 0 .5rem;
     }
 
         .bmreport-info p:last-child {
@@ -112,8 +97,10 @@
         }
 
     .bmreport-info code {
-        background: #dce9f5;
-        padding: 0.1rem 0.3rem;
-        border-radius: 2px;
-        font-size: 0.85em;
+        background: rgba(24,96,196,.12);
+        color: var(--clr-brand-dark);
+        padding: .1rem .35rem;
+        border-radius: var(--radius-sm);
+        font-family: var(--font-mono);
+        font-size: .85em;
     }
