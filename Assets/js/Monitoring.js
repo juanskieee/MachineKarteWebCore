@@ -398,30 +398,326 @@ function buildBMCard(card, actionLine, userType) {
 }
 
 function openBMCommand(command, card, userType) {
+
     if (command === 'report') {
-        const page = userType === 'TE' ? '/BmReport' : '/PmReport';
-        const params = userType === 'TE'
-            ? `bmId=${enc(card.bmId)}&process=${enc(card.process)}`
-            : `bmId=${enc(card.bmId)}&process=${enc(card.process)}&timeOfRequest=${enc(card.timeOfRequest)}&machineNo=${enc(card.machineNo)}`;
-        window.open(`${page}?${params}`, '_blank');
+
+        showReportModal(
+            card,
+            'BM'
+        );
+
         return;
     }
 
     if (command === 'evidence') {
-        const page = userType === 'TE' ? '/TeEvidenceMaking' : '/EvidenceMaking';
-        const params = userType === 'TE'
-            ? `bmId=${enc(card.bmId)}&autoGenerate=1`
-            : `process=${enc(card.process)}&bmId=${enc(card.bmId)}`;
-        window.open(`${page}?${params}`, '_blank');
+
+        showReportModal(
+            card,
+            'Evidence'
+        );
+
         return;
     }
 
     if (command === 'ocap') {
+
         window.open(
             `/OcapViewer?bmId=${enc(card.bmId)}&bmProcess=${enc(card.process)}&bmCaseId=${enc(card.bmCaseId)}`,
-            '_blank');
+            '_blank'
+        );
+
+        return;
     }
 }
+
+function showReportModal(card, reportType) {
+
+    document.getElementById('reportBmId').value =
+        card.bmId;
+
+    document.getElementById('reportProcess').value =
+        card.process;
+
+    document.getElementById('reportType').value =
+        reportType;
+
+    document.getElementById('reportBmIdLabel').textContent =
+        card.bmId;
+
+    document.getElementById('reportModalTitle').textContent =
+        reportType === 'BM'
+            ? 'Generate BM Report'
+            : 'Generate TE Evidence';
+
+    const status =
+        document.getElementById('reportStatus');
+
+    status.className =
+        'small text-muted';
+
+    status.textContent = '';
+
+    bootstrap.Modal
+        .getOrCreateInstance(
+            document.getElementById('reportModal')
+        )
+        .show();
+}
+
+document
+    .getElementById('btnGenerateDownload')
+    ?.addEventListener(
+        'click',
+        generateAndDownloadReport
+    );
+
+async function generateAndDownloadReport() {
+
+    const bmId =
+        document.getElementById('reportBmId').value;
+
+    const process =
+        document.getElementById('reportProcess').value;
+
+    const reportType =
+        document.getElementById('reportType').value;
+
+    const status =
+        document.getElementById('reportStatus');
+
+    const button =
+        document.getElementById(
+            'btnGenerateDownload'
+        );
+
+    try {
+
+        button.disabled = true;
+
+        status.className =
+            'small text-info';
+
+        status.textContent =
+            'Generating file...';
+
+        if (reportType === 'Evidence') {
+
+            const generateResponse =
+                await fetch(
+                    `/TeEvidenceMaking?handler=Generate&bmId=${encodeURIComponent(bmId)}`
+                );
+
+            const generateResult =
+                await generateResponse.json();
+
+            if (!generateResult.success) {
+
+                throw new Error(
+                    generateResult.message ||
+                    'Evidence generation failed.'
+                );
+            }
+
+            status.className =
+                'small text-success';
+
+            status.textContent =
+                'Generated! Download starting...';
+
+            window.location.href =
+                `/TeEvidenceMaking?handler=Download&bmId=${encodeURIComponent(bmId)}`;
+
+            setTimeout(() => {
+
+                bootstrap.Modal
+                    .getInstance(
+                        document.getElementById(
+                            'reportModal'
+                        )
+                    )
+                    ?.hide();
+
+            }, 1000);
+
+            return;
+        }
+
+        const formData =
+            new FormData();
+
+        formData.append(
+            'bmId',
+            bmId
+        );
+
+        formData.append(
+            'process',
+            process
+        );
+
+        const response =
+            await fetch(
+                '/BmReport?handler=DownloadReport',
+                {
+                    method: 'POST',
+                    headers: {
+                        'RequestVerificationToken':
+                            State.antiForgery
+                    },
+                    body: formData
+                }
+            );
+
+        const contentType =
+            response.headers.get(
+                'content-type'
+            ) || '';
+
+        if (
+            !response.ok ||
+            contentType.includes('application/json') ||
+            contentType.includes('text/html')
+        ) {
+
+            let message =
+                'BM Report generation failed.';
+
+            try {
+
+                const raw =
+                    await response.text();
+
+                try {
+
+                    const payload =
+                        JSON.parse(raw);
+
+                    message =
+                        payload.message ||
+                        payload.Message ||
+                        payload.error ||
+                        message;
+
+                }
+                catch {
+
+                    message =
+                        raw || message;
+                }
+
+            }
+            catch { }
+
+            throw new Error(
+                message
+            );
+        }
+
+        if (
+            !contentType.includes(
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
+        ) {
+
+            throw new Error(
+                'Invalid file response.'
+            );
+        }
+
+        const blob =
+            await response.blob();
+
+        const disposition =
+            response.headers.get(
+                'content-disposition'
+            ) || '';
+
+        let fileName =
+            `${bmId}.xlsx`;
+
+        const match =
+            disposition.match(
+                /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/
+            );
+
+        if (
+            match &&
+            match[1]
+        ) {
+
+            fileName =
+                match[1]
+                    .replace(/['"]/g, '')
+                    .trim();
+        }
+
+        const url =
+            window.URL.createObjectURL(
+                blob
+            );
+
+        const link =
+            document.createElement(
+                'a'
+            );
+
+        link.href =
+            url;
+
+        link.download =
+            fileName;
+
+        document.body.appendChild(
+            link
+        );
+
+        link.click();
+
+        link.remove();
+
+        window.URL.revokeObjectURL(
+            url
+        );
+
+        status.className =
+            'small text-success';
+
+        status.textContent =
+            'Generated! Download starting...';
+
+        setTimeout(() => {
+
+            bootstrap.Modal
+                .getInstance(
+                    document.getElementById(
+                        'reportModal'
+                    )
+                )
+                ?.hide();
+
+        }, 1000);
+
+    }
+    catch (error) {
+
+        console.error(
+            error
+        );
+
+        status.className =
+            'small text-danger';
+
+        status.textContent =
+            error?.message ||
+            'Generation failed.';
+    }
+    finally {
+
+        button.disabled =
+            false;
+    }
+}
+
 function clearCards() {
     const scroller = document.getElementById('cardScroller');
     // Remove all machine columns but keep the static children (spinner/noResult)

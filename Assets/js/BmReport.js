@@ -64,12 +64,28 @@ const BmReport = (() => {
             });
 
             const contentType = response.headers.get('content-type') || '';
-            if (!response.ok || contentType.includes('application/json')) {
+
+            if (
+                !contentType.includes(
+                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                )
+            ) {
+                const text = await response.text();
+                throw new Error(text || 'Invalid download response.');
+            }
+
+            if (
+                !response.ok ||
+                contentType.includes('application/json') ||
+                contentType.includes('text/html')
+            ) {
                 let message = 'Report generation failed.';
+
                 try {
                     const payload = await response.json();
-                    if (payload && payload.message) message = payload.message;
+                    if (payload?.message) message = payload.message;
                 } catch { }
+
                 throw new Error(message);
             }
 
