@@ -24,20 +24,18 @@ let antiForgery = '';
     const proc = params.get('process');
     const bmId = params.get('bmId');
 
-    if (proc) byId('selProcess').value = proc;
-    if (bmId) byId('txtBmId').value = bmId;
-
-    // Auto-generate if both params are supplied (mirrors Form4 being called directly)
-    if (proc && bmId) generateEvidence();
+    byId('recordProcess').textContent = proc || '—';
+    byId('recordBmId').textContent = bmId || '—';
 
 
 // ── Generate Evidence (mirrors EMakingPrint) ──────────────────────
 async function generateEvidence() {
-    const process = byId('selProcess').value;
-    const bmId = parseInt(byId('txtBmId').value || '0');
+    const process = proc || '';
+    const bmId = Number(options.bmId);
 
-    if (!process) { showStatus('Please select a process.', 'error'); return; }
-    if (!bmId) { showStatus('Please enter a valid BM ID.', 'error'); return; }
+    if (!process || !Number.isSafeInteger(bmId) || bmId <= 0) {
+        showStatus('Select a BM record in Monitoring first.', 'error'); return;
+    }
 
     showSpinner(true);
     closePreview();

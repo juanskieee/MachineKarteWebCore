@@ -12,13 +12,14 @@
 
 <div id="OcapViewer-ocap-page" data-id="ocap-page" class="ocap-page">
 
-    <div class="ocap-header">
-        <h2 class="ocap-title">OCAP</h2>
-        @if (!string.IsNullOrEmpty(Model.BmProcess))
-        {
-            <span class="ocap-subtitle">Process: @Model.BmProcess</span>
-        }
-    </div>
+    <dl class="ocap-record" aria-label="Selected BM record">
+        <div><dt>Process</dt><dd>@Model.BmProcess</dd></div>
+        <div><dt>BM ID</dt><dd data-id="recordBmId"></dd></div>
+        <div><dt>Machine</dt><dd data-id="recordMachine"></dd></div>
+        <div><dt>Location</dt><dd data-id="recordLocation"></dd></div>
+        <div><dt>Requested</dt><dd data-id="recordRequested"></dd></div>
+        <div><dt>BM case</dt><dd data-id="recordCase"></dd></div>
+    </dl>
 
     <div id="OcapViewer-ocap-loading" data-id="ocap-loading" class="ocap-loading is-hidden">
         <span class="ocap-spinner"></span> Loading OCAP data…

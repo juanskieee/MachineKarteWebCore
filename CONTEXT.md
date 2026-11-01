@@ -48,7 +48,9 @@ open as modal workflows within Monitoring, including reports and analytics.**
   Form7 and Form8 remain available through the other-summary dialog controls.
 - A BM card opens Form_Input. Its `R` action opens Form3 for non-TE and Form9
   for TE; `E` opens Form4 or Form10; `O` opens the read-only Form6 dialog.
-  Raw Data opens Form5 using Monitoring's selected process, location, and dates.
+  Raw Data retains its Form5 modal route using Monitoring's selected process,
+  location, and dates. Form1's Raw Data launch is commented out/hidden in legacy;
+  Monitoring does not show a Raw Data toolbar button.
 
 ### Designer-based web styling
 
@@ -59,14 +61,14 @@ Do not replace the designer palette with a generic dashboard theme.
 
 | Legacy designer | Web structure and palette |
 |---|---|
-| Form1 | `#343434` top command deck, floor totals and child-form buttons at left, filters at right, white scrolling machine board, dark machine summaries beneath the cards; Green Search, DeepSkyBlue pagination, PowderBlue page number |
+| Form1 | `#343434` top command deck, three action-item counter rows by floor at left, filters at right, white scrolling machine board with bottom-docked BM stacks; Salmon/MistyRose cards and LightGray/yellow machine summaries; Green Search, DeepSkyBlue pagination, PowderBlue current/total page counter |
 | Form2 | Process rows by location columns, white counts, LightGray unavailable/header cells, MistyRose process labels, Tomato headings/actions, local machine lookup panel |
 | Form7 and Form11 | Same matrix/lookup structure with Blue headings/actions and Azure process labels |
 | Form8 and Form12 | Same matrix/lookup structure with DarkOrange headings/actions and Bisque process labels; retain their distinct location profiles |
 | Form_Input | Dark panel, Salmon problem/employee/date header, full-width investigation then action rows, three paired comment/reply rows in DeepSkyBlue, MediumPurple, and LimeGreen, MC Status and Green Save at the bottom |
 | Form5 | Two vertically stacked chart/table pairs, chart at left and source table at right, roughly 72/28 desktop proportions, gray chart surround; stack panels on narrow screens |
 | Form6 | Full-width read-only five-column OCAP grid with gray headers/alternating rows and the designer's column proportions |
-| Form3, Form4, Form9, Form10 | Document dialogs matching the dynamically populated legacy report/evidence windows; retain workbook generation and download behavior |
+| Form3, Form4, Form9, Form10 | Compact document dialogs matching the legacy record/evidence routes; opening a dialog only shows its context and controls, Generate and Download are separate explicit actions |
 
 `Assets/css/site.css` defines the designer palette and common controls.
 `Monitoring.css`, `Workflows.css`, `ActionCard.css`, `RawData.css`, and
@@ -189,15 +191,14 @@ than a new page.
 - `Legacy/uc_PanelDesigner.vb.txt` confirms the visible fields: location,
   machine number, machine type, and the red `Need Action` counter. Its
   one-second timer has no active handler in the code-behind.
-- The legacy `NeedActionCount` is incremented once for each qualifying repeat
-  group (the first row only), when the repeat color is not `Black` and the row
-  has no action card. The converted repository applies the legacy repeat-color
-  algorithm; the web response counts repeat-group starts rather than every
-  colored row.
-- The converted Monitoring machine-column header now exposes
-  `Need Action: <count>` alongside the existing machine/BM count. This is the
-  web equivalent of the legacy bottom `Panel4`/`uC_Panel` summary without
-  duplicating the machine-card query.
+- The legacy `NeedActionCount` is incremented at each qualifying repeat-group
+  head when its repeat color is not `Black`, it has no action card, and it is
+  not solved/green. `BMCardRow.NeedsAction` now records that decision during
+  repeat detection. The footer and floor-repeat counters count these flags;
+  they do not infer groups from adjacent colored rows or count every BM record.
+- The converted Monitoring machine footer shows location, machine number,
+  machine type, and the red Need Action count in the designer's LightGray/yellow
+  cells. It uses the existing card response rather than duplicating the query.
 
 ## Legacy `uc_Test` reconciliation
 
@@ -521,9 +522,8 @@ than a new page.
 - JavaScript presentation logic was moved into CSS classes across the page
   scripts. Visibility changes now use the shared `.is-hidden` utility in
   `Assets/css/site.css`; page-specific styles remain in their corresponding
-  files under `Assets/css`. Runtime progress-bar width updates in
-  `Assets/js/AlertBoard.js` and `Assets/js/McdMonitoring.js` remain in
-  JavaScript because their values are data-driven.
+  files under `Assets/css`. The three primary summaries now use CSS spinners;
+  only the separate `McdMonitoring` overview retains its earlier progress bar.
 - Razor pages were scanned for inline presentation styling. Static `style`
   attributes were removed from the Action Card page and replaced with classes
   in `Assets/css/ActionCard.css`. TE evidence now uses the shared document
@@ -538,6 +538,26 @@ than a new page.
 - The earlier Action Card-only modal has been replaced by the shared workflow
   dialog described above. All child forms now use scoped partials and modal
   initialization; there is no separate standalone Action Card interface.
+
+## Unified primary summary behavior (2026-11-01)
+
+- Alert Board (Need Action Per Process), Machine Summary (Need Action With
+  MCD), and BM Analytics (Action With MCD) show their process/location grids
+  before count requests finish. Counts and totals update existing cells;
+  failed requests preserve the layout and allow Search to retry.
+- Machine Summary and BM Analytics receive static layout metadata from their
+  existing C# mappings, including EEE/TE and Form8/Form12 profiles, through
+  their Razor partials. Layout rendering does not require database access.
+- All three use the shared summary spinner, disable Search during loading,
+  inherit dates and user/mode from Monitoring (no local filters), show that
+  context at left and Search at right, and use the same machine-list panel
+  header, selection rows, close control, and footer action. Their designer
+  accent colors remain distinct. On mobile, the matrix scrolls within its
+  area so the controls and loading indicator remain reachable.
+- `scripts/Test-Workflows.ps1` includes delayed-response checks for layout
+  visibility, loading/search locking, in-place count updates, panel styling,
+  keyboard selection, TE layouts, error recovery, and desktop/mobile captures
+  of each summary's loading and machine-list states.
 
 ## File cleanup (2026-11-01)
 
@@ -567,6 +587,56 @@ than a new page.
 
 ## Validation
 
+- A new Monitoring search hides the previous no-machines message before the
+  request begins. Per-column BM requests remain isolated from subsequent searches.
+- `machineListSidebar` is a centered native dialog using the shared summary
+  list styles, keyboard-accessible selection, an explicit View action, Escape,
+  focus trapping, and a backdrop.
+- R/E launch reconciliation checked `uc_Test.CreateButton_Footer_Click`, the
+  Form3/4/9/10 designers, and their code-behind: non-TE R/E map to Form3/Form4,
+  TE R/E to Form9/Form10, passing process, BM ID, date, and machine as applicable.
+  Legacy generated PDF viewers directly on launch. The current user explicitly
+  requires manual generation and download, so none of the four web initializers
+  generates or clicks a download link. Existing workbook generators are retained;
+  the web output remains XLSX, with legacy PDF/workbook parity still pending.
+- R/E dialogs use the shared titlebar once, compact context/action rows, and
+  content-sized status/results instead of empty 360px/260px workspaces. Browser
+  checks exercise all four explicit Generate actions and assert no automatic
+  downloads; desktop/mobile captures include these dialogs and the machine list.
+- The expanded Status & action legend distinguishes the stored MCStatus color
+  of the Action badge, the AC/SM/DM/DV comment markers, repeat case text, red
+  Need Action headers, and the independent ActionLine card bands. A green card
+  band by itself does not mean the case is resolved.
+
+- Monitoring restores the Form1 counter matrix (repeat BM, important device
+  without action, important device with action). Counts are distinct categories;
+  counter drilldowns use their matching machine lists, and row labels retain
+  their Form2/Form11/Form12 modal launches. There is no Raw Data toolbar button.
+- BM cards follow `uc_Test.LoadProcessCapa`: Salmon/MistyRose, then
+  DeepSkyBlue/LightCyan, MediumPurple/Lavender, and LimeGreen/Honeydew tiers.
+  Repeat colors affect case text; MCStatus colors affect the Action marker.
+  Machine columns occupy one of ten board slots, with a 186px minimum. Sparse
+  results stay at the left instead of stretching across the board. Histories
+  start scrolled to the bottom and hide their scrollbars while retaining mouse,
+  touch, and keyboard scrolling. Histories that fit share a bottom baseline;
+  longer histories scroll vertically within their own column. The board only
+  scrolls horizontally, and each `uc_Panel` LightGray/yellow footer stays visible.
+- PM card SQL uses `BMCase.BMCase`; CC/EEE/VIS use `BMWhy` through `Why4`.
+  Only TE selects Priority. MCD/action checks use EXISTS, and the latest action
+  row supplies markers without duplicating BM cards. TE cards filter by tester
+  type as well as tester number. Pagination counts the same grouped query as
+  the ten-column page and shows current/total, with boundary controls disabled.
+- `scripts/WorkflowBrowserChecks.js` checks the BM palette, capacity tiers,
+  staircase geometry, three counter categories, pagination boundaries, retry,
+  and isolation of late card responses from subsequent searches. These checks
+  passed at desktop/mobile widths; SQL Server was unreachable for live results.
+- `powershell -ExecutionPolicy Bypass -File scripts/Test-MonitoringQueries.ps1`
+  validates generated SQL against `schema.sql` in a temporary console runner.
+  All 53 BM card user/process variants pass column checks, all five user modes
+  include page totals, and 17 fixtures verify actual Need Action calculations
+  across user modes, seven-day limits, action-card exclusions, matching cases,
+  and distinct repeat windows. This does not execute SQL Server.
+
 - The project has repeatedly passed:
   `dotnet build MachineKarteWebCore.csproj --nologo -v minimal`
 - Documentation and source patches should also pass:
@@ -585,5 +655,32 @@ than a new page.
   and desktop (1440px) / mobile (390px) layout checks. The captured layouts were
   visually reviewed; SQL and workbook validation remain subject to the existing
   environment limitations above.
-- No test project currently exists; live SQL and fixture-based behavior tests
-  remain future work.
+- No permanent test project exists. The browser fixtures and temporary query
+  runner cover the converted UI and schema references; live SQL and workbook
+  result comparisons remain pending.
+
+- Legacy `uc_Test.Timer1` and Form1 `Timer2` blink once per second: repeat case
+  text alternates blue/red with system text, Need Action headers/dates alternate
+  red/white, and the right-docked three-star MCD markers alternate
+  WhiteSmoke/DarkRed when no action exists,
+  preserving the group-head, already-colored-member, and final-row branches.
+  Nonzero repeat floor counts alternate
+  MistyRose/red; important-device Need Action counts alternate MistyRose/blue.
+  Reduced-motion preferences retain the static alert colors.
+- The Action badge uses all seven legacy MCStatus colors, with red as the
+  default. `CheckIfSolve` overrides existing actions in repeated cases to green
+  when the latest case is at least seven days behind the machine's newest BM,
+  or that action's BM is at least seven days behind its latest matching case.
+  This reference is the newest loaded BM, not the current wall clock. Existing
+  action-card launches use this final badge color instead of repeat text color.
+- E evidence dialogs lock process/BM ID to the clicked record and keep Generate
+  at the right, using the same inline gray context bar as R report dialogs.
+  Card commands are O, R, E (O appears only with OCAP data).
+  OCAP displays BM ID, process, machine/type, location, request time, and case.
+  Its record strip uses the same gray surface, inline labels, and bold values.
+  AlertBoard's machine drilldown is centered within the parent workflow dialog.
+- Legacy MCD summary designers always show all twelve process rows, even in
+  TE mode and regardless of Monitoring's selected process, location, or machine.
+  The MachineSummary/BmAnalytics layouts and alternate McdMonitoring viewer
+  retain those rows while their queries remain limited to the mode's supported
+  processes and locations.

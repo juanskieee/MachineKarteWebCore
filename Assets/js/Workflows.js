@@ -24,6 +24,16 @@ window.Workflows = (() => {
 
     async function open(name, values = {}) {
         if (!Object.hasOwn(titles, name)) return;
+        if (['AlertBoard', 'MachineSummary', 'BmAnalytics'].includes(name)) {
+            values = {
+                userType: document.getElementById('cbUser').value || 'PM',
+                process: document.getElementById('cbProcess').value,
+                dateFrom: document.getElementById('dt1').value,
+                dateTo: document.getElementById('dt2').value,
+                ...values
+            };
+            values.userMode = values.userType === 'TE' ? 'TE' : 'EEE';
+        }
         const dialog = document.getElementById('workflowDialog');
         const body = document.getElementById('workflowBody');
         if (!dialog.open) opener = document.activeElement;
@@ -72,6 +82,8 @@ window.Workflows = (() => {
             body.innerHTML = html;
             const root = body.querySelector('[data-workflow]');
             if (!root || !initializers.has(name)) throw new Error('This window could not be initialized. Try again.');
+            const summaryContext = root.querySelector('[data-id="summaryContext"]');
+            if (summaryContext) summaryContext.textContent = `Monitoring: ${values.userType} · ${values.process} · ${values.dateFrom} to ${values.dateTo}`;
             root.addEventListener('keydown', event => {
                 if (!event.defaultPrevented && (event.key === 'Enter' || event.key === ' ') && event.target.matches('[role="button"]:not(button)')) {
                     event.preventDefault();

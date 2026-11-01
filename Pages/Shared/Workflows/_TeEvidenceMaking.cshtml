@@ -2,11 +2,10 @@
 @{ Layout = null; }
 <div class="workflow workflow--TeEvidenceMaking legacy-document" data-workflow="TeEvidenceMaking">
     <div class="document-toolbar">
-        <p data-id="bmLabel">BM Maintenance Evidence</p>
-        <button type="button" data-id="btnGenerate">Generate &amp; Download</button>
+        <p>Process: <strong data-id="recordProcess"></strong> | BM ID: <strong data-id="recordBmId"></strong></p>
+        <button type="button" data-id="btnGenerate">Generate evidence</button>
     </div>
-    <div class="document-workspace">
-        <p data-id="status" role="status" aria-live="polite">Generate the evidence workbook to view the maintenance evidence.</p>
-        <a data-id="download" hidden download>Download evidence workbook</a>
-    </div>
+    <p class="document-note">Generate the evidence workbook, then choose Download to save it.</p>
+    <p data-id="status" class="report-status" role="status" aria-live="polite" hidden></p>
+    <a data-id="download" class="btn-download" hidden download>Download evidence workbook</a>
 </div>

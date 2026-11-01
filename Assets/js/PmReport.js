@@ -12,10 +12,6 @@ Workflows.register('PmReport', (root, options, context) => {
 
     button?.addEventListener('click', generate);
 
-    if (config.process && Number(config.bmId) > 0) {
-        generate();
-    }
-
     async function generate() {
         setStatus('Generating report...', 'busy');
         button.disabled = true;
@@ -40,7 +36,6 @@ Workflows.register('PmReport', (root, options, context) => {
             download.hidden = false;
             download.textContent = `Download ${result.data.fileName}`;
             setStatus('Report generated.', 'success');
-            download.click();
         } catch (error) {
             setStatus(error.message || 'Report generation failed.', 'error');
         } finally {
@@ -49,6 +44,7 @@ Workflows.register('PmReport', (root, options, context) => {
     }
 
     function setStatus(message, state) {
+        status.hidden = false;
         status.textContent = message;
         status.dataset.state = state;
     }

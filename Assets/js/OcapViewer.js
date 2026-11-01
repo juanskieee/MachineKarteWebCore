@@ -10,6 +10,11 @@ Workflows.register('OcapViewer', (root, options, context) => {
     const bmId = byId('hdnBmId')?.value ?? '';
     const bmProcess = byId('hdnBmProcess')?.value ?? '';
     const bmCaseId = byId('hdnBmCaseId')?.value ?? '';
+    byId('recordBmId').textContent = bmId || '—';
+    byId('recordMachine').textContent = [options.machineNo, options.machineType].filter(Boolean).join(' / ') || '—';
+    byId('recordLocation').textContent = options.location || '—';
+    byId('recordRequested').textContent = options.timeOfRequest || '—';
+    byId('recordCase').textContent = options.bmCase || bmCaseId || '—';
 
     if (bmId && bmProcess && bmCaseId) {
         loadOcap(bmId, bmProcess, bmCaseId);

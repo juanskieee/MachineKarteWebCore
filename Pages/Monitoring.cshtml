@@ -7,37 +7,36 @@
 <div class="monitoring-screen">
     <header class="monitoring-deck">
         <section class="monitoring-overview" aria-label="Floor overview">
+            <div id="floorSummaryPanel" class="floor-summary-panel">
+                <table id="floorSummaryGrid" class="floor-summary-grid" aria-label="Action items by location">
+                    <thead><tr><th scope="col">Action Item</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
             <div class="monitoring-heading">
                 <h1>E-Karte System</h1>
                 <details class="monitoring-legend">
                     <summary>Status &amp; action legend</summary>
                     <div class="legend-content">
-                        <span class="legend-green">No re-occurrence</span>
-                        <span class="legend-lightgreen">Lot evaluation</span>
-                        <span class="legend-red">Stop / ongoing action</span>
-                        <span class="legend-orange">100% inspection</span>
-                        <span class="legend-gray">Ongoing investigation</span>
-                        <span class="legend-sky">SM · Section Manager</span>
-                        <span class="legend-purple">DM · Department Manager</span>
-                        <span class="legend-lime">DV · Division Manager</span>
+                        <strong>Action badge: machine status</strong>
+                        <span class="legend-green">Green: no re-occurrence after 7 days</span>
+                        <span class="legend-lightgreen">Light green: running, lot evaluation</span>
+                        <span class="legend-red">Red: stopped, ongoing investigation</span>
+                        <span class="legend-orange">Orange: running, under 100% inspection</span>
+                        <span class="legend-gray">Gray: running, investigation / monitoring</span>
+                        <span class="legend-violet">Violet: waiting for inspection results</span>
+                        <span class="legend-aqua">Aqua: waiting for QC instruction</span>
+                        <p>Existing actions turn green when the legacy seven-day check marks a repeated case solved, measured against the machine's newest BM record.</p>
+                        <strong>Action-card entries</strong>
+                        <span class="legend-ac">AC: action entered</span>
+                        <span class="legend-sky">SM: Section Manager comment entered</span>
+                        <span class="legend-purple">DM: Department Manager comment entered</span>
+                        <span class="legend-lime">DV: Division Manager comment entered</span>
+                        <p>Need Action counts repeat BM groups within seven days that have no action card. A blinking red/white header and date identify a group needing action. Individual BM records are not counted separately.</p>
+                        <p>Blinking blue/red case text follows the process-specific repeat category; TE requires QUALITY BM. Three stars mark a Major Customer Device (MCD); blinking stars identify a record without an action card, following the legacy group rules.</p>
+                        <p>Salmon, blue, purple, and green card bands follow the machine's ActionLine thresholds. These bands are separate from the Action badge's machine status.</p>
                     </div>
                 </details>
-            </div>
-            <div class="monitoring-shortcuts">
-                <button id="btnRepeatBM" type="button" class="btn-nav btn-repeatbm" onclick="openSection('RepeatBM')">Repeat BM</button>
-                <button id="btnMCD" type="button" class="btn-nav btn-mcd" onclick="openSection('MCD')">Important Device (Need Action)</button>
-                <button id="btnWithAction" type="button" class="btn-nav btn-action" onclick="openSection('WithAction')">Important Device (With Action)</button>
-                <button type="button" class="btn-nav" onclick="openSection('RawData')">Raw Data</button>
-                <details class="other-summaries">
-                    <summary>Other summaries</summary>
-                    <div>
-                        <button type="button" onclick="openSection('McdMonitoring')">MCD overview</button>
-                        <button type="button" onclick="openSection('BmAnalytics')">Action overview</button>
-                    </div>
-                </details>
-            </div>
-            <div id="floorSummaryPanel" class="floor-summary-panel">
-                <div id="floorSummaryGrid" class="floor-summary-grid"></div>
             </div>
         </section>
         <form id="toolbar" class="monitoring-filters" onsubmit="event.preventDefault(); doSearch()">
@@ -53,16 +52,18 @@
             <button id="btnSearch" class="btn-search" type="submit">Search</button>
             <div class="pagination-group" aria-label="Machine pages">
                 <button id="btnPrev" type="button" class="btn-page" onclick="changePage(-1)" aria-label="Previous page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 5-7 7 7 7" /></svg></button>
-                <span id="lblPageNumber" class="page-number" aria-label="Current page">1</span>
+                <span id="lblPageNumber" class="page-number" aria-label="Page 1 of 1" aria-live="polite">1/1</span>
                 <button id="btnNext" type="button" class="btn-page" onclick="changePage(1)" aria-label="Next page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 5 7 7-7 7" /></svg></button>
             </div>
             <div class="refresh-clock"><span>Refresh</span><span id="lblTimer" class="lbl-timer">600</span><span>s</span></div>
         </form>
     </header>
-    <aside id="machineListSidebar" class="machine-list-sidebar is-hidden" aria-label="Machines at selected location">
-        <div class="sidebar-header"><strong id="sidebarTitle">Machines</strong><button type="button" class="btn-close-sidebar" onclick="closeSidebar()" aria-label="Close machine list">&times;</button></div>
-        <ul id="listboxMain" class="listbox-main"></ul>
-    </aside>
+    <dialog id="machineListSidebar" class="machine-list-sidebar" aria-labelledby="sidebarTitle">
+        <div class="summary-panel-header"><strong id="sidebarTitle">Machines</strong><button type="button" class="summary-panel-close" onclick="closeSidebar()" aria-label="Close machine list">&times;</button></div>
+        <p class="summary-panel-hint">Select a machine to view its BM records.</p>
+        <ul id="listboxMain" class="listbox-main summary-machine-list"></ul>
+        <div class="summary-panel-footer"><button id="machineListGo" class="summary-panel-go" type="button" disabled>View selected machine</button></div>
+    </dialog>
     <div id="cardContainer" class="card-container">
         <div id="cardScroller" class="card-scroller">
             <div id="noResultMsg" class="no-result-msg is-hidden">No machines found for the selected filters.</div>

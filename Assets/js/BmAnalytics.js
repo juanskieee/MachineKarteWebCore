@@ -1,8 +1,6 @@
 Workflows.register('BmAnalytics', (root, options, context) => {
     const byId = id => root.querySelector('[data-id="' + id + '"], [id="' + id + '"]');
     const fetch = context.fetch;
-    const setInterval = context.setInterval;
-    const setTimeout = context.setTimeout;
 /**
  * BmAnalytics.js
  * Client-side logic for the BM Analytics page (Form8/Form12 conversion).
@@ -17,57 +15,22 @@ Workflows.register('BmAnalytics', (root, options, context) => {
     'use strict';
 
     // -----------------------------------------------------------------------
-    // Constants
-    // -----------------------------------------------------------------------
-    const ALL_LOCATIONS = [
-        'LSI1-1F', 'LSI1-2F',
-        'LSI2-1F', 'LSI2-2F', 'LSI2-3F',
-        'LSI3-1F', 'LSI3-2F', 'LSI3-3F', 'LSI3-4F'
-    ];
-
-    // Process → which location indices they occupy (1-based).
-    const EEE_PROCESS_LOCS = {
-        DC: ['LSI1-1F', 'LSI2-1F', 'LSI2-2F', 'LSI2-3F'],
-        DB: ['LSI1-1F', 'LSI2-1F', 'LSI2-2F', 'LSI2-3F'],
-        WB: ['LSI1-1F', 'LSI2-1F', 'LSI2-2F', 'LSI2-3F'],
-        MP: ['LSI1-1F', 'LSI2-1F', 'LSI2-2F', 'LSI2-3F'],
-        PL: ['LSI1-1F', 'LSI2-1F'],
-        FL: ['LSI1-2F', 'LSI2-1F', 'LSI2-2F', 'LSI2-3F'],
-        FT: ['LSI1-2F', 'LSI2-1F', 'LSI2-2F', 'LSI2-3F'],
-        TP: ['LSI1-2F', 'LSI2-1F', 'LSI2-2F', 'LSI2-3F'],
-        MEMS: ['LSI3-2F'],
-        EDS: ['LSI3-4F'],
-        SING: ['LSI1-2F', 'LSI2-1F', 'LSI2-2F', 'LSI2-3F'],
-        ATC: ['LSI1-1F', 'LSI2-1F'],
-    };
-    const EEE_PROCESSES = ['DC', 'DB', 'WB', 'MP', 'PL', 'ATC', 'FL', 'SING', 'FT', 'TP', 'EDS', 'MEMS'];
-
-    const TE_PROCESS_LOCS = {
-        FL: ['LSI1-2F', 'LSI2-1F', 'LSI2-2F', 'LSI2-3F'],
-        FT: ['LSI1-2F', 'LSI2-1F', 'LSI2-2F', 'LSI2-3F'],
-        TP: ['LSI1-2F', 'LSI2-1F', 'LSI2-2F', 'LSI2-3F'],
-        EDS: ['LSI3-4F'],
-        MEMS: ['LSI3-2F'],
-    };
-    const TE_PROCESSES = ['FL', 'FT', 'TP', 'MEMS', 'EDS'];
-
-    // -----------------------------------------------------------------------
     // State
     // -----------------------------------------------------------------------
     let currentResult = null;   // last BmAnalyticsResult from server
     let currentMode = 'EEE';
-    let currentCellKey = null;   // key of the open flyout cell
 
     // -----------------------------------------------------------------------
     // DOM refs
     // -----------------------------------------------------------------------
-    const dtFrom = byId('dtFrom');
-    const dtTo = byId('dtTo');
-    const selMode = byId('selMode');
+    const { dateFrom, dateTo } = options;
+    const mode = options.userMode;
     const btnSearch = byId('btnSearch');
-    const searchSpinner = byId('searchSpinner');
+    const loading = byId('summaryLoading');
     const lblStatus = byId('lblStatus');
     const gridWrapper = byId('gridWrapper');
+    const layout = JSON.parse(gridWrapper.dataset.layout);
+    let gridMode = null;
     const flyoutPanel = byId('flyoutPanel');
     const flyoutTitle = byId('flyoutTitle');
     const flyoutList = byId('flyoutList');
@@ -76,40 +39,31 @@ Workflows.register('BmAnalytics', (root, options, context) => {
     const rvt = root.querySelector('input[name="__RequestVerificationToken"]');
     const legacyForm = byId('legacyForm')?.value === '12' ? '12' : '8';
 
-    const FORM12_EEE_PROCESS_LOCS = {
-        DC: ['LSI1-1F', 'LSI2-1F', 'LSI2-2F', 'LSI2-3F', 'LSI3-2F'],
-        DB: ['LSI1-1F', 'LSI2-1F', 'LSI2-2F', 'LSI2-3F', 'LSI3-2F'],
-        WB: ['LSI1-1F', 'LSI2-1F', 'LSI2-2F', 'LSI2-3F', 'LSI3-2F'],
-        MP: ['LSI1-1F', 'LSI2-1F', 'LSI2-2F', 'LSI2-3F', 'LSI3-1F'],
-        PL: ['LSI1-1F', 'LSI2-1F', 'LSI2-2F', 'LSI2-3F', 'LSI3-1F'],
-        FL: ['LSI1-2F', 'LSI2-1F', 'LSI2-2F', 'LSI2-3F', 'LSI3-3F'],
-        FT: ['LSI1-2F', 'LSI2-1F', 'LSI2-2F', 'LSI2-3F', 'LSI3-3F'],
-        TP: ['LSI1-2F', 'LSI2-1F', 'LSI2-2F', 'LSI2-3F', 'LSI3-3F'],
-        MEMS: ['LSI3-2F'],
-        EDS: ['LSI3-4F'],
-        SING: ['LSI1-2F', 'LSI2-1F', 'LSI2-2F', 'LSI2-3F', 'LSI3-3F'],
-        ATC: ['LSI1-1F', 'LSI1-2F', 'LSI2-1F', 'LSI2-2F', 'LSI2-3F', 'LSI3-1F', 'LSI3-3F']
-    };
-
     // -----------------------------------------------------------------------
     // Search
     // -----------------------------------------------------------------------
     btnSearch.addEventListener('click', () => triggerSearch());
 
     function triggerSearch() {
+        if (btnSearch.disabled) return;
         const payload = {
-            dateFrom: dtFrom.value.replace('T', ' '),
-            dateTo: dtTo.value.replace('T', ' '),
-            mode: selMode.value,
+            dateFrom: dateFrom.replace('T', ' '),
+            dateTo: dateTo.replace('T', ' '),
+            mode,
             legacyForm
         };
-        currentMode = selMode.value;
+        currentMode = mode;
         loadGrid(payload);
     }
 
     async function loadGrid(payload) {
         setLoading(true);
         closeFlyout();
+        currentResult = null;
+        lblStatus.textContent = '';
+        lblStatus.classList.remove('status-error');
+        renderLayout(payload.mode);
+        renderGrid(null);
 
         try {
             const res = await fetch(`/BmAnalytics?handler=LoadGrid&legacyForm=${legacyForm}`, {
@@ -124,10 +78,11 @@ Workflows.register('BmAnalytics', (root, options, context) => {
             if (!json.success) throw new Error(json.message);
 
             currentResult = json.data;
-            renderGrid(currentResult, currentMode);
+            renderGrid(currentResult);
             lblStatus.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
         } catch (err) {
-            gridWrapper.innerHTML = `<div class="alert alert-danger">Error: ${escapeHtml(err.message)}</div>`;
+            lblStatus.textContent = 'Unable to load summary: ' + err.message;
+            lblStatus.classList.add('status-error');
         } finally {
             setLoading(false);
         }
@@ -136,85 +91,50 @@ Workflows.register('BmAnalytics', (root, options, context) => {
     // -----------------------------------------------------------------------
     // Render grid
     // -----------------------------------------------------------------------
-    function renderGrid(result, mode) {
-        const processes = mode === 'TE' ? TE_PROCESSES : EEE_PROCESSES;
-        const processLocs = legacyForm === '12'
-            ? FORM12_EEE_PROCESS_LOCS
-            : (mode === 'TE' ? TE_PROCESS_LOCS : EEE_PROCESS_LOCS);
-        const cells = result.cells || {};
-        const locTotals = result.locationTotals || {};
-        const procTotals = result.processTotals || {};
-        const grandTotal = result.grandTotal || 0;
+    function renderLayout(mode) {
+        if (gridMode === mode) return;
+        gridMode = mode;
+        gridWrapper.innerHTML = '<table class="bma-table" aria-label="Action with MCD summary"><thead><tr>' +
+            '<th class="bma-hdr-process" scope="col">Process</th>' +
+            layout.columns.map(location => `<th class="bma-hdr-loc" scope="col">${location}</th>`).join('') +
+            '<th class="bma-hdr-total" scope="col">Total</th></tr></thead><tbody>' +
+            layout.modes[mode].map(row =>
+                `<tr><td class="bma-proc-label">${row.process}</td>` +
+                layout.columns.map(location => row.cells[location]
+                    ? `<td class="bma-cell" data-key="${row.cells[location]}" data-proc="${row.process}" data-loc="${location}"></td>`
+                    : '<td class="bma-cell bma-cell-na"></td>').join('') +
+                `<td class="bma-row-total" data-process="${row.process}"></td></tr>`
+            ).join('') +
+            '<tr class="bma-total-row"><td class="bma-proc-label">Total</td>' +
+            layout.columns.map(location => `<td class="bma-col-total" data-location="${location}"></td>`).join('') +
+            '<td class="bma-grand-total"></td></tr></tbody></table>';
+    }
 
-        let html = `
-        <div class="table-responsive">
-        <table class="table table-bordered table-sm bma-table">
-            <thead>
-                <tr>
-                    <th class="bma-hdr-process">Process</th>
-                    ${ALL_LOCATIONS.map(l => `<th class="bma-hdr-loc">${l}</th>`).join('')}
-                    <th class="bma-hdr-total">Total</th>
-                </tr>
-            </thead>
-            <tbody>`;
-
-        for (const proc of processes) {
-            const locs = processLocs[proc] || [];
-            html += `<tr><td class="bma-proc-label">${proc}</td>`;
-
-            for (const loc of ALL_LOCATIONS) {
-                // Build the cell key matching the server's CellKey logic
-                const key = buildCellKey(proc, loc, locs);
-
-                if (!key) {
-                    // This process doesn't appear in this location
-                    html += `<td class="bma-cell bma-cell-na"></td>`;
-                    continue;
-                }
-
-                const cell = cells[key] || { count: 0, mcnos: [] };
-                const count = cell.count || 0;
-                const cls = count > 0 ? 'bma-cell bma-cell-active' : 'bma-cell bma-cell-zero';
-
-                html += `<td class="${cls}" role="button" tabindex="${count > 0 ? 0 : -1}" data-key="${key}" data-proc="${proc}" data-loc="${loc}"
-                             title="${proc} / ${loc}: ${count}">${count}</td>`;
-            }
-
-            const pTotal = procTotals[proc] ?? 0;
-            html += `<td class="bma-row-total">${pTotal}</td></tr>`;
-        }
-
-        // Location totals row
-        html += `<tr class="bma-total-row"><td class="bma-proc-label fw-bold">Total</td>`;
-        for (const loc of ALL_LOCATIONS) {
-            html += `<td class="bma-col-total">${locTotals[loc] ?? 0}</td>`;
-        }
-        html += `<td class="bma-grand-total">${grandTotal}</td></tr>`;
-
-        html += `</tbody></table></div>`;
-
-        gridWrapper.innerHTML = html;
-
-        // Attach click handlers to non-zero cells
-        gridWrapper.querySelectorAll('.bma-cell-active').forEach(td => {
-            td.addEventListener('click', () => {
-                const key = td.dataset.key;
-                const proc = td.dataset.proc;
-                const loc = td.dataset.loc;
-                openFlyout(key, proc, loc);
-            });
+    function renderGrid(result) {
+        gridWrapper.querySelectorAll('[data-key]').forEach(td => {
+            const count = result ? (result.cells?.[td.dataset.key]?.count || 0) : '—';
+            const active = count > 0;
+            td.textContent = count;
+            td.classList.toggle('bma-cell-active', active);
+            td.tabIndex = active ? 0 : -1;
+            td.setAttribute('role', 'button');
+            td.setAttribute('aria-disabled', String(!active));
+            td.setAttribute('aria-label', `${td.dataset.proc} / ${td.dataset.loc}: ${count}`);
         });
+        gridWrapper.querySelectorAll('.bma-row-total').forEach(td => {
+            td.textContent = result ? (result.processTotals?.[td.dataset.process] || 0) : '—';
+        });
+        gridWrapper.querySelectorAll('.bma-col-total').forEach(td => {
+            td.textContent = result ? (result.locationTotals?.[td.dataset.location] || 0) : '—';
+        });
+        gridWrapper.querySelector('.bma-grand-total').textContent = result ? (result.grandTotal || 0) : '—';
     }
 
-    // Build the cell key that matches BmAnalyticsMappings.CellKey() on the server.
-    function buildCellKey(process, location, locs) {
-        if (!locs.includes(location)) return null;
-        const idx = locs.indexOf(location) + 1;   // 1-based
-        if (legacyForm === '12' && process === 'ATC' && location === 'LSI3-1F') {
-            return 'ATC_65';
-        }
-        return `${process}_${idx}`;
-    }
+    gridWrapper.addEventListener('click', event => {
+        if (btnSearch.disabled) return;
+        const td = event.target.closest('.bma-cell-active');
+        if (td) openFlyout(td.dataset.key, td.dataset.proc, td.dataset.loc);
+    });
 
     // -----------------------------------------------------------------------
     // Flyout panel
@@ -225,7 +145,6 @@ Workflows.register('BmAnalytics', (root, options, context) => {
         const cell = cells[key];
         if (!cell || cell.count === 0) return;
 
-        currentCellKey = key;
         btnViewMon.disabled = true;
         btnViewMon.dataset.machine = '';
         flyoutTitle.textContent = `${proc}  ( ${loc} )`;
@@ -233,13 +152,15 @@ Workflows.register('BmAnalytics', (root, options, context) => {
 
         (cell.mcnos || []).forEach(mc => {
             const li = document.createElement('li');
-            li.className = 'list-group-item list-group-item-action py-1 px-2 bma-mc-item';
+            li.className = 'bma-mc-item summary-machine-item';
+            li.setAttribute('aria-pressed', 'false');
             li.tabIndex = 0;
             li.setAttribute('role', 'button');
             li.textContent = mc;
             li.addEventListener('click', () => {
-                flyoutList.querySelectorAll('.active').forEach(el => el.classList.remove('active'));
+                flyoutList.querySelectorAll('.active').forEach(el => { el.classList.remove('active'); el.setAttribute('aria-pressed', 'false'); });
                 li.classList.add('active');
+                li.setAttribute('aria-pressed', 'true');
                 btnViewMon.disabled = false;
                 btnViewMon.dataset.proc = proc;
                 btnViewMon.dataset.floor = loc;
@@ -255,7 +176,6 @@ Workflows.register('BmAnalytics', (root, options, context) => {
         flyoutPanel.classList.add('is-hidden');
         btnViewMon.disabled = true;
         btnViewMon.dataset.machine = '';
-        currentCellKey = null;
     }
 
     btnCloseFlyout.addEventListener('click', closeFlyout);
@@ -270,8 +190,8 @@ Workflows.register('BmAnalytics', (root, options, context) => {
             floor,
             machine,
             userType: currentMode === 'TE' ? 'TE' : (options.userType && options.userType !== 'TE' ? options.userType : 'EEE'),
-            dateFrom: dtFrom.value,
-            dateTo: dtTo.value
+            dateFrom,
+            dateTo
         });
         Workflows.selectMachine(params);
     });
@@ -281,9 +201,6 @@ Workflows.register('BmAnalytics', (root, options, context) => {
     // -----------------------------------------------------------------------
     context.onRefresh(triggerSearch);
 
-    if (options.dateFrom) dtFrom.value = options.dateFrom.slice(0, 10) + 'T00:00';
-    if (options.dateTo) dtTo.value = options.dateTo.slice(0, 10) + 'T00:00';
-    selMode.value = options.userType === 'TE' ? 'TE' : 'EEE';
     triggerSearch();
 
     // -----------------------------------------------------------------------
@@ -291,9 +208,9 @@ Workflows.register('BmAnalytics', (root, options, context) => {
     // -----------------------------------------------------------------------
     function setLoading(on) {
         btnSearch.disabled = on;
-        searchSpinner.classList.toggle('d-none', !on);
+        loading.hidden = !on;
+        root.setAttribute('aria-busy', String(on));
     }
 
-    function escapeHtml(value) { const span = document.createElement('span'); span.textContent = value; return span.innerHTML; }
 
 });

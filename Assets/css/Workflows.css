@@ -14,6 +14,7 @@
 .workflow-error { color: #a00000; background: #fff; }
 .workflow { position: relative; min-width: 0; }
 .workflow--AlertBoard { --summary-accent: tomato; --summary-label: mistyrose; --summary-heading: #111; }
+.workflow--AlertBoard { position: static; }
 .workflow--MachineSummary, .workflow--McdMonitoring { --summary-accent: blue; --summary-label: azure; --summary-heading: #fff; }
 .workflow--BmAnalytics { --summary-accent: darkorange; --summary-label: bisque; --summary-heading: #111; }
 .workflow :is(.ab-container, .ms-wrapper, .mcd-page, .bma-page) { padding: 4px; display: flex; flex-direction: column; gap: 4px; background: silver; }
@@ -48,9 +49,8 @@
 .workflow .mcd-cell-na { background: lightgray !important; }
 .workflow :is(.ab-cell-total, .ab-cell-grand, .mcd-total-cell, .mcd-proc-total) { font-weight: 700; }
 .workflow :is(.mcd-total-label, .ab-totals-row .ab-cell-label) { background: var(--summary-accent) !important; color: var(--summary-heading); font-weight: 700; }
-.workflow :is(.ab-progress, .ms-progress, .mcd-progress) { height: 4px; width: 100%; overflow: hidden; background: #ddd; }
-.workflow :is(.ab-progress-inner, .ms-progress-bar, .mcd-progress-inner) { height: 100%; background: var(--summary-accent); }
-.workflow .ms-progress-bar { width: 100%; }
+.workflow .mcd-progress { height: 4px; width: 100%; overflow: hidden; background: #ddd; }
+.workflow .mcd-progress-inner { height: 100%; background: var(--summary-accent); }
 .workflow :is(.ms-panel, .ab-drilldown, .mcd-machine-panel, .bma-flyout) { position: absolute; top: 10px; left: 24%; width: min(546px, 73%); max-height: calc(100% - 20px); display: flex; flex-direction: column; background: #fff; border: 1px solid #555; border-radius: 0; box-shadow: 0 8px 24px #0006 !important; z-index: 5; overflow: auto; }
 .workflow .ms-panel { display: none; }
 .workflow .ms-panel.ms-panel-open { display: flex; }
@@ -64,16 +64,46 @@
 .workflow :is(.ms-panel-sub, .mcd-panel-footer, .bma-flyout .card-footer) { padding: 7px 10px; }
 .workflow :is(.ms-overlay, .mcd-overlay) { display: none; }
 .workflow :is(.mcd-grid-empty, .ms-panel-message) { padding: 20px; background: #fff; }
+/* The three primary summaries share controls, loading feedback, and machine lookup styling. */
+.workflow .summary-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 8px 16px; }
+.workflow .summary-context { margin: 0; align-self: center; font-size: 12px; overflow-wrap: anywhere; }
+.workflow .summary-search { display: flex; align-items: center; justify-content: end; gap: 12px; }
+.workflow .summary-toolbar .summary-search button { margin: 0; }
+.workflow .summary-status { grid-column: 1 / -1; min-height: 18px; margin: 0; font-size: 12px; }
+.workflow .summary-loading { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; font-size: 12px; }
+.workflow .summary-loading .spinner { width: 18px; height: 18px; border-color: #888; border-top-color: #343434; }
+.workflow[aria-busy="true"] .summary-grid { cursor: progress; }
+.workflow :is(.ms-grid, .bma-table) thead th:first-child { width: 100px; }
+.workflow :is(.ms-grid, .bma-table) thead th:last-child { width: 85px; }
+:is(.workflow, .machine-list-sidebar) .summary-panel-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 8px 6px 12px; background: #dde6ed; font-weight: 700; }
+:is(.workflow, .machine-list-sidebar) .summary-panel-header > span { min-width: 0; overflow-wrap: anywhere; }
+:is(.workflow, .machine-list-sidebar) .summary-panel-close { flex: 0 0 40px; width: 40px; height: 40px; padding: 0; border: 0; background: tomato; color: #111; font-size: 24px; line-height: 1; }
+:is(.workflow, .machine-list-sidebar) .summary-panel-hint { margin: 0; padding: 8px 12px; font-size: 12px; color: #484848; }
+:is(.workflow, .machine-list-sidebar) .summary-machine-list { padding: 0; max-height: min(400px, 45dvh); }
+:is(.workflow, .machine-list-sidebar) .summary-machine-item { display: flex; align-items: center; min-height: 36px; overflow-wrap: anywhere; }
+:is(.workflow, .machine-list-sidebar) .summary-machine-item[aria-pressed="true"] { background: #004fa8; color: #fff; }
+:is(.workflow, .machine-list-sidebar) .summary-panel-message { display: flex; align-items: center; gap: 8px; padding: 16px 12px; font-size: 14px; }
+:is(.workflow, .machine-list-sidebar) .summary-panel-footer { display: flex; justify-content: end; padding: 8px; background: #f0f0f0; }
+:is(.workflow, .machine-list-sidebar) .summary-panel-go { min-height: 36px; margin: 0; padding: 6px 16px; border: 0; background: var(--summary-accent); color: var(--summary-heading); }
+@media (max-width: 600px) {
+    .workflow .summary-grid { max-height: max(180px, calc(100dvh - 340px)); }
+    .workflow .summary-grid .ab-header-row { position: sticky; top: 0; z-index: 1; }
+    .workflow .summary-toolbar { grid-template-columns: minmax(0, 1fr); }
+}
 /* The report designers are document windows. Keep a document workspace and native download controls. */
-.workflow--PmReport, .workflow--BmReport, .workflow--EvidenceMaking, .workflow--TeEvidenceMaking { padding: 10px; background: #f0f0f0; min-height: 360px; }
-.workflow :is(.pm-report-header, .document-toolbar, .bmreport-header, .ev-form-panel) { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 12px; padding: 8px; background: #ddd; }
+.workflow--PmReport, .workflow--BmReport, .workflow--EvidenceMaking, .workflow--TeEvidenceMaking { padding: 10px; background: #f0f0f0; }
+.workflow :is(.pm-report-header, .document-toolbar, .bmreport-header) { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 8px; padding: 8px; background: #ddd; }
 .workflow :is(.pm-report-header h1, .bmreport-header h2, .ev-title) { font-size: 18px; font-weight: 700; margin: 0; }
 .workflow :is(.pm-report-header p, .document-toolbar p, .bmreport-subtitle) { margin: 4px 0; }
 .workflow :is(.pm-report-button, .btn-download, .btn-generate, .document-toolbar button) { background: green; color: #fff; padding: 8px 16px; border: 0; border-radius: 2px; min-height: 36px; display: inline-block; text-decoration: none; }
-.workflow :is(.document-workspace, .pm-report-status, .bmreport-info, .status-area) { padding: 24px 16px; background: #fff; border: 1px solid #aaa; margin-top: 8px; }
-.workflow .document-workspace { min-height: 260px; }
+.workflow :is(.document-workspace, .pm-report-status, .bmreport-info, .status-area) { padding: 8px; background: #fff; border: 1px solid #aaa; margin-top: 6px; }
+.workflow .document-workspace { min-height: 0; }
+.workflow .document-note { margin: 8px 0; color: #484848; font-size: 12px; }
+.workflow .document-toolbar p, .workflow .document-workspace p { margin: 0; }
+.workflow .document-toolbar form { margin: 0; }
+.workflow .status-msg { margin: 0; }
 .workflow .bmreport-actions { padding: 12px 0; }
-.workflow :is(.report-status, .pm-report-status) { min-height: 35px; }
+.workflow :is(.report-status, .pm-report-status) { min-height: 0; margin: 6px 0; }
 .workflow .pm-report-status[data-state="error"] { color: #a00000; }
 .workflow .ev-header { padding: 6px 0; }
 .workflow .form-group { display: flex; flex-direction: column; gap: 3px; }
@@ -83,3 +113,4 @@
 .workflow .preview-filename { overflow-wrap: anywhere; flex: 1; }
 .workflow .status-spinner { display: flex; gap: 8px; align-items: center; }
 @media (max-width: 600px) { .workflow-dialog, .workflow-dialog[data-workflow] { width: calc(100% - 12px); max-height: calc(100dvh - 12px); } .workflow-titlebar { padding-left: 8px; } .workflow-titlebar h2 { font-size: 14px; } .workflow :is(.ms-panel, .ab-drilldown, .mcd-machine-panel, .bma-flyout) { left: 3%; width: 94%; } .workflow :is(.ab-toolbar, .ms-toolbar, .mcd-filter-bar, .bma-toolbar) { align-items: stretch; } .workflow input[type="datetime-local"] { max-width: 100%; } }
+.workflow .ab-drilldown { top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(546px, calc(100% - 16px)); max-height: calc(100% - 64px); }

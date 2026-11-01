@@ -1,8 +1,6 @@
 Workflows.register('MachineSummary', (root, options, context) => {
     const byId = id => root.querySelector('[data-id="' + id + '"], [id="' + id + '"]');
     const fetch = context.fetch;
-    const setInterval = context.setInterval;
-    const setTimeout = context.setTimeout;
 /**
  * MachineSummary.js
  * Form11 → MachineSummary.cshtml  (E-Karte System)
@@ -19,11 +17,11 @@ Workflows.register('MachineSummary', (root, options, context) => {
 
     const $ = id => byId(id);
     const elSearch = $('msSearch');
-    const elFrom = $('msFrom');
-    const elTo = $('msTo');
-    const elMode = $('msMode');
+    const { dateFrom, dateTo, userMode } = options;
     const elStatus = $('msStatus');
-    const elProgress = $('msProgress');
+    const loading = $('summaryLoading');
+    const layout = JSON.parse($('msGrid').dataset.layout);
+    let gridMode = null;
     const elHead = $('msGridHead');
     const elBody = $('msGridBody');
     const elFoot = $('msGridFoot');
@@ -40,9 +38,7 @@ Workflows.register('MachineSummary', (root, options, context) => {
     let cellSeq = 0;
 
     elSearch.addEventListener('click', () => search(false));
-    elMode.addEventListener('change', () => search(false));
-    elFrom.addEventListener('keydown', e => { if (e.key === 'Enter') search(false); });
-    elTo.addEventListener('keydown', e => { if (e.key === 'Enter') search(false); });
+    elBody.addEventListener('click', onCellClick);
     elClose.addEventListener('click', closePanel);
     elOverlay.addEventListener('click', closePanel);
     elGo.addEventListener('click', goToMonitoring);
@@ -54,9 +50,7 @@ Workflows.register('MachineSummary', (root, options, context) => {
 
     // ── Grid load ─────────────────────────────────────────────────────────────
     async function search(background) {
-        const dateFrom = elFrom.value;
-        const dateTo = elTo.value;
-        const userMode = elMode.value;
+        if (elSearch.disabled) return;
 
         if (!dateFrom || !dateTo) {
             if (!background) setStatus('Please select a date range.', true);
@@ -66,9 +60,11 @@ Workflows.register('MachineSummary', (root, options, context) => {
         const seq = ++loadSeq;
         lastFilter = { dateFrom, dateTo, userMode };
 
-        if (!background) setStatus('Loading…');
-        showProgress(true);
-        elSearch.disabled = true;
+        closePanel();
+        renderLayout(userMode);
+        renderGrid(null);
+        setStatus('');
+        setLoading(true);
 
         try {
             const params = new URLSearchParams({
@@ -93,89 +89,61 @@ Workflows.register('MachineSummary', (root, options, context) => {
             if (seq === loadSeq) setStatus(`Error: ${err.message}`, true);
         } finally {
             if (seq === loadSeq) {
-                showProgress(false);
-                elSearch.disabled = false;
+                setLoading(false);
             }
         }
     }
 
     // ── Grid render ───────────────────────────────────────────────────────────
+    function renderLayout(mode) {
+        if (gridMode === mode) return;
+        gridMode = mode;
+        elHead.innerHTML = '<tr><th class="ms-th-process" scope="col">Process</th>' +
+            layout.columns.map(column => `<th class="ms-th-loc" scope="col">${esc(column)}</th>`).join('') +
+            '<th class="ms-th-total" scope="col">Total</th></tr>';
+        elBody.innerHTML = layout.modes[mode].map(row =>
+            `<tr data-process="${row.process}"><td class="ms-td-process">${row.process}</td>` +
+            layout.columns.map(column => `<td class="ms-cell" data-location="${column}" data-applicable="${row.locations.includes(column)}"></td>`).join('') +
+            '<td class="ms-td-rowtotal"></td></tr>'
+        ).join('');
+        elFoot.innerHTML = '<tr><td class="ms-tf-label">Total</td>' +
+            layout.columns.map(column => `<td class="ms-tf-cell" data-location="${column}"></td>`).join('') +
+            '<td class="ms-tf-grand"></td></tr>';
+    }
+
     function renderGrid(data) {
-        const columns = data.columns || [];
-        const rows = data.rows || [];
-        const locationTotals = data.locationTotals || {};
-
-        let header = '<tr><th class="ms-th-process">PROCESS</th>';
-        columns.forEach(column => {
-            header += `<th class="ms-th-loc">${esc(column)}</th>`;
-        });
-        header += '<th class="ms-th-total">TOTAL</th></tr>';
-        elHead.innerHTML = header;
-
-        let body = '';
-        rows.forEach(row => {
-            const cells = row.cells || {};
-            body += `<tr data-process="${esc(row.process)}">`;
-            body += `<td class="ms-td-process">${esc(row.process)}</td>`;
-
-            columns.forEach(column => {
-                const cell = cells[column];
-
-                if (!cell || cell.notApplicable) {
-                    body += '<td class="ms-cell ms-na">—</td>';
-                    return;
-                }
-
-                const count = cell.count || 0;
-                if (count === 0) {
-                    body += '<td class="ms-cell ms-zero">0</td>';
-                    return;
-                }
-
-                body += `<td class="ms-cell ms-active" tabindex="0"
-                    data-process="${esc(row.process)}"
-                    data-location="${esc(column)}"
-                    role="button"
-                    aria-label="${count} machines at ${esc(row.process)} ${esc(column)}"
-                    >${count}</td>`;
+        const rows = new Map((data?.rows || []).map(row => [row.process, row]));
+        elBody.querySelectorAll('tr').forEach(tr => {
+            const process = tr.dataset.process;
+            const row = rows.get(process);
+            tr.querySelectorAll('[data-location]').forEach(td => {
+                const location = td.dataset.location;
+                const cell = row?.cells?.[location];
+                const unavailable = td.dataset.applicable === 'false' || cell?.notApplicable;
+                const count = data ? (cell?.count || 0) : '—';
+                const active = !unavailable && count > 0;
+                td.textContent = unavailable ? '' : count;
+                td.classList.toggle('ms-na', !!unavailable);
+                td.classList.toggle('ms-active', active);
+                td.tabIndex = active ? 0 : -1;
+                td.setAttribute('role', 'button');
+                td.setAttribute('aria-disabled', String(!active));
+                td.setAttribute('aria-label', `${process} / ${location}: ${unavailable ? 'Not applicable' : count}`);
             });
-
-            const rowTotal = row.rowTotal || 0;
-            const totalClass = rowTotal > 0
-                ? 'ms-td-rowtotal ms-row-nonzero'
-                : 'ms-td-rowtotal';
-            body += `<td class="${totalClass}">${rowTotal}</td>`;
-            body += '</tr>';
+            tr.querySelector('.ms-td-rowtotal').textContent = data ? (row?.rowTotal || 0) : '—';
         });
-        elBody.innerHTML = body;
-
-        let footer = '<tr><td class="ms-tf-label">TOTAL</td>';
-        columns.forEach(column => {
-            const total = locationTotals[column] || 0;
-            const totalClass = total > 0 ? 'ms-tf-cell ms-tf-nonzero' : 'ms-tf-cell';
-            footer += `<td class="${totalClass}">${total}</td>`;
+        elFoot.querySelectorAll('[data-location]').forEach(td => {
+            td.textContent = data ? (data.locationTotals?.[td.dataset.location] || 0) : '—';
         });
-
-        const grandTotal = data.grandTotal || 0;
-        const grandClass = grandTotal > 0 ? 'ms-tf-grand ms-tf-nonzero' : 'ms-tf-grand';
-        footer += `<td class="${grandClass}">${grandTotal}</td></tr>`;
-        elFoot.innerHTML = footer;
-
-        elBody.querySelectorAll('.ms-active').forEach(td => {
-            td.addEventListener('click', onCellClick);
-            td.addEventListener('keydown', e => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    onCellClick.call(td, e);
-                }
-            });
-        });
+        elFoot.querySelector('.ms-tf-grand').textContent = data ? (data.grandTotal || 0) : '—';
     }
 
     // ── Cell click → machine list ─────────────────────────────────────────────
     async function onCellClick(e) {
-        const td = e.currentTarget ?? this;
-        const process = td.dataset.process;
+        if (root.getAttribute('aria-busy') === 'true') return;
+        const td = e.target.closest('.ms-active');
+        if (!td) return;
+        const process = td.closest('tr').dataset.process;
         const location = td.dataset.location;
         if (!process || !location) return;
 
@@ -187,7 +155,7 @@ Workflows.register('MachineSummary', (root, options, context) => {
         };
 
         elTitle.textContent = `${process} ( ${location} ) — loading…`;
-        elList.innerHTML = '';
+        elList.innerHTML = '<li class="summary-panel-message"><span class="spinner" aria-hidden="true"></span>Loading machines…</li>';
         elGo.disabled = true;
         elGo.dataset.machine = '';
         openPanel();
@@ -209,7 +177,7 @@ Workflows.register('MachineSummary', (root, options, context) => {
 
             if (!json.success) {
                 elTitle.textContent = `${process} ( ${location} )`;
-                elList.innerHTML = `<li class="ms-panel-item ms-panel-message">${esc(json.message || 'Unable to load machines.')}</li>`;
+                elList.innerHTML = `<li class="summary-panel-message">${esc(json.message || 'Unable to load machines.')}</li>`;
                 return;
             }
 
@@ -218,15 +186,17 @@ Workflows.register('MachineSummary', (root, options, context) => {
             currentCell.location = data.location || location;
             elTitle.textContent = `${currentCell.process} ( ${currentCell.location} )`;
 
+            elList.innerHTML = '';
             const machines = data.machines || [];
             if (machines.length === 0) {
-                elList.innerHTML = '<li class="ms-panel-item ms-panel-message">No machines.</li>';
+                elList.innerHTML = '<li class="summary-panel-message">No machines.</li>';
                 return;
             }
 
             machines.forEach(machine => {
                 const li = document.createElement('li');
-                li.className = 'ms-panel-item';
+                li.className = 'ms-panel-item summary-machine-item';
+                li.setAttribute('aria-pressed', 'false');
                 li.tabIndex = 0;
                 li.setAttribute('role', 'button');
                 li.textContent = machine;
@@ -238,7 +208,7 @@ Workflows.register('MachineSummary', (root, options, context) => {
         } catch (err) {
             if (seq === cellSeq) {
                 elTitle.textContent = `${process} ( ${location} )`;
-                elList.innerHTML = `<li class="ms-panel-item ms-panel-message">${esc(err.message)}</li>`;
+                elList.innerHTML = `<li class="summary-panel-message">${esc(err.message)}</li>`;
             }
         }
     }
@@ -266,9 +236,11 @@ Workflows.register('MachineSummary', (root, options, context) => {
     function selectMachine(li) {
         elList.querySelectorAll('.ms-panel-item').forEach(item => {
             item.classList.remove('ms-selected');
+            item.setAttribute('aria-pressed', 'false');
         });
 
         li.classList.add('ms-selected');
+        li.setAttribute('aria-pressed', 'true');
         elGo.disabled = false;
         elGo.dataset.machine = li.dataset.machine;
     }
@@ -301,8 +273,10 @@ Workflows.register('MachineSummary', (root, options, context) => {
         elStatus.classList.toggle('status-info', !isError);
     }
 
-    function showProgress(on) {
-        elProgress.classList.toggle('is-hidden', !on);
+    function setLoading(on) {
+        elSearch.disabled = on;
+        loading.hidden = !on;
+        root.setAttribute('aria-busy', String(on));
     }
 
     function withParams(url, params) {

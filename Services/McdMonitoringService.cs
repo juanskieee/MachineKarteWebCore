@@ -44,7 +44,8 @@ namespace MachineKarte.Web.Services
             foreach (var col in McdMonitoringConfig.AllLocations)
                 result.LocationTotals[col] = 0;
 
-            foreach (var process in McdMonitoringConfig.GetProcesses(isTe))
+            // The designer keeps every process row visible; mode only limits queried locations.
+            foreach (var process in McdMonitoringConfig.GetProcesses(false))
             {
                 var row = new McdProcessRowResult { Process = process };
 

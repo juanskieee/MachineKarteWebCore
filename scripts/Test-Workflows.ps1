@@ -76,12 +76,16 @@ try {
     $socket.ConnectAsync([Uri]$target.webSocketDebuggerUrl, [Threading.CancellationToken]::None).GetAwaiter().GetResult() | Out-Null
     Invoke-Cdp 'Page.enable' | Out-Null
     Invoke-Cdp 'Browser.setDownloadBehavior' @{ behavior = 'deny' } | Out-Null
+    Invoke-Cdp 'Emulation.setEmulatedMedia' @{ features = @(@{ name='prefers-reduced-motion'; value='no-preference' }) } | Out-Null
     $fixtures = [IO.File]::ReadAllText((Join-Path $PSScriptRoot 'WorkflowBrowserChecks.js'))
     Invoke-Cdp 'Page.addScriptToEvaluateOnNewDocument' @{ source = $fixtures } | Out-Null
     Invoke-Cdp 'Emulation.setDeviceMetricsOverride' @{ width = 1440; height = 1000; deviceScaleFactor = 1; mobile = $false } | Out-Null
     Invoke-Cdp 'Page.navigate' @{ url = "$BaseUrl/Monitoring" } | Out-Null
     $ready = Invoke-JavaScript "new Promise((resolve, reject) => { let attempts = 0; const timer = setInterval(() => { if (window.Workflows && document.readyState === 'complete') { clearInterval(timer); resolve(true); } else if (++attempts > 150) { clearInterval(timer); reject(new Error('Monitoring failed to load')); } }, 100); })"
     Write-Output (Invoke-JavaScript 'window.runWorkflowChecks()')
+    Write-Output (Invoke-JavaScript 'window.runSummaryChecks()')
+    Write-Output (Invoke-JavaScript 'window.runMonitoringChecks()')
+    Write-Output (Invoke-JavaScript 'window.runDocumentChecks()')
     Invoke-JavaScript "document.getElementById('btnMCD').focus(); window.prepareWorkflowCapture('MachineSummary')" | Out-Null
     Invoke-Cdp 'Input.dispatchKeyEvent' @{type='keyDown';key='Tab';code='Tab';windowsVirtualKeyCode=9;modifiers=1} | Out-Null
     if (!(Invoke-JavaScript "document.getElementById('workflowDialog').contains(document.activeElement)")) { throw 'Dialog did not trap keyboard focus.' }
@@ -92,10 +96,17 @@ try {
     New-Item -ItemType Directory -Path $ArtifactDirectory -Force | Out-Null
     foreach ($viewport in @(@{name='desktop';width=1440;height=1000}, @{name='mobile';width=390;height=844})) {
         Invoke-Cdp 'Emulation.setDeviceMetricsOverride' @{ width=$viewport.width; height=$viewport.height; deviceScaleFactor=1; mobile=($viewport.name -eq 'mobile') } | Out-Null
-        foreach ($surface in @('Monitoring','ActionCards','MachineSummary','BmAnalytics','RawData','OcapViewer')) {
+        foreach ($surface in @('Monitoring','MachineList','PmReport','BmReport','EvidenceMaking','TeEvidenceMaking','ActionCards','AlertBoard','MachineSummary','BmAnalytics','RawData','OcapViewer')) {
             Write-Output (Invoke-JavaScript ("window.prepareWorkflowCapture('" + $surface + "')"))
             $capture = Invoke-Cdp 'Page.captureScreenshot' @{ format='png'; captureBeyondViewport=$false }
             [IO.File]::WriteAllBytes((Join-Path $ArtifactDirectory ($viewport.name + '-' + $surface + '.png')), [Convert]::FromBase64String($capture.data))
+        }
+        foreach ($summary in @('AlertBoard','MachineSummary','BmAnalytics')) {
+            foreach ($state in @('loading','panel')) {
+                Write-Output (Invoke-JavaScript ("window.prepareSummaryCapture('" + $summary + "','" + $state + "')"))
+                $capture = Invoke-Cdp 'Page.captureScreenshot' @{ format='png'; captureBeyondViewport=$false }
+                [IO.File]::WriteAllBytes((Join-Path $ArtifactDirectory ($viewport.name + '-' + $summary + '-' + $state + '.png')), [Convert]::FromBase64String($capture.data))
+            }
         }
     }
     Write-Output "PASS: desktop/mobile captures in $ArtifactDirectory"

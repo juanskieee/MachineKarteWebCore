@@ -52,7 +52,10 @@ namespace MachineKarte.Web.Models
         public string BMContent { get; set; } = string.Empty;
         public string Priority { get; set; } = string.Empty;
         public string MCStatus { get; set; } = string.Empty;
+        public string ActionColor { get; set; } = "Red";
         public string FontColor { get; set; } = "None";
+        public bool NeedsAction { get; set; }
+        public bool McdNeedsAction { get; set; }
         public string ActionMarker { get; set; } = string.Empty;
         public string SectionMarker { get; set; } = string.Empty;
         public string DepartmentMarker { get; set; } = string.Empty;
@@ -65,12 +68,17 @@ namespace MachineKarte.Web.Models
     /// </summary>
     public class FloorSummary
     {
-        // Index 1-9 maps to: LSI1-1F, LSI1-2F, LSI2-1F, LSI2-2F, LSI2-3F,
-        //                    LSI3-2F, LSI3-4F, LSI3-1F, LSI3-3F
+        // Counts and matching machine lists for Form1's three action-item rows.
         public string FloorCode { get; set; } = string.Empty;
         public int BMCount { get; set; }
         public int MCDCount { get; set; }
         public int MachineCount { get; set; }
+        public int RepeatBMCount { get; set; }
+        public int NeedActionCount { get; set; }
+        public int WithActionCount { get; set; }
+        public List<string> RepeatMachines { get; set; } = new();
+        public List<string> NeedActionMachines { get; set; } = new();
+        public List<string> WithActionMachines { get; set; } = new();
     }
 
     /// <summary>

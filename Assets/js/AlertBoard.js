@@ -1,8 +1,6 @@
 Workflows.register('AlertBoard', (root, options, context) => {
     const byId = id => root.querySelector('[data-id="' + id + '"], [id="' + id + '"]');
     const fetch = context.fetch;
-    const setInterval = context.setInterval;
-    const setTimeout = context.setTimeout;
 /**
  * AlertBoard.js
  * Handles the BM Alert Board (Form2 → AlertBoard.cshtml).
@@ -22,12 +20,11 @@ Workflows.register('AlertBoard', (root, options, context) => {
         root.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '';
 
     // ── Element refs ─────────────────────────────────────────────────────────
-    const dtFrom = byId('dtFrom');
-    const dtTo = byId('dtTo');
-    const selUser = byId('selUser');
+    const dateFrom = options.dateFrom;
+    const dateTo = options.dateTo;
+    const user = options.userType === 'PM' ? '' : options.userType;
     const btnSearch = byId('btnSearch');
-    const progress = byId('progressBar');
-    const progressInner = byId('progressInner');
+    const loading = byId('summaryLoading');
     const panelDrill = byId('panelDrilldown');
     const drillTitle = byId('drilldownTitle');
     const drillList = byId('drilldownList');
@@ -37,35 +34,22 @@ Workflows.register('AlertBoard', (root, options, context) => {
     // State
     let _selectedMachine = null;
     let _selectedCell = null;   // e.g. "DC_0"
+    let drillSeq = 0;
 
     // ── Defaults ─────────────────────────────────────────────────────────────
-    (function initDefaults() {
-        const now = new Date();
-        const from = new Date(now);
-        from.setDate(from.getDate() - 30);
-        const to = new Date(now);
-        to.setDate(to.getDate() + 1);
-        dtFrom.value = options.dateFrom ? options.dateFrom.slice(0, 10) + 'T00:00' : toLocalInput(from);
-        dtTo.value = options.dateTo ? options.dateTo.slice(0, 10) + 'T00:00' : toLocalInput(to);
-        selUser.value = options.userType === 'PM' ? '' : (options.userType || '');
-    })();
-
-    function toLocalInput(d) {
-        const pad = n => String(n).padStart(2, '0');
-        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    }
-
     // ── Search ───────────────────────────────────────────────────────────────
     btnSearch.addEventListener('click', loadBoard);
 
     async function loadBoard() {
-        setProgress(true);
+        if (btnSearch.disabled) return;
+        setLoading(true);
+        byId('boardStatus').textContent = '';
         resetBoard();
 
         const body = {
-            dateFrom: fmtForServer(dtFrom.value),
-            dateTo: fmtForServer(dtTo.value),
-            user: selUser.value
+            dateFrom: fmtForServer(dateFrom),
+            dateTo: fmtForServer(dateTo),
+            user
         };
 
         try {
@@ -83,14 +67,14 @@ Workflows.register('AlertBoard', (root, options, context) => {
         } catch (err) {
             byId('boardStatus').textContent = 'Error loading board: ' + err.message;
         } finally {
-            setProgress(false);
+            setLoading(false);
         }
     }
 
     function fmtForServer(dtLocal) {
         // Convert "YYYY-MM-DDTHH:mm" → "MM/dd/yyyy HH:mm:ss"
         if (!dtLocal) return '';
-        const d = new Date(dtLocal);
+        const d = new Date(dtLocal.length === 10 ? dtLocal + 'T00:00' : dtLocal);
         const pad = n => String(n).padStart(2, '0');
         return `${pad(d.getMonth() + 1)}/${pad(d.getDate())}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:00`;
     }
@@ -99,11 +83,13 @@ Workflows.register('AlertBoard', (root, options, context) => {
 
     function resetBoard() {
         root.querySelectorAll('.ab-cell-active').forEach(el => {
-            el.textContent = '0';
+            el.textContent = '—';
+            el.tabIndex = -1;
+            el.setAttribute('aria-disabled', 'true');
             el.classList.remove('ab-alert');
         });
         root.querySelectorAll('[data-id^="ptotal_"], [data-id^="ltotal_"], [data-id="grandTotal"]').forEach(el => {
-            el.textContent = '0';
+            el.textContent = '—';
         });
         closeDrilldown();
     }
@@ -114,12 +100,14 @@ Workflows.register('AlertBoard', (root, options, context) => {
         // data.grandTotal: n
 
         const cells = data.cells || {};
+        root.querySelectorAll('.ab-cell-active, [data-id^="ptotal_"], [data-id^="ltotal_"], [data-id="grandTotal"]').forEach(el => { el.textContent = '0'; });
 
         for (const [key, cell] of Object.entries(cells)) {
             const el = byId('cell_' + key);
             if (!el) continue;
             el.textContent = cell.count;
             el.tabIndex = cell.count > 0 ? 0 : -1;
+            el.setAttribute('aria-disabled', String(cell.count <= 0));
             el.setAttribute('role', 'button');
             if (cell.count > 0) el.classList.add('ab-alert');
         }
@@ -149,6 +137,7 @@ Workflows.register('AlertBoard', (root, options, context) => {
     // ── Cell click → drilldown ─────────────────────────────────────────────
 
     root.addEventListener('click', async function (e) {
+        if (btnSearch.disabled) return;
         const cell = e.target.closest('.ab-cell-active');
         if (!cell) return;
         const count = parseInt(cell.textContent, 10);
@@ -159,17 +148,25 @@ Workflows.register('AlertBoard', (root, options, context) => {
     });
 
     async function openDrilldown(cellKey) {
+        const seq = ++drillSeq;
+        _selectedMachine = null;
+        btnGo.disabled = true;
+        const [process, location] = resolveProcessLocation(cellKey);
+        drillTitle.textContent = `${process} ( ${location} )`;
+        drillList.innerHTML = '<li class="summary-panel-message"><span class="spinner" aria-hidden="true"></span>Loading machines…</li>';
+        panelDrill.classList.remove('is-hidden');
         try {
             const query = new URLSearchParams({
                 cellKey,
-                dateFrom: fmtForServer(dtFrom.value),
-                dateTo: fmtForServer(dtTo.value),
-                user: selUser.value
+                dateFrom: fmtForServer(dateFrom),
+                dateTo: fmtForServer(dateTo),
+                user
             });
             const res = await fetch('/AlertBoard?handler=Drilldown&' + query.toString());
             const json = await res.json();
             if (!json.success) throw new Error(json.message);
 
+            if (seq !== drillSeq) return;
             const { machines, title } = json.data;
             drillTitle.textContent = title;
             drillList.innerHTML = '';
@@ -178,20 +175,24 @@ Workflows.register('AlertBoard', (root, options, context) => {
             machines.forEach(m => {
                 const li = document.createElement('li');
                 li.textContent = m;
-                li.classList.add('ab-machine-item');
+                li.classList.add('ab-machine-item', 'summary-machine-item');
+                li.setAttribute('aria-pressed', 'false');
                 li.tabIndex = 0;
                 li.setAttribute('role', 'button');
                 li.addEventListener('click', () => {
-                    drillList.querySelectorAll('li').forEach(x => x.classList.remove('selected'));
+                    drillList.querySelectorAll('li').forEach(x => { x.classList.remove('selected'); x.setAttribute('aria-pressed', 'false'); });
                     li.classList.add('selected');
+                    li.setAttribute('aria-pressed', 'true');
                     _selectedMachine = m;
+                    btnGo.disabled = false;
                 });
                 drillList.appendChild(li);
             });
 
-            panelDrill.classList.remove('is-hidden');
+            if (!machines.length) drillList.innerHTML = '<li class="summary-panel-message">No machines.</li>';
         } catch (err) {
-            byId('boardStatus').textContent = 'Drilldown error: ' + err.message;
+            if (seq !== drillSeq) return;
+            drillList.textContent = 'Unable to load machines: ' + err.message;
         }
     }
 
@@ -208,15 +209,17 @@ Workflows.register('AlertBoard', (root, options, context) => {
             machine: _selectedMachine,
             process: proc,
             location: locKey,
-            userType: selUser.value,
-            dateFrom: dtFrom.value,
-            dateTo: dtTo.value
+            userType: user || 'PM',
+            dateFrom,
+            dateTo
         });
-        params.set('userType', selUser.value || 'PM'); Workflows.selectMachine(params);
+        Workflows.selectMachine(params);
         closeDrilldown();
     });
 
     function closeDrilldown() {
+        drillSeq++;
+        btnGo.disabled = true;
         panelDrill.classList.add('is-hidden');
         drillList.innerHTML = '';
         _selectedMachine = null;
@@ -244,26 +247,12 @@ Workflows.register('AlertBoard', (root, options, context) => {
         return [p, l];
     }
 
-    // ── Progress bar ─────────────────────────────────────────────────────────
+    // ── Loading state ─────────────────────────────────────────────────────────
 
-    let _progressInterval = null;
-
-    function setProgress(active) {
-        if (active) {
-            progress.classList.remove('is-hidden');
-            let pct = 0;
-            _progressInterval = setInterval(() => {
-                pct = Math.min(pct + 2, 90);
-                progressInner.style.width = pct + '%';
-            }, 100);
-        } else {
-            clearInterval(_progressInterval);
-            progressInner.style.width = '100%';
-            setTimeout(() => {
-                progress.classList.add('is-hidden');
-                progressInner.style.width = '0';
-            }, 300);
-        }
+    function setLoading(active) {
+        btnSearch.disabled = active;
+        loading.hidden = !active;
+        root.setAttribute('aria-busy', String(active));
     }
 
     // ── Auto-refresh (mirrors VB tmrRefresh_Tick) ─────────────────────────

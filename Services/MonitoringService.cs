@@ -70,16 +70,41 @@ namespace MachineKarte.Web.Services
 
         public async Task<MonitoringDashboardResult> SearchDashboardAsync(MonitoringFilter f)
         {
-            var summaries = await _repo.GetPagedMachineSummariesAsync(f);
-            var floors = await _repo.GetFloorSummariesAsync(
-                                f.UserType, f.Process, f.DateFrom, f.DateTo);
+            var (summaries, totalPages) = await _repo.GetPagedMachineSummariesAsync(f);
+            if (f.Page > totalPages)
+            {
+                f.Page = totalPages;
+                (summaries, totalPages) = await _repo.GetPagedMachineSummariesAsync(f);
+            }
+            var rows = await _repo.GetBMCardsAsync(
+                f.UserType, f.Process, "All", "All", f.DateFrom, f.DateTo);
+            var floors = GetProcessFloors(f.Process).Select(floor =>
+            {
+                var floorRows = rows.Where(row => row.Location == floor).ToList();
+                var repeats = floorRows.Where(row => row.NeedsAction).ToList();
+                var needAction = floorRows.Where(row => row.IsMCD == "Yes" && row.HaveAction == "No").ToList();
+                var withAction = floorRows.Where(row => row.IsMCD == "Yes" && row.HaveAction == "Yes").ToList();
+                return new FloorSummary
+                {
+                    FloorCode = floor,
+                    BMCount = floorRows.Count,
+                    MachineCount = floorRows.Select(row => row.MachineNo).Distinct().Count(),
+                    MCDCount = needAction.Count + withAction.Count,
+                    RepeatBMCount = CountNeedActionGroups(floorRows),
+                    NeedActionCount = needAction.Count,
+                    WithActionCount = withAction.Count,
+                    RepeatMachines = repeats.Select(row => row.MachineNo).Distinct().ToList(),
+                    NeedActionMachines = needAction.Select(row => row.MachineNo).Distinct().ToList(),
+                    WithActionMachines = withAction.Select(row => row.MachineNo).Distinct().ToList()
+                };
+            }).ToList();
 
             return new MonitoringDashboardResult
             {
                 MachineSummaries = summaries,
                 FloorSummaries = floors,
                 CurrentPage = f.Page,
-                TotalPages = 99   // Real total page count needs a COUNT query; stub for now
+                TotalPages = totalPages
             };
         }
 
@@ -92,7 +117,7 @@ namespace MachineKarte.Web.Services
         {
             var rows = await _repo.GetBMCardsAsync(
                 f.UserType, f.Process, f.Floor,
-                machineNo, f.DateFrom, f.DateTo);
+                machineNo, f.DateFrom, f.DateTo, machineType);
 
             return new MachineCardResult
             {
@@ -104,38 +129,8 @@ namespace MachineKarte.Web.Services
             };
         }
 
-        private static int CountNeedActionGroups(IReadOnlyList<BMCardRow> rows)
-        {
-            var count = 0;
-
-            for (var index = 0; index < rows.Count; index++)
-            {
-                var row = rows[index];
-                if (!IsNeedActionRepeat(row) ||
-                    (index > 0 && IsSameRepeatGroup(rows[index - 1], row)))
-                    continue;
-
-                count++;
-            }
-
-            return count;
-        }
-
-        private static bool IsNeedActionRepeat(BMCardRow row) =>
-            !string.Equals(row.FontColor, "None", StringComparison.OrdinalIgnoreCase) &&
-            !string.Equals(row.FontColor, "Black", StringComparison.OrdinalIgnoreCase) &&
-            !string.Equals(row.HaveAction, "Yes", StringComparison.OrdinalIgnoreCase);
-
-        private static bool IsSameRepeatGroup(BMCardRow previous, BMCardRow current) =>
-            IsNeedActionRepeat(previous) &&
-            string.Equals(previous.MachineNo, current.MachineNo,
-                StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(previous.BMContentId, current.BMContentId,
-                StringComparison.Ordinal) &&
-            string.Equals(previous.BMCase, current.BMCase,
-                StringComparison.Ordinal) &&
-            string.Equals(previous.FontColor, current.FontColor,
-                StringComparison.OrdinalIgnoreCase);
+        private static int CountNeedActionGroups(IReadOnlyList<BMCardRow> rows) =>
+            rows.Count(row => row.NeedsAction);
 
         // ----------------------------------------------------------------
         // PC status tracking (Form1_Load → UpdatePCStatus)

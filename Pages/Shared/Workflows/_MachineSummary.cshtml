@@ -3,60 +3,43 @@
 @{
     ViewData["Title"] = "Machine Summary — Need Action with MCD";
     Layout = null;
+    var layout = new {
+        columns = MachineSummaryConfig.DisplayColumns,
+        modes = new[] { "EEE", "TE" }.ToDictionary(mode => mode, mode =>
+            MachineSummaryConfig.EeeProcessOrder.Select(process => new {
+                process, locations = MachineSummaryConfig.GetLocations(process, mode == "TE")
+            }))
+    };
 }
-
 <div class="ms-wrapper monitoring-family-page">
-
-    <!-- ── Toolbar ─────────────────────────────────────────────────── -->
-    <div class="ms-toolbar monitoring-family-toolbar">
-        <div class="ms-toolbar-group">
-            <label for="MachineSummary-msFrom">From</label>
-            <input id="MachineSummary-msFrom" data-id="msFrom" type="datetime-local" value="@Model.DefaultFrom" />
+    <div class="ms-toolbar monitoring-family-toolbar summary-toolbar">
+        <p class="summary-context" data-id="summaryContext"></p>
+        <div class="summary-search">
+            <span data-id="summaryLoading" class="summary-loading" role="status" hidden><span class="spinner" aria-hidden="true"></span>Loading…</span>
+            <button id="MachineSummary-msSearch" data-id="msSearch" class="ms-btn-search" type="button">Search</button>
         </div>
-        <div class="ms-toolbar-group">
-            <label for="MachineSummary-msTo">To</label>
-            <input id="MachineSummary-msTo" data-id="msTo" type="datetime-local" value="@Model.DefaultTo" />
-        </div>
-        <div class="ms-toolbar-group">
-            <label for="MachineSummary-msMode">Mode</label>
-            <select id="MachineSummary-msMode" data-id="msMode">
-                <option value="EEE" selected="@(Model.DefaultMode == "EEE" ? "selected" : null)">EEE</option>
-                <option value="TE" selected="@(Model.DefaultMode == "TE" ? "selected" : null)">TE</option>
-            </select>
-        </div>
-        <button id="MachineSummary-msSearch" data-id="msSearch" class="ms-btn-search" type="button">Search</button>
-        <span id="MachineSummary-msStatus" data-id="msStatus" class="ms-status"></span>
+        <span id="MachineSummary-msStatus" data-id="msStatus" class="ms-status summary-status" role="status" aria-live="polite"></span>
     </div>
-
-    <!-- ── Progress bar ────────────────────────────────────────────── -->
-    <div id="MachineSummary-msProgress" data-id="msProgress" class="ms-progress is-hidden">
-        <div class="ms-progress-bar"></div>
-    </div>
-
-    <!-- ── Grid container ──────────────────────────────────────────── -->
-    <div class="ms-grid-scroll monitoring-family-content">
-        <table id="MachineSummary-msGrid" data-id="msGrid" class="ms-grid" aria-label="Machine Summary Grid">
+    <div class="ms-grid-scroll monitoring-family-content summary-grid">
+        <table id="MachineSummary-msGrid" data-id="msGrid" class="ms-grid" aria-label="Machine Summary Grid"
+               data-layout="@System.Text.Json.JsonSerializer.Serialize(layout)">
             <thead id="MachineSummary-msGridHead" data-id="msGridHead"></thead>
             <tbody id="MachineSummary-msGridBody" data-id="msGridBody"></tbody>
             <tfoot id="MachineSummary-msGridFoot" data-id="msGridFoot"></tfoot>
         </table>
     </div>
-
-    <!-- ── Machine list panel (flyout) ─────────────────────────────── -->
-    <div id="MachineSummary-msPanel" data-id="msPanel" class="ms-panel" aria-hidden="true">
-        <div class="ms-panel-header">
-            <span id="MachineSummary-msPanelTitle" data-id="msPanelTitle" class="ms-panel-title">—</span>
-            <button id="MachineSummary-msPanelClose" data-id="msPanelClose" class="ms-panel-close" aria-label="Close">&times;</button>
+    <div id="MachineSummary-msPanel" data-id="msPanel" class="ms-panel summary-machine-panel" aria-hidden="true">
+        <div class="summary-panel-header">
+            <span id="MachineSummary-msPanelTitle" data-id="msPanelTitle">Machines</span>
+            <button id="MachineSummary-msPanelClose" data-id="msPanelClose" class="summary-panel-close" type="button" aria-label="Close machine list">&times;</button>
         </div>
-        <div class="ms-panel-sub">Select a machine below:</div>
-        <ul id="MachineSummary-msPanelList" data-id="msPanelList" class="ms-panel-list"></ul>
-        <button id="MachineSummary-msPanelGo" data-id="msPanelGo" class="ms-btn-go" disabled>
-            View in Monitoring
-        </button>
+        <p class="summary-panel-hint">Select a machine below:</p>
+        <ul id="MachineSummary-msPanelList" data-id="msPanelList" class="ms-panel-list summary-machine-list"></ul>
+        <div class="summary-panel-footer">
+            <button id="MachineSummary-msPanelGo" data-id="msPanelGo" class="summary-panel-go" type="button" disabled>View in Monitoring</button>
+        </div>
     </div>
     <div id="MachineSummary-msOverlay" data-id="msOverlay" class="ms-overlay" aria-hidden="true"></div>
-
 </div>
-
 @Html.AntiForgeryToken()
 </div>

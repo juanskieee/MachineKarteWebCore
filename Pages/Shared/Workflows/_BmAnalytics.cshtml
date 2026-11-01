@@ -3,68 +3,42 @@
 @{
     ViewData["Title"] = "BM Analytics";
     Layout = null;
+    var displayProcesses = new[] { "DC", "DB", "WB", "MP", "PL", "ATC", "FL", "SING", "FT", "TP", "EDS", "MEMS" };
+    var layout = new {
+        columns = BmAnalyticsMappings.AllLocations,
+        modes = new[] { "EEE", "TE" }.ToDictionary(mode => mode, mode =>
+            displayProcesses.Select(process => new {
+                process,
+                cells = (BmAnalyticsMappings.GetProcesses(mode).Contains(process)
+                    ? BmAnalyticsMappings.GetLocations(process, mode, Model.LegacyForm)
+                    : System.Array.Empty<string>()).ToDictionary(
+                    location => location, location => BmAnalyticsMappings.CellKey(process, location, Model.LegacyForm))
+            }))
+    };
 }
-
-<!-- ======================================================================
-     BM Analytics — process × location grid of MCD machines WITH action cards
-     Mirrors Form8.vb  (NewLoadColor path only)
-     ====================================================================== -->
-
 <div class="bma-page monitoring-family-page">
     <input type="hidden" id="BmAnalytics-legacyForm" data-id="legacyForm" value="@Model.LegacyForm" />
-
-    <!-- ── Top toolbar ─────────────────────────────────────────────────── -->
-    <div class="bma-toolbar card shadow-sm monitoring-family-toolbar">
-        <div class="row g-2 align-items-end">
-            <div class="col-auto">
-                <label for="BmAnalytics-dtFrom" class="form-label mb-1 small fw-semibold">Date From</label>
-                <input type="datetime-local" id="BmAnalytics-dtFrom" data-id="dtFrom" class="form-control form-control-sm"
-                       value="@DateTime.Now.AddDays(-30).ToString("yyyy-MM-ddTHH:mm")" />
-            </div>
-            <div class="col-auto">
-                <label for="BmAnalytics-dtTo" class="form-label mb-1 small fw-semibold">Date To</label>
-                <input type="datetime-local" id="BmAnalytics-dtTo" data-id="dtTo" class="form-control form-control-sm"
-                       value="@DateTime.Now.AddDays(1).ToString("yyyy-MM-ddTHH:mm")" />
-            </div>
-            <div class="col-auto">
-                <label for="BmAnalytics-selMode" class="form-label mb-1 small fw-semibold">Mode</label>
-                <select id="BmAnalytics-selMode" data-id="selMode" class="form-select form-select-sm">
-                    <option value="EEE">EEE</option>
-                    <option value="TE">TE</option>
-                </select>
-            </div>
-            <div class="col-auto">
-                <button id="BmAnalytics-btnSearch" data-id="btnSearch" class="btn btn-primary btn-sm px-4">
-                    <span id="BmAnalytics-searchSpinner" data-id="searchSpinner" class="spinner-border spinner-border-sm me-1 d-none"></span>
-                    Search
-                </button>
-            </div>
-            <div class="col-auto ms-auto text-muted small" id="BmAnalytics-lblStatus" data-id="lblStatus" role="status" aria-live="polite"></div>
+    <div class="bma-toolbar monitoring-family-toolbar summary-toolbar">
+        <p class="summary-context" data-id="summaryContext"></p>
+        <div class="summary-search">
+            <span data-id="summaryLoading" class="summary-loading" role="status" hidden><span class="spinner" aria-hidden="true"></span>Loading…</span>
+            <button id="BmAnalytics-btnSearch" data-id="btnSearch" class="btn-primary" type="button">Search</button>
+        </div>
+        <p id="BmAnalytics-lblStatus" data-id="lblStatus" class="summary-status" role="status" aria-live="polite"></p>
+    </div>
+    <div class="bma-grid-wrapper monitoring-family-content summary-grid" id="BmAnalytics-gridWrapper" data-id="gridWrapper"
+         data-layout="@System.Text.Json.JsonSerializer.Serialize(layout)"></div>
+    <div class="bma-flyout summary-machine-panel is-hidden" id="BmAnalytics-flyoutPanel" data-id="flyoutPanel">
+        <div class="summary-panel-header">
+            <span id="BmAnalytics-flyoutTitle" data-id="flyoutTitle"></span>
+            <button type="button" class="summary-panel-close" id="BmAnalytics-btnCloseFlyout" data-id="btnCloseFlyout" aria-label="Close machine list">&times;</button>
+        </div>
+        <p class="summary-panel-hint">Select a machine below:</p>
+        <ul class="bma-machine-list summary-machine-list" id="BmAnalytics-flyoutList" data-id="flyoutList"></ul>
+        <div class="summary-panel-footer">
+            <button class="summary-panel-go" id="BmAnalytics-btnViewMonitoring" data-id="btnViewMonitoring" type="button" disabled>View in Monitoring</button>
         </div>
     </div>
-
-    <!-- ── Grid container ──────────────────────────────────────────────── -->
-    <div class="bma-grid-wrapper mt-3 monitoring-family-content" id="BmAnalytics-gridWrapper" data-id="gridWrapper">
-        <div class="text-center text-muted py-5" id="BmAnalytics-noData" data-id="noData">
-            Select a date range and click <strong>Search</strong>.
-        </div>
-    </div>
-
-    <!-- ── Machine flyout panel ─────────────────────────────────────────  -->
-    <div class="bma-flyout card shadow is-hidden" id="BmAnalytics-flyoutPanel" data-id="flyoutPanel">
-        <div class="card-header d-flex align-items-center justify-content-between py-2">
-            <span class="fw-bold" id="BmAnalytics-flyoutTitle" data-id="flyoutTitle"></span>
-            <button type="button" class="btn btn-sm btn-outline-secondary" id="BmAnalytics-btnCloseFlyout" data-id="btnCloseFlyout" aria-label="Close machine list">&times;</button>
-        </div>
-        <div class="card-body p-2">
-            <ul class="list-group list-group-flush bma-machine-list" id="BmAnalytics-flyoutList" data-id="flyoutList"></ul>
-        </div>
-        <div class="card-footer py-2 d-flex gap-2">
-            <button class="btn btn-sm btn-success" id="BmAnalytics-btnViewMonitoring" data-id="btnViewMonitoring">View in Monitoring</button>
-        </div>
-    </div>
-
 </div>
-
 @Html.AntiForgeryToken()
 </div>

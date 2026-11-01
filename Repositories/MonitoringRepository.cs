@@ -123,7 +123,7 @@ namespace MachineKarte.Web.Repositories
         // Mirrors LoadMCName() strQuery2 � PM/CC/EEE/VIS and TE branches
         // ----------------------------------------------------------------
 
-        public async Task<List<MachineSummary>> GetPagedMachineSummariesAsync(
+        public async Task<(List<MachineSummary> Machines, int TotalPages)> GetPagedMachineSummariesAsync(
             MonitoringFilter f)
         {
             int top2 = f.Page * 10;
@@ -163,7 +163,10 @@ namespace MachineKarte.Web.Repositories
                                   : Convert.ToInt32(reader["actionline"])
                 });
             }
-            return list;
+            await reader.NextResultAsync();
+            await reader.ReadAsync();
+            var totalMachines = reader.GetInt32(0);
+            return (list, Math.Max(1, (int)Math.Ceiling(totalMachines / 10d)));
         }
 
         private static void ApplyLegacyRepeatColors(
@@ -173,7 +176,15 @@ namespace MachineKarte.Web.Repositories
         {
             for (var start = 0; start < cards.Count; start++)
             {
-                if (!string.Equals(cards[start].FontColor, "None", StringComparison.OrdinalIgnoreCase))
+                var current = cards[start];
+                var uncolored = string.Equals(current.FontColor, "None", StringComparison.OrdinalIgnoreCase);
+                var lastInMachine = start + 1 == cards.Count ||
+                    (current.MachineNo, current.MachineType, current.Location) !=
+                    (cards[start + 1].MachineNo, cards[start + 1].MachineType, cards[start + 1].Location);
+                // Legacy skips already-colored group members, except its final-row branch.
+                current.McdNeedsAction = current.IsMCD == "Yes" && current.HaveAction != "Yes" &&
+                    (uncolored || lastInMachine);
+                if (!uncolored)
                     continue;
 
                 if (userType.Equals("TE", StringComparison.OrdinalIgnoreCase))
@@ -181,12 +192,13 @@ namespace MachineKarte.Web.Repositories
                     if (!string.Equals(cards[start].Priority, "QUALITY BM", StringComparison.Ordinal))
                         continue;
 
-                    ApplyRepeatColor(
+                    var matchingCase = ApplyRepeatColor(
                         cards,
                         start,
                         4,
                         card => card.Priority,
                         "Red");
+                    if (matchingCase) current.McdNeedsAction = false;
                     continue;
                 }
 
@@ -199,7 +211,7 @@ namespace MachineKarte.Web.Repositories
             }
         }
 
-        private static void ApplyRepeatColor(
+        private static bool ApplyRepeatColor(
             List<BMCardRow> cards,
             int start,
             int maximumDepth,
@@ -208,13 +220,20 @@ namespace MachineKarte.Web.Repositories
         {
             var contentDepth = MatchingDepth(cards, start, maximumDepth, repeatedValue);
             if (contentDepth == 0)
-                return;
+                return false;
 
             var caseDepth = MatchingDepth(cards, start, contentDepth, card => card.BMCase);
             if (caseDepth == 0)
-                return;
+                return false;
 
             MarkWithinSevenDays(cards, start, caseDepth, color);
+            // uc_Test increments the counter at the detected group head, before moving to the next group.
+            var head = cards[start];
+            head.NeedsAction = head.FontColor != "None" && color != "Black" &&
+                head.HaveAction != "Yes" &&
+                !string.Equals(head.MCStatus, "NO RE-OCCURRENCE AFTER 7 DAYS", StringComparison.OrdinalIgnoreCase);
+            if (head.NeedsAction) head.McdNeedsAction = false;
+            return true;
         }
 
         private static int MatchingDepth(
@@ -227,6 +246,10 @@ namespace MachineKarte.Web.Repositories
             for (var offset = 1; offset <= maximumDepth && start + offset < cards.Count; offset++)
             {
                 if (!string.Equals(cards[start].MachineNo, cards[start + offset].MachineNo,
+                        StringComparison.OrdinalIgnoreCase) ||
+                    !string.Equals(cards[start].MachineType, cards[start + offset].MachineType,
+                        StringComparison.OrdinalIgnoreCase) ||
+                    !string.Equals(cards[start].Location, cards[start + offset].Location,
                         StringComparison.OrdinalIgnoreCase) ||
                     !string.Equals(valueSelector(cards[start]), valueSelector(cards[start + offset]),
                         StringComparison.Ordinal))
@@ -302,7 +325,7 @@ namespace MachineKarte.Web.Repositories
 
         public async Task<List<BMCardRow>> GetBMCardsAsync(
             string userType, string process, string location,
-            string machineNo, string dateFrom, string dateTo)
+            string machineNo, string dateFrom, string dateTo, string machineType = "")
         {
             string sql = BuildBMCardSQL(userType, process);
 
@@ -315,6 +338,7 @@ namespace MachineKarte.Web.Repositories
             cmd.Parameters.AddWithValue("@Range2", dateTo);
             cmd.Parameters.AddWithValue("@Location", location);
             cmd.Parameters.AddWithValue("@Mcno", machineNo);
+            cmd.Parameters.AddWithValue("@MCType", machineType);
 
             await using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
@@ -355,74 +379,45 @@ namespace MachineKarte.Web.Repositories
                                     ? reader["Div"].ToString()! : string.Empty
                 });
             }
+            ApplyLegacyActionColors(list);
             ApplyLegacyRepeatColors(list, userType, process);
             return list;
         }
 
-        // ----------------------------------------------------------------
-        // Floor summary counts for Panel2 labels (BM/MCD counts per floor)
-        // ----------------------------------------------------------------
-
-        public async Task<List<FloorSummary>> GetFloorSummariesAsync(
-            string userType, string process, string dateFrom, string dateTo)
+        private static void ApplyLegacyActionColors(List<BMCardRow> cards)
         {
-            string addQuery = BuildUserFilter(userType);
-            bool isMachine = userType is "PM" or "CC" or "EEE" or "VIS";
-
-            string sql = isMachine
-                ? $@"SELECT a.Location, COUNT(a.Mcno) AS BMCount,
-                            SUM(CASE WHEN m.Devicename IS NOT NULL THEN 1 ELSE 0 END) AS MCDCount,
-                            COUNT(DISTINCT a.Mcno) AS MachineCount
-                     FROM [eMaintenanceSystemDB].[dbo].[{process}BMMaintenance] a
-                     INNER JOIN [eMaintenanceSystemDB].[dbo].[Process] d
-                         ON a.Process = d.ProcessName
-                     INNER JOIN [eMaintenanceSystemDB].[dbo].[BMCase] b
-                         ON a.BMCaseID = b.BMCaseID
-                     LEFT JOIN [eMaintenanceSystemDB].[dbo].[MachineKarte_MCD] m
-                         ON REPLACE(m.Devicename,' ','') = REPLACE(a.Devicename,' ','') AND m.IsActive = 1
-                     WHERE (TimeOfRequest BETWEEN @Range1 AND @Range2)
-                       AND PMCategoryID = 1
-                       AND d.ProcessName = @Process
-                       AND a.BMCaseID <> 0
-                       AND {addQuery}
-                     GROUP BY a.Location"
-                : $@"SELECT a.Location, COUNT(a.MCType) AS BMCount,
-                            SUM(CASE WHEN m.Devicename IS NOT NULL THEN 1 ELSE 0 END) AS MCDCount,
-                            COUNT(DISTINCT a.TesterNo) AS MachineCount
-                     FROM [eMaintenanceSystemDB].[dbo].[TEBMMaintenance] a
-                     INNER JOIN [eMaintenanceSystemDB].[dbo].[Process] d
-                         ON a.Process = d.ProcessName
-                     LEFT JOIN [eMaintenanceSystemDB].[dbo].[MachineKarte_MCD] m
-                         ON REPLACE(m.Devicename,' ','') = REPLACE(a.Devicename,' ','') AND m.IsActive = 1
-                     WHERE (TimeOfRequest BETWEEN @Range1 AND @Range2)
-                       AND (PMCategoryID = 1 OR PMCategoryID = 4)
-                       AND d.ProcessName = @Process
-                       AND a.BMStatusID NOT IN ('30','31','1','2','3','7','17')
-                       AND BMUnitID <> 0
-                     GROUP BY a.Location";
-
-            var list = new List<FloorSummary>();
-            await using var conn = Open();
-            await conn.OpenAsync();
-            await using var cmd = new SqlCommand(sql, conn);
-
-            cmd.Parameters.AddWithValue("@Range1", dateFrom);
-            cmd.Parameters.AddWithValue("@Range2", dateTo);
-            cmd.Parameters.AddWithValue("@Process", process);
-
-            await using var reader = await cmd.ExecuteReaderAsync();
-            while (await reader.ReadAsync())
-            {
-                list.Add(new FloorSummary
+            foreach (var card in cards)
+                card.ActionColor = card.MCStatus.Trim().ToUpperInvariant() switch
                 {
-                    FloorCode = reader["Location"].ToString()!,
-                    BMCount = Convert.ToInt32(reader["BMCount"]),
-                    MCDCount = Convert.ToInt32(reader["MCDCount"]),
-                    MachineCount = Convert.ToInt32(reader["MachineCount"])
-                });
+                    "RUNNING (ONGOING INVESTIGATION/MONITORING)" => "DarkGray",
+                    "RUNNING (UNDER 100% INSPECTION)" => "DarkOrange",
+                    "RUNNING (LOT EVALUATION)" => "LightGreen",
+                    "NO RE-OCCURRENCE AFTER 7 DAYS" => "Green",
+                    "STOP (WAITING FOR INSPECTION RESULTS)" => "Violet",
+                    "STOP (WAITING FOR QC INSTRUCTION)" => "Aqua",
+                    _ => "Red"
+                };
+
+            // uc_Test.CheckIfSolve uses the machine's newest BM as its reference,
+            // then overrides existing actions in repeated cases after seven days.
+            foreach (var machine in cards.GroupBy(card => (card.MachineNo, card.MachineType, card.Location)))
+            {
+                if (!TryParseLegacyDate(machine.First().TimeOfRequest, out var referenceDate)) continue;
+                foreach (var cases in machine.GroupBy(card => card.BMCase).Where(group => group.Count() > 1))
+                {
+                    var dated = cases.Where(card => TryParseLegacyDate(card.TimeOfRequest, out _))
+                        .Select(card => (Card: card, Date: DateTime.ParseExact(card.TimeOfRequest,
+                            "MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture))).ToList();
+                    if (dated.Count == 0) continue;
+                    var latest = dated.Max(row => row.Date);
+                    foreach (var row in dated)
+                        if (row.Card.HaveAction == "Yes" &&
+                            ((referenceDate - latest).Days >= 7 || (latest - row.Date).Days >= 7))
+                            row.Card.ActionColor = "Green";
+                }
             }
-            return list;
         }
+
 
         // ----------------------------------------------------------------
         // PC Status tracking (UpdatePCStatus / CheckIfExisting from Form1)
@@ -474,11 +469,8 @@ namespace MachineKarte.Web.Repositories
         {
             string machineFilter = allMachines ? string.Empty : "AND (Mcno = @Mcno)";
             string tbl = $"[eMaintenanceSystemDB].[dbo].[{process}BMMaintenance]";
-
-            return $@"
-                SELECT * FROM (
-                    SELECT TOP {top2}
-                        COUNT(mcno) AS MACHINENAME, MCNO,
+            string counts = $@"
+                    SELECT COUNT(mcno) AS MACHINENAME, MCNO,
                         COALESCE(c.actionline,4) AS actionline, a.MCType
                     FROM {tbl} a
                     INNER JOIN [eMaintenanceSystemDB].[dbo].[Process] D ON a.Process = d.ProcessName
@@ -490,28 +482,8 @@ namespace MachineKarte.Web.Repositories
                       {machineFilter}
                       AND {addQuery}
                       AND a.BMCaseID <> 0
-                    GROUP BY MCNO, actionline, a.MCType
-                    ORDER BY MACHINENAME DESC, MCNO ASC
-                ) X
-                EXCEPT
-                SELECT * FROM (
-                    SELECT TOP {top1}
-                        COUNT(mcno) AS MACHINENAME, MCNO,
-                        COALESCE(c.actionline,4) AS actionline, a.MCType
-                    FROM {tbl} a
-                    INNER JOIN [eMaintenanceSystemDB].[dbo].[Process] D ON a.Process = d.ProcessName
-                    INNER JOIN [eMaintenanceSystemDB].[dbo].[MCType]  c ON a.MCType = c.MCType AND c.ProcessID = d.ProcessID
-                    INNER JOIN [eMaintenanceSystemDB].[dbo].[BMCase]  b ON a.BMCaseID = b.BMCaseID
-                    WHERE (TimeOfRequest BETWEEN @Range1 AND @Range2)
-                      AND PMCategoryID = 1 AND d.ProcessName = @Process
-                      AND (@Location = 'All' OR a.Location = @Location)
-                      {machineFilter}
-                      AND {addQuery}
-                      AND a.BMCaseID <> 0
-                    GROUP BY MCNO, actionline, a.MCType
-                    ORDER BY MACHINENAME DESC, MCNO ASC
-                ) Y
-                ORDER BY MACHINENAME DESC, MCNO ASC";
+                    GROUP BY MCNO, actionline, a.MCType";
+            return BuildPagedSummarySQL(counts, "MACHINENAME DESC, MCNO ASC", top1, top2);
         }
 
         private static string BuildTEMachineSummarySQL(
@@ -519,10 +491,8 @@ namespace MachineKarte.Web.Repositories
         {
             string machineFilter = allMachines ? string.Empty : "AND (testerno = @Mcno)";
 
-            return $@"
-                SELECT * FROM (
-                    SELECT TOP {top2}
-                        COUNT(MCType) AS MACHINENAME, MCType, testerno,
+            string counts = $@"
+                    SELECT COUNT(MCType) AS MACHINENAME, MCType, testerno,
                         COALESCE(c.actionline,4) AS actionline
                     FROM [eMaintenanceSystemDB].[dbo].[TEBMMaintenance] a
                     INNER JOIN [eMaintenanceSystemDB].[dbo].[Process] D ON a.Process = d.ProcessName
@@ -535,30 +505,16 @@ namespace MachineKarte.Web.Repositories
                       {machineFilter}
                       AND a.BMStatusID NOT IN ('30','31','1','2','3','7','17')
                       AND BMUnitID <> 0
-                    GROUP BY MCType, testerno, actionline
-                    ORDER BY MACHINENAME DESC, MCType ASC
-                ) x
-                EXCEPT
-                SELECT * FROM (
-                    SELECT TOP {top1}
-                        COUNT(MCType) AS MACHINENAME, MCType, testerno,
-                        COALESCE(c.actionline,4) AS actionline
-                    FROM [eMaintenanceSystemDB].[dbo].[TEBMMaintenance] a
-                    INNER JOIN [eMaintenanceSystemDB].[dbo].[Process] D ON a.Process = d.ProcessName
-                    INNER JOIN [eMaintenanceSystemDB].[dbo].[testertype] c
-                        ON a.MCType = c.testertype AND c.ProcessID = d.ProcessID AND (@Location = 'All' OR c.location = @Location)
-                    WHERE (TimeOfRequest BETWEEN @Range1 AND @Range2)
-                      AND (PMCategoryID = 1 OR PMCategoryID = 4)
-                      AND d.ProcessName = @Process
-                      AND (@Location = 'All' OR a.Location = @Location)
-                      {machineFilter}
-                      AND a.BMStatusID NOT IN ('30','31','1','2','3','7','17')
-                      AND BMUnitID <> 0
-                    GROUP BY MCType, testerno, actionline
-                    ORDER BY MACHINENAME DESC, MCType ASC
-                ) y
-                ORDER BY MACHINENAME DESC, MCType ASC";
+                    GROUP BY MCType, testerno, actionline";
+            return BuildPagedSummarySQL(counts, "MACHINENAME DESC, MCType ASC, testerno ASC", top1, top2);
         }
+
+        private static string BuildPagedSummarySQL(string counts, string order, int top1, int top2) => $@"
+            SELECT * FROM (SELECT TOP {top2} * FROM ({counts}) counts ORDER BY {order}) x
+            EXCEPT
+            SELECT * FROM (SELECT TOP {top1} * FROM ({counts}) counts ORDER BY {order}) y
+            ORDER BY {order};
+            SELECT COUNT(*) FROM ({counts}) counts;";
 
         private static string BuildBMCardSQL(string userType, string process)
         {
@@ -566,13 +522,13 @@ namespace MachineKarte.Web.Repositories
             {
                 return $@"
                     SELECT a.Devicename,
-                           ISNULL((SELECT 'Yes' FROM MachineKarte_MCD
-                                   WHERE REPLACE(Devicename,' ','') = REPLACE(a.devicename,' ','') AND isactive = 1),'No') AS isMCD,
+                           CASE WHEN EXISTS (SELECT 1 FROM MachineKarte_MCD
+                                   WHERE REPLACE(Devicename,' ','') = REPLACE(a.devicename,' ','') AND isactive = 1) THEN 'Yes' ELSE 'No' END AS isMCD,
                            a.process, a.location, a.testerNo AS Mcno, a.mctype,
                            FORMAT(a.Timeofrequest,'MM/dd/yyyy HH:mm:ss') AS Timeofrequest,
                            b.bmteunit AS BMCase, a.BMCaseID AS BMCaseID, a.bmid,
                            (SELECT COUNT(*) FROM gridBMOCAP WHERE BMCaseID = a.BMCaseID AND Process = a.process) AS OCAPCount,
-                           ISNULL((SELECT 'Yes' FROM MachineKarte_ActionCard_TE WHERE bmid = a.bmID),'No') AS HaveAction,
+                           CASE WHEN EXISTS (SELECT 1 FROM MachineKarte_ActionCard_TE WHERE bmid = a.bmID) THEN 'Yes' ELSE 'No' END AS HaveAction,
                            COALESCE(CASE WHEN a.AcredBMContentID <> a.BMContentID THEN
                                CASE WHEN a.AcredBMContentID = '' OR a.AcredBMContentID = '0' OR a.AcredBMContentID IS NULL
                                     THEN a.BMContentID ELSE a.AcredBMContentID END
@@ -583,15 +539,16 @@ namespace MachineKarte.Web.Repositories
                            c.Comment3 AS Div, c.mcstatus AS MCStatus, 'None' AS FontColor
                     FROM [eMaintenanceSystemDB].[dbo].[TEBMMaintenance] a
                     INNER JOIN [eMaintenanceSystemDB].[dbo].[BMTEUnit] b ON a.bmunitid = b.bmteunitid
-                    LEFT  JOIN [eMaintenanceSystemDB].[dbo].[MachineKarte_ActionCard_TE] c
-                        ON a.bmID = c.bmID AND a.testerno = c.machineno
+                    OUTER APPLY (SELECT TOP (1) ac.* FROM [eMaintenanceSystemDB].[dbo].[MachineKarte_ActionCard_TE] ac
+                                 WHERE ac.bmID = a.bmID ORDER BY ac.Seqno DESC) c
                     WHERE (a.timeofrequest BETWEEN @Range1 AND @Range2)
                       AND a.process = '{process}'
                       AND (a.Pmcategoryid = '1' OR a.Pmcategoryid = '4')
                       AND a.BMStatusID NOT IN ('30','31','1','2','3','7','17')
                       AND a.bmunitid <> 0
                       AND (@Location = 'All' OR a.Location = @Location)
-                      AND a.testerno = @Mcno
+                      AND (@Mcno = 'All' OR a.testerno = @Mcno)
+                      AND (@MCType = '' OR a.MCType = @MCType)
                     ORDER BY a.testerNo DESC, a.MCType DESC, a.Timeofrequest DESC, b.bmteunit";
             }
 
@@ -610,35 +567,41 @@ namespace MachineKarte.Web.Repositories
                 "VIS" => "MachineKarte_ActionCard_VIS",
                 _ => "MachineKarte_ActionCard"
             };
+            bool isWhy = userType is "CC" or "EEE" or "VIS";
+            string caseTable = isWhy ? "BMWhy" : "BMCase";
+            string caseId = isWhy ? "Why4" : "BMCaseID";
+            string joinId = isWhy ? "BMWhyID" : "BMCaseID";
+            string caseText = isWhy ? "BMWhy" : "BMCase";
 
             return $@"
                 SELECT a.Devicename,
-                       ISNULL((SELECT 'Yes' FROM MachineKarte_MCD
-                               WHERE REPLACE(Devicename,' ','') = REPLACE(a.devicename,' ','') AND isactive = 1),'No') AS isMCD,
-                       a.process, a.location, a.Mcno AS Mcno,
+                       CASE WHEN EXISTS (SELECT 1 FROM MachineKarte_MCD
+                               WHERE REPLACE(Devicename,' ','') = REPLACE(a.devicename,' ','') AND isactive = 1) THEN 'Yes' ELSE 'No' END AS isMCD,
+                       a.process, a.location, a.Mcno AS Mcno, a.MCType,
                        FORMAT(a.Timeofrequest,'MM/dd/yyyy HH:mm:ss') AS Timeofrequest,
-                       b.BMWhy AS BMCase, a.BMCaseID AS BMCaseID, a.bmid,
+                       b.{caseText} AS BMCase, a.{caseId} AS BMCaseID, a.bmid,
                        (SELECT COUNT(*) FROM gridBMOCAP WHERE BMCaseID = a.BMCaseID AND Process = a.process) AS OCAPCount,
-                       ISNULL((SELECT 'Yes' FROM {actionTable} WHERE bmid = a.bmID AND machineno = a.mcno),'No') AS HaveAction,
+                       CASE WHEN EXISTS (SELECT 1 FROM {actionTable} WHERE bmid = a.bmID AND machineno = a.mcno) THEN 'Yes' ELSE 'No' END AS HaveAction,
                        COALESCE(CASE WHEN a.AcredBMContentID <> a.BMContentID THEN
                            CASE WHEN a.AcredBMContentID = '' OR a.AcredBMContentID = '0' OR a.AcredBMContentID IS NULL
                                 THEN a.BMContentID ELSE a.AcredBMContentID END
                            ELSE a.BMContentID END, 0) AS BMContentID,
-                       Priority,
                        (SELECT BMContent FROM BMContent WHERE BMContentID = a.BMContentID AND process = '{process}') AS BMContent,
                        c.Action AS Accre, c.Comment AS Sect, c.Comment2 AS Dept,
                        c.Comment3 AS Div, c.mcstatus AS MCStatus, 'None' AS FontColor
                 FROM [eMaintenanceSystemDB].[dbo].[{process}BMMaintenance] a
-                INNER JOIN [eMaintenanceSystemDB].[dbo].[BMCase] b ON a.BMCaseID = b.BMCaseID
-                LEFT  JOIN {actionTable} c ON a.bmID = c.bmID AND a.mcno = c.machineno
+                INNER JOIN [eMaintenanceSystemDB].[dbo].[{caseTable}] b ON a.{caseId} = b.{joinId}
+                OUTER APPLY (SELECT TOP (1) ac.* FROM {actionTable} ac
+                             WHERE ac.bmID = a.bmID AND ac.machineno = a.mcno ORDER BY ac.Seqno DESC) c
                 WHERE (a.timeofrequest BETWEEN @Range1 AND @Range2)
                   AND a.process = '{process}'
                   AND a.PMCategoryID = 1
                   AND {addQuery}
-                  AND a.BMCaseID <> 0
+                  AND a.{caseId} <> 0
                   AND (@Location = 'All' OR a.Location = @Location)
-                  AND a.Mcno = @Mcno
-                ORDER BY a.Mcno DESC, a.MCType DESC, a.Timeofrequest DESC, b.BMWhy";
+                  AND (@Mcno = 'All' OR a.Mcno = @Mcno)
+                  AND (@MCType = '' OR a.MCType = @MCType)
+                ORDER BY a.Mcno DESC, a.MCType DESC, a.Timeofrequest DESC, b.{caseText}";
         }
     }
 

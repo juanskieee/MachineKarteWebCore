@@ -1,7 +1,12 @@
 /* Form6 GroupBox1: full-width read-only OCAP grid, gray alternating rows. */
-.workflow--OcapViewer { padding: 8px; background: #f0f0f0; }
-.ocap-header { display: flex; align-items: baseline; gap: 16px; margin-bottom: 8px; }
-.ocap-title { font-size: 20px; font-weight: 700; margin: 0; }
+.workflow--OcapViewer { padding: 10px; background: #f0f0f0; }
+.ocap-record { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 0; margin: 0 0 8px; padding: 8px; min-height: 52px; background: #ddd; }
+.ocap-record > div { display: flex; align-items: baseline; gap: 4px; min-width: 0; padding-right: 8px; }
+.ocap-record > div + div::before { content: '|'; margin-right: 4px; }
+.ocap-record dt { font-size: inherit; font-weight: 400; }
+.ocap-record dt::after { content: ':'; }
+.ocap-record dd { margin: 0; font-weight: 700; overflow-wrap: anywhere; }
+@media (max-width: 600px) { .ocap-record { flex-direction: column; align-items: stretch; } .ocap-record > div + div::before { content: none; } }
 .ocap-grid-wrap { overflow: auto; max-height: 65dvh; background: #fff; }
 .ocap-table { table-layout: fixed; border-collapse: collapse; width: 100%; min-width: 850px; font-size: 15px; }
 .ocap-table th, .ocap-table td { border: 1px solid #888; padding: 9px; overflow-wrap: anywhere; white-space: pre-line; vertical-align: top; }
