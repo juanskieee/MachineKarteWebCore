@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace MachineKarte.Web.Pages;
 
-public class AlertBoardModel : PageModel
+public class AlertBoardModel : WorkflowPageModel
 {
 	private readonly AlertBoardService _service;
 	private readonly ILogger<AlertBoardModel> _logger;

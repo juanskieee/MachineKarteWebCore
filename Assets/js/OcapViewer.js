@@ -1,20 +1,22 @@
-﻿// Assets/js/OcapViewer.js
+Workflows.register('OcapViewer', (root, options, context) => {
+    const byId = id => root.querySelector('[data-id="' + id + '"], [id="' + id + '"]');
+    const fetch = context.fetch;
+    const setInterval = context.setInterval;
+    const setTimeout = context.setTimeout;
+// Assets/js/OcapViewer.js
 'use strict';
 
-document.addEventListener('DOMContentLoaded', () => {
-    const bmId = document.getElementById('hdnBmId')?.value ?? '';
-    const bmProcess = document.getElementById('hdnBmProcess')?.value ?? '';
-    const bmCaseId = document.getElementById('hdnBmCaseId')?.value ?? '';
+
+    const bmId = byId('hdnBmId')?.value ?? '';
+    const bmProcess = byId('hdnBmProcess')?.value ?? '';
+    const bmCaseId = byId('hdnBmCaseId')?.value ?? '';
 
     if (bmId && bmProcess && bmCaseId) {
         loadOcap(bmId, bmProcess, bmCaseId);
     }
-});
+
 
 // Public API — parent page (e.g. Monitoring) can call this directly
-window.OcapViewer = {
-    load: loadOcap
-};
 
 async function loadOcap(bmId, bmProcess, bmCaseId) {
     setLoading(true);
@@ -41,7 +43,7 @@ async function loadOcap(bmId, bmProcess, bmCaseId) {
 }
 
 function renderTable(rows) {
-    const tbody = document.getElementById('ocap-tbody');
+    const tbody = byId('ocap-tbody');
     tbody.innerHTML = '';
 
     if (!rows || rows.length === 0) {
@@ -65,18 +67,18 @@ function renderTable(rows) {
 
 // ── UI helpers ────────────────────────────────────────────────────────────────
 function setLoading(on) {
-    const el = document.getElementById('ocap-loading');
-    if (el) el.style.display = on ? 'flex' : 'none';
+    const el = byId('ocap-loading');
+    if (el) el.classList.toggle('is-hidden', !on);
 }
 
 function showError(msg) {
-    const el = document.getElementById('ocap-error');
-    if (el) { el.textContent = msg; el.style.display = 'block'; }
+    const el = byId('ocap-error');
+    if (el) { el.textContent = msg; el.classList.remove('is-hidden'); }
 }
 
 function clearError() {
-    const el = document.getElementById('ocap-error');
-    if (el) { el.textContent = ''; el.style.display = 'none'; }
+    const el = byId('ocap-error');
+    if (el) { el.textContent = ''; el.classList.add('is-hidden'); }
 }
 
 function escHtml(str) {
@@ -86,3 +88,4 @@ function escHtml(str) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;');
 }
+});

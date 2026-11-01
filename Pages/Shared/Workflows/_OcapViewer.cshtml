@@ -1,0 +1,45 @@
+@model MachineKarte.Web.Pages.OcapViewerModel
+<div class="workflow workflow--OcapViewer" data-workflow="OcapViewer">
+@{
+    ViewData["Title"] = "OCAP Viewer";
+    Layout = null;
+}
+
+    @* Hidden inputs carry query-string params to JS *@
+<input type="hidden" id="OcapViewer-hdnBmId" data-id="hdnBmId" value="@Model.BmId" />
+<input type="hidden" id="OcapViewer-hdnBmProcess" data-id="hdnBmProcess" value="@Model.BmProcess" />
+<input type="hidden" id="OcapViewer-hdnBmCaseId" data-id="hdnBmCaseId" value="@Model.BmCaseId" />
+
+<div id="OcapViewer-ocap-page" data-id="ocap-page" class="ocap-page">
+
+    <div class="ocap-header">
+        <h2 class="ocap-title">OCAP</h2>
+        @if (!string.IsNullOrEmpty(Model.BmProcess))
+        {
+            <span class="ocap-subtitle">Process: @Model.BmProcess</span>
+        }
+    </div>
+
+    <div id="OcapViewer-ocap-loading" data-id="ocap-loading" class="ocap-loading is-hidden">
+        <span class="ocap-spinner"></span> Loading OCAP data…
+    </div>
+    <div id="OcapViewer-ocap-error" data-id="ocap-error" class="ocap-error is-hidden" role="alert"></div>
+
+    <div class="ocap-grid-wrap">
+        <table id="OcapViewer-ocap-table" data-id="ocap-table" class="ocap-table">
+            <thead>
+                <tr>
+                    <th class="col-check">CHECK ITEMS</th>
+                    <th class="col-method">CHECKING METHOD</th>
+                    <th class="col-action">TREATMENT / ACTION</th>
+                    <th class="col-judge">JUDGEMENT</th>
+                    <th class="col-remarks">REMARKS</th>
+                </tr>
+            </thead>
+            <tbody id="OcapViewer-ocap-tbody" data-id="ocap-tbody"></tbody>
+        </table>
+    </div>
+
+</div>
+
+</div>

@@ -1,4 +1,9 @@
-﻿/**
+Workflows.register('MachineSummary', (root, options, context) => {
+    const byId = id => root.querySelector('[data-id="' + id + '"], [id="' + id + '"]');
+    const fetch = context.fetch;
+    const setInterval = context.setInterval;
+    const setTimeout = context.setTimeout;
+/**
  * MachineSummary.js
  * Form11 → MachineSummary.cshtml  (E-Karte System)
  *
@@ -6,15 +11,13 @@
  *  • Load the process × location count grid from OnGetSummaryAsync
  *  • Load the machine list for a clicked cell from OnGetMachineListAsync
  *  • "View in Monitoring" navigates to Monitoring with pre-filled filters
- *  • Auto-refresh every 60 seconds (mirrors the Form11 refresh timer)
+ *  • Auto-refresh when Monitoring signals the shared legacy timer reaching zero
  */
-(function () {
     'use strict';
 
-    const BASE = window.__ms || {};
-    const REFRESH_MS = 60_000;
+    const BASE = { summaryUrl: '/MachineSummary', machineListUrl: '/MachineSummary' };
 
-    const $ = id => document.getElementById(id);
+    const $ = id => byId(id);
     const elSearch = $('msSearch');
     const elFrom = $('msFrom');
     const elTo = $('msTo');
@@ -35,7 +38,6 @@
     let currentCell = null;
     let loadSeq = 0;
     let cellSeq = 0;
-    let refreshTimer = null;
 
     elSearch.addEventListener('click', () => search(false));
     elMode.addEventListener('change', () => search(false));
@@ -44,7 +46,7 @@
     elClose.addEventListener('click', closePanel);
     elOverlay.addEventListener('click', closePanel);
     elGo.addEventListener('click', goToMonitoring);
-    document.addEventListener('keydown', e => {
+    root.addEventListener('keydown', e => {
         if (e.key === 'Escape' && isPanelOpen()) closePanel();
     });
 
@@ -93,7 +95,6 @@
             if (seq === loadSeq) {
                 showProgress(false);
                 elSearch.disabled = false;
-                scheduleRefresh();
             }
         }
     }
@@ -226,6 +227,8 @@
             machines.forEach(machine => {
                 const li = document.createElement('li');
                 li.className = 'ms-panel-item';
+                li.tabIndex = 0;
+                li.setAttribute('role', 'button');
                 li.textContent = machine;
                 li.dataset.machine = machine;
                 li.addEventListener('click', () => selectMachine(li));
@@ -279,27 +282,27 @@
             machine,
             process: currentCell.process,
             floor: currentCell.location,
-            userType: currentCell.userMode === 'TE' ? 'TE' : 'EEE',
+            userType: currentCell.userMode === 'TE' ? 'TE' : (options.userType && options.userType !== 'TE' ? options.userType : 'EEE'),
             dateFrom: lastFilter.dateFrom,
             dateTo: lastFilter.dateTo
         });
 
-        window.location.href = withParams(BASE.monitoringUrl, params);
+        Workflows.selectMachine(params);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
-    function scheduleRefresh() {
-        clearTimeout(refreshTimer);
-        refreshTimer = setTimeout(() => search(true), REFRESH_MS);
-    }
+    // Form11's timer is driven by Form1.lblTimer, not an independent interval.
+    // Monitoring publishes the equivalent zero signal for converted pages.
+    context.onRefresh(() => search(true));
 
     function setStatus(message, isError) {
         elStatus.textContent = message || '';
-        elStatus.style.color = isError ? '#f44' : '#adf';
+        elStatus.classList.toggle('status-error', !!isError);
+        elStatus.classList.toggle('status-info', !isError);
     }
 
     function showProgress(on) {
-        elProgress.style.display = on ? 'block' : 'none';
+        elProgress.classList.toggle('is-hidden', !on);
     }
 
     function withParams(url, params) {
@@ -315,4 +318,4 @@
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
     }
-}());
+});

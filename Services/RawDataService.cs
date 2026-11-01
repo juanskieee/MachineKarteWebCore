@@ -56,7 +56,7 @@ namespace MachineKarte.Web.Services
         {
             // Intermediate accumulator – mirrors the VB CreatedTable
             var interim = new List<(string Freq, string DateLabel,
-                                    int DateNum, int DateYear)>();
+                                    int DateNum, int DateYear, int Count)>();
 
             bool ifSame = false;
             int freqCnt = 0;
@@ -114,7 +114,7 @@ namespace MachineKarte.Web.Services
                         string label = $"{row["DateMonth"]} {row["DateYear"]}";
                         int dNum = Convert.ToInt32(row["DateNum"]);
                         int dYear = Convert.ToInt32(row["DateYear"]);
-                        interim.Add((freq, label, dNum, dYear));
+                        interim.Add((freq, label, dNum, dYear, freqCnt));
                         ifSame = true;
                     }
                 }
@@ -131,7 +131,7 @@ namespace MachineKarte.Web.Services
                     DateLabel = g.First().DateLabel,
                     DateMonth = g.Key.DateNum,
                     DateYear = g.Key.DateYear,
-                    Total = g.Count()
+                    Total = g.Sum(r => r.Count)
                 })
                 .OrderBy(r => r.DateYear)
                 .ThenBy(r => r.DateMonth)

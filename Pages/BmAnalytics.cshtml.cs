@@ -1,11 +1,11 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using MachineKarte.Web.Models;
 using MachineKarte.Web.Services;
 
 namespace MachineKarte.Web.Pages;
 
-public class BmAnalyticsModel : PageModel
+public class BmAnalyticsModel : WorkflowPageModel
 {
     private readonly BmAnalyticsService _svc;
     private readonly IConfiguration _cfg;
@@ -19,12 +19,14 @@ public class BmAnalyticsModel : PageModel
     }
 
     public string AppVersion => _cfg["AppVersion"] ?? "1.0";
+    public string LegacyForm { get; private set; } = "8";
 
     // -----------------------------------------------------------------------
     // GET /BmAnalytics
     // -----------------------------------------------------------------------
-    public IActionResult OnGet()
+    public IActionResult OnGet(string? legacyForm = null)
     {
+        LegacyForm = legacyForm == "12" ? "12" : "8";
         return Page();
     }
 
@@ -65,7 +67,8 @@ public class BmAnalyticsModel : PageModel
             {
                 DateFrom = dateFrom,
                 DateTo = dateTo,
-                Mode = mode
+                Mode = mode,
+                LegacyForm = Request.Query["legacyForm"] == "12" ? "12" : "8"
             };
 
             var result = await _svc.BuildGridAsync(req);

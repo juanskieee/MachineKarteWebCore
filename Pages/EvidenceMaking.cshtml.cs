@@ -1,4 +1,4 @@
-﻿// Pages/EvidenceMaking.cshtml.cs
+// Pages/EvidenceMaking.cshtml.cs
 // Converted from Form4.vb — E-Karte System
 // C# ASP.NET Core Razor Pages
 
@@ -9,7 +9,7 @@ using MachineKarte.Web.Services.Reporting;
 
 namespace MachineKarte.Web.Pages
 {
-    public class EvidenceMakingModel : PageModel
+    public class EvidenceMakingModel : WorkflowPageModel
     {
         private readonly EvidenceMakingService _svc;
         private readonly ILogger<EvidenceMakingModel> _logger;

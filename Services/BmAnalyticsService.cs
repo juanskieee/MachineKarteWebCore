@@ -4,7 +4,7 @@ using MachineKarte.Web.Repositories;
 namespace MachineKarte.Web.Services;
 
 /// <summary>
-/// Orchestrates the BM Analytics grid build.
+/// Orchestrates the BM Analytics grid build for the Form8/Form12 profiles.
 ///
 /// Active logic: NewLoadColor() only.
 ///   Count cell += 1 when isMCD = "Yes" AND HaveAction = "Yes"
@@ -25,6 +25,7 @@ public class BmAnalyticsService
         if (!DateTime.TryParse(req.DateTo, out var dtTo)) dtTo = DateTime.Today;
 
         string mode = req.Mode?.ToUpperInvariant() == "TE" ? "TE" : "EEE";
+        string legacyForm = req.LegacyForm == "12" ? "12" : "8";
         string[] procs = BmAnalyticsMappings.GetProcesses(mode);
 
         var result = new BmAnalyticsResult();
@@ -34,7 +35,7 @@ public class BmAnalyticsService
         // ---------------------------------------------------------------
         foreach (string process in procs)
         {
-            string[] locations = BmAnalyticsMappings.GetLocations(process, mode);
+            string[] locations = BmAnalyticsMappings.GetLocations(process, mode, legacyForm);
 
             foreach (string location in locations)
             {
@@ -44,7 +45,7 @@ public class BmAnalyticsService
                 if (rows.Count == 0) continue;
 
                 // NewLoadColor logic: isMCD=Yes AND HaveAction=Yes → count it
-                ApplyNewLoadColor(rows, result);
+                ApplyNewLoadColor(rows, result, legacyForm);
             }
         }
 
@@ -57,7 +58,7 @@ public class BmAnalyticsService
             foreach (var kv in result.Cells)
             {
                 // Resolve which location this cell key maps to
-                if (CellKeyMatchesLocation(kv.Key, loc, mode))
+                if (CellKeyMatchesLocation(kv.Key, loc, mode, legacyForm))
                     total += kv.Value.Count;
             }
             result.LocationTotals[loc] = total;
@@ -80,19 +81,17 @@ public class BmAnalyticsService
     }
 
     // ------------------------------------------------------------------
-    // NewLoadColor: mirrors Form12.vb NewLoadColor + InputToLabel
+    // NewLoadColor: mirrors the active NewLoadColor + InputToLabel path.
     // Only count rows where isMCD=Yes AND HaveAction=Yes
     // ------------------------------------------------------------------
-    private static void ApplyNewLoadColor(List<BmAnalyticsRow> rows, BmAnalyticsResult result)
+    private static void ApplyNewLoadColor(
+        List<BmAnalyticsRow> rows, BmAnalyticsResult result, string legacyForm)
     {
-        // Track mcnos already added to avoid duplicates (mirrors RemoveDuplicates())
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
         foreach (var row in rows)
         {
             if (row.IsMCD != "Yes" || row.HaveAction != "Yes") continue;
 
-            string key = BmAnalyticsMappings.CellKey(row.Process, row.Location);
+            string key = BmAnalyticsMappings.CellKey(row.Process, row.Location, legacyForm);
 
             if (!result.Cells.TryGetValue(key, out var cell))
             {
@@ -100,19 +99,19 @@ public class BmAnalyticsService
                 result.Cells[key] = cell;
             }
 
-            // Deduplicate by process+location+mcno (mirrors RemoveDuplicates in ListBox)
-            string dedupeKey = $"{key}|{row.Mcno}";
-            if (!seen.Add(dedupeKey)) continue;
-
+            // Legacy labels count every qualifying row; only the list box
+            // receives RemoveDuplicates().
             cell.Count++;
-            cell.Mcnos.Add(row.Mcno);
+            if (!cell.Mcnos.Contains(row.Mcno, StringComparer.OrdinalIgnoreCase))
+                cell.Mcnos.Add(row.Mcno);
         }
     }
 
     // ------------------------------------------------------------------
     // Reverse-map a cell key like "DC_1" or "ATC_65" to a location string
     // ------------------------------------------------------------------
-    private static bool CellKeyMatchesLocation(string cellKey, string location, string mode)
+    private static bool CellKeyMatchesLocation(
+        string cellKey, string location, string mode, string legacyForm)
     {
         // cellKey format: "{PROCESS}_{INDEX}"  or "ATC_65"
         int sep = cellKey.LastIndexOf('_');
@@ -121,12 +120,12 @@ public class BmAnalyticsService
         string proc = cellKey[..sep];
         string idxStr = cellKey[(sep + 1)..];
 
-        if (proc == "ATC" && idxStr == "65")
+        if (legacyForm == "12" && proc == "ATC" && idxStr == "65")
             return location == "LSI3-1F";
 
         if (!int.TryParse(idxStr, out int idx)) return false;
 
-        string[] locs = BmAnalyticsMappings.GetLocations(proc, mode);
+        string[] locs = BmAnalyticsMappings.GetLocations(proc, mode, legacyForm);
         if (idx < 1 || idx > locs.Length) return false;
         return locs[idx - 1] == location;
     }

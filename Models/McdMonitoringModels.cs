@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace MachineKarte.Web.Models
@@ -80,11 +80,10 @@ namespace MachineKarte.Web.Models
     // (NewLoadColor → InputToLabel).  The 7-day / LoadColor path is commented
     // out in Form7.vb and is intentionally not converted.
     //
-    // The 9-column layout follows the completed Form11/Form12 conversions
-    // (the newer facility floor list). Form7's old Designer only had 7
-    // columns and never assigned ATC / SING locations (the strLocation array
-    // was left over from the previous process), so those slots are completed
-    // here using the same mapping as the newer dashboards.
+    // The display columns cover the facility floors, while each process map
+    // below follows Form7's own active strLocation loop. In particular, ATC
+    // retains PL's two locations and SING retains FL's four locations because
+    // the legacy loop does not assign a new array for those processes.
     // ─────────────────────────────────────────────────────────────────────────
 
     public static class McdMonitoringConfig
@@ -109,19 +108,19 @@ namespace MachineKarte.Web.Models
 
         public static readonly Dictionary<string, string[]> EeeLocations = new()
         {
-            ["DC"] = new[] { "LSI1-1F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-2F" },
-            ["DB"] = new[] { "LSI1-1F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-2F" },
-            ["WB"] = new[] { "LSI1-1F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-2F" },
-            ["MP"] = new[] { "LSI1-1F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-1F" },
-            ["PL"] = new[] { "LSI1-1F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-1F" },
-            ["FL"] = new[] { "LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-3F" },
-            ["FT"] = new[] { "LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-3F" },
-            ["TP"] = new[] { "LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-3F" },
+            ["DC"] = new[] { "LSI1-1F", "LSI2-1F", "LSI2-2F", "LSI2-3F" },
+            ["DB"] = new[] { "LSI1-1F", "LSI2-1F", "LSI2-2F", "LSI2-3F" },
+            ["WB"] = new[] { "LSI1-1F", "LSI2-1F", "LSI2-2F", "LSI2-3F" },
+            ["MP"] = new[] { "LSI1-1F", "LSI2-1F", "LSI2-2F", "LSI2-3F" },
+            ["PL"] = new[] { "LSI1-1F", "LSI2-1F" },
+            ["FL"] = new[] { "LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F" },
+            ["FT"] = new[] { "LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F" },
+            ["TP"] = new[] { "LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F" },
             ["MEMS"] = new[] { "LSI3-2F" },
             ["EDS"] = new[] { "LSI3-4F" },
-            ["SING"] = new[] { "LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-3F" },
-            // ATC has a special slot "65" for LSI3-1F in addition to index 6 (LSI3-3F).
-            ["ATC"] = new[] { "LSI1-1F", "LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-1F", "LSI3-3F" },
+            ["SING"] = new[] { "LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F" },
+            // Form7 does not assign a new location array for ATC after PL.
+            ["ATC"] = new[] { "LSI1-1F", "LSI2-1F" },
         };
 
         public static readonly Dictionary<string, string[]> TeLocations = new()

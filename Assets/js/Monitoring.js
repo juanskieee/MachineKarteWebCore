@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Monitoring.js
  * Converted from Form1.vb event handlers — E-Karte System
  * Handles: filter cascades, search, pagination, auto-refresh timer,
@@ -30,10 +30,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     startRefreshTimer();
     initializeFromQueryString();
+    renderFloorSummary([]);
 });
 
 async function initializeFromQueryString() {
     const query = new URLSearchParams(window.location.search);
+    if (query.has('workflow')) return;
+    return applyMonitoringSelection(Object.fromEntries(query));
+}
+
+async function applyMonitoringSelection(selection) {
+    const query = new URLSearchParams(selection);
     const process = query.get('process');
     const floor = query.get('floor') || query.get('location');
     const machine = query.get('machine');
@@ -74,7 +81,7 @@ async function initializeFromQueryString() {
 async function onUserChanged() {
     const userType = val('cbUser');
     const label = document.getElementById('lblProcessLabel');
-    label.textContent = (userType === 'TE') ? 'Tester' : 'Machine';
+    label.textContent = (userType === 'TE') ? 'Tester process' : 'Process';
 
     const resp = await get(`/Monitoring?handler=ProcessList&userType=${enc(userType)}`);
     if (!resp.success) return;
@@ -129,6 +136,7 @@ async function doSearch(page = 1) {
 
     const filter = buildFilter();
     State.lastFilter = filter;
+    document.getElementById('monitoringWelcome').classList.add('is-hidden');
 
     showSpinner(true);
     clearCards();
@@ -166,6 +174,7 @@ function startRefreshTimer() {
 
         if (State.timerCount <= 0) {
             State.timerCount = 600;
+            window.dispatchEvent(new Event('monitoring:refresh'));
 
             // Mirrors: if (TimeOfDay.Hour == 8 && minute < 59) SetDate()
             const now = new Date();
@@ -173,7 +182,7 @@ function startRefreshTimer() {
                 const dt2 = document.getElementById('dt2');
                 const dt1 = document.getElementById('dt1');
                 const today = new Date();
-                dt2.value = formatDate(new Date(today.getTime() + 86400000));
+                dt2.value = formatDate(today);
                 dt1.value = formatDate(new Date(today.getTime() - 30 * 86400000));
             }
 
@@ -193,14 +202,17 @@ function renderFloorSummary(summaries) {
     const grid = document.getElementById('floorSummaryGrid');
     grid.innerHTML = '';
 
-    if (!summaries || summaries.length === 0) {
-        panel.style.display = 'none';
-        return;
-    }
+    const loaded = summaries?.length > 0;
+    if (!loaded) summaries = ['LSI1-1F', 'LSI1-2F', 'LSI2-1F', 'LSI2-2F', 'LSI2-3F', 'LSI3-2F', 'LSI3-4F', 'LSI3-3F', 'LSI3-1F'].map(floorCode => ({ floorCode, bmCount: '—', machineCount: '—' }));
 
     summaries.forEach(s => {
         const cell = document.createElement('div');
         cell.className = 'floor-cell';
+        if (loaded) {
+            cell.tabIndex = 0;
+            cell.setAttribute('role', 'button');
+            cell.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); cell.click(); } });
+        }
         cell.dataset.floor = s.floorCode;
         cell.innerHTML = `
             <div class="floor-name">${s.floorCode}</div>
@@ -210,11 +222,11 @@ function renderFloorSummary(summaries) {
                 ? `<div class="floor-mcd-count">MCD: ${s.mcdCount}</div>` : ''}
         `;
         // Mirrors LabelMain_Click — clicking a floor cell shows machine list sidebar
-        cell.addEventListener('click', () => onFloorCellClick(s.floorCode, s));
+        if (loaded) cell.addEventListener('click', () => onFloorCellClick(s.floorCode, s));
         grid.appendChild(cell);
     });
 
-    panel.style.display = 'block';
+    panel.classList.remove('is-hidden');
 }
 
 /** Mirrors LabelMain_Click — shows Listbox_main for the clicked floor */
@@ -246,19 +258,19 @@ function onFloorCellClick(floorCode, summary) {
         });
     });
 
-    sidebar.style.display = 'block';
+    sidebar.classList.remove('is-hidden');
 }
 
 function closeSidebar() {
-    document.getElementById('machineListSidebar').style.display = 'none';
+    document.getElementById('machineListSidebar').classList.add('is-hidden');
 }
 
 function toggleSummary() {
     const panel = document.getElementById('floorSummaryPanel');
     const btn = document.getElementById('btnCloseSummary');
     const grid = document.getElementById('floorSummaryGrid');
-    const collapsed = grid.style.display === 'none';
-    grid.style.display = collapsed ? '' : 'none';
+    const collapsed = grid.classList.contains('is-hidden');
+    grid.classList.toggle('is-hidden', !collapsed);
     btn.textContent = collapsed ? '▲ Hide' : '▼ Show';
 }
 
@@ -271,10 +283,10 @@ function renderMachineCards(summaries, filter) {
     const noResult = document.getElementById('noResultMsg');
 
     if (!summaries || summaries.length === 0) {
-        noResult.style.display = 'block';
+        noResult.classList.remove('is-hidden');
         return;
     }
-    noResult.style.display = 'none';
+    noResult.classList.add('is-hidden');
 
     summaries.forEach((mc, idx) => {
         const col = document.createElement('div');
@@ -285,9 +297,10 @@ function renderMachineCards(summaries, filter) {
         // Column header (machine number + BM count badge)
         col.innerHTML = `
             <div class="mc-col-header">
-                <span class="mc-no">${mc.machineNo}</span>
-                <span class="mc-type badge">${mc.machineType}</span>
+                <span class="mc-no">${escHtml(mc.machineNo)}</span>
+                <span class="mc-type badge">${escHtml(mc.machineType)}</span>
                 <span class="bm-count-badge">${mc.bmCount}</span>
+                <span class="need-action-badge">Need Action: …</span>
             </div>
             <div class="bm-card-list" id="cards_${idx}">
                 <div class="card-loading">Loading...</div>
@@ -321,7 +334,12 @@ async function loadMachineCard(mc, filter, colIdx) {
     }
 
     container.innerHTML = '';
-    const { bmCards, actionLine } = resp.data;
+    const { bmCards, actionLine, needActionCount } = resp.data;
+    const column = document.getElementById(`col_${colIdx}`);
+    const needActionBadge = column?.querySelector('.need-action-badge');
+    if (needActionBadge) {
+        needActionBadge.textContent = `Need Action: ${needActionCount ?? 0}`;
+    }
 
     if (bmCards.length === 0) {
         container.innerHTML = '<div class="no-bm">No BM records</div>';
@@ -352,6 +370,13 @@ function buildBMCard(card, actionLine, userType) {
         ? '<span class="badge-action">✔ Action</span>'
         : '';
 
+    const markers = [
+        card.actionMarker ? '<span class="bm-marker bm-marker-ac">AC</span>' : '',
+        card.sectionMarker ? '<span class="bm-marker bm-marker-sm">SM</span>' : '',
+        card.departmentMarker ? '<span class="bm-marker bm-marker-dm">DM</span>' : '',
+        card.divisionMarker ? '<span class="bm-marker bm-marker-dv">DV</span>' : ''
+    ].join('');
+
     // Status color (FontColor / mcstatus)
     let statusClass = '';
 
@@ -362,20 +387,23 @@ function buildBMCard(card, actionLine, userType) {
         statusClass = `status-${card.mcStatus.toLowerCase().replace(/\s+/g, '-')}`;
     }
 
-    div.className = `bm-card ${statusClass} ${priorityClass}`.trim();
-    div.style.cursor = 'pointer';
-    div.title = 'Click to open Check & Action Card';
+    div.className = `bm-card bm-card-clickable ${statusClass} ${priorityClass}`.trim();
+    div.title = 'Open Check And Action Card';
+    div.tabIndex = 0;
+    div.setAttribute('role', 'button');
+    div.addEventListener('keydown', event => { if (event.target === div && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); div.click(); } });
 
     div.addEventListener('click', () => {
         openActionCard(card, card.machineNo, userType);
     });
 
     div.innerHTML = `
-        <div class="bm-card-time">${card.timeOfRequest ?? ''}</div>
+        <div class="bm-card-time">${escHtml(card.timeOfRequest)}</div>
         <div class="bm-card-case">
             ${mcdBadge}${actionBadge}
             <span class="bm-case-text">${escHtml(card.bmCase)}</span>
         </div>
+        <div class="bm-card-markers">${markers}</div>
         <div class="bm-card-content">${escHtml(card.bmContent)}</div>
         <div class="bm-card-footer">
             <span class="bm-location">${escHtml(card.location)}</span>
@@ -398,326 +426,16 @@ function buildBMCard(card, actionLine, userType) {
 }
 
 function openBMCommand(command, card, userType) {
-
-    if (command === 'report') {
-
-        showReportModal(
-            card,
-            'BM'
-        );
-
-        return;
-    }
-
-    if (command === 'evidence') {
-
-        showReportModal(
-            card,
-            'Evidence'
-        );
-
-        return;
-    }
-
-    if (command === 'ocap') {
-
-        window.open(
-            `/OcapViewer?bmId=${enc(card.bmId)}&bmProcess=${enc(card.process)}&bmCaseId=${enc(card.bmCaseId)}`,
-            '_blank'
-        );
-
-        return;
-    }
+    const params = {
+        process: card.process || val('cbProcess'),
+        bmId: String(card.bmId),
+        timeOfRequest: card.timeOfRequest || '',
+        machineNo: card.machineNo || ''
+    };
+    if (command === 'report') Workflows.open(userType === 'TE' ? 'BmReport' : 'PmReport', params);
+    if (command === 'evidence') Workflows.open(userType === 'TE' ? 'TeEvidenceMaking' : 'EvidenceMaking', params);
+    if (command === 'ocap') Workflows.open('OcapViewer', { bmId: params.bmId, bmProcess: params.process, bmCaseId: card.bmCaseId });
 }
-
-function showReportModal(card, reportType) {
-
-    document.getElementById('reportBmId').value =
-        card.bmId;
-
-    document.getElementById('reportProcess').value =
-        card.process;
-
-    document.getElementById('reportType').value =
-        reportType;
-
-    document.getElementById('reportBmIdLabel').textContent =
-        card.bmId;
-
-    document.getElementById('reportModalTitle').textContent =
-        reportType === 'BM'
-            ? 'Generate BM Report'
-            : 'Generate TE Evidence';
-
-    const status =
-        document.getElementById('reportStatus');
-
-    status.className =
-        'small text-muted';
-
-    status.textContent = '';
-
-    bootstrap.Modal
-        .getOrCreateInstance(
-            document.getElementById('reportModal')
-        )
-        .show();
-}
-
-document
-    .getElementById('btnGenerateDownload')
-    ?.addEventListener(
-        'click',
-        generateAndDownloadReport
-    );
-
-async function generateAndDownloadReport() {
-
-    const bmId =
-        document.getElementById('reportBmId').value;
-
-    const process =
-        document.getElementById('reportProcess').value;
-
-    const reportType =
-        document.getElementById('reportType').value;
-
-    const status =
-        document.getElementById('reportStatus');
-
-    const button =
-        document.getElementById(
-            'btnGenerateDownload'
-        );
-
-    try {
-
-        button.disabled = true;
-
-        status.className =
-            'small text-info';
-
-        status.textContent =
-            'Generating file...';
-
-        if (reportType === 'Evidence') {
-
-            const generateResponse =
-                await fetch(
-                    `/TeEvidenceMaking?handler=Generate&bmId=${encodeURIComponent(bmId)}`
-                );
-
-            const generateResult =
-                await generateResponse.json();
-
-            if (!generateResult.success) {
-
-                throw new Error(
-                    generateResult.message ||
-                    'Evidence generation failed.'
-                );
-            }
-
-            status.className =
-                'small text-success';
-
-            status.textContent =
-                'Generated! Download starting...';
-
-            window.location.href =
-                `/TeEvidenceMaking?handler=Download&bmId=${encodeURIComponent(bmId)}`;
-
-            setTimeout(() => {
-
-                bootstrap.Modal
-                    .getInstance(
-                        document.getElementById(
-                            'reportModal'
-                        )
-                    )
-                    ?.hide();
-
-            }, 1000);
-
-            return;
-        }
-
-        const formData =
-            new FormData();
-
-        formData.append(
-            'bmId',
-            bmId
-        );
-
-        formData.append(
-            'process',
-            process
-        );
-
-        const response =
-            await fetch(
-                '/BmReport?handler=DownloadReport',
-                {
-                    method: 'POST',
-                    headers: {
-                        'RequestVerificationToken':
-                            State.antiForgery
-                    },
-                    body: formData
-                }
-            );
-
-        const contentType =
-            response.headers.get(
-                'content-type'
-            ) || '';
-
-        if (
-            !response.ok ||
-            contentType.includes('application/json') ||
-            contentType.includes('text/html')
-        ) {
-
-            let message =
-                'BM Report generation failed.';
-
-            try {
-
-                const raw =
-                    await response.text();
-
-                try {
-
-                    const payload =
-                        JSON.parse(raw);
-
-                    message =
-                        payload.message ||
-                        payload.Message ||
-                        payload.error ||
-                        message;
-
-                }
-                catch {
-
-                    message =
-                        raw || message;
-                }
-
-            }
-            catch { }
-
-            throw new Error(
-                message
-            );
-        }
-
-        if (
-            !contentType.includes(
-                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-            )
-        ) {
-
-            throw new Error(
-                'Invalid file response.'
-            );
-        }
-
-        const blob =
-            await response.blob();
-
-        const disposition =
-            response.headers.get(
-                'content-disposition'
-            ) || '';
-
-        let fileName =
-            `${bmId}.xlsx`;
-
-        const match =
-            disposition.match(
-                /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/
-            );
-
-        if (
-            match &&
-            match[1]
-        ) {
-
-            fileName =
-                match[1]
-                    .replace(/['"]/g, '')
-                    .trim();
-        }
-
-        const url =
-            window.URL.createObjectURL(
-                blob
-            );
-
-        const link =
-            document.createElement(
-                'a'
-            );
-
-        link.href =
-            url;
-
-        link.download =
-            fileName;
-
-        document.body.appendChild(
-            link
-        );
-
-        link.click();
-
-        link.remove();
-
-        window.URL.revokeObjectURL(
-            url
-        );
-
-        status.className =
-            'small text-success';
-
-        status.textContent =
-            'Generated! Download starting...';
-
-        setTimeout(() => {
-
-            bootstrap.Modal
-                .getInstance(
-                    document.getElementById(
-                        'reportModal'
-                    )
-                )
-                ?.hide();
-
-        }, 1000);
-
-    }
-    catch (error) {
-
-        console.error(
-            error
-        );
-
-        status.className =
-            'small text-danger';
-
-        status.textContent =
-            error?.message ||
-            'Generation failed.';
-    }
-    finally {
-
-        button.disabled =
-            false;
-    }
-}
-
 function clearCards() {
     const scroller = document.getElementById('cardScroller');
     // Remove all machine columns but keep the static children (spinner/noResult)
@@ -725,39 +443,21 @@ function clearCards() {
 }
 
 // ════════════════════════════════════════════════════════
-// BM CARD CLICK → Action Card page
+// BM CARD CLICK → Action Card modal
 // Mirrors: Form_Input.LoadData(bmid, status, mcno, ColorT, HeaderCase)
-// Opens ActionCards page as a new tab (replaces Form_Input.Show())
 // ════════════════════════════════════════════════════════
 
 function openActionCard(card, mcNo, userType) {
-    const status = card.haveAction === 'Yes' ? 'Existing' : 'New';
-    const colorName = card.fontColor && card.fontColor !== 'None'
-        ? card.fontColor : derivedColor(card.mcStatus);
-    const url = `/ActionCards?` +
-        `bmId=${enc(String(card.bmId))}` +
-        `&mcNo=${enc(mcNo)}` +
-        `&userType=${enc(userType)}` +
-        `&status=${enc(status)}` +
-        `&colorName=${enc(colorName)}` +
-        `&headerCase=${enc(card.bmCase)}`;
-
-    const popup = window.open(url, '_blank',
-        'width=1460,height=860,resizable=yes,scrollbars=yes');
-
-    // When Action Card is saved it postMessages back → refresh dashboard
-    window.addEventListener('message', (e) => {
-        if (e.origin === location.origin && e.data?.type === 'actionCardSaved') {
-            doSearch(State.page);
-        }
-    }, { once: true });
-
-    if (!popup) {
-        // Popup blocked — navigate in same tab
-        location.href = url;
-    }
+    const colorName = card.fontColor && card.fontColor !== 'None' ? card.fontColor : derivedColor(card.mcStatus);
+    Workflows.open('ActionCards', {
+        bmId: String(card.bmId), mcNo, userType,
+        status: card.haveAction === 'Yes' ? 'Existing' : 'New',
+        colorName, headerCase: card.bmCase || ''
+    });
 }
 
+window.refreshMonitoring = () => { if (State.lastFilter) doSearch(State.page); };
+window.applyMonitoringSelection = applyMonitoringSelection;
 function derivedColor(mcStatus) {
     if (!mcStatus) return '';
     const s = mcStatus.toUpperCase();
@@ -777,29 +477,20 @@ function derivedColor(mcStatus) {
 
 function openSection(section) {
     const userType = val('cbUser');
-    if (!userType) {
-        showToast('Please select a User first.');
-        return;
-    }
-
-    if (section === 'WithAction') {
-        const params = new URLSearchParams({
-            userMode: userType === 'TE' ? 'TE' : 'EEE',
-            dateFrom: val('dt1'),
-            dateTo: val('dt2')
-        });
-        window.location.href = `/MachineSummary?${params}`;
-        return;
-    }
-
-    const urls = {
-        RepeatBM: '/AlertBoard',
-        MCD: '/McdMonitoring'
+    if (!userType) { showToast('Please select a User first.'); return; }
+    const names = { RepeatBM: 'AlertBoard', MCD: 'MachineSummary', WithAction: 'BmAnalytics', RawData: 'RawData', McdMonitoring: 'McdMonitoring', BmAnalytics: 'BmAnalytics' };
+    const params = {
+        userType, userMode: userType === 'TE' ? 'TE' : 'EEE',
+        dateFrom: val('dt1'), dateTo: val('dt2'),
+        process: val('cbProcess'), location: val('cbFloor'), machine: val('cbMachine')
     };
-
-    window.location.href = urls[section] ?? '/Monitoring';
+    if (section === 'RawData' && (params.process === '-Select-' || params.location === '-Select-')) {
+        showToast('Select a process and location to view Raw Data.'); return;
+    }
+    if (section === 'WithAction') params.legacyForm = '12';
+    if (section === 'BmAnalytics') params.legacyForm = '8';
+    Workflows.open(names[section], params);
 }
-
 // ════════════════════════════════════════════════════════
 // HELPERS
 // ════════════════════════════════════════════════════════
@@ -833,18 +524,18 @@ function fillSelect(id, items, defaultSelect) {
 }
 
 function showSpinner(show) {
-    document.getElementById('loadingSpinner').style.display = show ? 'flex' : 'none';
+    document.getElementById('loadingSpinner').classList.toggle('is-hidden', !show);
 }
 
 function showToast(msg) {
     const t = document.getElementById('toastMsg');
     t.textContent = msg;
-    t.style.display = 'block';
-    setTimeout(() => { t.style.display = 'none'; }, 4000);
+    t.classList.remove('is-hidden');
+    setTimeout(() => { t.classList.add('is-hidden'); }, 4000);
 }
 
 function formatDate(d) {
-    return d.toISOString().slice(0, 10);
+    return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-');
 }
 
 function toApiDate(isoDate) {
@@ -856,7 +547,7 @@ function toApiDate(isoDate) {
 function enc(s) { return encodeURIComponent(s ?? ''); }
 
 function escHtml(s) {
-    return (s ?? '')
+    return String(s ?? '')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')

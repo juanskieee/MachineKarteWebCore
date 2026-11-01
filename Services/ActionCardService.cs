@@ -42,6 +42,9 @@ namespace MachineKarte.Web.Services
                 existing.UserType = req.UserType;
                 existing.HeaderCase = req.HeaderCase;
                 existing.ColorName = req.ColorName;
+                var colorStatus = McStatusOptions.FromColorName(req.ColorName);
+                if (colorStatus != "-SELECT-")
+                    existing.McStatus = colorStatus;
                 return existing;
             }
 

@@ -600,6 +600,12 @@ namespace MachineKarte.Web.Services
 
             if (string.IsNullOrEmpty(d.QualityCheckData)) return;
             var arr = d.QualityCheckData.Split('|');
+            // Legacy report generation tolerated incomplete serialized QC data
+            // inside its per-record error boundary; do not fail the whole
+            // workbook when required segments are absent.
+            if ((process == "EDS" && arr.Length < 14) ||
+                (process != "EDS" && arr.Length < 7))
+                return;
             // Delegate to the appropriate mapping depending on array length and process
             // (mirrors the VB if/else branch on arr.Length = 14/15 vs other)
             if (process == "EDS")

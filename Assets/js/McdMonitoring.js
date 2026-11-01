@@ -1,4 +1,9 @@
-﻿/**
+Workflows.register('McdMonitoring', (root, options, context) => {
+    const byId = id => root.querySelector('[data-id="' + id + '"], [id="' + id + '"]');
+    const fetch = context.fetch;
+    const setInterval = context.setInterval;
+    const setTimeout = context.setTimeout;
+/**
  * McdMonitoring.js
  * Handles the MCD Monitoring dashboard (Form7 → McdMonitoring.cshtml).
  *
@@ -12,7 +17,6 @@
  *   - Read-only page, so no anti-forgery POST is needed
  */
 
-(function () {
     'use strict';
 
     // ── State ────────────────────────────────────────────────────────────────
@@ -20,49 +24,49 @@
     let currentCell = null;
     let loadSeq = 0;
     let cellSeq = 0;
+    let progressTimer = null;
 
     // ── DOM refs ─────────────────────────────────────────────────────────────
-    const dtFrom = () => document.getElementById('dtFrom');
-    const dtTo = () => document.getElementById('dtTo');
-    const selUser = () => document.getElementById('selUser');
-    const btnSearch = () => document.getElementById('btnSearch');
-    const gridContainer = () => document.getElementById('gridContainer');
-    const lblStatus = () => document.getElementById('lblStatus');
-    const progressBar = () => document.getElementById('progressBar');
-    const progressInner = () => document.getElementById('progressInner');
-    const machinePanel = () => document.getElementById('machinePanel');
-    const panelOverlay = () => document.getElementById('panelOverlay');
-    const machineList = () => document.getElementById('machineList');
-    const panelTitle = () => document.getElementById('panelTitle');
+    const dtFrom = () => byId('dtFrom');
+    const dtTo = () => byId('dtTo');
+    const selUser = () => byId('selUser');
+    const btnSearch = () => byId('btnSearch');
+    const gridContainer = () => byId('gridContainer');
+    const lblStatus = () => byId('lblStatus');
+    const progressBar = () => byId('progressBar');
+    const progressInner = () => byId('progressInner');
+    const machinePanel = () => byId('machinePanel');
+    const panelOverlay = () => byId('panelOverlay');
+    const machineList = () => byId('machineList');
+    const panelTitle = () => byId('panelTitle');
 
     // ── Init ─────────────────────────────────────────────────────────────────
-    document.addEventListener('DOMContentLoaded', () => {
+    (function initialize() {
         const now = new Date();
         const past = new Date(now);
         past.setDate(past.getDate() - 30);
-        dtFrom().value = toLocalIso(past);
-        dtTo().value = toLocalIso(now);
+        dtFrom().value = options.dateFrom ? options.dateFrom.slice(0, 10) + 'T00:00' : toLocalIso(past);
+        dtTo().value = options.dateTo ? options.dateTo.slice(0, 10) + 'T00:00' : toLocalIso(new Date(now.getTime() + 86400000));
+        selUser().value = options.userType === 'TE' ? 'TE' : '';
 
         btnSearch().addEventListener('click', () => loadDashboard(false));
         selUser().addEventListener('change', () => loadDashboard(false));
 
-        document.getElementById('btnPanelClose').addEventListener('click', closePanel);
-        document.getElementById('btnPanelCancel').addEventListener('click', closePanel);
-        document.getElementById('btnGoToMonitoring').addEventListener('click', goToMonitoring);
+        byId('btnPanelClose').addEventListener('click', closePanel);
+        byId('btnPanelCancel').addEventListener('click', closePanel);
+        byId('btnGoToMonitoring').addEventListener('click', goToMonitoring);
         panelOverlay().addEventListener('click', closePanel);
 
-        document.addEventListener('keydown', e => {
-            if (e.key === 'Escape' && machinePanel().style.display !== 'none') closePanel();
+        root.addEventListener('keydown', e => {
+            if (e.key === 'Escape' && !machinePanel().classList.contains('is-hidden')) closePanel();
             if (e.key === 'Enter' && document.activeElement === dtFrom()) loadDashboard();
             if (e.key === 'Enter' && document.activeElement === dtTo()) loadDashboard();
         });
 
         loadDashboard();
 
-        setInterval(() => {
-            if (lastFilter.dateFrom && lastFilter.dateTo) loadDashboard(true);
-        }, 60000);
-    });
+        context.onRefresh(() => loadDashboard(true));
+    })();
 
     // ── Load dashboard data ──────────────────────────────────────────────────
     async function loadDashboard(background) {
@@ -146,7 +150,7 @@
                     : 'mcd-cell mcd-cell-zero';
                 const title = `${esc(row.process)} @ ${esc(loc)}: ${count} machine(s)`;
 
-                html += `<div class="${cls}" data-key="${esc(cell.key)}" data-loc="${esc(loc)}" title="${title}">${count}</div>`;
+                html += `<div class="${cls}" role="button" tabindex="${count > 0 ? 0 : -1}" data-key="${esc(cell.key)}" data-loc="${esc(loc)}" title="${title}">${count}</div>`;
             });
 
             const rowTotal = row.rowTotal || 0;
@@ -232,7 +236,7 @@
             }
 
             machineList().innerHTML = d.machines
-                .map(m => `<li class="mcd-list-item" data-mcno="${esc(m)}">${esc(m)}</li>`)
+                .map(m => `<li class="mcd-list-item" role="button" tabindex="0" data-mcno="${esc(m)}">${esc(m)}</li>`)
                 .join('');
 
             machineList().querySelectorAll('.mcd-list-item').forEach(li => {
@@ -260,30 +264,28 @@
             machine: selected.dataset.mcno,
             process: currentCell.process,
             floor: currentCell.location,
-            userType: currentCell.userRole === 'TE' ? 'TE' : 'PM'
+            userType: currentCell.userRole === 'TE' ? 'TE' : (options.userType && options.userType !== 'TE' ? options.userType : 'PM')
         });
 
-        window.location.href = `/Monitoring?${params}`;
+        params.set('dateFrom', lastFilter.dateFrom); params.set('dateTo', lastFilter.dateTo); Workflows.selectMachine(params);
     }
 
     // ── Panel helpers ────────────────────────────────────────────────────────
     function openPanel() {
-        machinePanel().style.display = '';
-        panelOverlay().style.display = '';
+        machinePanel().classList.remove('is-hidden');
+        panelOverlay().classList.remove('is-hidden');
     }
 
     function closePanel() {
-        machinePanel().style.display = 'none';
-        panelOverlay().style.display = 'none';
+        machinePanel().classList.add('is-hidden');
+        panelOverlay().classList.add('is-hidden');
         cellSeq++;
         currentCell = null;
     }
 
     // ── Progress / status ────────────────────────────────────────────────────
-    let progressTimer = null;
-
     function showProgress(on) {
-        progressBar().style.display = on ? '' : 'none';
+        progressBar().classList.toggle('is-hidden', !on);
 
         if (on) {
             clearInterval(progressTimer);
@@ -321,4 +323,4 @@
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
     }
-}());
+});

@@ -1,11 +1,11 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using MachineKarte.Web.Models;
 using MachineKarte.Web.Services;
 
 namespace MachineKarte.Web.Pages
 {
-    public class BmReportModel : PageModel
+    public class BmReportModel : WorkflowPageModel
     {
         private readonly BmReportService _svc;
         private readonly ILogger<BmReportModel> _log;

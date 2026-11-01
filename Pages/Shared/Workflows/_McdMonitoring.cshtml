@@ -1,0 +1,67 @@
+@model MachineKarte.Web.Pages.McdMonitoringModel
+<div class="workflow workflow--McdMonitoring" data-workflow="McdMonitoring">
+@{
+    ViewData["Title"] = "MCD Monitoring";
+    Layout = null;
+}
+
+<div class="mcd-page monitoring-family-page">
+
+    <!-- ── Filter bar ──────────────────────────────────────────────────── -->
+    <div class="mcd-filter-bar card monitoring-family-toolbar">
+        <div class="filter-row">
+            <div class="filter-group">
+                <label for="McdMonitoring-dtFrom">Date From</label>
+                <input type="datetime-local" id="McdMonitoring-dtFrom" data-id="dtFrom" class="form-control" />
+            </div>
+            <div class="filter-group">
+                <label for="McdMonitoring-dtTo">Date To</label>
+                <input type="datetime-local" id="McdMonitoring-dtTo" data-id="dtTo" class="form-control" />
+            </div>
+            <div class="filter-group">
+                <label for="McdMonitoring-selUser">User Role</label>
+                <select id="McdMonitoring-selUser" data-id="selUser" class="form-control">
+                    <option value="">Standard</option>
+                    <option value="TE">TE</option>
+                </select>
+            </div>
+            <div class="filter-group filter-btn-group">
+                <button id="McdMonitoring-btnSearch" data-id="btnSearch" class="btn btn-primary" type="button">
+                    Search
+                </button>
+            </div>
+            <div class="filter-group filter-status-group">
+                <span id="McdMonitoring-lblStatus" data-id="lblStatus" class="mcd-status"></span>
+            </div>
+        </div>
+        <!-- Progress indicator -->
+        <div id="McdMonitoring-progressBar" data-id="progressBar" class="mcd-progress is-hidden">
+            <div class="mcd-progress-inner" id="McdMonitoring-progressInner" data-id="progressInner"></div>
+        </div>
+    </div>
+
+    <!-- ── Dashboard grid (header, rows and totals are rendered by JS) ── -->
+    <div class="mcd-grid-wrapper card monitoring-family-content" id="McdMonitoring-dashboardWrapper" data-id="dashboardWrapper">
+        <div class="mcd-grid" id="McdMonitoring-gridContainer" data-id="gridContainer">
+            <div class="mcd-grid-empty">Select a date range and click Search.</div>
+        </div>
+    </div>
+
+    <!-- ── Machine list slide-in panel ────────────────────────────────── -->
+    <div id="McdMonitoring-machinePanel" data-id="machinePanel" class="mcd-machine-panel is-hidden">
+        <div class="mcd-machine-panel-header">
+            <span id="McdMonitoring-panelTitle" data-id="panelTitle">Machines</span>
+            <button class="mcd-panel-close" id="McdMonitoring-btnPanelClose" data-id="btnPanelClose">&times;</button>
+        </div>
+        <ul id="McdMonitoring-machineList" data-id="machineList" class="mcd-machine-list"></ul>
+        <div class="mcd-panel-footer">
+            <button class="btn btn-secondary" id="McdMonitoring-btnPanelCancel" data-id="btnPanelCancel">Close</button>
+            <button class="btn btn-primary" id="McdMonitoring-btnGoToMonitoring" data-id="btnGoToMonitoring">Go to Monitoring</button>
+        </div>
+    </div>
+    <div id="McdMonitoring-panelOverlay" data-id="panelOverlay" class="mcd-overlay is-hidden"></div>
+
+</div>
+
+@Html.AntiForgeryToken()
+</div>

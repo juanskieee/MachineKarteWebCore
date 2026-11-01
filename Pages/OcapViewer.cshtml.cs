@@ -1,11 +1,11 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using MachineKarte.Web.Models;
 using MachineKarte.Web.Services;
 
 namespace MachineKarte.Web.Pages
 {
-    public class OcapViewerModel : PageModel
+    public class OcapViewerModel : WorkflowPageModel
     {
         private readonly OcapViewerService _service;
         private readonly ILogger<OcapViewerModel> _logger;

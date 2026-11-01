@@ -110,7 +110,8 @@ namespace MachineKarte.Web.Services.Reporting
 
             // 3. Return download URL (browser streams the xlsx;
             //    swap to PDF output path if a PDF converter is wired in)
-            string downloadUrl = $"/TempData/GeneratedPdf/{outputFileName}";
+            string downloadUrl =
+                $"/EvidenceMaking?handler=Download&fileName={Uri.EscapeDataString(outputFileName)}";
             return new EvidenceGenerateResult
             {
                 Success = true,

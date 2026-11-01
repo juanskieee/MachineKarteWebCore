@@ -49,8 +49,10 @@ namespace MachineKarte.Web.Repositories
         /// </summary>
         public static string[] ProcessFloors(string process) => process.ToUpper() switch
         {
-            "DC" or "DB" or "WB" or "MP"
+            "DC" or "DB" or "WB"
                 => new[] { "LSI1-1F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-2F" },
+            "MP"
+                => new[] { "LSI1-1F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-1F" },
             "PL"
                 => new[] { "LSI1-1F", "LSI2-1F", "LSI3-1F" },
             "FL" or "FT" or "TP"
@@ -171,41 +173,104 @@ namespace MachineKarte.Web.Repositories
         {
             for (var start = 0; start < cards.Count; start++)
             {
-                var first = cards[start];
-                var repeatCount = 1;
+                if (!string.Equals(cards[start].FontColor, "None", StringComparison.OrdinalIgnoreCase))
+                    continue;
 
-                while (start + repeatCount < cards.Count && repeatCount < 6)
+                if (userType.Equals("TE", StringComparison.OrdinalIgnoreCase))
                 {
-                    var previous = cards[start + repeatCount - 1];
-                    var current = cards[start + repeatCount];
-                    if (!string.Equals(first.MachineNo, current.MachineNo, StringComparison.OrdinalIgnoreCase) ||
-                        !string.Equals(first.BMCase, current.BMCase, StringComparison.OrdinalIgnoreCase) ||
-                        !string.Equals(first.BMContentId, current.BMContentId, StringComparison.OrdinalIgnoreCase) ||
-                        !WithinSevenDays(previous.TimeOfRequest, current.TimeOfRequest))
-                        break;
+                    if (!string.Equals(cards[start].Priority, "QUALITY BM", StringComparison.Ordinal))
+                        continue;
 
-                    repeatCount++;
+                    ApplyRepeatColor(
+                        cards,
+                        start,
+                        4,
+                        card => card.Priority,
+                        "Red");
+                    continue;
                 }
 
-                if (repeatCount < 2) continue;
-
-                var color = userType.Equals("TE", StringComparison.OrdinalIgnoreCase)
-                    ? "Red"
-                    : GetLegacyContentColor(process, first.BMContentId);
-
-                for (var index = start; index < start + repeatCount; index++)
-                    cards[index].FontColor = color;
+                ApplyRepeatColor(
+                    cards,
+                    start,
+                    5,
+                    card => card.BMContentId,
+                    GetLegacyContentColor(process, cards[start].BMContentId));
             }
         }
 
-        private static bool WithinSevenDays(string previousValue, string currentValue)
+        private static void ApplyRepeatColor(
+            List<BMCardRow> cards,
+            int start,
+            int maximumDepth,
+            Func<BMCardRow, string> repeatedValue,
+            string color)
         {
-            if (!DateTime.TryParse(previousValue, CultureInfo.InvariantCulture, DateTimeStyles.None, out var previous) ||
-                !DateTime.TryParse(currentValue, CultureInfo.InvariantCulture, DateTimeStyles.None, out var current))
-                return false;
+            var contentDepth = MatchingDepth(cards, start, maximumDepth, repeatedValue);
+            if (contentDepth == 0)
+                return;
 
-            var days = (previous - current).TotalDays;
-            return days >= 0 && days <= 7;
+            var caseDepth = MatchingDepth(cards, start, contentDepth, card => card.BMCase);
+            if (caseDepth == 0)
+                return;
+
+            MarkWithinSevenDays(cards, start, caseDepth, color);
+        }
+
+        private static int MatchingDepth(
+            List<BMCardRow> cards,
+            int start,
+            int maximumDepth,
+            Func<BMCardRow, string> valueSelector)
+        {
+            var depth = 0;
+            for (var offset = 1; offset <= maximumDepth && start + offset < cards.Count; offset++)
+            {
+                if (!string.Equals(cards[start].MachineNo, cards[start + offset].MachineNo,
+                        StringComparison.OrdinalIgnoreCase) ||
+                    !string.Equals(valueSelector(cards[start]), valueSelector(cards[start + offset]),
+                        StringComparison.Ordinal))
+                    break;
+
+                depth = offset;
+            }
+
+            return depth;
+        }
+
+        private static void MarkWithinSevenDays(
+            List<BMCardRow> cards,
+            int start,
+            int depth,
+            string color)
+        {
+            if (!TryParseLegacyDate(cards[start].TimeOfRequest, out var currentDate))
+                return;
+
+            for (var offset = 1; offset <= depth; offset++)
+            {
+                if (!TryParseLegacyDate(cards[start + offset].TimeOfRequest, out var nextDate))
+                    continue;
+
+                var days = (currentDate - nextDate).Days;
+                if (days < 0 || days > 7)
+                    continue;
+
+                if (offset == 1)
+                    cards[start].FontColor = color;
+
+                cards[start + offset].FontColor = color;
+            }
+        }
+
+        private static bool TryParseLegacyDate(string value, out DateTime date)
+        {
+            return DateTime.TryParseExact(
+                value,
+                "MM/dd/yyyy HH:mm:ss",
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out date);
         }
 
         private static string GetLegacyContentColor(string process, string contentId)
@@ -279,7 +344,15 @@ namespace MachineKarte.Web.Repositories
                     MCStatus = reader.HasColumn("MCStatus")
                                     ? reader["MCStatus"].ToString()! : string.Empty,
                     FontColor = reader.HasColumn("FontColor")
-                                    ? reader["FontColor"].ToString()! : "None"
+                                    ? reader["FontColor"].ToString()! : "None",
+                    ActionMarker = reader.HasColumn("Accre")
+                                    ? reader["Accre"].ToString()! : string.Empty,
+                    SectionMarker = reader.HasColumn("Sect")
+                                    ? reader["Sect"].ToString()! : string.Empty,
+                    DepartmentMarker = reader.HasColumn("Dept")
+                                    ? reader["Dept"].ToString()! : string.Empty,
+                    DivisionMarker = reader.HasColumn("Div")
+                                    ? reader["Div"].ToString()! : string.Empty
                 });
             }
             ApplyLegacyRepeatColors(list, userType, process);
@@ -314,11 +387,13 @@ namespace MachineKarte.Web.Repositories
                        AND {addQuery}
                      GROUP BY a.Location"
                 : $@"SELECT a.Location, COUNT(a.MCType) AS BMCount,
-                            0 AS MCDCount,
+                            SUM(CASE WHEN m.Devicename IS NOT NULL THEN 1 ELSE 0 END) AS MCDCount,
                             COUNT(DISTINCT a.TesterNo) AS MachineCount
                      FROM [eMaintenanceSystemDB].[dbo].[TEBMMaintenance] a
                      INNER JOIN [eMaintenanceSystemDB].[dbo].[Process] d
                          ON a.Process = d.ProcessName
+                     LEFT JOIN [eMaintenanceSystemDB].[dbo].[MachineKarte_MCD] m
+                         ON REPLACE(m.Devicename,' ','') = REPLACE(a.Devicename,' ','') AND m.IsActive = 1
                      WHERE (TimeOfRequest BETWEEN @Range1 AND @Range2)
                        AND (PMCategoryID = 1 OR PMCategoryID = 4)
                        AND d.ProcessName = @Process
@@ -504,7 +579,8 @@ namespace MachineKarte.Web.Repositories
                                ELSE a.BMContentID END, 0) AS BMContentID,
                            Priority,
                            (SELECT BMContent FROM BMContent WHERE BMContentID = a.BMContentID AND process = '{process}') AS BMContent,
-                           c.mcstatus AS MCStatus, 'None' AS FontColor
+                           c.Action AS Accre, c.Comment AS Sect, c.Comment2 AS Dept,
+                           c.Comment3 AS Div, c.mcstatus AS MCStatus, 'None' AS FontColor
                     FROM [eMaintenanceSystemDB].[dbo].[TEBMMaintenance] a
                     INNER JOIN [eMaintenanceSystemDB].[dbo].[BMTEUnit] b ON a.bmunitid = b.bmteunitid
                     LEFT  JOIN [eMaintenanceSystemDB].[dbo].[MachineKarte_ActionCard_TE] c
@@ -550,7 +626,8 @@ namespace MachineKarte.Web.Repositories
                            ELSE a.BMContentID END, 0) AS BMContentID,
                        Priority,
                        (SELECT BMContent FROM BMContent WHERE BMContentID = a.BMContentID AND process = '{process}') AS BMContent,
-                       c.mcstatus AS MCStatus, 'None' AS FontColor
+                       c.Action AS Accre, c.Comment AS Sect, c.Comment2 AS Dept,
+                       c.Comment3 AS Div, c.mcstatus AS MCStatus, 'None' AS FontColor
                 FROM [eMaintenanceSystemDB].[dbo].[{process}BMMaintenance] a
                 INNER JOIN [eMaintenanceSystemDB].[dbo].[BMCase] b ON a.BMCaseID = b.BMCaseID
                 LEFT  JOIN {actionTable} c ON a.bmID = c.bmID AND a.mcno = c.machineno

@@ -1,4 +1,8 @@
-﻿/**
+Workflows.register('ActionCards', (root, options, context) => {
+    const byId = id => root.querySelector(`[data-id="${id}"]`);
+    const antiForgery = root.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+    const fetch = context.fetch;
+/**
  * ActionCards.js
  * Converted from Form_Input.vb event handlers — E-Karte System
  *
@@ -9,53 +13,41 @@
  *                                                    → onCommentBlur()
  *   tbReply1_Leave / tbReply2_Leave / tbReply3_Leave → onReplyBlur()
  *   MsgBox                                           → showStatus()
- *   Me.Close()                                       → window.close() / redirect
- *   Form1.LoadMCName(...)                            → postMessage to opener (Monitoring)
+ *   Me.Close() / Form1.LoadMCName(...)                → close dialog and refresh Monitoring
  */
 
-let antiForgery = '';
+function initializeActionCard(params) {
 
-document.addEventListener('DOMContentLoaded', () => {
-    antiForgery = document.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '';
-
-    // Read load params from query string
-    // Mirrors Form_Input being opened by Form1 with LoadData() args
-    const p = new URLSearchParams(location.search);
-    const bmId = p.get('bmId') ?? '';
-    const mcNo = p.get('mcNo') ?? '';
-    const userType = p.get('userType') ?? 'PM';
-    const status = p.get('status') ?? 'New';
-    const colorName = p.get('colorName') ?? '';
-    const headerCase = p.get('headerCase') ?? '';
-
-    // Store in hidden fields (mirrors VB module-level StatusID)
-    hf('hfBmId', bmId);
-    hf('hfMcNo', mcNo);
-    hf('hfUserType', userType);
-    hf('hfStatusId', status);
-    hf('hfColorName', colorName);
+    hf('hfBmId', params.bmId);
+    hf('hfMcNo', params.mcNo);
+    hf('hfUserType', params.userType);
+    hf('hfStatusId', params.status);
+    hf('hfColorName', params.colorName);
 
     // Update reply label: "PM Reply" vs "TE Reply"
     // Mirrors: If Form1.cbUser.Text = "TE" Then Label18.Text = "TE Reply"
-    const replyText = userType === 'TE' ? 'TE Reply' : 'PM Reply';
-    document.getElementById('replyLabel').textContent = replyText;
+    const replyText = params.userType === 'TE' ? 'TE Reply' : 'PM Reply';
+
     for (let i = 1; i <= 3; i++) {
-        const cell = document.getElementById(`replyLabelCell${i}`);
-        if (cell) cell.textContent = `${replyText} ${i} :`;
+        const cell = byId(`replyLabelCell${i}`);
+        if (cell) cell.textContent = `${['Accreditor', 'Section Manager', 'Department Manager'][i - 1]} / ${replyText}`;
     }
 
     // Show machine banner
-    if (mcNo) {
-        document.getElementById('bannerMcNo').textContent = mcNo.toUpperCase();
-        document.getElementById('bannerHeaderCase').textContent = headerCase
-            ? ` — ${headerCase}` : '';
-        document.getElementById('machineNoBanner').style.display = 'flex';
-        document.title = `${mcNo.toUpperCase()} — Check And Action Card`;
+    if (params.mcNo) {
+        byId('bannerMcNo').textContent = params.mcNo.toUpperCase();
+        byId('bannerHeaderCase').textContent = params.headerCase
+            ? ` — ${params.headerCase}` : '';
+        byId('machineNoBanner').classList.remove('is-hidden');
     }
 
     // Load data if params are present
-    if (bmId && mcNo) loadCard(bmId, mcNo, userType, status, colorName, headerCase);
-});
+    if (params.bmId && params.mcNo) {
+        loadCard(params.bmId, params.mcNo, params.userType, params.status, params.colorName, params.headerCase);
+    }
+
+
+}
 
 // ════════════════════════════════════════════════════════
 // LOAD  (mirrors LoadData public + private overloads)
@@ -72,6 +64,8 @@ async function loadCard(bmId, mcNo, userType, status, colorName, headerCase) {
         showStatus(resp.message || 'No data found.', 'error');
         return;
     }
+
+    byId('btnSave').disabled = false;
 
     const c = resp.data;
 
@@ -119,14 +113,14 @@ async function loadCard(bmId, mcNo, userType, status, colorName, headerCase) {
 
 function onCommentBlur(el, idx) {
     // tbdate_1 / tbdate_2 / tbdate_3
-    const dateField = document.getElementById(`tbdate_${idx}`);
+    const dateField = byId(`tbdate_${idx}`);
     if (!dateField) return;
     dateField.value = el.value.trim() !== '' ? nowStr() : '';
 }
 
 // Mirrors tbReply1_Leave / tbReply2_Leave / tbReply3_Leave
 function onReplyBlur(el, idx) {
-    const dateField = document.getElementById(`tbReplyDate${idx}`);
+    const dateField = byId(`tbReplyDate${idx}`);
     if (!dateField) return;
     dateField.value = el.value.trim() !== '' ? nowStr() : '';
 }
@@ -136,9 +130,9 @@ function onReplyBlur(el, idx) {
 // ════════════════════════════════════════════════════════
 
 async function saveCard() {
-    const status = document.getElementById('cbStatus').value;
-    const statusId = document.getElementById('hfStatusId').value;
-    const userType = document.getElementById('hfUserType').value;
+    const status = byId('cbStatus').value;
+    const statusId = byId('hfStatusId').value;
+    const userType = byId('hfUserType').value;
 
     // Mirrors: If cbStatus.Text = "-SELECT-" → MsgBox
     if (!status || status === '-SELECT-') {
@@ -147,42 +141,42 @@ async function saveCard() {
     }
 
     const card = {
-        bmId: document.getElementById('hfBmId').value,
-        machineNo: document.getElementById('hfMcNo').value,
+        bmId: byId('hfBmId').value,
+        machineNo: byId('hfMcNo').value,
         userType: userType,
         status: statusId,
-        colorName: document.getElementById('hfColorName').value,
-        dateCard: document.getElementById('tbDate').value,
-        problemContent: document.getElementById('tbProblemContent').value,
-        inCharge: document.getElementById('tbInCharge').value,
-        investigationDone: document.getElementById('tbInvestigation').value,
-        action: document.getElementById('tbAction').value,
+        colorName: byId('hfColorName').value,
+        dateCard: byId('tbDate').value,
+        problemContent: byId('tbProblemContent').value,
+        inCharge: byId('tbInCharge').value,
+        investigationDone: byId('tbInvestigation').value,
+        action: byId('tbAction').value,
         mcStatus: status,
 
-        comment: document.getElementById('tbComment').value,
-        date1: document.getElementById('tbdate_1').value,
-        incharge1: document.getElementById('tbIncharge_1').value,
-        comment2: document.getElementById('tbComment2').value,
-        date2: document.getElementById('tbdate_2').value,
-        incharge2: document.getElementById('tbIncharge_2').value,
-        comment3: document.getElementById('tbComment3').value,
-        date3: document.getElementById('tbdate_3').value,
-        incharge3: document.getElementById('tbIncharge_3').value,
+        comment: byId('tbComment').value,
+        date1: byId('tbdate_1').value,
+        incharge1: byId('tbIncharge_1').value,
+        comment2: byId('tbComment2').value,
+        date2: byId('tbdate_2').value,
+        incharge2: byId('tbIncharge_2').value,
+        comment3: byId('tbComment3').value,
+        date3: byId('tbdate_3').value,
+        incharge3: byId('tbIncharge_3').value,
 
-        pmReply1: document.getElementById('tbReply1').value,
-        pmIncharge1: document.getElementById('tbReplyEmp1').value,
-        pmDate1: document.getElementById('tbReplyDate1').value,
-        pmReply2: document.getElementById('tbReply2').value,
-        pmIncharge2: document.getElementById('tbReplyEmp2').value,
-        pmDate2: document.getElementById('tbReplyDate2').value,
-        pmReply3: document.getElementById('tbReply3').value,
-        pmIncharge3: document.getElementById('tbReplyEmp3').value,
-        pmDate3: document.getElementById('tbReplyDate3').value,
+        pmReply1: byId('tbReply1').value,
+        pmIncharge1: byId('tbReplyEmp1').value,
+        pmDate1: byId('tbReplyDate1').value,
+        pmReply2: byId('tbReply2').value,
+        pmIncharge2: byId('tbReplyEmp2').value,
+        pmDate2: byId('tbReplyDate2').value,
+        pmReply3: byId('tbReply3').value,
+        pmIncharge3: byId('tbReplyEmp3').value,
+        pmDate3: byId('tbReplyDate3').value,
     };
 
-    document.getElementById('btnSave').disabled = true;
+    byId('btnSave').disabled = true;
     const resp = await post('/ActionCards?handler=Save', { card, statusId });
-    document.getElementById('btnSave').disabled = false;
+    byId('btnSave').disabled = false;
 
     if (!resp.success) {
         showStatus(resp.message, 'error');
@@ -191,15 +185,8 @@ async function saveCard() {
 
     showStatus(resp.message, 'success');
 
-    // Mirrors: Form1.LoadMCName(...) — notify Monitoring page to refresh
-    // Works whether opened in the same tab (via query param) or as a popup
-    if (window.opener && !window.opener.closed) {
-        window.opener.postMessage({ type: 'actionCardSaved' }, location.origin);
-        setTimeout(() => window.close(), 1200);
-    } else {
-        // Opened in same tab (mobile / single-window mode) → go back after delay
-        setTimeout(() => history.back(), 1400);
-    }
+    Workflows.close();
+    window.refreshMonitoring();
 }
 
 // ════════════════════════════════════════════════════════
@@ -207,7 +194,7 @@ async function saveCard() {
 // ════════════════════════════════════════════════════════
 
 function showStatus(msg, type = 'info') {
-    const el = document.getElementById('saveStatus');
+    const el = byId('saveStatus');
     el.textContent = msg;
     el.className = `save-status status-${type}`;
 }
@@ -228,12 +215,12 @@ function nowStr() {
 }
 
 function hf(id, val) {
-    const el = document.getElementById(id);
+    const el = byId(id);
     if (el) el.value = val;
 }
 
 function setVal(id, val) {
-    const el = document.getElementById(id);
+    const el = byId(id);
     if (!el) return;
     if (el.tagName === 'SELECT') {
         el.value = val;
@@ -270,3 +257,9 @@ async function post(url, body) {
         return { success: false, message: String(e) };
     }
 }
+
+    root.querySelector('form').addEventListener('submit', event => { event.preventDefault(); saveCard(); });
+    root.querySelectorAll('[data-comment-idx]').forEach(field => field.addEventListener('blur', () => onCommentBlur(field, Number(field.dataset.commentIdx))));
+    root.querySelectorAll('[data-reply-idx]').forEach(field => field.addEventListener('blur', () => onReplyBlur(field, Number(field.dataset.replyIdx))));
+    initializeActionCard({ userType: 'PM', status: 'New', colorName: '', headerCase: '', ...options });
+});

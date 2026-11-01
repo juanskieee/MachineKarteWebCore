@@ -187,7 +187,34 @@ public sealed class PmReportService
     {
         expression = expression.Trim();
         if (expression.StartsWith("If ", StringComparison.OrdinalIgnoreCase))
-            return string.Empty;
+        {
+            var conditional = Regex.Match(
+                expression,
+                @"^If\s+(?<condition>.+?),\s*(?<whenTrue>.+),\s*(?<whenFalse>.+)$",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+            if (!conditional.Success)
+                return string.Empty;
+
+            var condition = conditional.Groups["condition"].Value.Trim();
+            var comparison = Regex.Match(
+                condition,
+                @"^(?<left>DR(?:ss[12])?\(""[^""]+""\)(?:\.ToString\(\))?)\s*(?<operator>=|<>)\s*""(?<right>[^""]*)""$",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+            if (!comparison.Success)
+                return string.Empty;
+
+            var left = EvaluatePiece(comparison.Groups["left"].Value, data);
+            var right = comparison.Groups["right"].Value;
+            var matches = string.Equals(left, right, StringComparison.Ordinal);
+            if (comparison.Groups["operator"].Value == "<>")
+                matches = !matches;
+
+            return EvaluateExpression(
+                matches
+                    ? conditional.Groups["whenTrue"].Value
+                    : conditional.Groups["whenFalse"].Value,
+                data);
+        }
 
         var pieces = Regex.Split(expression, @"\s*&\s*");
         var value = string.Concat(pieces.Select(piece => EvaluatePiece(piece.Trim(), data)));
@@ -209,8 +236,25 @@ public sealed class PmReportService
             ? data.History[historyIndex]
             : data.Current;
 
-        return record.Fields.TryGetValue(field.Groups["field"].Value, out var value)
-            ? value
-            : string.Empty;
+        if (!record.Fields.TryGetValue(field.Groups["field"].Value, out var value))
+            return string.Empty;
+
+        if (piece.Contains(".ToShortDateString", StringComparison.OrdinalIgnoreCase) &&
+            DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
+            return date.ToShortDateString();
+
+        if (piece.Contains(".ToShortTimeString", StringComparison.OrdinalIgnoreCase) &&
+            DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var time))
+            return time.ToShortTimeString();
+
+        var formatMatch = Regex.Match(
+            piece,
+            @"\.ToString\(""(?<format>[^""]+)""\)",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (formatMatch.Success &&
+            DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var formatted))
+            return formatted.ToString(formatMatch.Groups["format"].Value, CultureInfo.CurrentCulture);
+
+        return value;
     }
 }

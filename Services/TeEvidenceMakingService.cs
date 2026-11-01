@@ -13,7 +13,8 @@ namespace MachineKarte.Web.Services.Reporting
     /// <summary>
     /// Web-side equivalent of Form10.EMakingPrint().
     /// Loads CWC.xlsx, fills it with data from TEBMEvidenceMaking + ViewTEData,
-    /// saves as PDF in TempData/GeneratedPdf/, and returns the server-relative URL.
+    /// saves the completed workbook in TempData/GeneratedPdf/, and returns the
+    /// server-relative download URL.
     ///
     /// NOTE: ClosedXML does not support inserting images or saving as PDF natively.
     /// The two workarounds used throughout this project are:
@@ -65,7 +66,7 @@ namespace MachineKarte.Web.Services.Reporting
             IConfiguration cfg)
         {
             _repo = repo;
-            _templatesRoot = cfg["EvidenceMaking:TemplatesRoot"] ?? "Templates/EvidenceMaking";
+            _templatesRoot = cfg["EvidenceMaking:TemplatesRoot"] ?? "Templates/BmReport";
             _imagesRoot = cfg["EvidenceMaking:ImagesRoot"] ?? "Uploads/EvidenceImages";
             _outputRoot = cfg["EvidenceMaking:OutputRoot"] ?? "TempData/GeneratedPdf";
         }

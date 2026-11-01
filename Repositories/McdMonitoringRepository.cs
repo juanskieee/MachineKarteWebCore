@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -64,7 +64,7 @@ namespace MachineKarte.Web.Repositories
               AND a.BMStatusID NOT IN (30, 31)
               AND a.bmcaseid <> 0
               AND a.Location = @Location
-            ORDER BY a.Mcno";
+            ORDER BY a.mcno DESC, a.Timeofrequest DESC, b.BMCase";
 
         // ─── TE mode: teBMMaintenance ─────────────────────────────────────────
 
@@ -91,7 +91,7 @@ namespace MachineKarte.Web.Repositories
               AND a.BMStatusID NOT IN (30, 31, 1, 2, 3, 7, 17)
               AND a.bmunitid <> 0
               AND a.Location = @Location
-            ORDER BY a.TesterNo";
+            ORDER BY a.mcno DESC, a.Timeofrequest DESC, b.bmteunitid";
 
         // ─── Shared ADO.NET execution ─────────────────────────────────────────
 

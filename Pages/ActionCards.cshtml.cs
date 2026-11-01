@@ -1,4 +1,4 @@
-﻿// Pages/ActionCards.cshtml.cs
+// Pages/ActionCards.cshtml.cs
 // Converted from Form_Input.vb — E-Karte System
 // C# ASP.NET Core Razor Pages
 
@@ -9,7 +9,7 @@ using MachineKarte.Web.Services;
 
 namespace MachineKarte.Web.Pages
 {
-    public class ActionCardsModel : PageModel
+    public class ActionCardsModel : WorkflowPageModel
     {
         private readonly ActionCardService _svc;
         private readonly ILogger<ActionCardsModel> _logger;

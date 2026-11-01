@@ -386,7 +386,7 @@ ORDER BY a.testerNo DESC, a.MCType DESC, a.Timeofrequest DESC, b.bmteunit";
 
                 const string fontColor = "Red";
                 int remaining = rows.Count - 1 - i;
-                int depth = Math.Min(remaining, 3);   // TE uses up to 3-ahead
+                int depth = Math.Min(remaining, 4);   // Form2 checks up to four subsequent rows
 
                 bool triggered = false;
                 for (int matchCount = depth; matchCount >= 1 && !triggered; matchCount--)

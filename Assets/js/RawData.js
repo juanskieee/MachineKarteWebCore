@@ -1,250 +1,112 @@
-﻿// Assets/js/RawData.js
-// Handles: data fetch, Chart.js stacked-column charts, table rendering
-// Mirrors: Form5.vb LoadData(), RandomRGBColor()
+// Form5: both monthly stacked charts and their source tables stay together.
+Workflows.register('RawData', (root, options, context) => {
+    const find = id => root.querySelector(`[data-id="${id}"]`);
+    const colors = ['#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f', '#edc948', '#b07aa1', '#ff9da7', '#9c755f'];
+    const error = find('rd-error');
+    const process = find('hdnProcess').value;
+    const location = find('hdnLocation').value;
+    const dateFrom = find('hdnDateFrom').value;
+    const dateTo = find('hdnDateTo').value;
+    if (process && location && dateFrom && dateTo) load();
+    else {
+        error.textContent = 'Select a process, location, and date range in Monitoring first.';
+        error.classList.remove('is-hidden');
+    }
 
-'use strict';
+    async function load() {
+        find('rd-loading').classList.remove('is-hidden');
+        const query = new URLSearchParams({ process, location, machine: find('hdnMachine').value, dateFrom, dateTo });
+        try {
+            const response = await context.fetch(`/RawData?handler=LoadData&${query}`);
+            const result = await response.json();
+            if (!response.ok || !result.success) throw new Error(result.message || 'Unable to load Raw Data.');
+            const data = result.data;
+            renderTable('grid-frequency', data.frequencyTable, ['frequency', 'dateLabel', 'total']);
+            renderTable('grid-bmcase', data.bmCaseTable, ['bmCase', 'dateMonth', 'dateYear', 'bmCount']);
+            renderChart('chart-frequency', data.frequencyChart);
+            renderChart('chart-bmcase', data.bmCaseChart);
+        } catch (err) {
+            error.textContent = err.message;
+            error.classList.remove('is-hidden');
+        } finally { find('rd-loading').classList.add('is-hidden'); }
+    }
 
-// ── Colour palette ────────────────────────────────────────────────────────────
-// Deterministic palette for up to 9 frequency bands (2x–10x).
-// For BM cases (open-ended count) we fall back to a seeded random generator.
-const BAND_COLORS = [
-    '#4e79a7', '#f28e2b', '#e15759', '#76b7b2',
-    '#59a14f', '#edc948', '#b07aa1', '#ff9da7', '#9c755f'
-];
+    function renderTable(id, rows, columns) {
+        const body = find(id).querySelector('tbody');
+        body.replaceChildren();
+        if (!rows?.length) {
+            const cell = body.insertRow().insertCell();
+            cell.colSpan = columns.length;
+            cell.textContent = 'No data';
+            return;
+        }
+        rows.forEach(row => {
+            const tr = body.insertRow();
+            columns.forEach((column, index) => {
+                const cell = tr.insertCell();
+                cell.textContent = row[column] ?? '';
+                if (index === columns.length - 1) cell.className = 'rd-num';
+            });
+        });
+    }
 
-function seededColor(seed) {
-    // Simple deterministic hue from string hash
-    let h = 0;
-    for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) & 0xffff;
-    return `hsl(${h % 360}, 65%, 55%)`;
-}
+    // Native SVG keeps the legacy stacked-column charts available without a CDN.
+    function renderChart(id, series) {
+        const container = find(id);
+        container.replaceChildren();
+        if (!series?.length) { container.textContent = 'No data available.'; return; }
+        const months = { Jan: 1, Feb: 2, Mar: 3, Apr: 4, May: 5, Jun: 6, Jul: 7, Aug: 8, Sep: 9, Oct: 10, Nov: 11, Dec: 12 };
+        const order = label => { const [month, year] = label.split(' '); return Number(year) * 100 + (months[month] || 0); };
+        const labels = [...new Set(series.flatMap(item => item.points.map(point => point.label)))].sort((a, b) => order(a) - order(b));
+        const stacks = labels.map(label => series.map(item => Math.max(0, Number(item.points.find(point => point.label === label)?.value) || 0)));
+        const largestStack = Math.max(1, ...stacks.map(stack => stack.reduce((sum, value) => sum + value, 0)));
+        const maximum = Math.max(1, Math.ceil(largestStack / 4)) * 4;
+        const width = Math.max(920, labels.length * 65);
+        const height = 300;
+        const left = 50;
+        const plotWidth = width - left - 15;
+        const plotHeight = 235;
+        const svg = element('svg', { viewBox: `0 0 ${width} ${height}`, class: 'rd-chart', role: 'img', 'aria-label': 'Stacked monthly BM counts; values are listed in the adjacent table.' });
+        svg.append(element('title', {}, 'Monthly BM count'));
+        for (let step = 0; step <= 4; step++) {
+            const y = 15 + plotHeight * (1 - step / 4);
+            svg.append(element('line', { x1: left, x2: width - 15, y1: y, y2: y, stroke: '#ccc' }));
+            svg.append(element('text', { x: left - 8, y: y + 4, 'text-anchor': 'end' }, String(Math.round(maximum * step / 4))));
+        }
+        const slot = plotWidth / Math.max(1, labels.length);
+        const barWidth = Math.min(64, slot * .6);
+        stacks.forEach((stack, index) => {
+            let total = 0;
+            stack.forEach((value, band) => {
+                const barHeight = value / maximum * plotHeight;
+                const rect = element('rect', {
+                    x: left + index * slot + (slot - barWidth) / 2,
+                    y: 15 + plotHeight - total / maximum * plotHeight - barHeight,
+                    width: barWidth, height: barHeight, fill: colors[band % colors.length]
+                });
+                rect.append(element('title', {}, `${series[band].name}: ${value} (${labels[index]})`));
+                svg.append(rect);
+                total += value;
+            });
+            svg.append(element('text', { x: left + (index + .5) * slot, y: 274, 'text-anchor': 'middle' }, labels[index]));
+        });
+        container.append(svg);
+        const legend = document.createElement('div');
+        legend.className = 'rd-chart-legend';
+        series.forEach((item, index) => {
+            const entry = document.createElement('span');
+            const swatch = element('svg', { viewBox: '0 0 12 12', 'aria-hidden': 'true' });
+            swatch.append(element('rect', { width: 12, height: 12, fill: colors[index % colors.length] }));
+            entry.append(swatch, document.createTextNode(item.name));
+            legend.append(entry);
+        });
+        container.append(legend);
+    }
 
-// ── Chart instances (kept for destroy-on-reload) ──────────────────────────────
-let chartFreq = null;
-let chartBmCase = null;
-
-// ── Entry point ───────────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
-    const process = document.getElementById('hdnProcess')?.value ?? '';
-    const location = document.getElementById('hdnLocation')?.value ?? '';
-    const machine = document.getElementById('hdnMachine')?.value ?? '';
-    const dateFrom = document.getElementById('hdnDateFrom')?.value ?? '';
-    const dateTo = document.getElementById('hdnDateTo')?.value ?? '';
-
-    if (process && location && dateFrom && dateTo) {
-        loadData(process, location, machine, dateFrom, dateTo);
+    function element(name, attributes, text) {
+        const node = document.createElementNS('http://www.w3.org/2000/svg', name);
+        Object.entries(attributes).forEach(([key, value]) => node.setAttribute(key, value));
+        if (text !== undefined) node.textContent = text;
+        return node;
     }
 });
-
-// ── Public API (called by parent page if opened in an iframe / modal) ─────────
-window.RawData = {
-    load: loadData
-};
-
-// ── Data fetch ────────────────────────────────────────────────────────────────
-async function loadData(process, location, machine, dateFrom, dateTo) {
-    setLoading(true);
-    clearError();
-
-    const params = new URLSearchParams({ process, location, machine, dateFrom, dateTo });
-    const url = `/RawData?handler=LoadData&${params}`;
-
-    try {
-        const resp = await fetch(url, {
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        });
-
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-
-        const json = await resp.json();
-        if (!json.success) throw new Error(json.message ?? 'Server error');
-
-        renderAll(json.data);
-    } catch (err) {
-        showError(err.message);
-    } finally {
-        setLoading(false);
-    }
-}
-
-// ── Render everything ─────────────────────────────────────────────────────────
-function renderAll(data) {
-    renderFrequencyGrid(data.frequencyTable);
-    renderFrequencyChart(data.frequencyChart);
-    renderBmCaseGrid(data.bmCaseTable);
-    renderBmCaseChart(data.bmCaseChart);
-}
-
-// ── Frequency grid ────────────────────────────────────────────────────────────
-function renderFrequencyGrid(rows) {
-    const tbody = document.querySelector('#grid-frequency tbody');
-    tbody.innerHTML = '';
-
-    if (!rows || rows.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="3" class="rd-empty">No data</td></tr>';
-        return;
-    }
-
-    rows.forEach(r => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${escHtml(r.frequency)}</td>
-            <td>${escHtml(r.dateLabel)}</td>
-            <td class="rd-num">${r.total}</td>`;
-        tbody.appendChild(tr);
-    });
-}
-
-// ── Frequency chart (Chart1 equivalent) ──────────────────────────────────────
-function renderFrequencyChart(series) {
-    const ctx = document.getElementById('chart-frequency');
-    if (!ctx) return;
-
-    if (chartFreq) { chartFreq.destroy(); chartFreq = null; }
-
-    if (!series || series.length === 0) {
-        ctx.parentElement.innerHTML =
-            '<p class="rd-empty">No frequency data available.</p>';
-        return;
-    }
-
-    // Collect ordered x-labels from all series
-    const labels = collectLabels(series);
-
-    const datasets = series.map((s, idx) => ({
-        label: s.name,
-        data: labels.map(lbl => {
-            const pt = s.points.find(p => p.label === lbl);
-            return pt ? pt.value : 0;
-        }),
-        backgroundColor: BAND_COLORS[idx % BAND_COLORS.length],
-        stack: 'freq'
-    }));
-
-    chartFreq = new Chart(ctx, {
-        type: 'bar',
-        data: { labels, datasets },
-        options: chartOptions('BM Count')
-    });
-}
-
-// ── BM-case grid ─────────────────────────────────────────────────────────────
-function renderBmCaseGrid(rows) {
-    const tbody = document.querySelector('#grid-bmcase tbody');
-    tbody.innerHTML = '';
-
-    if (!rows || rows.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="rd-empty">No data</td></tr>';
-        return;
-    }
-
-    rows.forEach(r => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${escHtml(r.bmCase)}</td>
-            <td>${escHtml(r.dateMonth)}</td>
-            <td>${r.dateYear}</td>
-            <td class="rd-num">${r.bmCount}</td>`;
-        tbody.appendChild(tr);
-    });
-}
-
-// ── BM-case chart (Chart2 equivalent) ────────────────────────────────────────
-function renderBmCaseChart(series) {
-    const ctx = document.getElementById('chart-bmcase');
-    if (!ctx) return;
-
-    if (chartBmCase) { chartBmCase.destroy(); chartBmCase = null; }
-
-    if (!series || series.length === 0) {
-        ctx.parentElement.innerHTML =
-            '<p class="rd-empty">No BM case data available.</p>';
-        return;
-    }
-
-    const labels = collectLabels(series);
-
-    const datasets = series.map(s => ({
-        label: s.name,
-        data: labels.map(lbl => {
-            const pt = s.points.find(p => p.label === lbl);
-            return pt ? pt.value : 0;
-        }),
-        backgroundColor: seededColor(s.name),
-        stack: 'bmcase'
-    }));
-
-    chartBmCase = new Chart(ctx, {
-        type: 'bar',
-        data: { labels, datasets },
-        options: chartOptions('BM Count')
-    });
-}
-
-// ── Shared Chart.js options ───────────────────────────────────────────────────
-function chartOptions(yTitle) {
-    return {
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: {
-            legend: { position: 'bottom', labels: { font: { size: 12 } } },
-            tooltip: { mode: 'index', intersect: false }
-        },
-        scales: {
-            x: {
-                stacked: true,
-                ticks: {
-                    maxRotation: 45,
-                    font: { size: 11, weight: 'bold' }
-                }
-            },
-            y: {
-                stacked: true,
-                beginAtZero: true,
-                title: { display: true, text: yTitle, font: { size: 13, weight: 'bold' } },
-                ticks: { font: { size: 12 } }
-            }
-        }
-    };
-}
-
-// ── Collect chronologically ordered labels from all series ────────────────────
-function collectLabels(series) {
-    const set = new Set();
-    series.forEach(s => s.points.forEach(p => set.add(p.label)));
-    // Labels are already "Mmm YYYY" — sort by parsing
-    return [...set].sort((a, b) => parseMonthYear(a) - parseMonthYear(b));
-}
-
-function parseMonthYear(label) {
-    const months = {
-        Jan: 1, Feb: 2, Mar: 3, Apr: 4, May: 5, Jun: 6,
-        Jul: 7, Aug: 8, Sep: 9, Oct: 10, Nov: 11, Dec: 12
-    };
-    const [mon, yr] = label.split(' ');
-    return parseInt(yr) * 100 + (months[mon] ?? 0);
-}
-
-// ── UI helpers ────────────────────────────────────────────────────────────────
-function setLoading(on) {
-    const el = document.getElementById('rd-loading');
-    if (el) el.style.display = on ? 'flex' : 'none';
-}
-
-function showError(msg) {
-    const el = document.getElementById('rd-error');
-    if (el) { el.textContent = msg; el.style.display = 'block'; }
-}
-
-function clearError() {
-    const el = document.getElementById('rd-error');
-    if (el) { el.textContent = ''; el.style.display = 'none'; }
-}
-
-function escHtml(str) {
-    return String(str ?? '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
-}

@@ -1,156 +1,23 @@
-﻿/* ============================================================
-   RawData.css — E-Karte  |  Raw Data chart + grid page
-   Depends on site.css for tokens.
-   ============================================================ */
-
-.rd-page {
-    display: flex;
-    flex-direction: column;
-    gap: 1.25rem;
-    padding: 1rem 1.25rem 2rem;
-    background: var(--clr-bg);
-    min-height: 100vh;
-}
-
-/* ── Page header ──────────────────────────────────────────── */
-.rd-header {
-    display: flex;
-    align-items: baseline;
-    gap: 1rem;
-    padding-bottom: .6rem;
-    border-bottom: 2px solid var(--clr-brand);
-}
-
-.rd-title {
-    font-size: 1.25rem;
-    font-weight: 700;
-    margin: 0;
-    color: var(--clr-text);
-}
-
-.rd-subtitle {
-    font-size: var(--fz-lg);
-    color: var(--clr-text-muted);
-}
-
-/* ── Loading / error — delegated to site.css ──────────────── */
-.rd-loading {
-    display: flex;
-    align-items: center;
-    gap: .6rem;
-    font-size: var(--fz-md);
-    color: var(--clr-text-muted);
-    padding: .5rem 0;
-}
-
-/* ── Section = chart + grid side-by-side ─────────────────── */
-.rd-section {
-    display: flex;
-    gap: 1rem;
-    align-items: flex-start;
-}
-
-/* ── Individual panel ─────────────────────────────────────── */
-.rd-panel {
-    background: var(--clr-surface);
-    border: 1px solid var(--clr-border);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow-sm);
-    overflow: hidden;
-}
-
-.rd-panel--chart {
-    flex: 1 1 72%;
-    min-width: 0;
-}
-
-.rd-panel--grid {
-    flex: 0 0 26%;
-    min-width: 220px;
-    max-height: 680px;
-    overflow-y: auto;
-}
-
-.rd-panel-title {
-    background: var(--clr-dark-panel);
-    color: var(--clr-dark-text);
-    font-size: var(--fz-sm);
-    font-weight: 700;
-    padding: 7px 10px;
-    letter-spacing: .04em;
-    text-transform: uppercase;
-}
-
-/* ── Chart canvas wrapper ─────────────────────────────────── */
-.rd-chart-wrap {
-    padding: .75rem;
-    position: relative;
-    min-height: 320px;
-}
-
-    .rd-chart-wrap canvas {
-        display: block;
-        width: 100% !important;
-    }
-
-/* ── Data grid table ──────────────────────────────────────── */
-.rd-grid-wrap {
-    overflow-x: auto;
-}
-
-.rd-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: var(--fz-sm);
-}
-
-    .rd-table thead th {
-        background: var(--clr-dark-panel);
-        color: var(--clr-dark-text);
-        font-size: var(--fz-xs);
-        font-weight: 700;
-        text-align: center;
-        padding: 7px 8px;
-        white-space: nowrap;
-        position: sticky;
-        top: 0;
-        z-index: 1;
-        border-right: 1px solid var(--clr-dark-border);
-        text-transform: uppercase;
-        letter-spacing: .04em;
-    }
-
-    .rd-table tbody tr:nth-child(even) {
-        background: var(--clr-bg);
-    }
-
-    .rd-table tbody tr:hover {
-        background: var(--clr-brand-light);
-    }
-
-    .rd-table td {
-        padding: 5px 8px;
-        border-bottom: 1px solid var(--clr-border);
-        border-right: 1px solid var(--clr-border);
-        color: var(--clr-text);
-        text-align: center;
-    }
-
-.rd-num {
-    text-align: right !important;
-    font-variant-numeric: tabular-nums;
-    font-family: var(--font-mono);
-}
-
-/* ── Responsive ───────────────────────────────────────────── */
-@media (max-width: 900px) {
-    .rd-section {
-        flex-direction: column;
-    }
-
-    .rd-panel--chart,
-    .rd-panel--grid {
-        flex: 1 1 100%;
-        max-height: none;
-    }
-}
+/* Form5: two stacked chart/table rows, approximately 72% chart and 28% table. */
+.workflow--RawData { background: silver; padding: 6px; }
+.rd-header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px; padding: 4px; }
+.rd-title { font-size: 18px; margin: 0; }
+.rd-subtitle { font-size: 12px; }
+.rd-section { display: grid; grid-template-columns: minmax(0, 2.7fr) minmax(240px, 1fr); gap: 6px; margin-top: 6px; }
+.rd-panel { min-width: 0; background: #c8c8c8; border: 1px solid #888; }
+.rd-panel-title { padding: 5px 8px; background: #e0e0e0; font-weight: 700; }
+.rd-chart-wrap { padding: 8px; overflow-x: auto; }
+.rd-chart { width: 100%; min-width: 460px; height: auto; display: block; background: #fff; }
+.rd-chart text { font-family: var(--font-ui); fill: #111; font-size: 12px; }
+.rd-chart-legend { display: flex; flex-wrap: wrap; gap: 5px 12px; padding: 5px; font-size: 11px; }
+.rd-chart-legend span { display: flex; align-items: center; gap: 4px; }
+.rd-chart-legend svg { width: 12px; height: 12px; }
+.rd-grid-wrap { overflow: auto; max-height: 360px; background: #fff; }
+.rd-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.rd-table th, .rd-table td { padding: 6px; border: 1px solid #aaa; }
+.rd-table th { background: #e0e0e0; position: sticky; top: 0; }
+.rd-table tr:nth-child(even) { background: #eee; }
+.rd-num { text-align: right; font-variant-numeric: tabular-nums; }
+.rd-empty, .rd-loading, .rd-error { padding: 16px; }
+.rd-error { background: #fff; color: #a00000; }
+@media (max-width: 800px) { .rd-section { grid-template-columns: minmax(0, 1fr); } .rd-grid-wrap { max-height: 220px; } }

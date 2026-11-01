@@ -129,7 +129,7 @@ namespace MachineKarte.Web.Models
                 ["MP"] = new("EvidenceMaking_MP.xlsx", "viewMPEMaking_Ver2", "ViewMPData_Ver4"),
                 ["PL"] = new("EvidenceMaking_PL.xlsx", "viewPLEMaking_Ver2", "ViewPLData_Ver2"),
                 ["FL"] = new("EvidenceMaking_FL.xlsx", "viewFLEMaking_ver2", "ViewFLData_V2"),
-                ["SING"] = new("EvidenceMaking_SING.xlsx", "viewSINGEMaking", "ViewSINGData"),
+                ["SING"] = new("EvidenceMaking_Sing.xlsx", "viewSINGEMaking", "ViewSINGData"),
                 ["FT"] = new("EvidenceMaking_FT.xlsx", "viewFTEMaking_Ver2", "ViewFTData"),
                 ["TP"] = new("EvidenceMaking_TP.xlsx", "viewTPEMaking_Ver2", "ViewTPData"),
                 ["EDS"] = new("EvidenceMaking_EDS.xlsx", "viewEDSEMaking", "viewedsdata_ver2"),

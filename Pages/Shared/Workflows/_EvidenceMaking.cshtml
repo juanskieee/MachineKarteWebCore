@@ -1,0 +1,88 @@
+@model MachineKarte.Web.Pages.EvidenceMakingModel
+<div class="workflow workflow--EvidenceMaking" data-workflow="EvidenceMaking">
+@{
+    ViewData["Title"] = "BM Maintenance Evidence";
+    ViewData["Page"] = "EvidenceMaking";
+    Layout = null;
+}
+
+<!-- ════════════════════════════════════════════════
+     HEADER BAR
+     Mirrors Form4 title: "BM Maintenance Evidence"
+     ════════════════════════════════════════════════ -->
+<div class="ev-header">
+    <span class="ev-title">BM Maintenance Evidence</span>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     FORM PANEL
+     Mirrors EMakingPrint(ProcessCase, bmid) inputs.
+     Called from Monitoring page (Form1) when user
+     clicks a BM card to generate evidence.
+     ════════════════════════════════════════════════ -->
+<div class="ev-form-panel">
+
+    <!-- Process (ProcessCase) -->
+    <div class="form-group">
+        <label for="EvidenceMaking-selProcess" class="form-label">Process</label>
+        <select id="EvidenceMaking-selProcess" data-id="selProcess" class="form-select">
+            <option value="">— Select —</option>
+            <option value="DC">DC</option>
+            <option value="DB">DB</option>
+            <option value="WB">WB</option>
+            <option value="MP">MP</option>
+            <option value="PL">PL</option>
+            <option value="FL">FL</option>
+            <option value="SING">SING</option>
+            <option value="FT">FT</option>
+            <option value="TP">TP</option>
+            <option value="EDS">EDS</option>
+            <option value="MEMS">MEMS</option>
+        </select>
+    </div>
+
+    <!-- BM ID (bmid) -->
+    <div class="form-group">
+        <label for="EvidenceMaking-txtBmId" class="form-label">BM ID</label>
+        <input type="number" id="EvidenceMaking-txtBmId" data-id="txtBmId" class="form-input" placeholder="Enter BM ID" min="1" />
+    </div>
+
+    <!-- Generate button (mirrors Button1 / EMakingPrint trigger) -->
+    <button id="EvidenceMaking-btnGenerate" data-id="btnGenerate" class="btn-generate" data-action="generate">
+        Generate Evidence
+    </button>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     STATUS / PROGRESS
+     Replaces WinForms MsgBox + WebBrowser progress
+     ════════════════════════════════════════════════ -->
+<div id="EvidenceMaking-statusArea" data-id="statusArea" class="status-area is-hidden">
+    <div id="EvidenceMaking-statusSpinner" data-id="statusSpinner" class="ev-spinner is-hidden">
+        <div class="spinner"></div>
+        <span>Generating evidence file…</span>
+    </div>
+    <div id="EvidenceMaking-statusMsg" data-id="statusMsg" class="status-msg" role="status" aria-live="polite"></div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     PDF / EXCEL PREVIEW PANEL
+     Mirrors the WebBrowser control added to Form4.
+     Shows an inline iframe for PDF preview;
+     also provides a direct download link.
+     ════════════════════════════════════════════════ -->
+<div id="EvidenceMaking-previewPanel" data-id="previewPanel" class="preview-panel is-hidden">
+    <div class="preview-toolbar">
+        <span id="EvidenceMaking-previewFileName" data-id="previewFileName" class="preview-filename"></span>
+        <a id="EvidenceMaking-downloadLink" data-id="downloadLink" class="btn-download" href="#" download>
+            Download
+        </a>
+        <button type="button" class="btn-close-preview" data-action="close-preview">Close</button>
+    </div>
+    <iframe title="Evidence preview" id="EvidenceMaking-previewFrame" data-id="previewFrame" class="preview-frame" src=""></iframe>
+</div>
+
+@Html.AntiForgeryToken()
+
+
+</div>

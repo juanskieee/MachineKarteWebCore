@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Globalization;
 using System.Threading.Tasks;
 using MachineKarte.Web.Models;
@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace MachineKarte.Web.Pages
 {
-    public class MachineSummaryModel : PageModel
+    public class MachineSummaryModel : WorkflowPageModel
     {
         private readonly MachineSummaryService _service;
 

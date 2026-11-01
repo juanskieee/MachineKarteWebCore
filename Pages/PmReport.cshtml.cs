@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace MachineKarte.Web.Pages;
 
-public sealed class PmReportModel : PageModel
+public sealed class PmReportModel : WorkflowPageModel
 {
     private readonly PmReportService _service;
     private readonly ILogger<PmReportModel> _logger;

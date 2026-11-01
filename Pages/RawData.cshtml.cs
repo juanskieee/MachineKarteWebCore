@@ -1,11 +1,11 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using MachineKarte.Web.Models;
 using MachineKarte.Web.Services;
 
 namespace MachineKarte.Web.Pages
 {
-    public class RawDataModel : PageModel
+    public class RawDataModel : WorkflowPageModel
     {
         private readonly RawDataService _service;
         private readonly ILogger<RawDataModel> _logger;

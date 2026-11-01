@@ -99,9 +99,43 @@ namespace MachineKarte.Web.Services
                 MachineNo = machineNo,
                 MachineType = machineType,
                 ActionLine = actionLine,
+                NeedActionCount = CountNeedActionGroups(rows),
                 BMCards = rows
             };
         }
+
+        private static int CountNeedActionGroups(IReadOnlyList<BMCardRow> rows)
+        {
+            var count = 0;
+
+            for (var index = 0; index < rows.Count; index++)
+            {
+                var row = rows[index];
+                if (!IsNeedActionRepeat(row) ||
+                    (index > 0 && IsSameRepeatGroup(rows[index - 1], row)))
+                    continue;
+
+                count++;
+            }
+
+            return count;
+        }
+
+        private static bool IsNeedActionRepeat(BMCardRow row) =>
+            !string.Equals(row.FontColor, "None", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(row.FontColor, "Black", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(row.HaveAction, "Yes", StringComparison.OrdinalIgnoreCase);
+
+        private static bool IsSameRepeatGroup(BMCardRow previous, BMCardRow current) =>
+            IsNeedActionRepeat(previous) &&
+            string.Equals(previous.MachineNo, current.MachineNo,
+                StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(previous.BMContentId, current.BMContentId,
+                StringComparison.Ordinal) &&
+            string.Equals(previous.BMCase, current.BMCase,
+                StringComparison.Ordinal) &&
+            string.Equals(previous.FontColor, current.FontColor,
+                StringComparison.OrdinalIgnoreCase);
 
         // ----------------------------------------------------------------
         // PC status tracking (Form1_Load → UpdatePCStatus)

@@ -1,4 +1,9 @@
-﻿/**
+Workflows.register('EvidenceMaking', (root, options, context) => {
+    const byId = id => root.querySelector('[data-id="' + id + '"], [id="' + id + '"]');
+    const fetch = context.fetch;
+    const setInterval = context.setInterval;
+    const setTimeout = context.setTimeout;
+/**
  * EvidenceMaking.js
  * Converted from Form4.vb event handlers — E-Karte System
  *
@@ -11,25 +16,25 @@
 
 let antiForgery = '';
 
-document.addEventListener('DOMContentLoaded', () => {
-    antiForgery = document.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '';
+
+    antiForgery = root.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '';
 
     // Pre-fill from query string (when opened from Monitoring card click)
-    const params = new URLSearchParams(location.search);
+    const params = new URLSearchParams(options);
     const proc = params.get('process');
     const bmId = params.get('bmId');
 
-    if (proc) document.getElementById('selProcess').value = proc;
-    if (bmId) document.getElementById('txtBmId').value = bmId;
+    if (proc) byId('selProcess').value = proc;
+    if (bmId) byId('txtBmId').value = bmId;
 
     // Auto-generate if both params are supplied (mirrors Form4 being called directly)
     if (proc && bmId) generateEvidence();
-});
+
 
 // ── Generate Evidence (mirrors EMakingPrint) ──────────────────────
 async function generateEvidence() {
-    const process = document.getElementById('selProcess').value;
-    const bmId = parseInt(document.getElementById('txtBmId').value || '0');
+    const process = byId('selProcess').value;
+    const bmId = parseInt(byId('txtBmId').value || '0');
 
     if (!process) { showStatus('Please select a process.', 'error'); return; }
     if (!bmId) { showStatus('Please enter a valid BM ID.', 'error'); return; }
@@ -55,43 +60,45 @@ async function generateEvidence() {
 
 // ── Preview panel ─────────────────────────────────────────────────
 function openPreview(url, fileName) {
-    document.getElementById('previewFileName').textContent = fileName;
-    document.getElementById('downloadLink').href = url;
-    document.getElementById('downloadLink').setAttribute('download', fileName);
+    byId('previewFileName').textContent = fileName;
+    byId('downloadLink').href = url;
+    byId('downloadLink').setAttribute('download', fileName);
 
-    const frame = document.getElementById('previewFrame');
+    const frame = byId('previewFrame');
     // PDF files render natively in modern browsers via iframe
     // xlsx files: prompt download instead of iframe preview
     if (fileName.endsWith('.pdf')) {
         frame.src = url;
+        frame.classList.remove('is-hidden');
     } else {
         // For xlsx, just hide the iframe and let the download link do the work
         frame.src = '';
-        frame.style.display = 'none';
+        frame.classList.add('is-hidden');
     }
 
-    document.getElementById('previewPanel').style.display = 'block';
+    byId('previewPanel').classList.remove('is-hidden');
 }
 
 function closePreview() {
-    document.getElementById('previewPanel').style.display = 'none';
-    document.getElementById('previewFrame').src = '';
-    document.getElementById('previewFrame').style.display = '';
+    byId('previewPanel').classList.add('is-hidden');
+    byId('previewFrame').src = '';
+    byId('previewFrame').classList.remove('is-hidden');
 }
 
 // ── Status / spinner ──────────────────────────────────────────────
 function showSpinner(show) {
-    const area = document.getElementById('statusArea');
-    const spinner = document.getElementById('statusSpinner');
-    area.style.display = 'block';
-    spinner.style.display = show ? 'flex' : 'none';
-    if (show) document.getElementById('statusMsg').textContent = '';
+    byId('btnGenerate').disabled = show;
+    const area = byId('statusArea');
+    const spinner = byId('statusSpinner');
+    area.classList.remove('is-hidden');
+    spinner.classList.toggle('is-hidden', !show);
+    if (show) byId('statusMsg').textContent = '';
 }
 
 function showStatus(msg, type = 'info') {
-    const area = document.getElementById('statusArea');
-    const el = document.getElementById('statusMsg');
-    area.style.display = 'block';
+    const area = byId('statusArea');
+    const el = byId('statusMsg');
+    area.classList.remove('is-hidden');
     el.textContent = msg;
     el.className = `status-msg status-${type}`;
 }
@@ -114,3 +121,7 @@ async function post(url, body) {
         return { success: false, message: String(e) };
     }
 }
+root.querySelector('[data-action="generate"]')?.addEventListener('click', generateEvidence);
+root.querySelector('[data-action="close-preview"]')?.addEventListener('click', closePreview);
+
+});

@@ -26,7 +26,9 @@ namespace MachineKarte.Web.Services
                 {
                     CheckItem = r["BMOCAPName"].ToString() ?? string.Empty,
                     CheckingMethod = r["BMOCAPCheckingMethod"].ToString() ?? string.Empty,
-                    TreatmentAction = r["BMOCAPTreatmentAction"].ToString() ?? string.Empty
+                    TreatmentAction = r["BMOCAPTreatmentAction"].ToString() ?? string.Empty,
+                    Judgement = "test1",
+                    Remarks = "test2"
                 });
             }
 

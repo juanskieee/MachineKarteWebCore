@@ -34,7 +34,7 @@ namespace MachineKarte.Web.Repositories
         }
 
         private static string StandardSql(string process) => $@"
-            SELECT DISTINCT a.Mcno
+            SELECT a.Mcno
             FROM [eMaintenanceSystemDB].[dbo].[{process}BMMaintenance] a
             INNER JOIN [eMaintenanceSystemDB].[dbo].[BMCase] b
                 ON a.BMCaseID = b.BMCaseID
@@ -58,7 +58,7 @@ namespace MachineKarte.Web.Repositories
             ORDER BY a.Mcno DESC";
 
         private const string TeSql = @"
-            SELECT DISTINCT a.TesterNo
+            SELECT a.TesterNo
             FROM [eMaintenanceSystemDB].[dbo].[teBMMaintenance] a
             INNER JOIN [eMaintenanceSystemDB].[dbo].[BMTEUnit] b
                 ON a.bmunitid = b.bmteunitid

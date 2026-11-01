@@ -1,0 +1,72 @@
+@model MachineKarte.Web.Pages.ActionCardsModel
+@{ Layout = null; }
+<div class="workflow workflow--ActionCards" data-workflow="ActionCards">
+    <div id="ActionCards-machineNoBanner" data-id="machineNoBanner" class="mc-banner is-hidden">
+        <strong id="ActionCards-bannerMcNo" data-id="bannerMcNo"></strong>
+        <span id="ActionCards-bannerHeaderCase" data-id="bannerHeaderCase"></span>
+    </div>
+    <form class="ac-panel" data-action="card-form">
+        <div class="ac-problem-row">
+            <label for="ActionCards-tbProblemContent" class="ac-label ac-salmon">Problem Content :</label>
+            <textarea id="ActionCards-tbProblemContent" data-id="tbProblemContent" rows="2" class="upper"></textarea>
+            <label for="ActionCards-tbInCharge" class="ac-label ac-salmon">Emp. # :</label>
+            <input id="ActionCards-tbInCharge" data-id="tbInCharge" class="upper" />
+            <label for="ActionCards-tbDate" class="ac-label ac-salmon">Date :</label>
+            <input id="ActionCards-tbDate" data-id="tbDate" readonly />
+        </div>
+        <div class="ac-wide-row">
+            <label for="ActionCards-tbInvestigation" class="ac-label ac-salmon">Investigation Done :</label>
+            <textarea id="ActionCards-tbInvestigation" data-id="tbInvestigation" rows="4" class="upper"></textarea>
+        </div>
+        <div class="ac-wide-row">
+            <label for="ActionCards-tbAction" class="ac-label ac-salmon">Action :</label>
+            <textarea id="ActionCards-tbAction" data-id="tbAction" rows="4" class="upper"></textarea>
+        </div>
+        @for (var i = 1; i <= 3; i++)
+        {
+            var color = new[] { "sky", "purple", "lime" }[i - 1];
+            var manager = new[] { "Section Manager", "Department Manager", "Division Manager" }[i - 1];
+            var reply = new[] { "Accreditor", "Section Manager", "Department Manager" }[i - 1];
+            var commentId = i == 1 ? "tbComment" : $"tbComment{i}";
+            <div class="ac-review-row ac-@color">
+                <div class="ac-review">
+                    <label for="ActionCards-@commentId" class="ac-label">@manager Comment:</label>
+                    <textarea id="ActionCards-@commentId" data-id="@commentId" rows="4" data-comment-idx="@(i)"></textarea>
+                    <div class="ac-meta">
+                        <label for="ActionCards-tbIncharge_@(i)">Emp.</label>
+                        <input id="ActionCards-tbIncharge_@(i)" data-id="tbIncharge_@(i)" class="upper" />
+                        <label for="ActionCards-tbdate_@(i)">Date:</label>
+                        <input id="ActionCards-tbdate_@(i)" data-id="tbdate_@(i)" readonly />
+                    </div>
+                </div>
+                <div class="ac-review">
+                    <label for="ActionCards-tbReply@(i)" class="ac-label"><span data-id="replyLabelCell@(i)">@reply / PM Reply</span></label>
+                    <textarea id="ActionCards-tbReply@(i)" data-id="tbReply@(i)" rows="4" data-reply-idx="@(i)"></textarea>
+                    <div class="ac-meta">
+                        <label for="ActionCards-tbReplyEmp@(i)">Emp.</label>
+                        <input id="ActionCards-tbReplyEmp@(i)" data-id="tbReplyEmp@(i)" class="upper" />
+                        <label for="ActionCards-tbReplyDate@(i)">Date:</label>
+                        <input id="ActionCards-tbReplyDate@(i)" data-id="tbReplyDate@(i)" readonly />
+                    </div>
+                </div>
+            </div>
+        }
+        <div class="ac-footer">
+            <label for="ActionCards-cbStatus" class="ac-label ac-salmon">MC Status:</label>
+            <select id="ActionCards-cbStatus" data-id="cbStatus">
+                @foreach (var status in MachineKarte.Web.Models.McStatusOptions.All)
+                {
+                    <option value="@status">@status</option>
+                }
+            </select>
+            <button id="ActionCards-btnSave" data-id="btnSave" type="submit" class="btn-save" disabled>SAVE</button>
+        </div>
+        <p id="ActionCards-saveStatus" data-id="saveStatus" class="save-status" role="status" aria-live="polite"></p>
+        <input type="hidden" data-id="hfBmId" />
+        <input type="hidden" data-id="hfMcNo" />
+        <input type="hidden" data-id="hfUserType" />
+        <input type="hidden" data-id="hfStatusId" />
+        <input type="hidden" data-id="hfColorName" />
+        @Html.AntiForgeryToken()
+    </form>
+</div>

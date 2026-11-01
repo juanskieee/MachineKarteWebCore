@@ -1,4 +1,9 @@
-﻿/**
+Workflows.register('AlertBoard', (root, options, context) => {
+    const byId = id => root.querySelector('[data-id="' + id + '"], [id="' + id + '"]');
+    const fetch = context.fetch;
+    const setInterval = context.setInterval;
+    const setTimeout = context.setTimeout;
+/**
  * AlertBoard.js
  * Handles the BM Alert Board (Form2 → AlertBoard.cshtml).
  *
@@ -10,25 +15,24 @@
  *  • Auto-refresh when Monitoring signals timer=0 via sessionStorage
  */
 
-(function () {
     'use strict';
 
     // ── Token ────────────────────────────────────────────────────────────────
     const token = () =>
-        document.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '';
+        root.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '';
 
     // ── Element refs ─────────────────────────────────────────────────────────
-    const dtFrom = document.getElementById('dtFrom');
-    const dtTo = document.getElementById('dtTo');
-    const selUser = document.getElementById('selUser');
-    const btnSearch = document.getElementById('btnSearch');
-    const progress = document.getElementById('progressBar');
-    const progressInner = document.getElementById('progressInner');
-    const panelDrill = document.getElementById('panelDrilldown');
-    const drillTitle = document.getElementById('drilldownTitle');
-    const drillList = document.getElementById('drilldownList');
-    const btnClose = document.getElementById('btnDrillClose');
-    const btnGo = document.getElementById('btnDrillGo');
+    const dtFrom = byId('dtFrom');
+    const dtTo = byId('dtTo');
+    const selUser = byId('selUser');
+    const btnSearch = byId('btnSearch');
+    const progress = byId('progressBar');
+    const progressInner = byId('progressInner');
+    const panelDrill = byId('panelDrilldown');
+    const drillTitle = byId('drilldownTitle');
+    const drillList = byId('drilldownList');
+    const btnClose = byId('btnDrillClose');
+    const btnGo = byId('btnDrillGo');
 
     // State
     let _selectedMachine = null;
@@ -38,9 +42,12 @@
     (function initDefaults() {
         const now = new Date();
         const from = new Date(now);
-        from.setMonth(from.getMonth() - 1);
-        dtFrom.value = toLocalInput(from);
-        dtTo.value = toLocalInput(now);
+        from.setDate(from.getDate() - 30);
+        const to = new Date(now);
+        to.setDate(to.getDate() + 1);
+        dtFrom.value = options.dateFrom ? options.dateFrom.slice(0, 10) + 'T00:00' : toLocalInput(from);
+        dtTo.value = options.dateTo ? options.dateTo.slice(0, 10) + 'T00:00' : toLocalInput(to);
+        selUser.value = options.userType === 'PM' ? '' : (options.userType || '');
     })();
 
     function toLocalInput(d) {
@@ -74,7 +81,7 @@
             if (!json.success) throw new Error(json.message);
             renderBoard(json.data);
         } catch (err) {
-            alert('Error loading board: ' + err.message);
+            byId('boardStatus').textContent = 'Error loading board: ' + err.message;
         } finally {
             setProgress(false);
         }
@@ -91,11 +98,11 @@
     // ── Board rendering ───────────────────────────────────────────────────────
 
     function resetBoard() {
-        document.querySelectorAll('.ab-cell-active').forEach(el => {
+        root.querySelectorAll('.ab-cell-active').forEach(el => {
             el.textContent = '0';
             el.classList.remove('ab-alert');
         });
-        document.querySelectorAll('[id^="ptotal_"], [id^="ltotal_"], #grandTotal').forEach(el => {
+        root.querySelectorAll('[data-id^="ptotal_"], [data-id^="ltotal_"], [data-id="grandTotal"]').forEach(el => {
             el.textContent = '0';
         });
         closeDrilldown();
@@ -109,16 +116,18 @@
         const cells = data.cells || {};
 
         for (const [key, cell] of Object.entries(cells)) {
-            const el = document.getElementById('cell_' + key);
+            const el = byId('cell_' + key);
             if (!el) continue;
             el.textContent = cell.count;
+            el.tabIndex = cell.count > 0 ? 0 : -1;
+            el.setAttribute('role', 'button');
             if (cell.count > 0) el.classList.add('ab-alert');
         }
 
         // Location totals
         const locTotals = data.locationTotals || {};
         for (const [loc, n] of Object.entries(locTotals)) {
-            const el = document.getElementById('ltotal_' + loc);
+            const el = byId('ltotal_' + loc);
             if (el) el.textContent = n;
         }
 
@@ -129,17 +138,17 @@
             for (const [key, cell] of Object.entries(cells)) {
                 if (key.startsWith(proc + '_')) total += cell.count;
             }
-            const el = document.getElementById('ptotal_' + proc);
+            const el = byId('ptotal_' + proc);
             if (el) el.textContent = total;
         }
 
-        const grand = document.getElementById('grandTotal');
+        const grand = byId('grandTotal');
         if (grand) grand.textContent = data.grandTotal ?? 0;
     }
 
     // ── Cell click → drilldown ─────────────────────────────────────────────
 
-    document.addEventListener('click', async function (e) {
+    root.addEventListener('click', async function (e) {
         const cell = e.target.closest('.ab-cell-active');
         if (!cell) return;
         const count = parseInt(cell.textContent, 10);
@@ -170,6 +179,8 @@
                 const li = document.createElement('li');
                 li.textContent = m;
                 li.classList.add('ab-machine-item');
+                li.tabIndex = 0;
+                li.setAttribute('role', 'button');
                 li.addEventListener('click', () => {
                     drillList.querySelectorAll('li').forEach(x => x.classList.remove('selected'));
                     li.classList.add('selected');
@@ -178,9 +189,9 @@
                 drillList.appendChild(li);
             });
 
-            panelDrill.style.display = 'flex';
+            panelDrill.classList.remove('is-hidden');
         } catch (err) {
-            alert('Drilldown error: ' + err.message);
+            byId('boardStatus').textContent = 'Drilldown error: ' + err.message;
         }
     }
 
@@ -196,14 +207,17 @@
         const params = new URLSearchParams({
             machine: _selectedMachine,
             process: proc,
-            location: locKey
+            location: locKey,
+            userType: selUser.value,
+            dateFrom: dtFrom.value,
+            dateTo: dtTo.value
         });
-        window.location.href = '/Monitoring?' + params.toString();
+        params.set('userType', selUser.value || 'PM'); Workflows.selectMachine(params);
         closeDrilldown();
     });
 
     function closeDrilldown() {
-        panelDrill.style.display = 'none';
+        panelDrill.classList.add('is-hidden');
         drillList.innerHTML = '';
         _selectedMachine = null;
     }
@@ -236,7 +250,7 @@
 
     function setProgress(active) {
         if (active) {
-            progress.style.display = 'block';
+            progress.classList.remove('is-hidden');
             let pct = 0;
             _progressInterval = setInterval(() => {
                 pct = Math.min(pct + 2, 90);
@@ -246,7 +260,7 @@
             clearInterval(_progressInterval);
             progressInner.style.width = '100%';
             setTimeout(() => {
-                progress.style.display = 'none';
+                progress.classList.add('is-hidden');
                 progressInner.style.width = '0';
             }, 300);
         }
@@ -256,14 +270,9 @@
     // Monitoring page writes sessionStorage.monitoringTimer = "0" when its
     // countdown hits zero.  AlertBoard polls that and auto-reloads.
 
-    setInterval(() => {
-        if (sessionStorage.getItem('monitoringTimer') === '0') {
-            sessionStorage.removeItem('monitoringTimer');
-            loadBoard();
-        }
-    }, 5000);
+    context.onRefresh(loadBoard);
 
     // Initial load on page show
     loadBoard();
 
-})();
+});

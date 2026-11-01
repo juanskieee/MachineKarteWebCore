@@ -1,0 +1,85 @@
+/* Form2/7/8/11/12 share the designer's process/location matrix and local lookup panel. */
+.workflow-dialog { width: min(1440px, calc(100% - 32px)); max-width: none; max-height: calc(100dvh - 32px); padding: 0; border: 0; border-radius: 4px; background: silver; color: #111; box-shadow: 0 16px 48px #0006; overflow: hidden; }
+.workflow-dialog[open] { display: flex; flex-direction: column; }
+.workflow-dialog::backdrop { background: #0007; }
+.workflow-dialog[data-workflow="RawData"], .workflow-dialog[data-workflow="OcapViewer"] { width: min(1742px, calc(100% - 32px)); }
+.workflow-dialog[data-workflow="AlertBoard"], .workflow-dialog[data-workflow="MachineSummary"], .workflow-dialog[data-workflow="BmAnalytics"], .workflow-dialog[data-workflow="McdMonitoring"] { width: min(1200px, calc(100% - 32px)); }
+.workflow-dialog[data-workflow="PmReport"], .workflow-dialog[data-workflow="BmReport"], .workflow-dialog[data-workflow="EvidenceMaking"], .workflow-dialog[data-workflow="TeEvidenceMaking"] { width: min(991px, calc(100% - 32px)); }
+.workflow-titlebar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex: 0 0 auto; background: #343434; color: #fff; padding: 6px 8px 6px 14px; }
+.workflow-titlebar h2 { margin: 0; font-size: 16px; line-height: 1.3; font-weight: 700; }
+.workflow-titlebar button { border: 0; min-width: 36px; height: 36px; background: tomato; color: #111; padding: 6px; }
+.workflow-titlebar svg { fill: none; stroke: currentColor; stroke-width: 2; }
+.workflow-body { min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.workflow-loading, .workflow-error { padding: 40px; margin: 0; }
+.workflow-error { color: #a00000; background: #fff; }
+.workflow { position: relative; min-width: 0; }
+.workflow--AlertBoard { --summary-accent: tomato; --summary-label: mistyrose; --summary-heading: #111; }
+.workflow--MachineSummary, .workflow--McdMonitoring { --summary-accent: blue; --summary-label: azure; --summary-heading: #fff; }
+.workflow--BmAnalytics { --summary-accent: darkorange; --summary-label: bisque; --summary-heading: #111; }
+.workflow :is(.ab-container, .ms-wrapper, .mcd-page, .bma-page) { padding: 4px; display: flex; flex-direction: column; gap: 4px; background: silver; }
+.workflow :is(.ab-toolbar, .ms-toolbar, .mcd-filter-bar, .bma-toolbar) { order: 3; padding: 8px; display: flex; align-items: end; flex-wrap: wrap; gap: 8px; border: 0; border-radius: 0; background: silver; box-shadow: none !important; }
+.workflow :is(.ab-toolbar, .ms-toolbar, .mcd-filter-bar, .bma-toolbar) label { font-size: 12px; font-weight: 700; }
+.workflow .ms-toolbar-group { display: flex; flex-direction: column; gap: 2px; }
+.workflow :is(.ms-btn-search, .ab-btn-search, .mcd-filter-bar .btn-primary, .bma-toolbar .btn-primary) { background: var(--summary-accent); color: var(--summary-heading); border: 0; padding: 6px 22px; min-width: 130px; font-size: 16px; margin-left: auto; }
+.workflow :is(.ms-status, .mcd-status, [data-id="boardStatus"], [data-id="lblStatus"]) { font-size: 12px; }
+.workflow .filter-row { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; width: 100%; }
+.workflow .filter-group { display: flex; flex-direction: column; }
+.workflow .filter-btn-group { margin-left: auto; }
+.workflow :is(.ab-panel, .ms-grid-scroll, .mcd-grid-wrapper, .bma-grid-wrapper) { overflow: auto; background: dimgray; border: 2px solid dimgray; margin: 0 !important; border-radius: 0; box-shadow: none; min-height: 180px; }
+.workflow :is(.ms-grid, .bma-table) { border-collapse: collapse; table-layout: fixed; width: 100%; min-width: 1000px; margin: 0; font-size: 16px; background: dimgray; }
+.workflow :is(.ms-grid, .bma-table) :is(td, th) { border: 1px solid dimgray; padding: 3px; text-align: center; height: 42px; font-variant-numeric: tabular-nums; vertical-align: middle; }
+.workflow :is(.ms-grid, .bma-table) thead th { position: sticky; top: 0; z-index: 1; font-size: 13px; font-weight: 700; background: lightgray; color: #111; white-space: nowrap; }
+.workflow :is(.ms-th-process, .bma-hdr-process, .ms-th-total, .bma-hdr-total) { background: var(--summary-accent) !important; color: var(--summary-heading) !important; }
+.workflow :is(.ms-td-process, .bma-proc-label) { background: var(--summary-label); font-weight: 700; font-size: 15px; }
+.workflow :is(.ms-cell, .bma-cell) { background: #fff; color: #111; }
+.workflow :is(.ms-na, .bma-cell-na) { background: lightgray; color: #444; }
+.workflow :is(.ms-active, .bma-cell-active) { cursor: pointer; color: #a00000; font-weight: 700; }
+.workflow :is(.ms-active, .bma-cell-active):hover { background: #dde6ed; }
+.workflow :is(.ms-tf-label, .ms-tf-cell, .ms-tf-grand, .ms-td-rowtotal, .bma-row-total, .bma-col-total, .bma-grand-total) { background: #fff; font-weight: 700; }
+.workflow :is(.ms-tf-label, .bma-total-row .bma-proc-label) { background: var(--summary-accent); color: var(--summary-heading); }
+.workflow :is(.ab-header-row, .ab-proc-row, .mcd-header-row, .mcd-grid-row, .mcd-total-row) { display: grid; grid-template-columns: 100px repeat(9, minmax(86px, 1fr)) 85px; min-width: 1000px; gap: 1px; }
+.workflow :is(.ab-header-row, .ab-proc-row, .mcd-header-row, .mcd-grid-row, .mcd-total-row) > div { min-height: 42px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 16px; font-variant-numeric: tabular-nums; padding: 3px; background: #fff; }
+.workflow :is(.ab-header-row, .mcd-header-row) > div { background: lightgray; font-size: 13px; font-weight: 700; white-space: nowrap; }
+.workflow :is(.ab-hdr-process, .ab-hdr-total, .mcd-header-row .mcd-process-col, .mcd-header-row .mcd-total-col) { background: var(--summary-accent) !important; color: var(--summary-heading); }
+.workflow :is(.ab-cell-label, .mcd-proc-label) { background: var(--summary-label) !important; font-weight: 700; }
+.workflow :is(.ab-cell-active, .mcd-cell-clickable) { cursor: pointer; }
+.workflow :is(.ab-alert, .mcd-cell-hot) { color: #a00000; font-weight: 700; }
+.workflow :is(.ab-cell-active, .mcd-cell-clickable):hover { background: #dde6ed; }
+.workflow .mcd-cell-na { background: lightgray !important; }
+.workflow :is(.ab-cell-total, .ab-cell-grand, .mcd-total-cell, .mcd-proc-total) { font-weight: 700; }
+.workflow :is(.mcd-total-label, .ab-totals-row .ab-cell-label) { background: var(--summary-accent) !important; color: var(--summary-heading); font-weight: 700; }
+.workflow :is(.ab-progress, .ms-progress, .mcd-progress) { height: 4px; width: 100%; overflow: hidden; background: #ddd; }
+.workflow :is(.ab-progress-inner, .ms-progress-bar, .mcd-progress-inner) { height: 100%; background: var(--summary-accent); }
+.workflow .ms-progress-bar { width: 100%; }
+.workflow :is(.ms-panel, .ab-drilldown, .mcd-machine-panel, .bma-flyout) { position: absolute; top: 10px; left: 24%; width: min(546px, 73%); max-height: calc(100% - 20px); display: flex; flex-direction: column; background: #fff; border: 1px solid #555; border-radius: 0; box-shadow: 0 8px 24px #0006 !important; z-index: 5; overflow: auto; }
+.workflow .ms-panel { display: none; }
+.workflow .ms-panel.ms-panel-open { display: flex; }
+.workflow :is(.ms-panel-header, .ab-drilldown-header, .mcd-machine-panel-header, .bma-flyout .card-header) { display: flex; align-items: center; justify-content: space-between; gap: 5px; padding: 6px 8px; background: #dde6ed; font-weight: 700; }
+.workflow :is(.ms-panel-close, .mcd-panel-close, [data-id="btnCloseFlyout"], [data-id="btnDrillClose"]) { background: tomato; border: 0; color: #111; }
+.workflow :is(.ms-panel-list, .ab-machine-list, .mcd-machine-list, .bma-machine-list) { list-style: none; margin: 0; padding: 3px; overflow: auto; max-height: 400px; min-height: 100px; }
+.workflow :is(.ms-panel-item, .ab-machine-item, .mcd-list-item, .bma-mc-item) { padding: 7px 10px; border: 0; border-bottom: 1px solid #ddd; background: #fff; cursor: pointer; color: #111; font-size: 16px; }
+.workflow :is(.ms-panel-item, .ab-machine-item, .mcd-list-item, .bma-mc-item):hover { background: #e7f0f8; }
+.workflow :is(.ms-selected, .selected, .bma-mc-item.active) { background: #004fa8; color: #fff; }
+.workflow :is(.ms-btn-go, .ab-btn-primary, .mcd-panel-footer .btn-primary, .bma-flyout .btn-success) { background: var(--summary-accent); color: var(--summary-heading); border: 0; }
+.workflow :is(.ms-panel-sub, .mcd-panel-footer, .bma-flyout .card-footer) { padding: 7px 10px; }
+.workflow :is(.ms-overlay, .mcd-overlay) { display: none; }
+.workflow :is(.mcd-grid-empty, .ms-panel-message) { padding: 20px; background: #fff; }
+/* The report designers are document windows. Keep a document workspace and native download controls. */
+.workflow--PmReport, .workflow--BmReport, .workflow--EvidenceMaking, .workflow--TeEvidenceMaking { padding: 10px; background: #f0f0f0; min-height: 360px; }
+.workflow :is(.pm-report-header, .document-toolbar, .bmreport-header, .ev-form-panel) { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 12px; padding: 8px; background: #ddd; }
+.workflow :is(.pm-report-header h1, .bmreport-header h2, .ev-title) { font-size: 18px; font-weight: 700; margin: 0; }
+.workflow :is(.pm-report-header p, .document-toolbar p, .bmreport-subtitle) { margin: 4px 0; }
+.workflow :is(.pm-report-button, .btn-download, .btn-generate, .document-toolbar button) { background: green; color: #fff; padding: 8px 16px; border: 0; border-radius: 2px; min-height: 36px; display: inline-block; text-decoration: none; }
+.workflow :is(.document-workspace, .pm-report-status, .bmreport-info, .status-area) { padding: 24px 16px; background: #fff; border: 1px solid #aaa; margin-top: 8px; }
+.workflow .document-workspace { min-height: 260px; }
+.workflow .bmreport-actions { padding: 12px 0; }
+.workflow :is(.report-status, .pm-report-status) { min-height: 35px; }
+.workflow .pm-report-status[data-state="error"] { color: #a00000; }
+.workflow .ev-header { padding: 6px 0; }
+.workflow .form-group { display: flex; flex-direction: column; gap: 3px; }
+.workflow .preview-panel { background: #fff; margin-top: 8px; }
+.workflow .preview-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px; background: #ddd; }
+.workflow .preview-frame { width: 100%; min-height: 50dvh; border: 0; }
+.workflow .preview-filename { overflow-wrap: anywhere; flex: 1; }
+.workflow .status-spinner { display: flex; gap: 8px; align-items: center; }
+@media (max-width: 600px) { .workflow-dialog, .workflow-dialog[data-workflow] { width: calc(100% - 12px); max-height: calc(100dvh - 12px); } .workflow-titlebar { padding-left: 8px; } .workflow-titlebar h2 { font-size: 14px; } .workflow :is(.ms-panel, .ab-drilldown, .mcd-machine-panel, .bma-flyout) { left: 3%; width: 94%; } .workflow :is(.ab-toolbar, .ms-toolbar, .mcd-filter-bar, .bma-toolbar) { align-items: stretch; } .workflow input[type="datetime-local"] { max-width: 100%; } }

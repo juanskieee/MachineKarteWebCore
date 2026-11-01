@@ -3,8 +3,8 @@
 // ---------------------------------------------------------------------------
 // BmAnalytics – process × location count grid
 // Shows machines that are MCD-registered AND already have an action card.
-// Mirrors Form12.vb logic (NewLoadColor path only; LoadColor is commented out
-// in the source and is intentionally NOT converted).
+// The page supports the Form8 and Form12 location profiles; both use the
+// active NewLoadColor path while their legacy label layouts differ.
 // ---------------------------------------------------------------------------
 
 public class BmAnalyticsRequest
@@ -12,6 +12,7 @@ public class BmAnalyticsRequest
     public string DateFrom { get; set; } = string.Empty;
     public string DateTo { get; set; } = string.Empty;
     public string Mode { get; set; } = "EEE";   // "EEE" or "TE"
+    public string LegacyForm { get; set; } = "8";
 }
 
 /// <summary>
@@ -44,7 +45,7 @@ public class BmAnalyticsCell
 
 /// <summary>
 /// The full grid result returned to the page.
-/// Key format: "{PROCESS}_{LOCATION_INDEX}" e.g. "DC_1", "ATC_65".
+/// Key format: "{PROCESS}_{LOCATION_INDEX}" e.g. "DC_1", "ATC_2".
 /// </summary>
 public class BmAnalyticsResult
 {
@@ -62,7 +63,7 @@ public class BmAnalyticsResult
 }
 
 // ---------------------------------------------------------------------------
-// Static mapping data (mirrors Form12.vb LoadMCName / checkProcessAndLocation)
+// Static mapping data (mirrors Form8.vb LoadMCName / checkProcessAndLocation)
 // ---------------------------------------------------------------------------
 
 public static class BmAnalyticsMappings
@@ -76,19 +77,19 @@ public static class BmAnalyticsMappings
     // process → ordered location list  (index 1-based, matching the VB label suffix)
     public static readonly Dictionary<string, string[]> EeeLocations = new()
     {
-        ["DC"] = ["LSI1-1F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-2F"],
-        ["DB"] = ["LSI1-1F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-2F"],
-        ["WB"] = ["LSI1-1F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-2F"],
-        ["MP"] = ["LSI1-1F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-1F"],
-        ["PL"] = ["LSI1-1F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-1F"],
-        ["FL"] = ["LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-3F"],
-        ["FT"] = ["LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-3F"],
-        ["TP"] = ["LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-3F"],
+        ["DC"] = ["LSI1-1F", "LSI2-1F", "LSI2-2F", "LSI2-3F"],
+        ["DB"] = ["LSI1-1F", "LSI2-1F", "LSI2-2F", "LSI2-3F"],
+        ["WB"] = ["LSI1-1F", "LSI2-1F", "LSI2-2F", "LSI2-3F"],
+        ["MP"] = ["LSI1-1F", "LSI2-1F", "LSI2-2F", "LSI2-3F"],
+        ["PL"] = ["LSI1-1F", "LSI2-1F"],
+        ["FL"] = ["LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F"],
+        ["FT"] = ["LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F"],
+        ["TP"] = ["LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F"],
         ["MEMS"] = ["LSI3-2F"],
         ["EDS"] = ["LSI3-4F"],
-        ["SING"] = ["LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-3F"],
-        // ATC has a special slot "65" for LSI3-1F in addition to index 6 (LSI3-3F)
-        ["ATC"] = ["LSI1-1F", "LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-1F", "LSI3-3F"],
+        ["SING"] = ["LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F"],
+        // Form8 retains the PL location array for ATC because no new array is assigned.
+        ["ATC"] = ["LSI1-1F", "LSI2-1F"],
     };
 
     // -----------------------------------------------------------------------
@@ -99,11 +100,27 @@ public static class BmAnalyticsMappings
 
     public static readonly Dictionary<string, string[]> TeLocations = new()
     {
+        ["FL"] = ["LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F"],
+        ["FT"] = ["LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F"],
+        ["TP"] = ["LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F"],
+        ["EDS"] = ["LSI3-4F"],
+        ["MEMS"] = ["LSI3-2F"],
+    };
+
+    public static readonly Dictionary<string, string[]> Form12EeeLocations = new()
+    {
+        ["DC"] = ["LSI1-1F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-2F"],
+        ["DB"] = ["LSI1-1F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-2F"],
+        ["WB"] = ["LSI1-1F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-2F"],
+        ["MP"] = ["LSI1-1F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-1F"],
+        ["PL"] = ["LSI1-1F", "LSI2-1F", "LSI3-1F"],
         ["FL"] = ["LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-3F"],
         ["FT"] = ["LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-3F"],
         ["TP"] = ["LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-3F"],
-        ["EDS"] = ["LSI3-4F"],
         ["MEMS"] = ["LSI3-2F"],
+        ["EDS"] = ["LSI3-4F"],
+        ["SING"] = ["LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-3F"],
+        ["ATC"] = ["LSI1-1F", "LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-1F", "LSI3-3F"],
     };
 
     // All unique locations in display order
@@ -116,16 +133,11 @@ public static class BmAnalyticsMappings
 
     /// <summary>
     /// Build the cell key from a process name and a location string.
-    /// ATC + LSI3-1F → "ATC_65"  (special slot from the VB designer).
+    /// Builds the legacy process/location cell key.
     /// </summary>
     public static string CellKey(string process, string location)
     {
-        if (process == "ATC" && location == "LSI3-1F")
-            return "ATC_65";
-
         var locs = GetLocations(process, "EEE");
-        if (process == "ATC" && location == "LSI3-3F")
-            return "ATC_6";
 
         int idx = Array.IndexOf(locs, location) + 1;          // 1-based
         return idx > 0 ? $"{process}_{idx}" : $"{process}_?";
@@ -138,5 +150,24 @@ public static class BmAnalyticsMappings
     {
         var map = mode == "TE" ? TeLocations : EeeLocations;
         return map.TryGetValue(process, out var locs) ? locs : [];
+    }
+
+    public static string[] GetLocations(string process, string mode, string legacyForm)
+    {
+        if (legacyForm == "12" &&
+            Form12EeeLocations.TryGetValue(process, out var form12Locations))
+            return form12Locations;
+
+        return GetLocations(process, mode);
+    }
+
+    public static string CellKey(string process, string location, string legacyForm)
+    {
+        var locs = GetLocations(process, "EEE", legacyForm);
+        if (legacyForm == "12" && process == "ATC" && location == "LSI3-1F")
+            return "ATC_65";
+
+        var idx = Array.IndexOf(locs, location) + 1;
+        return idx > 0 ? $"{process}_{idx}" : $"{process}_?";
     }
 }

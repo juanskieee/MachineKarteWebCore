@@ -51,7 +51,9 @@ namespace MachineKarte.Web.Services
                         Process = process,
                         Location = location,
                         Count = machines.Count,
-                        Machines = machines,
+                        Machines = machines
+                            .Distinct(StringComparer.OrdinalIgnoreCase)
+                            .ToList(),
                         NotApplicable = false
                     };
 
@@ -87,6 +89,8 @@ namespace MachineKarte.Web.Services
                 Process = process,
                 Location = location,
                 Machines = machines
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList()
             };
         }
 

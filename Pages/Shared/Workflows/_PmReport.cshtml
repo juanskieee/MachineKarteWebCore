@@ -1,0 +1,23 @@
+@model MachineKarte.Web.Pages.PmReportModel
+<div class="workflow workflow--PmReport" data-workflow="PmReport">
+@{
+    ViewData["Title"] = "PM Maintenance Record";
+    ViewData["Page"] = "PmReport";
+    Layout = null;
+}
+
+<div class="pm-report-page">
+    <header class="pm-report-header">
+        <div>
+            <h1>PM Maintenance Record</h1>
+            <p>Process: <strong id="PmReport-pmProcess" data-id="pmProcess">@Model.Process</strong> | BM ID: <strong id="PmReport-pmBmId" data-id="pmBmId">@Model.BmId</strong></p>
+        </div>
+        <button id="PmReport-pmGenerate" data-id="pmGenerate" class="pm-report-button" type="button">Generate report</button>
+    </header>
+
+    <div id="PmReport-pmStatus" data-id="pmStatus" class="pm-report-status" role="status" aria-live="polite"></div>
+    <a id="PmReport-pmDownload" data-id="pmDownload" class="pm-report-download" href="#" download hidden>Download report</a>
+</div>
+
+
+</div>

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Threading.Tasks;
 using MachineKarte.Web.Services.Reporting;
@@ -11,18 +11,11 @@ namespace MachineKarte.Web.Pages
     /// <summary>
     /// Form10 → TeEvidenceMaking.cshtml
     ///
-    /// This page has no visible UI of its own.
-    /// It is invoked two ways (matching VB Form10.EMakingPrint):
-    ///
-    ///   1. Direct navigation/fetch:
-    ///      GET /TeEvidenceMaking?handler=Generate&bmId=12345
-    ///      → generates the workbook, returns a JSON { url } pointing to the
-    ///        downloadable file.  The caller (BmRecord.js) opens the URL in a
-    ///        new tab, which triggers a browser Save-As / print dialog.
-    ///
-    ///   2. Called from uC_Test's "E→" footer button via BmRecord.js fetch.
+    /// Monitoring opens the TE evidence partial from a TE card's E action.
+    /// The existing Generate and Download handlers supply the workbook to that
+    /// dialog, matching Form10.EMakingPrint without standalone navigation.
     /// </summary>
-    public class TeEvidenceMakingModel : PageModel
+    public class TeEvidenceMakingModel : WorkflowPageModel
     {
         private readonly TeEvidenceMakingService _svc;
         private readonly string _outputRoot;

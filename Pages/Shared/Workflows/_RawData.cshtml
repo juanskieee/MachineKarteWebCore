@@ -1,0 +1,94 @@
+@model MachineKarte.Web.Pages.RawDataModel
+<div class="workflow workflow--RawData" data-workflow="RawData">
+@{
+    ViewData["Title"] = "Raw Data";
+    Layout = null;
+}
+
+    @* ── Hidden inputs carry query-string params into JS ────────────────────── *@
+<input type="hidden" id="RawData-hdnProcess" data-id="hdnProcess" value="@Model.Process" />
+<input type="hidden" id="RawData-hdnLocation" data-id="hdnLocation" value="@Model.Location" />
+<input type="hidden" id="RawData-hdnMachine" data-id="hdnMachine" value="@Model.Machine" />
+<input type="hidden" id="RawData-hdnDateFrom" data-id="hdnDateFrom" value="@Model.DateFrom" />
+<input type="hidden" id="RawData-hdnDateTo" data-id="hdnDateTo" value="@Model.DateTo" />
+
+<div id="RawData-raw-data-page" data-id="raw-data-page" class="rd-page">
+
+    @* ── Page header ─────────────────────────────────────────────────────── *@
+    <div class="rd-header">
+        <h2 class="rd-title">Raw Data</h2>
+        <span class="rd-subtitle">
+            @Model.Process &nbsp;|&nbsp; @Model.Location
+            @if (!string.IsNullOrEmpty(Model.DateFrom))
+            {
+                <span>&nbsp;|&nbsp; @Model.DateFrom &nbsp;–&nbsp; @Model.DateTo</span>
+            }
+        </span>
+    </div>
+
+    @* ── Loading / error banners ─────────────────────────────────────────── *@
+    <div id="RawData-rd-loading" data-id="rd-loading" class="rd-loading is-hidden">
+        <span class="rd-spinner"></span> Loading data…
+    </div>
+    <div id="RawData-rd-error" data-id="rd-error" class="rd-error is-hidden" role="alert"></div>
+
+    @* ══════════════════════════════════════════════════════════════════════
+       TOP SECTION — Frequency recurrence (Chart1 + DataGridView2)
+       ══════════════════════════════════════════════════════════════════════ *@
+    <div class="rd-section">
+        <div class="rd-panel rd-panel--chart" id="RawData-panel-freq-chart" data-id="panel-freq-chart">
+            <div class="rd-panel-title">BM Recurrence Frequency (by Month)</div>
+            <div class="rd-chart-wrap">
+                <div id="RawData-chart-frequency" data-id="chart-frequency"></div>
+            </div>
+        </div>
+
+        <div class="rd-panel rd-panel--grid" id="RawData-panel-freq-grid" data-id="panel-freq-grid">
+            <div class="rd-panel-title">Frequency Summary</div>
+            <div class="rd-grid-wrap">
+                <table id="RawData-grid-frequency" data-id="grid-frequency" class="rd-table">
+                    <thead>
+                        <tr>
+                            <th>Frequency</th>
+                            <th>Month / Year</th>
+                            <th>Count</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    @* ══════════════════════════════════════════════════════════════════════
+       BOTTOM SECTION — BM case count by month (Chart2 + DataGridView1)
+       ══════════════════════════════════════════════════════════════════════ *@
+    <div class="rd-section">
+        <div class="rd-panel rd-panel--chart" id="RawData-panel-bmcase-chart" data-id="panel-bmcase-chart">
+            <div class="rd-panel-title">BM Case Count by Month</div>
+            <div class="rd-chart-wrap">
+                <div id="RawData-chart-bmcase" data-id="chart-bmcase"></div>
+            </div>
+        </div>
+
+        <div class="rd-panel rd-panel--grid" id="RawData-panel-bmcase-grid" data-id="panel-bmcase-grid">
+            <div class="rd-panel-title">BM Case Detail</div>
+            <div class="rd-grid-wrap">
+                <table id="RawData-grid-bmcase" data-id="grid-bmcase" class="rd-table">
+                    <thead>
+                        <tr>
+                            <th>BM Case</th>
+                            <th>Month</th>
+                            <th>Year</th>
+                            <th>Count</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+</div>

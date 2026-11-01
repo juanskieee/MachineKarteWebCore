@@ -1,0 +1,65 @@
+@model MachineKarte.Web.Pages.BmReportModel
+<div class="workflow workflow--BmReport" data-workflow="BmReport">
+@{
+    ViewData["Title"] = "BM Maintenance Record";
+    Layout = null;
+    var bmId = Model.BmId;
+    var process = Model.Process;
+}
+
+<div class="bmreport-container">
+    <div class="bmreport-header">
+        <h2>BM Maintenance Record</h2>
+        <p class="bmreport-subtitle">
+            Record #<strong>@bmId</strong>
+            @if (!string.IsNullOrEmpty(process))
+            {
+                <span class="bmreport-process-badge">@process</span>
+            }
+        </p>
+    </div>
+
+    <div class="bmreport-actions">
+        <form id="BmReport-frmDownload" data-id="frmDownload" method="post"
+              action="/BmReport?handler=DownloadReport">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="bmId" value="@bmId" />
+            <input type="hidden" name="process" value="@(string.IsNullOrEmpty(process) ? "TE" : process)" />
+
+            <button type="submit" id="BmReport-btnDownload" data-id="btnDownload" class="btn-download">
+                Download Report (.xlsx)
+            </button>
+        </form>
+
+        <div id="BmReport-reportStatus" data-id="reportStatus" class="report-status" role="status" aria-live="polite"></div>
+    </div>
+
+    <div class="bmreport-info">
+        <p>
+            The report is generated directly from the database and downloaded as an
+            Excel workbook (<code>.xlsx</code>).
+            Open it in Microsoft Excel or any compatible spreadsheet application.
+        </p>
+        @if (!string.IsNullOrEmpty(process))
+        {
+            <p>
+                Template used:
+                @if (process == "EDS")
+                {
+                    <strong>EDS-CSP Template</strong>
+                }
+                else
+                {
+                    <strong>TE Template</strong>
+                }
+            </p>
+        }
+    </div>
+</div>
+
+<div id="BmReport-bmReportConfig" data-id="bmReportConfig"
+     data-bmid="@bmId"
+     data-process="@process">
+</div>
+
+</div>

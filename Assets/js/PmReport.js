@@ -1,10 +1,14 @@
-(() => {
+Workflows.register('PmReport', (root, options, context) => {
+    const byId = id => root.querySelector('[data-id="' + id + '"], [id="' + id + '"]');
+    const fetch = context.fetch;
+    const setInterval = context.setInterval;
+    const setTimeout = context.setTimeout;
     'use strict';
 
-    const config = window.__pmReport ?? {};
-    const button = document.getElementById('pmGenerate');
-    const status = document.getElementById('pmStatus');
-    const download = document.getElementById('pmDownload');
+    const config = options;
+    const button = byId('pmGenerate');
+    const status = byId('pmStatus');
+    const download = byId('pmDownload');
 
     button?.addEventListener('click', generate);
 
@@ -48,4 +52,4 @@
         status.textContent = message;
         status.dataset.state = state;
     }
-})();
+});

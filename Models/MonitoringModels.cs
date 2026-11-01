@@ -53,6 +53,10 @@ namespace MachineKarte.Web.Models
         public string Priority { get; set; } = string.Empty;
         public string MCStatus { get; set; } = string.Empty;
         public string FontColor { get; set; } = "None";
+        public string ActionMarker { get; set; } = string.Empty;
+        public string SectionMarker { get; set; } = string.Empty;
+        public string DepartmentMarker { get; set; } = string.Empty;
+        public string DivisionMarker { get; set; } = string.Empty;
     }
 
     /// <summary>
@@ -106,6 +110,7 @@ namespace MachineKarte.Web.Models
         public string MachineNo { get; set; } = string.Empty;
         public string MachineType { get; set; } = string.Empty;
         public int ActionLine { get; set; } = 4;
+        public int NeedActionCount { get; set; }
         public List<BMCardRow> BMCards { get; set; } = new();
     }
 }
