@@ -170,4 +170,23 @@ public static class BmAnalyticsMappings
         var idx = Array.IndexOf(locs, location) + 1;
         return idx > 0 ? $"{process}_{idx}" : $"{process}_?";
     }
+
+    private static readonly Dictionary<string, string> DesignerLayouts = new[] { "8", "12" }
+        .ToDictionary(legacyForm => legacyForm, legacyForm => System.Text.Json.JsonSerializer.Serialize(new
+        {
+            columns = AllLocations,
+            modes = new[] { "EEE", "TE" }.ToDictionary(mode => mode, mode =>
+                MachineSummaryConfig.EeeProcessOrder.Select(process => new
+                {
+                    process,
+                    cells = (legacyForm == "12" ? MachineSummaryConfig.DisplayLocations[process]
+                        : GetLocations(process, "EEE")).ToDictionary(
+                        location => location, location => CellKey(process, location, legacyForm)),
+                    queryLocations = GetProcesses(mode).Contains(process)
+                        ? GetLocations(process, mode, legacyForm) : System.Array.Empty<string>()
+                }))
+        }));
+
+    public static string GetDesignerLayoutJson(string legacyForm) =>
+        DesignerLayouts[legacyForm == "12" ? "12" : "8"];
 }

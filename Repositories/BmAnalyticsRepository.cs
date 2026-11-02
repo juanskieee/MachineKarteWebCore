@@ -22,19 +22,19 @@ public class BmAnalyticsRepository
     private const string EeeSql = @"
         SELECT
             a.Devicename,
-            ISNULL((SELECT 'Yes'
+            CASE WHEN EXISTS (SELECT 1
                     FROM MachineKarte_MCD
                     WHERE REPLACE(Devicename,' ','') = REPLACE(a.devicename,' ','')
-                      AND isactive = 1), 'No')          AS isMCD,
+                      AND isactive = 1) THEN 'Yes' ELSE 'No' END AS isMCD,
             a.process,
             a.location,
             a.Mcno                                      AS Mcno,
             FORMAT(a.Timeofrequest,'MM/dd/yyyy HH:mm:ss') AS Timeofrequest,
             b.BMCase                                    AS BMCase,
             a.bmid,
-            ISNULL((SELECT 'Yes'
+            CASE WHEN EXISTS (SELECT 1
                     FROM MachineKarte_ActionCard
-                    WHERE bmid = a.bmID AND machineno = a.mcno), 'No') AS HaveAction,
+                    WHERE bmid = a.bmID AND machineno = a.mcno) THEN 'Yes' ELSE 'No' END AS HaveAction,
             COALESCE(
                 CASE
                     WHEN a.AcredBMContentID <> a.BMContentID THEN
@@ -53,8 +53,8 @@ public class BmAnalyticsRepository
         FROM [eMaintenanceSystemDB].[dbo].[{0}BMMaintenance] a
         INNER JOIN [eMaintenanceSystemDB].[dbo].[BMCase] b
             ON a.BMCaseID = b.BMCaseID
-        LEFT JOIN [eMaintenanceSystemDB].[dbo].[MachineKarte_ActionCard] c
-            ON a.bmID = c.bmID AND a.mcno = c.machineno
+        OUTER APPLY (SELECT TOP (1) ac.mcstatus FROM [eMaintenanceSystemDB].[dbo].[MachineKarte_ActionCard] ac
+                     WHERE ac.bmID = a.bmID AND ac.machineno = a.mcno ORDER BY ac.Seqno DESC) c
         WHERE (a.timeofrequest BETWEEN @Range1 AND @Range2)
           AND  a.Pmcategoryid = '1'
           AND  a.BMStatusID NOT IN ('30','31')
@@ -68,19 +68,19 @@ public class BmAnalyticsRepository
     private const string TeSql = @"
         SELECT
             a.Devicename,
-            ISNULL((SELECT 'Yes'
+            CASE WHEN EXISTS (SELECT 1
                     FROM MachineKarte_MCD
                     WHERE REPLACE(Devicename,' ','') = REPLACE(a.devicename,' ','')
-                      AND isactive = 1), 'No')          AS isMCD,
+                      AND isactive = 1) THEN 'Yes' ELSE 'No' END AS isMCD,
             a.process,
             a.location,
             a.testerNo                                  AS Mcno,
             FORMAT(a.Timeofrequest,'MM/dd/yyyy HH:mm:ss') AS Timeofrequest,
             b.bmteunit                                  AS BMCase,
             a.bmid,
-            ISNULL((SELECT 'Yes'
+            CASE WHEN EXISTS (SELECT 1
                     FROM MachineKarte_ActionCard_TE
-                    WHERE bmid = a.bmID AND machineno = a.testerno), 'No') AS HaveAction,
+                    WHERE bmid = a.bmID AND machineno = a.testerno) THEN 'Yes' ELSE 'No' END AS HaveAction,
             COALESCE(
                 CASE
                     WHEN a.AcredBMContentID <> a.BMContentID THEN
@@ -99,8 +99,8 @@ public class BmAnalyticsRepository
         FROM [eMaintenanceSystemDB].[dbo].[teBMMaintenance] a
         INNER JOIN [eMaintenanceSystemDB].[dbo].[BMTEUnit] b
             ON a.bmunitid = b.bmteunitid
-        LEFT JOIN [eMaintenanceSystemDB].[dbo].[MachineKarte_ActionCard_TE] c
-            ON a.bmID = c.bmID AND a.testerno = c.machineno
+        OUTER APPLY (SELECT TOP (1) ac.mcstatus FROM [eMaintenanceSystemDB].[dbo].[MachineKarte_ActionCard_TE] ac
+                     WHERE ac.bmID = a.bmID AND ac.machineno = a.testerno ORDER BY ac.Seqno DESC) c
         WHERE (a.timeofrequest BETWEEN @Range1 AND @Range2)
           AND (a.Pmcategoryid = '1' OR a.Pmcategoryid = '4')
           AND  a.BMStatusID NOT IN ('30','31','1','2','3','7','17')

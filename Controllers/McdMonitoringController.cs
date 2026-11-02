@@ -4,27 +4,28 @@ using System.Threading.Tasks;
 using MachineKarte.Web.Models;
 using MachineKarte.Web.Services;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.RazorPages;
 
-namespace MachineKarte.Web.Pages
+namespace MachineKarte.Web.Controllers
 {
-    public class McdMonitoringModel : WorkflowPageModel
+    public class McdMonitoringController : WorkflowController
     {
         private readonly McdMonitoringService _service;
 
-        public McdMonitoringModel(McdMonitoringService service)
+        public McdMonitoringController(McdMonitoringService service)
         {
             _service = service;
         }
 
-        public void OnGet() { }
+        [HttpGet, WorkflowHandler]
+        public IActionResult Index() => WorkflowView();
 
         // ─────────────────────────────────────────────────────────────────────
         // GET /McdMonitoring?handler=Dashboard&dateFrom=...&dateTo=...&userRole=...
         // Returns the complete process × location grid.
         // ─────────────────────────────────────────────────────────────────────
 
-        public async Task<IActionResult> OnGetDashboardAsync(
+        [HttpGet, WorkflowHandler("Dashboard")]
+        public async Task<IActionResult> DashboardAsync(
             string dateFrom, string dateTo, string userRole)
         {
             try
@@ -53,7 +54,8 @@ namespace MachineKarte.Web.Pages
         // Returns the machine list for one clicked cell.
         // ─────────────────────────────────────────────────────────────────────
 
-        public async Task<IActionResult> OnGetMachineListAsync(
+        [HttpGet, WorkflowHandler("MachineList")]
+        public async Task<IActionResult> MachineListAsync(
             string cellKey, string dateFrom, string dateTo, string userRole)
         {
             try

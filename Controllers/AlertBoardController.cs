@@ -1,24 +1,25 @@
 using MachineKarte.Web.Models;
 using MachineKarte.Web.Services;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.RazorPages;
 
-namespace MachineKarte.Web.Pages;
+namespace MachineKarte.Web.Controllers;
 
-public class AlertBoardModel : WorkflowPageModel
+public class AlertBoardController : WorkflowController
 {
 	private readonly AlertBoardService _service;
-	private readonly ILogger<AlertBoardModel> _logger;
+	private readonly ILogger<AlertBoardController> _logger;
 
-	public AlertBoardModel(AlertBoardService service, ILogger<AlertBoardModel> logger)
+	public AlertBoardController(AlertBoardService service, ILogger<AlertBoardController> logger)
 	{
 		_service = service;
 		_logger = logger;
 	}
 
-	public IActionResult OnGet() => Page();
+	[HttpGet, WorkflowHandler]
+	public IActionResult Index() => WorkflowView();
 
-	public async Task<IActionResult> OnPostLoadBoardAsync([FromBody] AlertBoardRequest request)
+	[HttpPost, WorkflowHandler("LoadBoard")]
+	public async Task<IActionResult> LoadBoardAsync([FromBody] AlertBoardRequest request)
 	{
 		try
 		{
@@ -36,7 +37,8 @@ public class AlertBoardModel : WorkflowPageModel
 		}
 	}
 
-	public async Task<IActionResult> OnGetDrilldownAsync(
+	[HttpGet, WorkflowHandler("Drilldown")]
+	public async Task<IActionResult> DrilldownAsync(
 		string cellKey, string dateFrom, string dateTo, string user = "")
 	{
 		try

@@ -56,6 +56,7 @@ Workflows.register('McdMonitoring', (root, options, context) => {
         byId('btnPanelCancel').addEventListener('click', closePanel);
         byId('btnGoToMonitoring').addEventListener('click', goToMonitoring);
         panelOverlay().addEventListener('click', closePanel);
+        context.dismissOnOutside(machinePanel(), closePanel);
 
         root.addEventListener('keydown', e => {
             if (e.key === 'Escape' && !machinePanel().classList.contains('is-hidden')) closePanel();

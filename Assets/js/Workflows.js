@@ -25,12 +25,16 @@ window.Workflows = (() => {
     async function open(name, values = {}) {
         if (!Object.hasOwn(titles, name)) return;
         if (['AlertBoard', 'MachineSummary', 'BmAnalytics'].includes(name)) {
+            const today = new Date();
+            const day = offset => {
+                const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() + offset);
+                return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+            };
             values = {
-                userType: document.getElementById('cbUser').value || 'PM',
-                process: document.getElementById('cbProcess').value,
-                dateFrom: document.getElementById('dt1').value,
-                dateTo: document.getElementById('dt2').value,
-                ...values
+                userType: values.userType || document.getElementById('cbUser').value || 'PM',
+                dateFrom: day(-30),
+                dateTo: day(1),
+                ...(name === 'BmAnalytics' ? { legacyForm: values.legacyForm || '8' } : {})
             };
             values.userMode = values.userType === 'TE' ? 'TE' : 'EEE';
         }
@@ -69,6 +73,18 @@ window.Workflows = (() => {
             },
             onRefresh(callback) {
                 window.addEventListener('monitoring:refresh', callback, { signal });
+            },
+            dismissOnOutside(panel, dismiss) {
+                document.addEventListener('click', event => {
+                    if (panel.getClientRects().length && !panel.contains(event.target)) dismiss();
+                }, { capture: true, signal });
+                document.addEventListener('keydown', event => {
+                    if (event.key === 'Escape' && panel.getClientRects().length) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        dismiss();
+                    }
+                }, { capture: true, signal });
             }
         };
 
@@ -82,8 +98,6 @@ window.Workflows = (() => {
             body.innerHTML = html;
             const root = body.querySelector('[data-workflow]');
             if (!root || !initializers.has(name)) throw new Error('This window could not be initialized. Try again.');
-            const summaryContext = root.querySelector('[data-id="summaryContext"]');
-            if (summaryContext) summaryContext.textContent = `Monitoring: ${values.userType} · ${values.process} · ${values.dateFrom} to ${values.dateTo}`;
             root.addEventListener('keydown', event => {
                 if (!event.defaultPrevented && (event.key === 'Enter' || event.key === ' ') && event.target.matches('[role="button"]:not(button)')) {
                     event.preventDefault();
@@ -113,6 +127,14 @@ window.Workflows = (() => {
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('dialog').forEach(modal => {
+            modal.addEventListener('click', event => {
+                if (event.target !== modal) return;
+                const bounds = modal.getBoundingClientRect();
+                if (event.clientX < bounds.left || event.clientX > bounds.right ||
+                    event.clientY < bounds.top || event.clientY > bounds.bottom) modal.close();
+            });
+        });
         const dialog = document.getElementById('workflowDialog');
         document.getElementById('workflowClose').addEventListener('click', close);
         dialog.addEventListener('close', () => {

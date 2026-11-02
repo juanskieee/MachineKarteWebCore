@@ -423,10 +423,11 @@ namespace MachineKarte.Web.Repositories
         // PC Status tracking (UpdatePCStatus / CheckIfExisting from Form1)
         // ----------------------------------------------------------------
 
-        public async Task UpsertPCStatusAsync(string pcName, string ipAddress, string version)
+        public async Task UpsertPCStatusAsync(
+            string pcName, string ipAddress, string version, CancellationToken cancellationToken = default)
         {
             await using var conn = Open();
-            await conn.OpenAsync();
+            await conn.OpenAsync(cancellationToken);
 
             bool exists = false;
             await using (var chk = new SqlCommand(
@@ -434,7 +435,7 @@ namespace MachineKarte.Web.Repositories
                 conn))
             {
                 chk.Parameters.AddWithValue("@PCname", pcName);
-                var res = await chk.ExecuteScalarAsync();
+                var res = await chk.ExecuteScalarAsync(cancellationToken);
                 exists = res != null;
             }
 
@@ -448,7 +449,7 @@ namespace MachineKarte.Web.Repositories
             cmd.Parameters.AddWithValue("@LastOpen", DateTime.Now.ToString("MM/dd/yyyy hh:mm:ss"));
             cmd.Parameters.AddWithValue("@Version", version);
             cmd.Parameters.AddWithValue("@UserType", "PM");
-            await cmd.ExecuteNonQueryAsync();
+            await cmd.ExecuteNonQueryAsync(cancellationToken);
         }
 
         // ----------------------------------------------------------------

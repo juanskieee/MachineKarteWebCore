@@ -1,33 +1,20 @@
-@model MachineKarte.Web.Pages.BmAnalyticsModel
+@model MachineKarte.Web.Models.BmAnalyticsViewModel
 <div class="workflow workflow--BmAnalytics" data-workflow="BmAnalytics">
 @{
     ViewData["Title"] = "BM Analytics";
     Layout = null;
-    var displayProcesses = new[] { "DC", "DB", "WB", "MP", "PL", "ATC", "FL", "SING", "FT", "TP", "EDS", "MEMS" };
-    var layout = new {
-        columns = BmAnalyticsMappings.AllLocations,
-        modes = new[] { "EEE", "TE" }.ToDictionary(mode => mode, mode =>
-            displayProcesses.Select(process => new {
-                process,
-                cells = (BmAnalyticsMappings.GetProcesses(mode).Contains(process)
-                    ? BmAnalyticsMappings.GetLocations(process, mode, Model.LegacyForm)
-                    : System.Array.Empty<string>()).ToDictionary(
-                    location => location, location => BmAnalyticsMappings.CellKey(process, location, Model.LegacyForm))
-            }))
-    };
 }
 <div class="bma-page monitoring-family-page">
     <input type="hidden" id="BmAnalytics-legacyForm" data-id="legacyForm" value="@Model.LegacyForm" />
     <div class="bma-toolbar monitoring-family-toolbar summary-toolbar">
-        <p class="summary-context" data-id="summaryContext"></p>
         <div class="summary-search">
             <span data-id="summaryLoading" class="summary-loading" role="status" hidden><span class="spinner" aria-hidden="true"></span>Loading…</span>
             <button id="BmAnalytics-btnSearch" data-id="btnSearch" class="btn-primary" type="button">Search</button>
         </div>
-        <p id="BmAnalytics-lblStatus" data-id="lblStatus" class="summary-status" role="status" aria-live="polite"></p>
+        <p data-id="summaryError" class="summary-error" role="alert" hidden></p>
     </div>
     <div class="bma-grid-wrapper monitoring-family-content summary-grid" id="BmAnalytics-gridWrapper" data-id="gridWrapper"
-         data-layout="@System.Text.Json.JsonSerializer.Serialize(layout)"></div>
+         data-layout="@BmAnalyticsMappings.GetDesignerLayoutJson(Model.LegacyForm)"></div>
     <div class="bma-flyout summary-machine-panel is-hidden" id="BmAnalytics-flyoutPanel" data-id="flyoutPanel">
         <div class="summary-panel-header">
             <span id="BmAnalytics-flyoutTitle" data-id="flyoutTitle"></span>

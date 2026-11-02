@@ -14,7 +14,7 @@
 .workflow-error { color: #a00000; background: #fff; }
 .workflow { position: relative; min-width: 0; }
 .workflow--AlertBoard { --summary-accent: tomato; --summary-label: mistyrose; --summary-heading: #111; }
-.workflow--AlertBoard { position: static; }
+.workflow--AlertBoard, .workflow--MachineSummary, .workflow--BmAnalytics, .workflow--McdMonitoring { position: static; }
 .workflow--MachineSummary, .workflow--McdMonitoring { --summary-accent: blue; --summary-label: azure; --summary-heading: #fff; }
 .workflow--BmAnalytics { --summary-accent: darkorange; --summary-label: bisque; --summary-heading: #111; }
 .workflow :is(.ab-container, .ms-wrapper, .mcd-page, .bma-page) { padding: 4px; display: flex; flex-direction: column; gap: 4px; background: silver; }
@@ -27,12 +27,12 @@
 .workflow .filter-group { display: flex; flex-direction: column; }
 .workflow .filter-btn-group { margin-left: auto; }
 .workflow :is(.ab-panel, .ms-grid-scroll, .mcd-grid-wrapper, .bma-grid-wrapper) { overflow: auto; background: dimgray; border: 2px solid dimgray; margin: 0 !important; border-radius: 0; box-shadow: none; min-height: 180px; }
-.workflow :is(.ms-grid, .bma-table) { border-collapse: collapse; table-layout: fixed; width: 100%; min-width: 1000px; margin: 0; font-size: 16px; background: dimgray; }
-.workflow :is(.ms-grid, .bma-table) :is(td, th) { border: 1px solid dimgray; padding: 3px; text-align: center; height: 42px; font-variant-numeric: tabular-nums; vertical-align: middle; }
-.workflow :is(.ms-grid, .bma-table) thead th { position: sticky; top: 0; z-index: 1; font-size: 13px; font-weight: 700; background: lightgray; color: #111; white-space: nowrap; }
+.workflow :is(.ms-grid, .bma-table, .ab-table) { border-collapse: collapse; table-layout: fixed; width: 100%; min-width: 1000px; margin: 0; font-size: 16px; background: dimgray; }
+.workflow :is(.ms-grid, .bma-table, .ab-table) :is(td, th) { border: 1px solid dimgray; padding: 3px; text-align: center; height: 42px; font-variant-numeric: tabular-nums; vertical-align: middle; }
+.workflow :is(.ms-grid, .bma-table, .ab-table) thead th { position: sticky; top: 0; z-index: 1; font-size: 13px; font-weight: 700; background: lightgray; color: #111; white-space: nowrap; }
 .workflow :is(.ms-th-process, .bma-hdr-process, .ms-th-total, .bma-hdr-total) { background: var(--summary-accent) !important; color: var(--summary-heading) !important; }
 .workflow :is(.ms-td-process, .bma-proc-label) { background: var(--summary-label); font-weight: 700; font-size: 15px; }
-.workflow :is(.ms-cell, .bma-cell) { background: #fff; color: #111; }
+.workflow :is(.ms-cell, .bma-cell, .ab-cell) { background: #fff; color: #111; }
 .workflow :is(.ms-na, .bma-cell-na) { background: lightgray; color: #444; }
 .workflow :is(.ms-active, .bma-cell-active) { cursor: pointer; color: #a00000; font-weight: 700; }
 .workflow :is(.ms-active, .bma-cell-active):hover { background: #dde6ed; }
@@ -65,16 +65,15 @@
 .workflow :is(.ms-overlay, .mcd-overlay) { display: none; }
 .workflow :is(.mcd-grid-empty, .ms-panel-message) { padding: 20px; background: #fff; }
 /* The three primary summaries share controls, loading feedback, and machine lookup styling. */
-.workflow .summary-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 8px 16px; }
-.workflow .summary-context { margin: 0; align-self: center; font-size: 12px; overflow-wrap: anywhere; }
+.workflow .summary-toolbar { display: grid; grid-template-columns: minmax(0, 1fr); align-items: end; gap: 8px 16px; }
 .workflow .summary-search { display: flex; align-items: center; justify-content: end; gap: 12px; }
 .workflow .summary-toolbar .summary-search button { margin: 0; }
-.workflow .summary-status { grid-column: 1 / -1; min-height: 18px; margin: 0; font-size: 12px; }
+.workflow .summary-error { margin: 0; color: #a00000; font-size: 12px; }
 .workflow .summary-loading { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; font-size: 12px; }
 .workflow .summary-loading .spinner { width: 18px; height: 18px; border-color: #888; border-top-color: #343434; }
 .workflow[aria-busy="true"] .summary-grid { cursor: progress; }
-.workflow :is(.ms-grid, .bma-table) thead th:first-child { width: 100px; }
-.workflow :is(.ms-grid, .bma-table) thead th:last-child { width: 85px; }
+.workflow :is(.ms-grid, .bma-table, .ab-table) thead th:first-child { width: 100px; }
+.workflow :is(.ms-grid, .bma-table, .ab-table) thead th:last-child { width: 85px; }
 :is(.workflow, .machine-list-sidebar) .summary-panel-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 8px 6px 12px; background: #dde6ed; font-weight: 700; }
 :is(.workflow, .machine-list-sidebar) .summary-panel-header > span { min-width: 0; overflow-wrap: anywhere; }
 :is(.workflow, .machine-list-sidebar) .summary-panel-close { flex: 0 0 40px; width: 40px; height: 40px; padding: 0; border: 0; background: tomato; color: #111; font-size: 24px; line-height: 1; }
@@ -87,7 +86,7 @@
 :is(.workflow, .machine-list-sidebar) .summary-panel-go { min-height: 36px; margin: 0; padding: 6px 16px; border: 0; background: var(--summary-accent); color: var(--summary-heading); }
 @media (max-width: 600px) {
     .workflow .summary-grid { max-height: max(180px, calc(100dvh - 340px)); }
-    .workflow .summary-grid .ab-header-row { position: sticky; top: 0; z-index: 1; }
+
     .workflow .summary-toolbar { grid-template-columns: minmax(0, 1fr); }
 }
 /* The report designers are document windows. Keep a document workspace and native download controls. */
@@ -113,4 +112,10 @@
 .workflow .preview-filename { overflow-wrap: anywhere; flex: 1; }
 .workflow .status-spinner { display: flex; gap: 8px; align-items: center; }
 @media (max-width: 600px) { .workflow-dialog, .workflow-dialog[data-workflow] { width: calc(100% - 12px); max-height: calc(100dvh - 12px); } .workflow-titlebar { padding-left: 8px; } .workflow-titlebar h2 { font-size: 14px; } .workflow :is(.ms-panel, .ab-drilldown, .mcd-machine-panel, .bma-flyout) { left: 3%; width: 94%; } .workflow :is(.ab-toolbar, .ms-toolbar, .mcd-filter-bar, .bma-toolbar) { align-items: stretch; } .workflow input[type="datetime-local"] { max-width: 100%; } }
-.workflow .ab-drilldown { top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(546px, calc(100% - 16px)); max-height: calc(100% - 64px); }
+.workflow :is(.ab-drilldown, .ms-panel, .bma-flyout, .mcd-machine-panel) { top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(546px, calc(100% - 16px)); max-height: calc(100% - 64px); }
+
+.workflow .ab-table :is(.ab-hdr-process, .ab-hdr-total), .workflow .ab-totals-row .ab-cell-label { background: var(--summary-accent); color: #fff; }
+.workflow .ab-table .ab-hdr-loc { background: var(--summary-label); }
+.workflow .ab-table .ab-cell-label { background: var(--summary-label); font-size: 15px; font-weight: 700; }
+.workflow .ab-table .ab-cell-na { background: lightgray; }
+.workflow .ab-table .ab-cell-grand { color: red; }

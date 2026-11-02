@@ -46,13 +46,15 @@ try {
     $assetPaths = @([regex]::Matches($monitoringHtml, '<(?:link|script)\b[^>]*(?:href|src)="(/[^"]+)"') |
         ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
     if (!$assetPaths.Count) { throw 'Monitoring did not render any local assets.' }
+    $versionedAssets = @($assetPaths | Where-Object { $_ -like '/Assets/*' })
+    if ($monitoringHtml.Contains('asp-append-version') -or @($versionedAssets | Where-Object { $_ -notmatch '\?v=\d+$' }).Count) { throw 'Monitoring assets do not have real cache-busting versions.' }
     foreach ($assetPath in $assetPaths) {
         $asset = $client.GetAsync([Uri]::new([Uri]$BaseUrl, $assetPath)).GetAwaiter().GetResult()
         try {
             if (!$asset.IsSuccessStatusCode) { throw "Missing Monitoring asset: $assetPath ($([int]$asset.StatusCode))" }
         } finally { $asset.Dispose() }
     }
-    Write-Output "PASS: all $($assetPaths.Count) local Monitoring stylesheets and scripts"
+    Write-Output "PASS: all $($assetPaths.Count) local Monitoring stylesheets and scripts; Assets URLs include real file versions"
     foreach ($name in @('AlertBoard','MachineSummary','McdMonitoring','BmAnalytics','RawData','OcapViewer','PmReport','BmReport','EvidenceMaking','TeEvidenceMaking','ActionCards')) {
         $redirect = $client.GetAsync("$BaseUrl/$name").GetAwaiter().GetResult()
         $fragment = $client.GetAsync("$BaseUrl/${name}?dialog=1&bmId=123&legacyForm=12").GetAwaiter().GetResult()
@@ -86,6 +88,14 @@ try {
     Write-Output (Invoke-JavaScript 'window.runSummaryChecks()')
     Write-Output (Invoke-JavaScript 'window.runMonitoringChecks()')
     Write-Output (Invoke-JavaScript 'window.runDocumentChecks()')
+    foreach ($name in @('AlertBoard','MachineSummary','McdMonitoring','BmAnalytics','RawData','OcapViewer','PmReport','BmReport','EvidenceMaking','TeEvidenceMaking','ActionCards','MachineList')) {
+        Invoke-JavaScript ("window.prepareWorkflowCapture('" + $name + "')") | Out-Null
+        Invoke-Cdp 'Input.dispatchMouseEvent' @{ type='mousePressed'; x=1; y=1; button='left'; clickCount=1 } | Out-Null
+        Invoke-Cdp 'Input.dispatchMouseEvent' @{ type='mouseReleased'; x=1; y=1; button='left'; clickCount=1 } | Out-Null
+        Invoke-JavaScript "new Promise(resolve => setTimeout(resolve, 50))" | Out-Null
+        if (!(Invoke-JavaScript "!document.querySelector('dialog[open]') && !document.body.classList.contains('workflow-open')")) { throw "$name did not dismiss on backdrop click." }
+    }
+    Write-Output 'PASS: all eleven workflows and the machine chooser dismiss on real backdrop clicks'
     Invoke-JavaScript "document.getElementById('btnMCD').focus(); window.prepareWorkflowCapture('MachineSummary')" | Out-Null
     Invoke-Cdp 'Input.dispatchKeyEvent' @{type='keyDown';key='Tab';code='Tab';windowsVirtualKeyCode=9;modifiers=1} | Out-Null
     if (!(Invoke-JavaScript "document.getElementById('workflowDialog').contains(document.activeElement)")) { throw 'Dialog did not trap keyboard focus.' }
@@ -101,12 +111,20 @@ try {
             $capture = Invoke-Cdp 'Page.captureScreenshot' @{ format='png'; captureBeyondViewport=$false }
             [IO.File]::WriteAllBytes((Join-Path $ArtifactDirectory ($viewport.name + '-' + $surface + '.png')), [Convert]::FromBase64String($capture.data))
         }
+        Write-Output (Invoke-JavaScript "window.prepareWorkflowCapture('MonitoringOverflow')")
+        $capture = Invoke-Cdp 'Page.captureScreenshot' @{ format='png'; captureBeyondViewport=$false }
+        [IO.File]::WriteAllBytes((Join-Path $ArtifactDirectory ($viewport.name + '-MonitoringOverflow.png')), [Convert]::FromBase64String($capture.data))
         foreach ($summary in @('AlertBoard','MachineSummary','BmAnalytics')) {
             foreach ($state in @('loading','panel')) {
                 Write-Output (Invoke-JavaScript ("window.prepareSummaryCapture('" + $summary + "','" + $state + "')"))
                 $capture = Invoke-Cdp 'Page.captureScreenshot' @{ format='png'; captureBeyondViewport=$false }
                 [IO.File]::WriteAllBytes((Join-Path $ArtifactDirectory ($viewport.name + '-' + $summary + '-' + $state + '.png')), [Convert]::FromBase64String($capture.data))
             }
+        }
+        foreach ($summary in @('MachineSummary','BmAnalytics')) {
+            Write-Output (Invoke-JavaScript ("window.prepareSummaryCapture('" + $summary + "','grid','TE')"))
+            $capture = Invoke-Cdp 'Page.captureScreenshot' @{ format='png'; captureBeyondViewport=$false }
+            [IO.File]::WriteAllBytes((Join-Path $ArtifactDirectory ($viewport.name + '-' + $summary + '-TE.png')), [Convert]::FromBase64String($capture.data))
         }
     }
     Write-Output "PASS: desktop/mobile captures in $ArtifactDirectory"

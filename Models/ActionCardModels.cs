@@ -84,6 +84,7 @@ namespace MachineKarte.Web.Models
     public class ActionCardData
     {
         // ── Header (read-only display) ──────────────────────────────
+        public int Seqno { get; set; }                  // Exact existing card to update
         public string BmId { get; set; } = string.Empty;   // lblBMID
         public string MachineNo { get; set; } = string.Empty;   // tbMachineNo
         public string DateCard { get; set; } = string.Empty;   // tbDate

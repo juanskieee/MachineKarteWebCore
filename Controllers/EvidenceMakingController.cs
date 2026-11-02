@@ -1,22 +1,20 @@
-// Pages/EvidenceMaking.cshtml.cs
 // Converted from Form4.vb — E-Karte System
-// C# ASP.NET Core Razor Pages
+// ASP.NET Core workflow controller
 
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.RazorPages;
 using MachineKarte.Web.Models;
 using MachineKarte.Web.Services.Reporting;
 
-namespace MachineKarte.Web.Pages
+namespace MachineKarte.Web.Controllers
 {
-    public class EvidenceMakingModel : WorkflowPageModel
+    public class EvidenceMakingController : WorkflowController
     {
         private readonly EvidenceMakingService _svc;
-        private readonly ILogger<EvidenceMakingModel> _logger;
+        private readonly ILogger<EvidenceMakingController> _logger;
 
-        public EvidenceMakingModel(
+        public EvidenceMakingController(
             EvidenceMakingService svc,
-            ILogger<EvidenceMakingModel> logger)
+            ILogger<EvidenceMakingController> logger)
         {
             _svc = svc;
             _logger = logger;
@@ -27,20 +25,16 @@ namespace MachineKarte.Web.Pages
         //   /EvidenceMaking?process=DC&bmId=1234
         // Mirrors Form4 being called from Form1 with EMakingPrint args.
 
-        [BindProperty(SupportsGet = true)]
-        public string? PresetProcess { get; set; }
-
-        [BindProperty(SupportsGet = true)]
-        public int? PresetBmId { get; set; }
-
-        public void OnGet() { }
+        [HttpGet, WorkflowHandler]
+        public IActionResult Index() => WorkflowView();
 
         // ── POST: Generate ───────────────────────────────────────────
         // Mirrors EMakingPrint(ProcessCase, bmid)
         // POST /EvidenceMaking?handler=Generate
         // Body: { process: "DC", bmId: 1234 }
 
-        public async Task<IActionResult> OnPostGenerateAsync(
+        [HttpPost, WorkflowHandler("Generate")]
+        public async Task<IActionResult> GenerateAsync(
             [FromBody] EvidenceGenerateRequest request)
         {
             if (string.IsNullOrWhiteSpace(request.Process))
@@ -90,7 +84,8 @@ namespace MachineKarte.Web.Pages
         // Mirrors: wb.Save(localFilePath) + Process.Start("iexplore.exe", path)
         // GET /EvidenceMaking?handler=Download&fileName=DCEvidence_123.xlsx
 
-        public IActionResult OnGetDownload(string fileName)
+        [HttpGet, WorkflowHandler("Download")]
+        public IActionResult Download(string fileName)
         {
             if (string.IsNullOrWhiteSpace(fileName) ||
                 fileName.Contains("..") || Path.IsPathRooted(fileName))

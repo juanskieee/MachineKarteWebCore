@@ -72,14 +72,29 @@ namespace MachineKarte.Web.Services
             if (req.Card.McStatus == "-SELECT-" || string.IsNullOrWhiteSpace(req.Card.McStatus))
                 return Fail("Please select a MC Status.");
 
+            if (req.StatusId is not ("New" or "Existing"))
+                return Fail("Invalid action card status. Please reopen the card.");
+
+            if (!int.TryParse(req.Card.BmId, out var bmId) || bmId <= 0 ||
+                string.IsNullOrWhiteSpace(req.Card.MachineNo))
+                return Fail("A valid BM ID and machine number are required.");
+
+            if (req.StatusId == "Existing" && req.Card.Seqno <= 0)
+                return Fail("Please reopen the existing action card before saving.");
+
             try
             {
-                if (req.StatusId == "Existing")
-                    await _repo.UpdateAsync(req.Card, req.Card.UserType);
-                else
-                    await _repo.InsertAsync(req.Card, req.Card.UserType);
+                bool existing = req.StatusId == "Existing";
+                bool saved = existing
+                    ? await _repo.UpdateAsync(req.Card, req.Card.UserType)
+                    : await _repo.InsertAsync(req.Card, req.Card.UserType);
 
-                string msg = req.StatusId == "Existing"
+                if (!saved)
+                    return Fail(existing
+                        ? "This action card no longer matches the loaded record. Refresh Monitoring and reopen it."
+                        : "An action card already exists for this BM. Refresh Monitoring and open the existing card.");
+
+                string msg = existing
                     ? "Successfully Updated"
                     : "Successfully Saved";
 

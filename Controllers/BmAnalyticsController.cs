@@ -1,39 +1,26 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.RazorPages;
 using MachineKarte.Web.Models;
 using MachineKarte.Web.Services;
 
-namespace MachineKarte.Web.Pages;
+namespace MachineKarte.Web.Controllers;
 
-public class BmAnalyticsModel : WorkflowPageModel
+public class BmAnalyticsController : WorkflowController
 {
     private readonly BmAnalyticsService _svc;
-    private readonly IConfiguration _cfg;
-
-    public BmAnalyticsModel(
-        BmAnalyticsService svc,
-        IConfiguration cfg)
-    {
-        _svc = svc;
-        _cfg = cfg;
-    }
-
-    public string AppVersion => _cfg["AppVersion"] ?? "1.0";
-    public string LegacyForm { get; private set; } = "8";
+    public BmAnalyticsController(BmAnalyticsService svc) => _svc = svc;
 
     // -----------------------------------------------------------------------
     // GET /BmAnalytics
     // -----------------------------------------------------------------------
-    public IActionResult OnGet(string? legacyForm = null)
-    {
-        LegacyForm = legacyForm == "12" ? "12" : "8";
-        return Page();
-    }
+    [HttpGet, WorkflowHandler]
+    public IActionResult Index(string? legacyForm = null)
+        => WorkflowView(new BmAnalyticsViewModel(legacyForm == "12" ? "12" : "8"));
 
     // -----------------------------------------------------------------------
     // POST /BmAnalytics?handler=LoadGrid
     // -----------------------------------------------------------------------
-    public async Task<IActionResult> OnPostLoadGridAsync(
+    [HttpPost, WorkflowHandler("LoadGrid")]
+    public async Task<IActionResult> LoadGridAsync(
         [FromBody] BmAnalyticsRequest req)
     {
         try
@@ -55,7 +42,8 @@ public class BmAnalyticsModel : WorkflowPageModel
     // -----------------------------------------------------------------------
     // GET /BmAnalytics?handler=CellMachines
     // -----------------------------------------------------------------------
-    public async Task<IActionResult> OnGetCellMachinesAsync(
+    [HttpGet, WorkflowHandler("CellMachines")]
+    public async Task<IActionResult> CellMachinesAsync(
         string key,
         string dateFrom,
         string dateTo,

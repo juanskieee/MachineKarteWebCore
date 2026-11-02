@@ -2,6 +2,7 @@ Workflows.register('ActionCards', (root, options, context) => {
     const byId = id => root.querySelector(`[data-id="${id}"]`);
     const antiForgery = root.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
     const fetch = context.fetch;
+    let cardSeqno = 0;
 /**
  * ActionCards.js
  * Converted from Form_Input.vb event handlers — E-Karte System
@@ -68,6 +69,7 @@ async function loadCard(bmId, mcNo, userType, status, colorName, headerCase) {
     byId('btnSave').disabled = false;
 
     const c = resp.data;
+    cardSeqno = c.seqno || 0;
 
     // Populate all form fields
     // Mirrors the row("Field").ToString() assignments in LoadData() private
@@ -130,6 +132,7 @@ function onReplyBlur(el, idx) {
 // ════════════════════════════════════════════════════════
 
 async function saveCard() {
+    if (byId('btnSave').disabled) return;
     const status = byId('cbStatus').value;
     const statusId = byId('hfStatusId').value;
     const userType = byId('hfUserType').value;
@@ -141,6 +144,7 @@ async function saveCard() {
     }
 
     const card = {
+        seqno: cardSeqno,
         bmId: byId('hfBmId').value,
         machineNo: byId('hfMcNo').value,
         userType: userType,

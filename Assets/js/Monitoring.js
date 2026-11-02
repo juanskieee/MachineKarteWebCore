@@ -12,6 +12,7 @@ const State = {
     page: 1,       // lblPageNumber
     totalPages: 1,
     searchId: 0,
+    filterId: 0,
     timerCount: 600,     // lblTimer
     timerHandle: null,    // Timer1 interval
     autoHandle: null,    // Timer2 interval (auto-refresh)
@@ -24,17 +25,24 @@ const State = {
 // ════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
     State.antiForgery = document.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '';
+    document.getElementById('btnClearFilters').addEventListener('click', clearFilters);
 
     // Set default dates (mirrors Form1_Load dt1/dt2 init)
-    const today = new Date();
-    document.getElementById('dt2').value = formatDate(new Date(today.getTime() + 86400000));
-    document.getElementById('dt1').value = formatDate(new Date(today.getTime() - 30 * 86400000));
+    resetDates();
 
     startRefreshTimer();
     initializeFromQueryString();
     renderFloorSummary([]);
     updatePagination();
 });
+
+// Keep optional session tracking out of the initial HTML and asset load.
+window.addEventListener('load', () => {
+    fetch('/Monitoring?handler=TrackSession', {
+        method: 'POST',
+        headers: { 'RequestVerificationToken': State.antiForgery }
+    }).catch(() => {});
+}, { once: true });
 
 async function initializeFromQueryString() {
     const query = new URLSearchParams(window.location.search);
@@ -82,24 +90,30 @@ async function applyMonitoringSelection(selection) {
 
 /** Mirrors cbUser_SelectedIndexChanged — reload process list */
 async function onUserChanged() {
+    const filterId = ++State.filterId;
     const userType = val('cbUser');
-    const label = document.getElementById('lblProcessLabel');
-    label.textContent = (userType === 'TE') ? 'Tester process' : 'Process';
+    document.getElementById('lblMachineLabel').textContent = userType === 'TE' ? 'Tester' : 'Machine';
+    fillSelect('cbProcess', ['-Select-'], '-Select-');
+    fillSelect('cbFloor', ['-Select-'], '-Select-');
+    fillSelect('cbMachine', [], '');
+    if (!userType) return;
 
     const resp = await get(`/Monitoring?handler=ProcessList&userType=${enc(userType)}`);
-    if (!resp.success) return;
+    if (filterId !== State.filterId || !resp.success) return;
 
     fillSelect('cbProcess', resp.data, '-Select-');
     fillSelect('cbFloor', ['-Select-'], '-Select-');
-    fillSelect('cbMachine', ['-Select-'], '');
 }
 
 /** Mirrors cbProcess_SelectedIndexChanged — reload floor list */
 async function onProcessChanged() {
+    const filterId = ++State.filterId;
+    fillSelect('cbFloor', ['-Select-'], '-Select-');
+    fillSelect('cbMachine', [], '');
     if (val('cbProcess') === '-Select-') return;
 
     const resp = await get('/Monitoring?handler=FloorList');
-    if (!resp.success) return;
+    if (filterId !== State.filterId || !resp.success) return;
 
     fillSelect('cbFloor', resp.data, '-Select-');
     fillSelect('cbMachine', [], '');
@@ -107,6 +121,8 @@ async function onProcessChanged() {
 
 /** Mirrors cbFloor_SelectedIndexChanged — reload machine list */
 async function onFloorChanged() {
+    const filterId = ++State.filterId;
+    fillSelect('cbMachine', [], '');
     const process = val('cbProcess');
     const floor = val('cbFloor');
 
@@ -119,9 +135,42 @@ async function onFloorChanged() {
     const resp = await get(
         `/Monitoring?handler=MachineList&userType=${enc(userType)}&process=${enc(process)}&floor=${enc(floor)}`
     );
-    if (!resp.success) return;
+    if (filterId !== State.filterId || !resp.success) return;
 
     fillSelect('cbMachine', resp.data.machines, 'All');
+}
+
+function resetDates() {
+    const today = new Date();
+    document.getElementById('dt1').value = formatDate(new Date(today.getTime() - 30 * 86400000));
+    document.getElementById('dt2').value = formatDate(new Date(today.getTime() + 86400000));
+}
+
+function clearFilters() {
+    ++State.searchId;
+    ++State.filterId;
+    State.lastFilter = null;
+    State.page = State.totalPages = 1;
+    State.timerCount = 600;
+    document.getElementById('lblTimer').textContent = '600';
+    document.getElementById('cbUser').value = '';
+    document.getElementById('lblMachineLabel').textContent = 'Machine';
+    fillSelect('cbProcess', ['-Select-'], '-Select-');
+    fillSelect('cbFloor', ['-Select-'], '-Select-');
+    fillSelect('cbMachine', [], '');
+    resetDates();
+    closeSidebar();
+    document.getElementById('listboxMain').replaceChildren();
+    document.getElementById('machineListGo').onclick = null;
+    document.getElementById('machineListGo').disabled = true;
+    clearCards();
+    showSpinner(false);
+    document.getElementById('noResultMsg').classList.add('is-hidden');
+    document.getElementById('toastMsg').classList.add('is-hidden');
+    document.getElementById('monitoringWelcome').classList.remove('is-hidden');
+    renderFloorSummary([]);
+    updatePagination();
+    history.replaceState(null, '', '/Monitoring');
 }
 
 // ════════════════════════════════════════════════════════
@@ -250,6 +299,13 @@ function renderFloorSummary(summaries) {
         });
         body.appendChild(tr);
     });
+    synchronizeBlinkAnimations(grid);
+}
+
+function synchronizeBlinkAnimations(root) {
+    // Form1 enables every uc_Test timer after loading. Use one document clock
+    // so cards arriving in separate AJAX responses still share the same phase.
+    root.getAnimations({ subtree: true }).forEach(animation => { animation.startTime = 0; });
 }
 
 /** Mirrors LabelMain_Click — shows Listbox_main for the clicked floor */
@@ -298,6 +354,8 @@ function closeSidebar() {
 
 async function renderMachineCards(summaries, filter) {
     const scroller = document.getElementById('cardScroller');
+    const board = document.getElementById('machineBoard');
+    const searchId = State.searchId;
     const noResult = document.getElementById('noResultMsg');
 
     if (!summaries || summaries.length === 0) {
@@ -319,14 +377,18 @@ async function renderMachineCards(summaries, filter) {
                 <span class="mc-type">${escHtml(mc.machineType)}</span>
                 <span class="need-action-label" title="Repeat BM groups within seven days without an action card">Need Action</span><span class="need-action-badge">…</span>
             </div>
-            <div class="bm-card-list" id="cards_${idx}" tabindex="0" role="region" aria-label="BM history for ${escHtml(mc.machineNo)}">
+            <div class="bm-card-list" id="cards_${idx}">
                 <div class="card-loading">Loading...</div>
             </div>`;
-        scroller.appendChild(col);
+        board.appendChild(col);
 
         // Lazy-load BM cards for this column
         await loadMachineCard(mc, filter, col.querySelector('.bm-card-list'));
     }));
+    // Resolve the shared content height (including horizontal overflow) before
+    // starting at the legacy bottom position. Ignore superseded searches.
+    await new Promise(requestAnimationFrame);
+    if (searchId === State.searchId) scroller.scrollTop = scroller.scrollHeight;
 }
 
 /** Lazy loads BM card rows for one machine column (mirrors uC_Test.LoadMain) */
@@ -373,7 +435,7 @@ async function loadMachineCard(mc, filter, container) {
         if (actionLine < bmCards.length && tier >= 0) element.classList.add(['band-sm', 'band-dm', 'band-dv'][Math.min(tier, 2)]);
         container.appendChild(element);
     });
-    container.scrollTop = container.scrollHeight;
+    synchronizeBlinkAnimations(container);
 }
 
 /** Builds one BM card DOM element (mirrors MachineMonitoringCard.ascx HTML) */
@@ -465,6 +527,7 @@ function clearCards() {
     // Remove all machine columns but keep the static children (spinner/noResult)
     Array.from(scroller.querySelectorAll('.machine-col')).forEach(el => el.remove());
     scroller.scrollTop = 0;
+    scroller.scrollLeft = 0;
 }
 
 // ════════════════════════════════════════════════════════
@@ -541,6 +604,7 @@ function val(id) {
 function fillSelect(id, items, defaultSelect) {
     const sel = document.getElementById(id);
     sel.innerHTML = '';
+    if (!items.length) sel.add(new Option('-Select-', ''));
     items.forEach(item => {
         const opt = document.createElement('option');
         opt.value = item;

@@ -1,43 +1,30 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.RazorPages;
 using MachineKarte.Web.Models;
 using MachineKarte.Web.Services;
 
-namespace MachineKarte.Web.Pages
+namespace MachineKarte.Web.Controllers
 {
-    public class RawDataModel : WorkflowPageModel
+    public class RawDataController : WorkflowController
     {
         private readonly RawDataService _service;
-        private readonly ILogger<RawDataModel> _logger;
+        private readonly ILogger<RawDataController> _logger;
 
-        [BindProperty(SupportsGet = true)]
-        public string Process { get; set; } = string.Empty;
-
-        [BindProperty(SupportsGet = true)]
-        public string Location { get; set; } = string.Empty;
-
-        [BindProperty(SupportsGet = true)]
-        public string Machine { get; set; } = string.Empty;
-
-        [BindProperty(SupportsGet = true)]
-        public string DateFrom { get; set; } = string.Empty;
-
-        [BindProperty(SupportsGet = true)]
-        public string DateTo { get; set; } = string.Empty;
-
-        public RawDataModel(
+        public RawDataController(
             RawDataService service,
-            ILogger<RawDataModel> logger)
+            ILogger<RawDataController> logger)
         {
             _service = service;
             _logger = logger;
         }
 
-        public void OnGet()
-        {
-        }
+        [HttpGet, WorkflowHandler]
+        public IActionResult Index(
+            string process = "", string location = "", string machine = "",
+            string dateFrom = "", string dateTo = "")
+            => WorkflowView(new RawDataViewModel(process, location, machine, dateFrom, dateTo));
 
-        public IActionResult OnGetLoadDataAsync(
+        [HttpGet, WorkflowHandler("LoadData")]
+        public IActionResult LoadDataAsync(
             string process,
             string location,
             string machine,

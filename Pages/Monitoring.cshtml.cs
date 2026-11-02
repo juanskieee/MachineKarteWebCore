@@ -34,13 +34,6 @@ namespace MachineKarte.Web.Pages
         public string DefaultDateTo =>
             DateTime.Now.AddDays(1).ToString("yyyy-MM-dd");
 
-        // ── GET ──────────────────────────────────────────────────────
-        public async Task OnGetAsync()
-        {
-            // Track who opened the page (mirrors UpdatePCStatus)
-            await TrackSessionAsync();
-        }
-
         // ════════════════════════════════════════════════════════════
         // AJAX HANDLERS
         // All return JSON — called by Monitoring.js via fetch()
@@ -171,22 +164,28 @@ namespace MachineKarte.Web.Pages
             }
         }
 
-        // ── Private helpers ──────────────────────────────────────────
-
-        private async Task TrackSessionAsync()
+        // Optional tracking runs only after the browser has loaded the page.
+        public async Task<IActionResult> OnPostTrackSessionAsync()
         {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(HttpContext.RequestAborted);
+            timeout.CancelAfter(TimeSpan.FromSeconds(2));
             try
             {
                 string pcName = Environment.MachineName;
                 string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
                 string version = _config["AppVersion"] ?? "1.0.0";
-                await _svc.TrackSessionAsync(pcName, ipAddress, version);
+                await _svc.TrackSessionAsync(pcName, ipAddress, version, timeout.Token);
+            }
+            catch (OperationCanceledException) when (timeout.IsCancellationRequested)
+            {
+                _logger.LogDebug("PC status tracking timed out or the request was canceled.");
             }
             catch (Exception ex)
             {
                 // Non-critical — log and swallow
-                _logger.LogWarning(ex, "PC status tracking failed");
+                _logger.LogWarning("PC status tracking skipped: {Reason}", ex.Message);
             }
+            return new NoContentResult();
         }
     }
 }

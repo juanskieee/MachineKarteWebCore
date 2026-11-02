@@ -1,28 +1,19 @@
-@model MachineKarte.Web.Pages.MachineSummaryModel
 <div class="workflow workflow--MachineSummary" data-workflow="MachineSummary">
 @{
     ViewData["Title"] = "Machine Summary — Need Action with MCD";
     Layout = null;
-    var layout = new {
-        columns = MachineSummaryConfig.DisplayColumns,
-        modes = new[] { "EEE", "TE" }.ToDictionary(mode => mode, mode =>
-            MachineSummaryConfig.EeeProcessOrder.Select(process => new {
-                process, locations = MachineSummaryConfig.GetLocations(process, mode == "TE")
-            }))
-    };
 }
 <div class="ms-wrapper monitoring-family-page">
     <div class="ms-toolbar monitoring-family-toolbar summary-toolbar">
-        <p class="summary-context" data-id="summaryContext"></p>
         <div class="summary-search">
             <span data-id="summaryLoading" class="summary-loading" role="status" hidden><span class="spinner" aria-hidden="true"></span>Loading…</span>
             <button id="MachineSummary-msSearch" data-id="msSearch" class="ms-btn-search" type="button">Search</button>
         </div>
-        <span id="MachineSummary-msStatus" data-id="msStatus" class="ms-status summary-status" role="status" aria-live="polite"></span>
+        <p data-id="summaryError" class="summary-error" role="alert" hidden></p>
     </div>
     <div class="ms-grid-scroll monitoring-family-content summary-grid">
         <table id="MachineSummary-msGrid" data-id="msGrid" class="ms-grid" aria-label="Machine Summary Grid"
-               data-layout="@System.Text.Json.JsonSerializer.Serialize(layout)">
+               data-layout="@MachineSummaryConfig.DesignerLayoutJson">
             <thead id="MachineSummary-msGridHead" data-id="msGridHead"></thead>
             <tbody id="MachineSummary-msGridBody" data-id="msGridBody"></tbody>
             <tfoot id="MachineSummary-msGridFoot" data-id="msGridFoot"></tfoot>

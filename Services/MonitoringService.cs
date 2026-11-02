@@ -137,9 +137,9 @@ namespace MachineKarte.Web.Services
         // ----------------------------------------------------------------
 
         public async Task TrackSessionAsync(
-            string pcName, string ipAddress, string appVersion)
+            string pcName, string ipAddress, string appVersion, CancellationToken cancellationToken = default)
         {
-            await _repo.UpsertPCStatusAsync(pcName, ipAddress, $"v.{appVersion}");
+            await _repo.UpsertPCStatusAsync(pcName, ipAddress, $"v.{appVersion}", cancellationToken);
         }
 
         // ----------------------------------------------------------------

@@ -84,6 +84,23 @@ namespace MachineKarte.Web.Models
             "FL", "FT", "TP", "MEMS", "EDS"
         };
 
+        // White count labels in the Form11/Form12 designers, independent of user/query mode.
+        public static readonly Dictionary<string, string[]> DisplayLocations = new()
+        {
+            ["DC"] = ["LSI1-1F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-2F"],
+            ["DB"] = ["LSI1-1F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-2F"],
+            ["WB"] = ["LSI1-1F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-2F"],
+            ["MP"] = ["LSI1-1F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-1F"],
+            ["PL"] = ["LSI1-1F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-1F"],
+            ["ATC"] = ["LSI1-1F", "LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-1F", "LSI3-3F"],
+            ["FL"] = ["LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-3F"],
+            ["SING"] = ["LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-3F"],
+            ["FT"] = ["LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-3F"],
+            ["TP"] = ["LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-3F"],
+            ["EDS"] = ["LSI3-4F"],
+            ["MEMS"] = ["LSI3-2F"]
+        };
+
         /// <summary>
         /// Process → locations queried in EEE mode.
         /// Mirrors the completed Form11 label layout and the MCD monitoring grid.
@@ -131,5 +148,18 @@ namespace MachineKarte.Web.Models
 
         public static bool IsValidProcess(string process, bool isTe)
             => GetProcesses(isTe).Contains(process, System.StringComparer.OrdinalIgnoreCase);
+
+        public static readonly string DesignerLayoutJson = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            columns = DisplayColumns,
+            modes = new[] { "EEE", "TE" }.ToDictionary(mode => mode, mode =>
+                EeeProcessOrder.Select(process => new
+                {
+                    process,
+                    locations = DisplayLocations[process],
+                    queryLocations = IsValidProcess(process, mode == "TE")
+                        ? GetLocations(process, mode == "TE") : System.Array.Empty<string>()
+                }))
+        });
     }
 }

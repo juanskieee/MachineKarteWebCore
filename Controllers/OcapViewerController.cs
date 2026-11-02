@@ -1,37 +1,28 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.RazorPages;
 using MachineKarte.Web.Models;
 using MachineKarte.Web.Services;
 
-namespace MachineKarte.Web.Pages
+namespace MachineKarte.Web.Controllers
 {
-    public class OcapViewerModel : WorkflowPageModel
+    public class OcapViewerController : WorkflowController
     {
         private readonly OcapViewerService _service;
-        private readonly ILogger<OcapViewerModel> _logger;
+        private readonly ILogger<OcapViewerController> _logger;
 
-        [BindProperty(SupportsGet = true)]
-        public int BmId { get; set; }
-
-        [BindProperty(SupportsGet = true)]
-        public string BmProcess { get; set; } = string.Empty;
-
-        [BindProperty(SupportsGet = true)]
-        public string BmCaseId { get; set; } = string.Empty;
-
-        public OcapViewerModel(
+        public OcapViewerController(
             OcapViewerService service,
-            ILogger<OcapViewerModel> logger)
+            ILogger<OcapViewerController> logger)
         {
             _service = service;
             _logger = logger;
         }
 
-        public void OnGet()
-        {
-        }
+        [HttpGet, WorkflowHandler]
+        public IActionResult Index(int bmId = 0, string bmProcess = "", string bmCaseId = "")
+            => WorkflowView(new OcapViewerViewModel(bmId, bmProcess, bmCaseId));
 
-        public IActionResult OnGetLoadOcapAsync(
+        [HttpGet, WorkflowHandler("LoadOcap")]
+        public async Task<IActionResult> LoadOcapAsync(
             int bmId,
             string bmProcess,
             string bmCaseId)
@@ -56,7 +47,7 @@ namespace MachineKarte.Web.Pages
                     BmCaseId = bmCaseId
                 };
 
-                var data = _service.Load(req);
+                var data = await _service.LoadAsync(req, HttpContext.RequestAborted);
 
                 return new JsonResult(new AjaxResult<OcapViewerResult>
                 {
@@ -73,6 +64,10 @@ namespace MachineKarte.Web.Pages
                     Success = false,
                     Message = ex.Message
                 });
+            }
+            catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
+            {
+                return new EmptyResult();
             }
             catch (Exception ex)
             {

@@ -10,32 +10,20 @@ namespace MachineKarte.Web.Services
 
         public OcapViewerService(OcapViewerRepository repo) => _repo = repo;
 
-        public OcapViewerResult Load(OcapViewerRequest req)
+        public async Task<OcapViewerResult> LoadAsync(
+            OcapViewerRequest req, CancellationToken cancellationToken = default)
         {
             var tableName = GetTableName(req.BmProcess);
             if (string.IsNullOrEmpty(tableName))
                 throw new ArgumentException($"Unknown process code: {req.BmProcess}");
 
             // 1. Load the OCAP checklist rows
-            var dt = _repo.GetOcapRows(req.BmCaseId, req.BmProcess);
-
-            var rows = new List<OcapRow>();
-            foreach (System.Data.DataRow r in dt.Rows)
-            {
-                rows.Add(new OcapRow
-                {
-                    CheckItem = r["BMOCAPName"].ToString() ?? string.Empty,
-                    CheckingMethod = r["BMOCAPCheckingMethod"].ToString() ?? string.Empty,
-                    TreatmentAction = r["BMOCAPTreatmentAction"].ToString() ?? string.Empty,
-                    Judgement = "test1",
-                    Remarks = "test2"
-                });
-            }
+            var rows = await _repo.GetOcapRowsAsync(req.BmCaseId, req.BmProcess, cancellationToken);
 
             // 2. Overlay saved Judgement / Remarks from OCAPData (pipe|comma-delimited)
             //    Format: "remark1,remark2,…|result1,result2,…"
             //    VB: arrOCAPData(0) → Remarks, arrOCAPData(1) → Judgement
-            var ocapData = _repo.GetOcapData(req.BmId, tableName);
+            var ocapData = await _repo.GetOcapDataAsync(req.BmId, tableName, cancellationToken);
             if (!string.IsNullOrEmpty(ocapData))
             {
                 var parts = ocapData.Split('|');
@@ -57,7 +45,7 @@ namespace MachineKarte.Web.Services
             return new OcapViewerResult { Rows = rows };
         }
 
-        // ── Process → table name (same map as RawDataService) ────────────────
+        // Form6 reads the selected process's maintenance table; keep identifiers allowlisted.
         private static string GetTableName(string process) => process switch
         {
             "DC" => "DCBMMaintenance",
@@ -66,10 +54,12 @@ namespace MachineKarte.Web.Services
             "MP" => "MPBMMaintenance",
             "PL" => "PLBMMaintenance",
             "FL" => "FLBMMaintenance",
+            "SING" => "SINGBMMaintenance",
+            "ATC" => "ATCBMMaintenance",
             "FT" => "FTBMMaintenance",
             "TP" => "TPBMMaintenance",
             "EDS" => "EDSBMMaintenance",
-            "MEMS" => "MEMSBMaintenance",
+            "MEMS" => "MEMSBMMaintenance",
             _ => string.Empty
         };
     }

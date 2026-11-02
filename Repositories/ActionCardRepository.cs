@@ -1,5 +1,5 @@
 // Repositories/ActionCardRepository.cs
-// Converted from Form_Input.vb SQL — E-Karte System
+// Converted from Form_Input.vb SQL â€” E-Karte System
 // C# ASP.NET Core + plain SqlClient
 
 using System.Data;
@@ -30,8 +30,9 @@ namespace MachineKarte.Web.Repositories
         {
             string table = ActionCardTableMap.GetTable(userType);
 
-            string sql = $@"SELECT * FROM [dbo].[{table}]
-                            WHERE bmid = @BmId AND Machineno = @McNo";
+            string sql = $@"SELECT TOP (1) * FROM [dbo].[{table}]
+                            WHERE bmid = @BmId AND Machineno = @McNo
+                            ORDER BY Seqno DESC";
 
             await using var conn = Open();
             await conn.OpenAsync();
@@ -44,6 +45,7 @@ namespace MachineKarte.Web.Repositories
 
             return new ActionCardData
             {
+                Seqno = reader.GetInt32(reader.GetOrdinal("Seqno")),
                 BmId = bmId,
                 MachineNo = mcNo,
                 UserType = userType,
@@ -86,9 +88,13 @@ namespace MachineKarte.Web.Repositories
         // Mirrors: SaveData() in Form_Input.vb
         // ----------------------------------------------------------------
 
-        public async Task InsertAsync(ActionCardData d, string userType)
+        public async Task<bool> InsertAsync(ActionCardData d, string userType)
         {
             string table = ActionCardTableMap.GetTable(userType);
+            // Form2 TE correlates on BM ID alone, including different testers.
+            string match = table == "MachineKarte_ActionCard_TE"
+                ? "BMID = @BmId"
+                : "BMID = @BmId AND Machineno = @McNo";
 
             string sql = $@"INSERT INTO [dbo].[{table}]
                 (BMID, Machineno, ProblemContent, Incharge, DateCard,
@@ -100,8 +106,8 @@ namespace MachineKarte.Web.Repositories
                  PMReply1, PMReply2, PMReply3,
                  PMIncharge1, PMIncharge2, PMIncharge3,
                  PMDate1, PMDate2, PMDate3)
-            VALUES
-                (@BmId, @McNo, @ProblemContent, @Incharge, @DateCard,
+            SELECT
+                 @BmId, @McNo, @ProblemContent, @Incharge, @DateCard,
                  @Investigation, @Action,
                  @Comment,  @Date1, @Incharge1,
                  @Comment2, @Date2, @Incharge2,
@@ -109,13 +115,19 @@ namespace MachineKarte.Web.Repositories
                  @MCStatus,
                  @PMReply1, @PMReply2, @PMReply3,
                  @PMIncharge1, @PMIncharge2, @PMIncharge3,
-                 @PMDate1, @PMDate2, @PMDate3)";
+                 @PMDate1, @PMDate2, @PMDate3
+            WHERE NOT EXISTS (
+                SELECT 1 FROM [dbo].[{table}] WITH (UPDLOCK, HOLDLOCK)
+                WHERE {match}
+            );
+            SELECT @@ROWCOUNT;";
 
             await using var conn = Open();
             await conn.OpenAsync();
             await using var cmd = new SqlCommand(sql, conn);
             BindParameters(cmd, d);
-            await cmd.ExecuteNonQueryAsync();
+            // The check and insert share one SQL statement/transaction across workers.
+            return Convert.ToInt32(await cmd.ExecuteScalarAsync()) == 1;
         }
 
         // ----------------------------------------------------------------
@@ -123,7 +135,7 @@ namespace MachineKarte.Web.Repositories
         // Mirrors: UpdateData() in Form_Input.vb
         // ----------------------------------------------------------------
 
-        public async Task UpdateAsync(ActionCardData d, string userType)
+        public async Task<bool> UpdateAsync(ActionCardData d, string userType)
         {
             string table = ActionCardTableMap.GetTable(userType);
 
@@ -151,13 +163,15 @@ namespace MachineKarte.Web.Repositories
                     PMDate1         = @PMDate1,
                     PMDate2         = @PMDate2,
                     PMDate3         = @PMDate3
-                WHERE BMID = @BmId AND Machineno = @McNo";
+                WHERE Seqno = @Seqno AND BMID = @BmId AND Machineno = @McNo;
+                SELECT @@ROWCOUNT;";
 
             await using var conn = Open();
             await conn.OpenAsync();
             await using var cmd = new SqlCommand(sql, conn);
             BindParameters(cmd, d);
-            await cmd.ExecuteNonQueryAsync();
+            cmd.Parameters.Add("@Seqno", SqlDbType.Int).Value = d.Seqno;
+            return Convert.ToInt32(await cmd.ExecuteScalarAsync()) == 1;
         }
 
         // ----------------------------------------------------------------

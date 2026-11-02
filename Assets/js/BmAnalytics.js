@@ -27,7 +27,7 @@ Workflows.register('BmAnalytics', (root, options, context) => {
     const mode = options.userMode;
     const btnSearch = byId('btnSearch');
     const loading = byId('summaryLoading');
-    const lblStatus = byId('lblStatus');
+    const error = byId('summaryError');
     const gridWrapper = byId('gridWrapper');
     const layout = JSON.parse(gridWrapper.dataset.layout);
     let gridMode = null;
@@ -60,8 +60,8 @@ Workflows.register('BmAnalytics', (root, options, context) => {
         setLoading(true);
         closeFlyout();
         currentResult = null;
-        lblStatus.textContent = '';
-        lblStatus.classList.remove('status-error');
+        error.textContent = '';
+        error.hidden = true;
         renderLayout(payload.mode);
         renderGrid(null);
 
@@ -76,13 +76,13 @@ Workflows.register('BmAnalytics', (root, options, context) => {
             });
             const json = await res.json();
             if (!json.success) throw new Error(json.message);
+            if (context.signal.aborted) return;
 
             currentResult = json.data;
             renderGrid(currentResult);
-            lblStatus.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
         } catch (err) {
-            lblStatus.textContent = 'Unable to load summary: ' + err.message;
-            lblStatus.classList.add('status-error');
+            error.textContent = 'Unable to load summary: ' + err.message;
+            error.hidden = false;
         } finally {
             setLoading(false);
         }
@@ -101,7 +101,7 @@ Workflows.register('BmAnalytics', (root, options, context) => {
             layout.modes[mode].map(row =>
                 `<tr><td class="bma-proc-label">${row.process}</td>` +
                 layout.columns.map(location => row.cells[location]
-                    ? `<td class="bma-cell" data-key="${row.cells[location]}" data-proc="${row.process}" data-loc="${location}"></td>`
+                    ? `<td class="bma-cell" data-key="${row.cells[location]}" data-proc="${row.process}" data-loc="${location}" data-queried="${row.queryLocations.includes(location)}"></td>`
                     : '<td class="bma-cell bma-cell-na"></td>').join('') +
                 `<td class="bma-row-total" data-process="${row.process}"></td></tr>`
             ).join('') +
@@ -112,7 +112,7 @@ Workflows.register('BmAnalytics', (root, options, context) => {
 
     function renderGrid(result) {
         gridWrapper.querySelectorAll('[data-key]').forEach(td => {
-            const count = result ? (result.cells?.[td.dataset.key]?.count || 0) : '—';
+            const count = result ? (td.dataset.queried === 'false' ? 0 : (result.cells?.[td.dataset.key]?.count || 0)) : '—';
             const active = count > 0;
             td.textContent = count;
             td.classList.toggle('bma-cell-active', active);
@@ -122,7 +122,8 @@ Workflows.register('BmAnalytics', (root, options, context) => {
             td.setAttribute('aria-label', `${td.dataset.proc} / ${td.dataset.loc}: ${count}`);
         });
         gridWrapper.querySelectorAll('.bma-row-total').forEach(td => {
-            td.textContent = result ? (result.processTotals?.[td.dataset.process] || 0) : '—';
+            const queried = layout.modes[currentMode].find(row => row.process === td.dataset.process).queryLocations.length > 0;
+            td.textContent = result ? (queried ? (result.processTotals?.[td.dataset.process] || 0) : 0) : '—';
         });
         gridWrapper.querySelectorAll('.bma-col-total').forEach(td => {
             td.textContent = result ? (result.locationTotals?.[td.dataset.location] || 0) : '—';
@@ -148,7 +149,7 @@ Workflows.register('BmAnalytics', (root, options, context) => {
         btnViewMon.disabled = true;
         btnViewMon.dataset.machine = '';
         flyoutTitle.textContent = `${proc}  ( ${loc} )`;
-        flyoutList.innerHTML = '';
+        const fragment = document.createDocumentFragment();
 
         (cell.mcnos || []).forEach(mc => {
             const li = document.createElement('li');
@@ -166,8 +167,9 @@ Workflows.register('BmAnalytics', (root, options, context) => {
                 btnViewMon.dataset.floor = loc;
                 btnViewMon.dataset.machine = mc;
             });
-            flyoutList.appendChild(li);
+            fragment.appendChild(li);
         });
+        flyoutList.replaceChildren(fragment);
 
         flyoutPanel.classList.remove('is-hidden');
     }
@@ -179,6 +181,7 @@ Workflows.register('BmAnalytics', (root, options, context) => {
     }
 
     btnCloseFlyout.addEventListener('click', closeFlyout);
+    context.dismissOnOutside(flyoutPanel, closeFlyout);
 
     btnViewMon.addEventListener('click', () => {
         const proc = btnViewMon.dataset.proc;

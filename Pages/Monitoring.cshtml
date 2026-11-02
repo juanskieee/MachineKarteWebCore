@@ -15,6 +15,7 @@
             </div>
             <div class="monitoring-heading">
                 <h1>E-Karte System</h1>
+                <div class="monitoring-status">
                 <details class="monitoring-legend">
                     <summary>Status &amp; action legend</summary>
                     <div class="legend-content">
@@ -37,6 +38,8 @@
                         <p>Salmon, blue, purple, and green card bands follow the machine's ActionLine thresholds. These bands are separate from the Action badge's machine status.</p>
                     </div>
                 </details>
+                <div class="refresh-clock"><span>Refresh</span><span id="lblTimer" class="lbl-timer">600</span><span>s</span></div>
+                </div>
             </div>
         </section>
         <form id="toolbar" class="monitoring-filters" onsubmit="event.preventDefault(); doSearch()">
@@ -46,16 +49,16 @@
             </select></div>
             <div><label for="cbProcess" id="lblProcessLabel">Process</label><select id="cbProcess" onchange="onProcessChanged()"><option value="-Select-">-Select-</option></select></div>
             <div><label for="cbFloor">Location</label><select id="cbFloor" onchange="onFloorChanged()"><option value="-Select-">-Select-</option></select></div>
-            <div><label for="cbMachine">Machine</label><select id="cbMachine"><option value="">-Select-</option></select></div>
+            <div><label for="cbMachine" id="lblMachineLabel">Machine</label><select id="cbMachine"><option value="">-Select-</option></select></div>
             <div><label for="dt1">From</label><input type="date" id="dt1" value="@Model.DefaultDateFrom" required /></div>
             <div><label for="dt2">To</label><input type="date" id="dt2" value="@Model.DefaultDateTo" required /></div>
             <button id="btnSearch" class="btn-search" type="submit">Search</button>
+            <button id="btnClearFilters" class="btn-clear-filters" type="button">Clear Filters</button>
             <div class="pagination-group" aria-label="Machine pages">
                 <button id="btnPrev" type="button" class="btn-page" onclick="changePage(-1)" aria-label="Previous page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 5-7 7 7 7" /></svg></button>
                 <span id="lblPageNumber" class="page-number" aria-label="Page 1 of 1" aria-live="polite">1/1</span>
                 <button id="btnNext" type="button" class="btn-page" onclick="changePage(1)" aria-label="Next page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 5 7 7-7 7" /></svg></button>
             </div>
-            <div class="refresh-clock"><span>Refresh</span><span id="lblTimer" class="lbl-timer">600</span><span>s</span></div>
         </form>
     </header>
     <dialog id="machineListSidebar" class="machine-list-sidebar" aria-labelledby="sidebarTitle">
@@ -65,10 +68,11 @@
         <div class="summary-panel-footer"><button id="machineListGo" class="summary-panel-go" type="button" disabled>View selected machine</button></div>
     </dialog>
     <div id="cardContainer" class="card-container">
-        <div id="cardScroller" class="card-scroller">
+        <div id="cardScroller" class="card-scroller" tabindex="0" role="region" aria-label="Machine BM histories">
             <div id="noResultMsg" class="no-result-msg is-hidden">No machines found for the selected filters.</div>
             <div id="loadingSpinner" class="loading-spinner is-hidden" role="status"><span class="spinner"></span>Loading machines…</div>
             <p id="monitoringWelcome" class="monitoring-welcome">Select a user, process, location, and machine, then Search.</p>
+            <div id="machineBoard" class="machine-board"></div>
         </div>
     </div>
     <div id="toastMsg" class="toast-msg is-hidden" role="status" aria-live="polite"></div>
@@ -76,17 +80,17 @@
 @await Html.PartialAsync("_WorkflowDialog")
 @Html.AntiForgeryToken()
 @section Styles {
-    <link rel="stylesheet" href="~/Assets/css/Monitoring.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/Assets/css/Workflows.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/Assets/css/ActionCard.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/Assets/css/RawData.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/Assets/css/OcapViewer.css" asp-append-version="true" />
+    <link rel="stylesheet" href="@Url.VersionedAsset("Assets/css/Monitoring.css")" />
+    <link rel="stylesheet" href="@Url.VersionedAsset("Assets/css/Workflows.css")" />
+    <link rel="stylesheet" href="@Url.VersionedAsset("Assets/css/ActionCard.css")" />
+    <link rel="stylesheet" href="@Url.VersionedAsset("Assets/css/RawData.css")" />
+    <link rel="stylesheet" href="@Url.VersionedAsset("Assets/css/OcapViewer.css")" />
 }
 @section Scripts {
-    <script src="~/Assets/js/Monitoring.js" asp-append-version="true"></script>
-    <script src="~/Assets/js/Workflows.js" asp-append-version="true"></script>
+    <script src="@Url.VersionedAsset("Assets/js/Monitoring.js")"></script>
+    <script src="@Url.VersionedAsset("Assets/js/Workflows.js")"></script>
     @foreach (var script in new[] { "AlertBoard", "MachineSummary", "McdMonitoring", "BmAnalytics", "ActionCard", "RawData", "OcapViewer", "PmReport", "BmReport", "EvidenceMaking", "TeEvidenceMaking" })
     {
-        <script src="~/Assets/js/@(script).js" asp-append-version="true"></script>
+        <script src="@Url.VersionedAsset($"Assets/js/{script}.js")"></script>
     }
 }

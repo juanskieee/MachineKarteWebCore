@@ -3,11 +3,11 @@ Workflows.register('MachineSummary', (root, options, context) => {
     const fetch = context.fetch;
 /**
  * MachineSummary.js
- * Form11 → MachineSummary.cshtml  (E-Karte System)
+ * Form11 → _MachineSummary.cshtml  (E-Karte System)
  *
  * Responsibilities
- *  • Load the process × location count grid from OnGetSummaryAsync
- *  • Load the machine list for a clicked cell from OnGetMachineListAsync
+ *  • Load the process × location count grid from the Summary handler
+ *  • Load the machine list for a clicked cell from the MachineList handler
  *  • "View in Monitoring" navigates to Monitoring with pre-filled filters
  *  • Auto-refresh when Monitoring signals the shared legacy timer reaching zero
  */
@@ -18,7 +18,7 @@ Workflows.register('MachineSummary', (root, options, context) => {
     const $ = id => byId(id);
     const elSearch = $('msSearch');
     const { dateFrom, dateTo, userMode } = options;
-    const elStatus = $('msStatus');
+    const elStatus = $('summaryError');
     const loading = $('summaryLoading');
     const layout = JSON.parse($('msGrid').dataset.layout);
     let gridMode = null;
@@ -36,11 +36,14 @@ Workflows.register('MachineSummary', (root, options, context) => {
     let currentCell = null;
     let loadSeq = 0;
     let cellSeq = 0;
+    let summarySnapshot = null;
+    const cellRequests = new Map();
 
     elSearch.addEventListener('click', () => search(false));
     elBody.addEventListener('click', onCellClick);
     elClose.addEventListener('click', closePanel);
     elOverlay.addEventListener('click', closePanel);
+    context.dismissOnOutside(elPanel, closePanel);
     elGo.addEventListener('click', goToMonitoring);
     root.addEventListener('keydown', e => {
         if (e.key === 'Escape' && isPanelOpen()) closePanel();
@@ -58,6 +61,8 @@ Workflows.register('MachineSummary', (root, options, context) => {
         }
 
         const seq = ++loadSeq;
+        summarySnapshot = null;
+        cellRequests.clear();
         lastFilter = { dateFrom, dateTo, userMode };
 
         closePanel();
@@ -83,8 +88,11 @@ Workflows.register('MachineSummary', (root, options, context) => {
                 return;
             }
 
+            if (context.signal.aborted) return;
+            const snapshot = { rows: new Map(json.data.rows.map(row => [row.process, row])), expiresAt: Date.now() + 30000 };
+            summarySnapshot = snapshot;
+            context.setTimeout(() => { if (summarySnapshot === snapshot) summarySnapshot = null; }, 30000);
             renderGrid(json.data);
-            setStatus(`Updated: ${new Date().toLocaleTimeString()}`);
         } catch (err) {
             if (seq === loadSeq) setStatus(`Error: ${err.message}`, true);
         } finally {
@@ -103,7 +111,7 @@ Workflows.register('MachineSummary', (root, options, context) => {
             '<th class="ms-th-total" scope="col">Total</th></tr>';
         elBody.innerHTML = layout.modes[mode].map(row =>
             `<tr data-process="${row.process}"><td class="ms-td-process">${row.process}</td>` +
-            layout.columns.map(column => `<td class="ms-cell" data-location="${column}" data-applicable="${row.locations.includes(column)}"></td>`).join('') +
+            layout.columns.map(column => `<td class="ms-cell" data-location="${column}" data-applicable="${row.locations.includes(column)}" data-queried="${row.queryLocations.includes(column)}"></td>`).join('') +
             '<td class="ms-td-rowtotal"></td></tr>'
         ).join('');
         elFoot.innerHTML = '<tr><td class="ms-tf-label">Total</td>' +
@@ -119,8 +127,8 @@ Workflows.register('MachineSummary', (root, options, context) => {
             tr.querySelectorAll('[data-location]').forEach(td => {
                 const location = td.dataset.location;
                 const cell = row?.cells?.[location];
-                const unavailable = td.dataset.applicable === 'false' || cell?.notApplicable;
-                const count = data ? (cell?.count || 0) : '—';
+                const unavailable = td.dataset.applicable === 'false';
+                const count = data ? (td.dataset.queried === 'false' ? 0 : (cell?.count || 0)) : '—';
                 const active = !unavailable && count > 0;
                 td.textContent = unavailable ? '' : count;
                 td.classList.toggle('ms-na', !!unavailable);
@@ -130,7 +138,7 @@ Workflows.register('MachineSummary', (root, options, context) => {
                 td.setAttribute('aria-disabled', String(!active));
                 td.setAttribute('aria-label', `${process} / ${location}: ${unavailable ? 'Not applicable' : count}`);
             });
-            tr.querySelector('.ms-td-rowtotal').textContent = data ? (row?.rowTotal || 0) : '—';
+            tr.querySelector('.ms-td-rowtotal').textContent = data ? (tr.querySelector('[data-queried="true"]') ? (row?.rowTotal || 0) : 0) : '—';
         });
         elFoot.querySelectorAll('[data-location]').forEach(td => {
             td.textContent = data ? (data.locationTotals?.[td.dataset.location] || 0) : '—';
@@ -170,8 +178,12 @@ Workflows.register('MachineSummary', (root, options, context) => {
                 userMode: lastFilter.userMode
             });
 
-            const res = await fetch(withParams(BASE.machineListUrl, params), { cache: 'no-store' });
-            const json = await res.json();
+            const cachedCell = summarySnapshot && Date.now() < summarySnapshot.expiresAt
+                ? summarySnapshot.rows.get(process)?.cells?.[location] : null;
+            const url = withParams(BASE.machineListUrl, params);
+            const json = Array.isArray(cachedCell?.machines)
+                ? { success: true, data: { process, location, machines: cachedCell.machines } }
+                : await requestCell(url);
 
             if (seq !== cellSeq) return;
 
@@ -186,7 +198,7 @@ Workflows.register('MachineSummary', (root, options, context) => {
             currentCell.location = data.location || location;
             elTitle.textContent = `${currentCell.process} ( ${currentCell.location} )`;
 
-            elList.innerHTML = '';
+            const fragment = document.createDocumentFragment();
             const machines = data.machines || [];
             if (machines.length === 0) {
                 elList.innerHTML = '<li class="summary-panel-message">No machines.</li>';
@@ -203,14 +215,24 @@ Workflows.register('MachineSummary', (root, options, context) => {
                 li.dataset.machine = machine;
                 li.addEventListener('click', () => selectMachine(li));
                 li.addEventListener('dblclick', goToMonitoring);
-                elList.appendChild(li);
+                fragment.appendChild(li);
             });
+            elList.replaceChildren(fragment);
         } catch (err) {
             if (seq === cellSeq) {
                 elTitle.textContent = `${process} ( ${location} )`;
                 elList.innerHTML = `<li class="summary-panel-message">${esc(err.message)}</li>`;
             }
         }
+    }
+
+    function requestCell(url) {
+        if (!cellRequests.has(url)) {
+            const request = fetch(url, { cache: 'no-store' }).then(res => res.json())
+                .finally(() => { if (cellRequests.get(url) === request) cellRequests.delete(url); });
+            cellRequests.set(url, request);
+        }
+        return cellRequests.get(url);
     }
 
     function openPanel() {
@@ -269,6 +291,7 @@ Workflows.register('MachineSummary', (root, options, context) => {
 
     function setStatus(message, isError) {
         elStatus.textContent = message || '';
+        elStatus.hidden = !message;
         elStatus.classList.toggle('status-error', !!isError);
         elStatus.classList.toggle('status-info', !isError);
     }

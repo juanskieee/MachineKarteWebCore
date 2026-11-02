@@ -1,42 +1,52 @@
-@model MachineKarte.Web.Pages.AlertBoardModel
 <div class="workflow workflow--AlertBoard" data-workflow="AlertBoard">
 @{
     ViewData["Title"] = "Repeat BM Alert Board";
     Layout = null;
-    var processes = new[] { "DC", "DB", "WB", "MP", "PL", "ATC", "SING", "FL", "FT", "TP", "EDS", "MEMS" };
-    var locations = new[] { "LSI1-1F", "LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F", "LSI3-1F", "LSI3-2F", "LSI3-3F", "LSI3-4F" };
+    var processes = AlertBoardConfig.ProcessOrder;
+    var locations = AlertBoardConfig.DisplayColumns;
 }
 <div class="ab-container monitoring-family-page">
     <div class="ab-toolbar monitoring-family-toolbar summary-toolbar">
-        <p class="summary-context" data-id="summaryContext"></p>
         <div class="summary-search">
             <span data-id="summaryLoading" class="summary-loading" role="status" hidden><span class="spinner" aria-hidden="true"></span>Loading…</span>
             <button id="AlertBoard-btnSearch" data-id="btnSearch" class="ab-btn-search" type="button">Search</button>
         </div>
-        <p data-id="boardStatus" class="summary-status" role="status" aria-live="polite"></p>
+        <p data-id="summaryError" class="summary-error" role="alert" hidden></p>
     </div>
     <div class="ab-panel monitoring-family-content summary-grid">
-        <div class="ab-header-row">
-            <div class="ab-hdr-process">Process</div>
-            @foreach (var location in locations) { <div class="ab-hdr-loc">@location</div> }
-            <div class="ab-hdr-total">Total</div>
-        </div>
+        <table class="ab-table" aria-label="Need Action per process summary">
+        <thead><tr>
+            <th class="ab-hdr-process" scope="col">Process</th>
+            @foreach (var location in locations) { <th class="ab-hdr-loc" scope="col">@location</th> }
+            <th class="ab-hdr-total" scope="col">Total</th>
+        </tr></thead>
+        <tbody>
         @foreach (var process in processes)
         {
-            <div class="ab-proc-row">
-                <div class="ab-cell-label">@process</div>
+            <tr data-process="@process">
+                <th class="ab-cell-label" scope="row">@process</th>
                 @for (var index = 0; index < locations.Length; index++)
                 {
-                    <div id="AlertBoard-cell_@(process)_@index" data-id="cell_@(process)_@index" data-cell="@(process)_@index" class="ab-cell ab-cell-active">0</div>
+                    var cell = AlertBoardConfig.Cells.FirstOrDefault(cell => cell.Value.Process == process && cell.Value.Column == locations[index]);
+                    if (cell.Key != null)
+                    {
+                        <td id="AlertBoard-cell_@cell.Key" data-id="cell_@cell.Key" data-cell="@cell.Key" data-process="@process" data-location="@cell.Value.Location" class="ab-cell ab-cell-active">—</td>
+                    }
+                    else
+                    {
+                        <td class="ab-cell ab-cell-na" aria-label="Not applicable"></td>
+                    }
                 }
-                <div id="AlertBoard-ptotal_@process" data-id="ptotal_@process" class="ab-cell ab-cell-total">0</div>
-            </div>
+                <td id="AlertBoard-ptotal_@process" data-id="ptotal_@process" class="ab-cell ab-cell-total">—</td>
+            </tr>
         }
-        <div class="ab-proc-row ab-totals-row">
-            <div class="ab-cell-label">Total</div>
-            @foreach (var location in locations) { <div id="AlertBoard-ltotal_@location" data-id="ltotal_@location" class="ab-cell ab-cell-total">0</div> }
-            <div id="AlertBoard-grandTotal" data-id="grandTotal" class="ab-cell ab-cell-grand">0</div>
-        </div>
+        </tbody>
+        <tfoot><tr class="ab-totals-row">
+            <th class="ab-cell-label" scope="row">Total</th>
+            @foreach (var location in locations) { <td id="AlertBoard-ltotal_@location" data-id="ltotal_@location" class="ab-cell ab-cell-total">—</td> }
+            <td id="AlertBoard-grandTotal" data-id="grandTotal" class="ab-cell ab-cell-grand">—</td>
+        </tr></tfoot>
+        </table>
     </div>
     <div id="AlertBoard-panelDrilldown" data-id="panelDrilldown" class="ab-drilldown summary-machine-panel is-hidden">
         <div class="summary-panel-header">

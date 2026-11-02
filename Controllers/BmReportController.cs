@@ -1,38 +1,33 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.RazorPages;
 using MachineKarte.Web.Models;
 using MachineKarte.Web.Services;
 
-namespace MachineKarte.Web.Pages
+namespace MachineKarte.Web.Controllers
 {
-    public class BmReportModel : WorkflowPageModel
+    public class BmReportController : WorkflowController
     {
         private readonly BmReportService _svc;
-        private readonly ILogger<BmReportModel> _log;
+        private readonly ILogger<BmReportController> _log;
 
-        public BmReportModel(
+        public BmReportController(
             BmReportService svc,
-            ILogger<BmReportModel> log)
+            ILogger<BmReportController> log)
         {
             _svc = svc;
             _log = log;
         }
 
-        [BindProperty(SupportsGet = true)]
-        public int BmId { get; set; }
-
-        [BindProperty(SupportsGet = true)]
-        public string Process { get; set; } = "";
-
-        public IActionResult OnGet()
+        [HttpGet, WorkflowHandler]
+        public IActionResult Index(int bmId = 0, string process = "")
         {
-            if (BmId <= 0)
+            if (bmId <= 0)
                 return BadRequest("bmId is required.");
 
-            return Page();
+            return WorkflowView(new ReportWorkflowViewModel(bmId, process));
         }
 
-        public async Task<IActionResult> OnPostDownloadReportAsync(
+        [HttpPost, WorkflowHandler("DownloadReport")]
+        public async Task<IActionResult> DownloadReportAsync(
             [FromForm] int bmId,
             [FromForm] string process)
         {
@@ -75,7 +70,8 @@ namespace MachineKarte.Web.Pages
             }
         }
 
-        public async Task<IActionResult> OnGetCheckRecordAsync(int bmId)
+        [HttpGet, WorkflowHandler("CheckRecord")]
+        public async Task<IActionResult> CheckRecordAsync(int bmId)
         {
             try
             {

@@ -11,6 +11,7 @@ var builder = WebApplication.CreateBuilder(args);
 // ─────────────────────────────────────────────────────────────
 
 builder.Services.AddRazorPages();
+builder.Services.AddControllersWithViews();
 
 // ─────────────────────────────────────────────────────────────
 // Monitoring (Form1)
@@ -144,6 +145,7 @@ app.UseRouting();
 app.UseAntiforgery();
 
 app.MapRazorPages();
+app.MapControllers();
 
 // Default page
 app.MapGet("/", context =>

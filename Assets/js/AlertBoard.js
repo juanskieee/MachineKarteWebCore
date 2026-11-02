@@ -25,16 +25,20 @@ Workflows.register('AlertBoard', (root, options, context) => {
     const user = options.userType === 'PM' ? '' : options.userType;
     const btnSearch = byId('btnSearch');
     const loading = byId('summaryLoading');
+    const error = byId('summaryError');
     const panelDrill = byId('panelDrilldown');
     const drillTitle = byId('drilldownTitle');
     const drillList = byId('drilldownList');
     const btnClose = byId('btnDrillClose');
     const btnGo = byId('btnDrillGo');
+    context.dismissOnOutside(panelDrill, () => btnClose.click());
 
     // State
     let _selectedMachine = null;
     let _selectedCell = null;   // e.g. "DC_0"
     let drillSeq = 0;
+    let boardSnapshot = null;
+    const drillRequests = new Map();
 
     // ── Defaults ─────────────────────────────────────────────────────────────
     // ── Search ───────────────────────────────────────────────────────────────
@@ -42,8 +46,11 @@ Workflows.register('AlertBoard', (root, options, context) => {
 
     async function loadBoard() {
         if (btnSearch.disabled) return;
+        boardSnapshot = null;
+        drillRequests.clear();
         setLoading(true);
-        byId('boardStatus').textContent = '';
+        error.textContent = '';
+        error.hidden = true;
         resetBoard();
 
         const body = {
@@ -63,9 +70,14 @@ Workflows.register('AlertBoard', (root, options, context) => {
             });
             const json = await res.json();
             if (!json.success) throw new Error(json.message);
+            if (context.signal.aborted) return;
+            const snapshot = { data: json.data, expiresAt: Date.now() + 30000 };
+            boardSnapshot = snapshot;
+            context.setTimeout(() => { if (boardSnapshot === snapshot) boardSnapshot = null; }, 30000);
             renderBoard(json.data);
         } catch (err) {
-            byId('boardStatus').textContent = 'Error loading board: ' + err.message;
+            error.textContent = 'Error loading board: ' + err.message;
+            error.hidden = false;
         } finally {
             setLoading(false);
         }
@@ -120,8 +132,8 @@ Workflows.register('AlertBoard', (root, options, context) => {
         }
 
         // Process row totals (sum across all cells for that process)
-        const processes = ['DC', 'DB', 'WB', 'MP', 'PL', 'ATC', 'SING', 'FL', 'FT', 'TP', 'EDS', 'MEMS'];
-        for (const proc of processes) {
+        for (const row of root.querySelectorAll('tbody tr[data-process]')) {
+            const proc = row.dataset.process;
             let total = 0;
             for (const [key, cell] of Object.entries(cells)) {
                 if (key.startsWith(proc + '_')) total += cell.count;
@@ -156,20 +168,17 @@ Workflows.register('AlertBoard', (root, options, context) => {
         drillList.innerHTML = '<li class="summary-panel-message"><span class="spinner" aria-hidden="true"></span>Loading machines…</li>';
         panelDrill.classList.remove('is-hidden');
         try {
-            const query = new URLSearchParams({
-                cellKey,
-                dateFrom: fmtForServer(dateFrom),
-                dateTo: fmtForServer(dateTo),
-                user
-            });
-            const res = await fetch('/AlertBoard?handler=Drilldown&' + query.toString());
-            const json = await res.json();
+            const cachedCell = boardSnapshot && Date.now() < boardSnapshot.expiresAt
+                ? boardSnapshot.data.cells?.[cellKey] : null;
+            const json = Array.isArray(cachedCell?.machines)
+                ? { success: true, data: { machines: cachedCell.machines, title: `${process} ( ${location} )` } }
+                : await requestDrilldown(cellKey);
             if (!json.success) throw new Error(json.message);
 
             if (seq !== drillSeq) return;
             const { machines, title } = json.data;
             drillTitle.textContent = title;
-            drillList.innerHTML = '';
+            const fragment = document.createDocumentFragment();
             _selectedMachine = null;
 
             machines.forEach(m => {
@@ -186,14 +195,26 @@ Workflows.register('AlertBoard', (root, options, context) => {
                     _selectedMachine = m;
                     btnGo.disabled = false;
                 });
-                drillList.appendChild(li);
+                fragment.appendChild(li);
             });
+            drillList.replaceChildren(fragment);
 
             if (!machines.length) drillList.innerHTML = '<li class="summary-panel-message">No machines.</li>';
         } catch (err) {
             if (seq !== drillSeq) return;
             drillList.textContent = 'Unable to load machines: ' + err.message;
         }
+    }
+
+    function requestDrilldown(cellKey) {
+        const query = new URLSearchParams({ cellKey, dateFrom: fmtForServer(dateFrom), dateTo: fmtForServer(dateTo), user });
+        const url = '/AlertBoard?handler=Drilldown&' + query;
+        if (!drillRequests.has(url)) {
+            const request = fetch(url, { cache: 'no-store' }).then(res => res.json())
+                .finally(() => { if (drillRequests.get(url) === request) drillRequests.delete(url); });
+            drillRequests.set(url, request);
+        }
+        return drillRequests.get(url);
     }
 
     // ── Drilldown panel controls ───────────────────────────────────────────
@@ -225,28 +246,10 @@ Workflows.register('AlertBoard', (root, options, context) => {
         _selectedMachine = null;
     }
 
-    // Maps cell key → { process, location } for Monitoring navigation
     function resolveProcessLocation(key) {
-        const map = {
-            DC_0: 'DC|LSI1-1F', DC_2: 'DC|LSI2-1F', DC_3: 'DC|LSI2-2F', DC_4: 'DC|LSI2-3F', DC_6: 'DC|LSI3-2F',
-            DB_0: 'DB|LSI1-1F', DB_2: 'DB|LSI2-1F', DB_3: 'DB|LSI2-2F', DB_4: 'DB|LSI2-3F', DB_6: 'DB|LSI3-2F',
-            WB_0: 'WB|LSI1-1F', WB_2: 'WB|LSI2-1F', WB_3: 'WB|LSI2-2F', WB_4: 'WB|LSI2-3F', WB_6: 'WB|LSI3-2F',
-            MP_0: 'MP|LSI1-1F', MP_2: 'MP|LSI2-1F', MP_3: 'MP|LSI2-2F', MP_4: 'MP|LSI2-3F', MP_6: 'MP|LSI3-2F',
-            PL_0: 'PL|LSI1-1F', PL_2: 'PL|LSI2-1F', PL_3: 'PL|LSI2-2F', PL_4: 'PL|LSI2-3F', PL_5: 'PL|LSI3-1F',
-            ATC_0: 'ATC|LSI1-1F', ATC_1: 'ATC|LSI1-2F', ATC_2: 'ATC|LSI2-1F', ATC_3: 'ATC|LSI2-2F',
-            ATC_4: 'ATC|LSI2-3F', ATC_65: 'ATC|LSI3-1F', ATC_6: 'ATC|LSI3-3F',
-            FL_1: 'FL|LSI1-2F', FL_2: 'FL|LSI2-1F', FL_3: 'FL|LSI2-2F', FL_4: 'FL|LSI2-3F', FL_5: 'FL|LSI3-3F',
-            SING_1: 'SING|LSI1-2F', SING_2: 'SING|LSI2-1F', SING_3: 'SING|LSI2-2F',
-            SING_4: 'SING|LSI2-3F', SING_5: 'SING|LSI3-3F',
-            FT_1: 'FT|LSI1-2F', FT_2: 'FT|LSI2-1F', FT_3: 'FT|LSI2-2F', FT_4: 'FT|LSI2-3F', FT_5: 'FT|LSI3-3F',
-            TP_1: 'TP|LSI1-2F', TP_2: 'TP|LSI2-1F', TP_3: 'TP|LSI2-2F', TP_4: 'TP|LSI2-3F', TP_5: 'TP|LSI3-3F',
-            EDS_1: 'EDS|LSI3-4F', MEMS_1: 'MEMS|LSI3-2F'
-        };
-        const val = map[key] ?? '|';
-        const [p, l] = val.split('|');
-        return [p, l];
+        const cell = byId('cell_' + key);
+        return [cell.dataset.process, cell.dataset.location];
     }
-
     // ── Loading state ─────────────────────────────────────────────────────────
 
     function setLoading(active) {

@@ -1,37 +1,26 @@
 using MachineKarte.Web.Models;
-using MachineKarte.Web.Repositories;
 using MachineKarte.Web.Services;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.RazorPages;
 
-namespace MachineKarte.Web.Pages;
+namespace MachineKarte.Web.Controllers;
 
-public sealed class PmReportModel : WorkflowPageModel
+public sealed class PmReportController : WorkflowController
 {
     private readonly PmReportService _service;
-    private readonly ILogger<PmReportModel> _logger;
+    private readonly ILogger<PmReportController> _logger;
 
-    public PmReportModel(PmReportService service, ILogger<PmReportModel> logger)
+    public PmReportController(PmReportService service, ILogger<PmReportController> logger)
     {
         _service = service;
         _logger = logger;
     }
 
-    [BindProperty(SupportsGet = true)]
-    public string Process { get; set; } = string.Empty;
+    [HttpGet, WorkflowHandler]
+    public IActionResult Index(int bmId = 0, string process = "")
+        => WorkflowView(new ReportWorkflowViewModel(bmId, process));
 
-    [BindProperty(SupportsGet = true)]
-    public int BmId { get; set; }
-
-    [BindProperty(SupportsGet = true)]
-    public string TimeOfRequest { get; set; } = string.Empty;
-
-    [BindProperty(SupportsGet = true)]
-    public string MachineNo { get; set; } = string.Empty;
-
-    public IActionResult OnGet() => Page();
-
-    public async Task<IActionResult> OnGetGenerateAsync(
+    [HttpGet, WorkflowHandler("Generate")]
+    public async Task<IActionResult> GenerateAsync(
         string process,
         int bmId,
         string timeOfRequest = "",
@@ -53,7 +42,8 @@ public sealed class PmReportModel : WorkflowPageModel
         });
     }
 
-    public IActionResult OnGetDownload(string fileName)
+    [HttpGet, WorkflowHandler("Download")]
+    public IActionResult Download(string fileName)
     {
         if (string.IsNullOrWhiteSpace(fileName) ||
             fileName.Contains("..", StringComparison.Ordinal) ||

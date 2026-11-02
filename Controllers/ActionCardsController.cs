@@ -1,22 +1,20 @@
-// Pages/ActionCards.cshtml.cs
 // Converted from Form_Input.vb — E-Karte System
-// C# ASP.NET Core Razor Pages
+// ASP.NET Core workflow controller
 
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.RazorPages;
 using MachineKarte.Web.Models;
 using MachineKarte.Web.Services;
 
-namespace MachineKarte.Web.Pages
+namespace MachineKarte.Web.Controllers
 {
-    public class ActionCardsModel : WorkflowPageModel
+    public class ActionCardsController : WorkflowController
     {
         private readonly ActionCardService _svc;
-        private readonly ILogger<ActionCardsModel> _logger;
+        private readonly ILogger<ActionCardsController> _logger;
 
-        public ActionCardsModel(
+        public ActionCardsController(
             ActionCardService svc,
-            ILogger<ActionCardsModel> logger)
+            ILogger<ActionCardsController> logger)
         {
             _svc = svc;
             _logger = logger;
@@ -30,12 +28,14 @@ namespace MachineKarte.Web.Pages
         //      /ActionCards?bmId=123&mcNo=MC01&userType=PM&status=Existing
         // Mirrors LoadData(bmid, status, mcno, ColorT, HeaderCase) in Form_Input.vb
 
-        public void OnGet() { }
+        [HttpGet, WorkflowHandler]
+        public IActionResult Index() => WorkflowView();
 
         // ── AJAX: Load card data ─────────────────────────────────────
         // GET /ActionCards?handler=Load&bmId=...&mcNo=...&userType=...&status=...&colorName=...&headerCase=...
 
-        public async Task<IActionResult> OnGetLoadAsync(
+        [HttpGet, WorkflowHandler("Load")]
+        public async Task<IActionResult> LoadAsync(
             string bmId, string mcNo, string userType = "PM",
             string status = "New", string colorName = "", string headerCase = "")
         {
@@ -75,7 +75,8 @@ namespace MachineKarte.Web.Pages
         // POST /ActionCards?handler=Save
         // Body: ActionCardSaveRequest JSON
 
-        public async Task<IActionResult> OnPostSaveAsync(
+        [HttpPost, WorkflowHandler("Save")]
+        public async Task<IActionResult> SaveAsync(
             [FromBody] ActionCardSaveRequest req)
         {
             if (req?.Card is null)

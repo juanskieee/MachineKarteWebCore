@@ -1,5 +1,5 @@
 ﻿// Repositories/OcapViewerRepository.cs
-using System.Data;
+using MachineKarte.Web.Models;
 using Microsoft.Data.SqlClient;
 namespace MachineKarte.Web.Repositories
 {
@@ -14,7 +14,8 @@ namespace MachineKarte.Web.Repositories
         }
 
         // ── OCAP checklist rows ───────────────────────────────────────────────
-        public DataTable GetOcapRows(string bmCaseId, string bmProcess)
+        public async Task<List<OcapRow>> GetOcapRowsAsync(
+            string bmCaseId, string bmProcess, CancellationToken cancellationToken = default)
         {
             const string sql = @"
                 SELECT  [BMOCAPName],
@@ -25,31 +26,40 @@ namespace MachineKarte.Web.Repositories
                 AND     Process  = @Process
                 ORDER BY BMOCAPID";
 
-            var dt = new DataTable();
-            using var conn = new SqlConnection(_connectionString);
-            using var cmd = new SqlCommand(sql, conn);
+            var rows = new List<OcapRow>();
+            await using var conn = new SqlConnection(_connectionString);
+            await using var cmd = new SqlCommand(sql, conn);
             cmd.Parameters.AddWithValue("@BMCaseID", bmCaseId);
             cmd.Parameters.AddWithValue("@Process", bmProcess);
-            conn.Open();
-            using var da = new SqlDataAdapter(cmd);
-            da.Fill(dt);
-            return dt;
+            await conn.OpenAsync(cancellationToken);
+            await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+                rows.Add(new OcapRow
+                {
+                    CheckItem = reader["BMOCAPName"].ToString() ?? string.Empty,
+                    CheckingMethod = reader["BMOCAPCheckingMethod"].ToString() ?? string.Empty,
+                    TreatmentAction = reader["BMOCAPTreatmentAction"].ToString() ?? string.Empty,
+                    Judgement = "test1",
+                    Remarks = "test2"
+                });
+            return rows;
         }
 
         // ── Saved OCAPData string for a specific BM record ───────────────────
         // The table name is built from the process code (validated before reaching here).
-        public string? GetOcapData(int bmId, string tableName)
+        public async Task<string?> GetOcapDataAsync(
+            int bmId, string tableName, CancellationToken cancellationToken = default)
         {
             var sql = $@"
                 SELECT OCAPData
                 FROM   [eMaintenanceSystemDB].[dbo].[{tableName}]
                 WHERE  BMID = @BMID";
 
-            using var conn = new SqlConnection(_connectionString);
-            using var cmd = new SqlCommand(sql, conn);
+            await using var conn = new SqlConnection(_connectionString);
+            await using var cmd = new SqlCommand(sql, conn);
             cmd.Parameters.AddWithValue("@BMID", bmId);
-            conn.Open();
-            var result = cmd.ExecuteScalar();
+            await conn.OpenAsync(cancellationToken);
+            var result = await cmd.ExecuteScalarAsync(cancellationToken);
             return result == DBNull.Value ? null : result?.ToString();
         }
     }

@@ -33,20 +33,17 @@ public class BmAnalyticsService
         // ---------------------------------------------------------------
         // Iterate every process → location combination (mirrors LoadMCName)
         // ---------------------------------------------------------------
-        foreach (string process in procs)
+        var queries = procs.SelectMany(process =>
+            BmAnalyticsMappings.GetLocations(process, mode, legacyForm)
+                .Select(location => (Process: process, Location: location)));
+
+        await foreach (var (_, rows) in MonitoringQueryBatch.ReadAsync(queries,
+            query => _repo.GetRowsAsync(query.Process, query.Location, mode, dtFrom, dtTo)))
         {
-            string[] locations = BmAnalyticsMappings.GetLocations(process, mode, legacyForm);
+            if (rows.Count == 0) continue;
 
-            foreach (string location in locations)
-            {
-                List<BmAnalyticsRow> rows =
-                    await _repo.GetRowsAsync(process, location, mode, dtFrom, dtTo);
-
-                if (rows.Count == 0) continue;
-
-                // NewLoadColor logic: isMCD=Yes AND HaveAction=Yes → count it
-                ApplyNewLoadColor(rows, result, legacyForm);
-            }
+            // NewLoadColor logic: isMCD=Yes AND HaveAction=Yes → count it
+            ApplyNewLoadColor(rows, result, legacyForm);
         }
 
         // ---------------------------------------------------------------
