@@ -1,4 +1,4 @@
-﻿using System.Data;
+using System.Data;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using MachineKarte.Web.Models;
@@ -113,8 +113,10 @@ public class BmAnalyticsRepository
 
     public async Task<List<BmAnalyticsRow>> GetRowsAsync(
         string process, string location, string mode,
-        DateTime dateFrom, DateTime dateTo)
+        DateTime dateFrom, DateTime dateTo, CancellationToken cancellationToken = default)
     {
+        if (!BmAnalyticsMappings.GetProcesses(mode).Contains(process, StringComparer.OrdinalIgnoreCase))
+            throw new ArgumentException($"Unknown process '{process}'.", nameof(process));
         var rows = new List<BmAnalyticsRow>();
 
         string sql = mode == "TE"
@@ -122,7 +124,7 @@ public class BmAnalyticsRepository
             : string.Format(EeeSql, process);
 
         await using var conn = new SqlConnection(_connStr);
-        await conn.OpenAsync();
+        await conn.OpenAsync(cancellationToken);
 
         await using var cmd = new SqlCommand(sql, conn)
         {
@@ -134,8 +136,8 @@ public class BmAnalyticsRepository
         cmd.Parameters.AddWithValue("@Location", location);
         cmd.Parameters.AddWithValue("@Process", process);
 
-        await using var rdr = await cmd.ExecuteReaderAsync();
-        while (await rdr.ReadAsync())
+        await using var rdr = await cmd.ExecuteReaderAsync(cancellationToken);
+        while (await rdr.ReadAsync(cancellationToken))
         {
             rows.Add(new BmAnalyticsRow
             {

@@ -1,4 +1,4 @@
-﻿using MachineKarte.Web.Models;
+using MachineKarte.Web.Models;
 using MachineKarte.Web.Repositories;
 
 namespace MachineKarte.Web.Services;
@@ -19,7 +19,7 @@ public class BmAnalyticsService
 
     public BmAnalyticsService(BmAnalyticsRepository repo) => _repo = repo;
 
-    public async Task<BmAnalyticsResult> BuildGridAsync(BmAnalyticsRequest req)
+    public async Task<BmAnalyticsResult> BuildGridAsync(BmAnalyticsRequest req, CancellationToken cancellationToken = default)
     {
         if (!DateTime.TryParse(req.DateFrom, out var dtFrom)) dtFrom = DateTime.Today.AddDays(-7);
         if (!DateTime.TryParse(req.DateTo, out var dtTo)) dtTo = DateTime.Today;
@@ -38,7 +38,7 @@ public class BmAnalyticsService
                 .Select(location => (Process: process, Location: location)));
 
         await foreach (var (_, rows) in MonitoringQueryBatch.ReadAsync(queries,
-            query => _repo.GetRowsAsync(query.Process, query.Location, mode, dtFrom, dtTo)))
+            query => _repo.GetRowsAsync(query.Process, query.Location, mode, dtFrom, dtTo, cancellationToken), cancellationToken))
         {
             if (rows.Count == 0) continue;
 
@@ -84,6 +84,7 @@ public class BmAnalyticsService
     private static void ApplyNewLoadColor(
         List<BmAnalyticsRow> rows, BmAnalyticsResult result, string legacyForm)
     {
+        var machineSets = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
         foreach (var row in rows)
         {
             if (row.IsMCD != "Yes" || row.HaveAction != "Yes") continue;
@@ -99,7 +100,9 @@ public class BmAnalyticsService
             // Legacy labels count every qualifying row; only the list box
             // receives RemoveDuplicates().
             cell.Count++;
-            if (!cell.Mcnos.Contains(row.Mcno, StringComparer.OrdinalIgnoreCase))
+            if (!machineSets.TryGetValue(key, out var machines))
+                machineSets[key] = machines = new HashSet<string>(cell.Mcnos, StringComparer.OrdinalIgnoreCase);
+            if (machines.Add(row.Mcno))
                 cell.Mcnos.Add(row.Mcno);
         }
     }

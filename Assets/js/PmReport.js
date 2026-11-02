@@ -21,7 +21,8 @@ Workflows.register('PmReport', (root, options, context) => {
             process: config.process ?? '',
             bmId: String(config.bmId ?? ''),
             timeOfRequest: config.timeOfRequest ?? '',
-            machineNo: config.machineNo ?? ''
+            machineNo: config.machineNo ?? '',
+            format: byId('outputFormat').value
         });
 
         try {

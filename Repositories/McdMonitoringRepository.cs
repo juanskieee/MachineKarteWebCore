@@ -28,7 +28,7 @@ namespace MachineKarte.Web.Repositories
         }
 
         public async Task<List<string>> GetMachinesAsync(
-            string process, string location, DateTime dateFrom, DateTime dateTo, bool isTe)
+            string process, string location, DateTime dateFrom, DateTime dateTo, bool isTe, CancellationToken cancellationToken = default)
         {
             ValidateProcess(process);
 
@@ -37,7 +37,7 @@ namespace MachineKarte.Web.Repositories
             return await QueryMachinesAsync(
                 sql, process, location, dateFrom, dateTo,
                 mcnoColumn: isTe ? "TesterNo" : "Mcno",
-                includeProcessParameter: isTe);
+                includeProcessParameter: isTe, cancellationToken: cancellationToken);
         }
 
         // ─── Standard mode: [process]BMMaintenance ────────────────────────────
@@ -64,7 +64,7 @@ namespace MachineKarte.Web.Repositories
               AND a.BMStatusID NOT IN (30, 31)
               AND a.bmcaseid <> 0
               AND a.Location = @Location
-            ORDER BY a.mcno DESC, a.Timeofrequest DESC, b.BMCase";
+            ORDER BY a.Mcno DESC";
 
         // ─── TE mode: teBMMaintenance ─────────────────────────────────────────
 
@@ -91,19 +91,19 @@ namespace MachineKarte.Web.Repositories
               AND a.BMStatusID NOT IN (30, 31, 1, 2, 3, 7, 17)
               AND a.bmunitid <> 0
               AND a.Location = @Location
-            ORDER BY a.mcno DESC, a.Timeofrequest DESC, b.bmteunitid";
+            ORDER BY a.TesterNo DESC";
 
         // ─── Shared ADO.NET execution ─────────────────────────────────────────
 
         private async Task<List<string>> QueryMachinesAsync(
             string sql, string process, string location,
             DateTime dateFrom, DateTime dateTo,
-            string mcnoColumn, bool includeProcessParameter)
+            string mcnoColumn, bool includeProcessParameter, CancellationToken cancellationToken)
         {
             var result = new List<string>();
 
             await using var conn = new SqlConnection(_connStr);
-            await conn.OpenAsync();
+            await conn.OpenAsync(cancellationToken);
 
             await using var cmd = new SqlCommand(sql, conn);
             cmd.Parameters.AddWithValue("@Range1",
@@ -115,8 +115,8 @@ namespace MachineKarte.Web.Repositories
             if (includeProcessParameter)
                 cmd.Parameters.AddWithValue("@Process", process);
 
-            await using var rdr = await cmd.ExecuteReaderAsync();
-            while (await rdr.ReadAsync())
+            await using var rdr = await cmd.ExecuteReaderAsync(cancellationToken);
+            while (await rdr.ReadAsync(cancellationToken))
             {
                 string? value = rdr[mcnoColumn]?.ToString()?.Trim();
                 if (!string.IsNullOrEmpty(value))

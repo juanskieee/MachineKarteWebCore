@@ -1,4 +1,4 @@
-﻿// Pages/Monitoring.cshtml.cs
+// Pages/Monitoring.cshtml.cs
 // Converted from Form1.vb — E-Karte System
 // C# ASP.NET Core Razor Pages
 
@@ -74,7 +74,7 @@ namespace MachineKarte.Web.Pages
         public async Task<IActionResult> OnGetMachineListAsync(
             string userType, string process, string floor)
         {
-            var list = await _svc.GetMachineListAsync(userType, process, floor);
+            var list = await _svc.GetMachineListAsync(userType, process, floor, HttpContext.RequestAborted);
             return new JsonResult(new AjaxResult<MachineListResult>
             {
                 Data = new MachineListResult { Machines = list }
@@ -109,13 +109,13 @@ namespace MachineKarte.Web.Pages
                 // Reset page counter on new search (mirrors lblTimer.Text = "600" + lblPageNumber.Text = 1)
                 filter.Page = filter.Page <= 0 ? 1 : filter.Page;
 
-                var result = await _svc.SearchDashboardAsync(filter);
+                var result = await _svc.SearchDashboardAsync(filter, HttpContext.RequestAborted);
                 return new JsonResult(new AjaxResult<MonitoringDashboardResult>
                 {
                     Data = result
                 });
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException || !HttpContext.RequestAborted.IsCancellationRequested)
             {
                 _logger.LogError(ex, "Search failed");
                 return new JsonResult(new AjaxResult<MonitoringDashboardResult>
@@ -149,11 +149,11 @@ namespace MachineKarte.Web.Pages
                 };
 
                 var result = await _svc.GetMachineCardAsync(
-                    filter, machineNo, machineType, actionLine);
+                    filter, machineNo, machineType, actionLine, HttpContext.RequestAborted);
 
                 return new JsonResult(new AjaxResult<MachineCardResult> { Data = result });
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException || !HttpContext.RequestAborted.IsCancellationRequested)
             {
                 _logger.LogError(ex, "Machine card load failed for {Machine}", machineNo);
                 return new JsonResult(new AjaxResult<MachineCardResult>

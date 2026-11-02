@@ -1,4 +1,4 @@
-﻿// Services/RawDataService.cs
+// Services/RawDataService.cs
 using MachineKarte.Web.Models;
 using MachineKarte.Web.Repositories;
 
@@ -22,7 +22,7 @@ namespace MachineKarte.Web.Services
         public RawDataService(RawDataRepository repo) => _repo = repo;
 
         // ── Public entry point ───────────────────────────────────────────────
-        public RawDataResult Load(RawDataRequest req)
+        public async Task<RawDataResult> LoadAsync(RawDataRequest req, CancellationToken cancellationToken = default)
         {
             var tableName = GetTableName(req.Process);
             if (string.IsNullOrEmpty(tableName))
@@ -31,14 +31,14 @@ namespace MachineKarte.Web.Services
             var result = new RawDataResult();
 
             // ── Frequency analysis ───────────────────────────────────────────
-            var freqRaw = _repo.GetFrequencyRawRows(tableName, req.Location,
-                                                    req.DateFrom, req.DateTo);
+            var freqRaw = await _repo.GetFrequencyRawRowsAsync(tableName, req.Location,
+                                                    req.DateFrom, req.DateTo, cancellationToken);
             result.FrequencyTable = BuildFrequencyTable(freqRaw);
             result.FrequencyChart = BuildFrequencyChart(result.FrequencyTable);
 
             // ── BM-case monthly breakdown ────────────────────────────────────
-            var bmRaw = _repo.GetBmCaseMonthlyRows(tableName, req.Location,
-                                                   req.DateFrom, req.DateTo);
+            var bmRaw = await _repo.GetBmCaseMonthlyRowsAsync(tableName, req.Location,
+                                                   req.DateFrom, req.DateTo, cancellationToken);
             result.BmCaseTable = BuildBmCaseTable(bmRaw);
             result.BmCaseChart = BuildBmCaseChart(result.BmCaseTable);
 
@@ -183,19 +183,16 @@ namespace MachineKarte.Web.Services
         private static List<ChartSeries> BuildBmCaseChart(List<BmCaseRow> table)
         {
             var result = new List<ChartSeries>();
-            var cases = table.Select(r => r.BMCase).Distinct().ToList();
-
-            foreach (var @case in cases)
+            foreach (var group in table.GroupBy(r => r.BMCase))
             {
-                var pts = table
-                    .Where(r => r.BMCase == @case)
+                var pts = group
                     .Select(r => new ChartPoint
                     {
                         Label = $"{MonthAbbr[r.DateNum]} {r.DateYear}",
                         Value = r.BMCount
                     }).ToList();
 
-                result.Add(new ChartSeries { Name = @case, Points = pts });
+                result.Add(new ChartSeries { Name = group.Key, Points = pts });
             }
             return result;
         }
@@ -230,7 +227,7 @@ namespace MachineKarte.Web.Services
             "FT" => "FTBMMaintenance",
             "TP" => "TPBMMaintenance",
             "EDS" => "EDSBMMaintenance",
-            "MEMS" => "MEMSBMaintenance",
+            "MEMS" => "MEMSBMMaintenance",
             _ => string.Empty
         };
     }

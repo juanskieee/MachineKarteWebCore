@@ -222,10 +222,10 @@ Console.WriteLine("PASS: all seven legacy Action colors, default red, seven-day 
 var batchRead = typeof(AlertBoardRepository).Assembly
     .GetType("MachineKarte.Web.Repositories.MonitoringQueryBatch")!
     .GetMethod("ReadAsync")!.MakeGenericMethod(typeof(int), typeof(int));
-async Task<List<int>> ReadBatch(IEnumerable<int> items, Func<int, Task<int>> read)
+async Task<List<int>> ReadBatch(IEnumerable<int> items, Func<int, Task<int>> read, CancellationToken cancellationToken = default)
 {
     var results = new List<int>();
-    var stream = (IAsyncEnumerable<(int Item, int Result)>)batchRead.Invoke(null, new object[] { items, read })!;
+    var stream = (IAsyncEnumerable<(int Item, int Result)>)batchRead.Invoke(null, new object[] { items, read, cancellationToken })!;
     await foreach (var (item, value) in stream)
     {
         Require(item == value, "Batch paired a result with the wrong input");
@@ -264,6 +264,26 @@ Require((await ReadBatch(Enumerable.Range(0, 8), DelayedRead)).Count == 8,
 Require((await ReadBatch(Array.Empty<int>(), _ => throw new Exception("Unexpected read"))).Count == 0,
     "Empty batch produced rows");
 Console.WriteLine("PASS: shared four-read limit, exact-once reads, original ordering across concurrent requests, empty results, failure propagation and retry.");
+
+// Hold all slots; a cancelled queued request must never start its read or leak a slot.
+var occupied = 0;
+var allOccupied = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+var holders = ReadBatch(Enumerable.Range(0, 4), async value => {
+    if (Interlocked.Increment(ref occupied) == 4) allOccupied.SetResult();
+    await release.Task;
+    return value;
+});
+await allOccupied.Task.WaitAsync(TimeSpan.FromSeconds(5));
+using var cancelled = new CancellationTokenSource();
+var queued = ReadBatch(Enumerable.Range(0, 8), _ => throw new Exception("Cancelled read started"), cancelled.Token);
+cancelled.Cancel();
+try { await queued; throw new Exception("Queued cancellation was ignored"); }
+catch (OperationCanceledException) { }
+finally { release.SetResult(); }
+await holders;
+Require((await ReadBatch(Enumerable.Range(0, 8), DelayedRead)).Count == 8, "Cancellation leaked read slots");
+Console.WriteLine("PASS: cancelled queued batches start no SQL delegates and release every shared slot.");
 
 var analytics = new BmAnalyticsResult();
 typeof(BmAnalyticsService).GetMethod("ApplyNewLoadColor", flags)!.Invoke(null, new object[] {

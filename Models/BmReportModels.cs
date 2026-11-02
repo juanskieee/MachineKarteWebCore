@@ -3,6 +3,8 @@
     // Holds every column returned by ViewTEData_Test that Form9 writes into the report.
     public class BmReportData
     {
+        public Dictionary<string, object> Values { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public Dictionary<string, string> LookupValues { get; } = new(StringComparer.OrdinalIgnoreCase);
         public int BmId { get; set; }
         public string Process { get; set; } = "";          // "EDS" or anything else → TETemplate
 

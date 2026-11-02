@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using MachineKarte.Web.Services.Reporting;
+using MachineKarte.Web.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 
@@ -32,17 +33,17 @@ namespace MachineKarte.Web.Controllers
         // GET /TeEvidenceMaking?handler=Generate&bmId=12345
 
         [HttpGet, WorkflowHandler("Generate")]
-        public async Task<IActionResult> GenerateAsync(string bmId)
+        public async Task<IActionResult> GenerateAsync(string bmId, string format = "xlsx")
         {
             if (string.IsNullOrWhiteSpace(bmId))
                 return new JsonResult(new { success = false, message = "bmId is required." });
 
             try
             {
-                string fileUrl = await _svc.GenerateAsync(bmId);
+                string fileUrl = await _svc.GenerateAsync(bmId, HttpContext.RequestAborted, format);
                 return new JsonResult(new { success = true, url = fileUrl });
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException || !HttpContext.RequestAborted.IsCancellationRequested)
             {
                 return new JsonResult(new { success = false, message = ex.Message });
             }
@@ -52,12 +53,14 @@ namespace MachineKarte.Web.Controllers
         // GET /TeEvidenceMaking?handler=Download&bmId=12345
 
         [HttpGet, WorkflowHandler("Download")]
-        public IActionResult Download(string bmId)
+        public IActionResult Download(string bmId, string format = "xlsx")
         {
             if (string.IsNullOrWhiteSpace(bmId))
                 return BadRequest("bmId required.");
 
-            string fileName = $"TE_Evidence_{bmId}.xlsx";
+            if (!int.TryParse(bmId, out var id) || id <= 0 || format is not ("xlsx" or "pdf"))
+                return BadRequest("Invalid evidence file request.");
+            string fileName = $"TE_Evidence_{id}.{format}";
             string path = Path.Combine(_outputRoot, fileName);
 
             if (!System.IO.File.Exists(path))
@@ -65,7 +68,7 @@ namespace MachineKarte.Web.Controllers
 
             var stream = System.IO.File.OpenRead(path);
             return File(stream,
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                LegacyReportExport.ContentType(format),
                 fileName);
         }
     }

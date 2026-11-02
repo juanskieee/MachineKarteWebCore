@@ -24,7 +24,7 @@ namespace MachineKarte.Web.Controllers
             => WorkflowView(new RawDataViewModel(process, location, machine, dateFrom, dateTo));
 
         [HttpGet, WorkflowHandler("LoadData")]
-        public IActionResult LoadDataAsync(
+        public async Task<IActionResult> LoadDataAsync(
             string process,
             string location,
             string machine,
@@ -54,7 +54,7 @@ namespace MachineKarte.Web.Controllers
                     DateTo = dateTo
                 };
 
-                var data = _service.Load(req);
+                var data = await _service.LoadAsync(req, HttpContext.RequestAborted);
 
                 return new JsonResult(new AjaxResult<RawDataResult>
                 {
@@ -72,7 +72,7 @@ namespace MachineKarte.Web.Controllers
                     Message = ex.Message
                 });
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException || !HttpContext.RequestAborted.IsCancellationRequested)
             {
                 _logger.LogError(ex, "Error loading raw data.");
 

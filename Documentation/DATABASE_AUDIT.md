@@ -9,6 +9,36 @@ The original findings below describe the code at the time of the source audit.
 Subsequent application corrections are documented separately next; they change
 application behavior without changing live data, schema, or desktop source.
 
+## Subsequent repository-wide read optimization
+
+The 2026-11-02 extension changes application reads only. Request cancellation
+now reaches connection opens, commands, row reads and queued summary batches.
+MCD summaries and report/dashboard card reads reuse the four-slot scheduler.
+Report/evidence SELECTs are batched with multiple result sets; category TOP
+limits, ordering, lookup/null rules and response contracts are retained.
+Raw Data now reads the correct result set asynchronously and maps MEMS to
+`MEMSBMMaintenance`. MCD's invalid DISTINCT ordering is corrected to descending
+projected machine/tester numbers. Those two findings later in this historical
+audit are therefore resolved in web source. Monitoring/Analytics process
+identifiers and Raw Data table identifiers are checked before interpolation.
+
+No production connection or diagnostic query was executed for this extension.
+No settings, stored procedure, view, permanent table, index, `schema.sql`, legacy
+file or template was modified. The application writers retain their SQL and
+guards; Action Card loads alone gain cancellation. Raw Data still creates/drops
+only its existing session-local `#` tables in tempdb when a user requests it.
+
+Validation used offline fixtures, LocalDB and an explicitly isolated app.
+`Test-DataRetrieval.ps1` copies the relevant repository bodies into a temporary
+runner, redirects fully qualified reads to its generated LocalDB fixture catalog,
+rejects surviving production references and drops only that generated catalog.
+Its first sandboxed attempt failed opening LocalDB; the permitted rerun passed
+and removed its fixture database. Summary duplicate/save regressions likewise
+passed using LocalDB only. Startup uses a loopback listener that cannot execute
+SQL; endpoint/browser checks force unreachable localhost SQL and mock browser
+data requests. These runs cannot establish live-data parity or production speed.
+See `MONITORING_PERFORMANCE.md` for path coverage and the remaining measurement limits.
+
 ## Subsequent startup correction
 
 Monitoring's initial HTML GET no longer attempts PC-status tracking. After

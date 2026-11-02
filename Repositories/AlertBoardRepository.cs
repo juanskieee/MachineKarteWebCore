@@ -38,7 +38,7 @@ namespace MachineKarte.Web.Repositories
         /// applies the duplicate-case / 7-day / no-action-card filtering,
         /// and returns the aggregated board data.
         /// </summary>
-        public async Task<AlertBoardData> LoadBoardAsync(AlertBoardRequest req)
+        public async Task<AlertBoardData> LoadBoardAsync(AlertBoardRequest req, CancellationToken cancellationToken = default)
         {
             var board = new AlertBoardData();
 
@@ -54,7 +54,7 @@ namespace MachineKarte.Web.Repositories
                 .SelectMany(sql => Locations.Select(location => (Sql: sql, Location: location)));
 
             await foreach (var (_, rows) in MonitoringQueryBatch.ReadAsync(queries,
-                query => FetchRowsAsync(query.Sql, req.DateFrom, req.DateTo, query.Location)))
+                query => FetchRowsAsync(query.Sql, req.DateFrom, req.DateTo, query.Location, cancellationToken), cancellationToken))
             {
                 if (rows.Count == 0) continue;
 
@@ -158,19 +158,19 @@ ORDER BY a.testerNo DESC, a.MCType DESC, a.Timeofrequest DESC, b.bmteunit";
         // ─── Data fetch ───────────────────────────────────────────────────────
 
         private async Task<List<AlertBoardRow>> FetchRowsAsync(
-            string sql, string dateFrom, string dateTo, string location)
+            string sql, string dateFrom, string dateTo, string location, CancellationToken cancellationToken)
         {
             var list = new List<AlertBoardRow>();
             await using var conn = new SqlConnection(_conn);
-            await conn.OpenAsync();
+            await conn.OpenAsync(cancellationToken);
             await using var cmd = new SqlCommand(sql, conn);
             cmd.Parameters.AddWithValue("@Range1", dateFrom);
             cmd.Parameters.AddWithValue("@Range2", dateTo);
             cmd.Parameters.AddWithValue("@Location", location);
 
-            await using var rdr = await cmd.ExecuteReaderAsync();
+            await using var rdr = await cmd.ExecuteReaderAsync(cancellationToken);
             bool hasPriority = rdr.HasColumn("Priority");
-            while (await rdr.ReadAsync())
+            while (await rdr.ReadAsync(cancellationToken))
             {
                 var row = new AlertBoardRow
                 {

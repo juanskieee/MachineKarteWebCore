@@ -2,9 +2,12 @@
 <div class="workflow workflow--TeEvidenceMaking legacy-document" data-workflow="TeEvidenceMaking">
     <div class="document-toolbar">
         <p>Process: <strong data-id="recordProcess"></strong> | BM ID: <strong data-id="recordBmId"></strong></p>
-        <button type="button" data-id="btnGenerate">Generate evidence</button>
+        <div class="document-actions">
+            <label>Format <select data-id="outputFormat"><option value="xlsx">Excel (.xlsx)</option><option value="pdf">PDF</option></select></label>
+            <button type="button" data-id="btnGenerate">Generate evidence</button>
+        </div>
     </div>
-    <p class="document-note">Generate the evidence workbook, then choose Download to save it.</p>
+    <p class="document-note">Generate the evidence in Excel or PDF, then choose Download to save it.</p>
     <p data-id="status" class="report-status" role="status" aria-live="polite" hidden></p>
     <a data-id="download" class="btn-download" hidden download>Download evidence workbook</a>
 </div>

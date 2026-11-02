@@ -1,4 +1,4 @@
-﻿// Repositories/RawDataRepository.cs
+// Repositories/RawDataRepository.cs
 using System.Data;
 using Microsoft.Data.SqlClient;
 using MachineKarte.Web.Models;
@@ -21,8 +21,8 @@ namespace MachineKarte.Web.Repositories
         /// comparison_result = 'Same as next row', ordered chronologically.
         /// The service layer then groups / counts repeated BM cases per machine.
         /// </summary>
-        public DataTable GetFrequencyRawRows(string tableName, string location,
-                                             string dateFrom, string dateTo)
+        public async Task<DataTable> GetFrequencyRawRowsAsync(string tableName, string location,
+            string dateFrom, string dateTo, CancellationToken cancellationToken = default)
         {
             // Identical SQL logic to the original VB, parameterised where possible.
             // The table name is validated by the service before reaching here.
@@ -75,33 +75,12 @@ namespace MachineKarte.Web.Repositories
 
                 DROP TABLE #freq_raw;";
 
-            var dt = new DataTable();
-            using var conn = new SqlConnection(_connectionString);
-            using var cmd = new SqlCommand(sql.Replace("{TABLE}", tableName), conn);
-            cmd.CommandType = CommandType.Text;
-            cmd.CommandTimeout = 120;
-            cmd.Parameters.AddWithValue("@Location", location);
-            cmd.Parameters.AddWithValue("@DateFrom", dateFrom);
-            cmd.Parameters.AddWithValue("@DateTo", dateTo);
-
-            conn.Open();
-            using var da = new SqlDataAdapter(cmd);
-            // The batch returns two result sets; we want the second (SELECT after DROP).
-            // SqlDataAdapter.Fill picks up the first result set of the first SELECT
-            // that returns rows — to get the named SELECT we run a reader manually.
-            using var reader = cmd.ExecuteReader();
-            // Skip to the second result set (the SELECT from #freq_raw).
-            while (reader.NextResult())
-            {
-                dt.Load(reader);
-                break;
-            }
-            return dt;
+            return await QueryAsync(sql, tableName, location, dateFrom, dateTo, cancellationToken);
         }
 
         // ── BM-case count by month query (Chart2 + DataGridView1) ───────────
-        public DataTable GetBmCaseMonthlyRows(string tableName, string location,
-                                              string dateFrom, string dateTo)
+        public async Task<DataTable> GetBmCaseMonthlyRowsAsync(string tableName, string location,
+            string dateFrom, string dateTo, CancellationToken cancellationToken = default)
         {
             const string sql = @"
                 SELECT   a.mcno,
@@ -155,22 +134,54 @@ namespace MachineKarte.Web.Repositories
 
                 DROP TABLE #bmcase_raw;";
 
-            var dt = new DataTable();
-            using var conn = new SqlConnection(_connectionString);
-            using var cmd = new SqlCommand(sql.Replace("{TABLE}", tableName), conn);
+            return await QueryAsync(sql, tableName, location, dateFrom, dateTo, cancellationToken);
+        }
+
+        private async Task<DataTable> QueryAsync(string sql, string tableName, string location,
+            string dateFrom, string dateTo, CancellationToken cancellationToken)
+        {
+            // Validate at the SQL boundary as well as in the service.
+            if (tableName is not ("DCBMMaintenance" or "DBBMMaintenance" or "WBBMMaintenance" or
+                "MPBMMaintenance" or "PLBMMaintenance" or "FLBMMaintenance" or "FTBMMaintenance" or
+                "TPBMMaintenance" or "EDSBMMaintenance" or "MEMSBMMaintenance"))
+                throw new ArgumentException("Unknown raw-data table.", nameof(tableName));
+
+            await using var conn = new SqlConnection(_connectionString);
+            await using var cmd = new SqlCommand(sql.Replace("{TABLE}", tableName), conn);
             cmd.CommandType = CommandType.Text;
             cmd.CommandTimeout = 120;
             cmd.Parameters.AddWithValue("@Location", location);
             cmd.Parameters.AddWithValue("@DateFrom", dateFrom);
             cmd.Parameters.AddWithValue("@DateTo", dateTo);
 
-            conn.Open();
-            using var reader = cmd.ExecuteReader();
-            while (reader.NextResult())
+            await conn.OpenAsync(cancellationToken);
+            await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+            return await ReadTableAsync(reader, cancellationToken);
+        }
+
+        private static async Task<DataTable> ReadTableAsync(
+            System.Data.Common.DbDataReader reader, CancellationToken cancellationToken)
+        {
+            var dt = new DataTable();
+            // SELECT INTO emits a row count, not a tabular result. Read the
+            // current SELECT result before advancing, and consume DROP afterward.
+            do
             {
-                dt.Load(reader);
-                break;
-            }
+                if (reader.FieldCount == 0) continue;
+                for (var i = 0; i < reader.FieldCount; i++)
+                    dt.Columns.Add(reader.GetName(i), reader.GetFieldType(i));
+                dt.BeginLoadData();
+                try
+                {
+                    while (await reader.ReadAsync(cancellationToken))
+                    {
+                        var values = new object[reader.FieldCount];
+                        reader.GetValues(values);
+                        dt.Rows.Add(values);
+                    }
+                }
+                finally { dt.EndLoadData(); }
+            } while (await reader.NextResultAsync(cancellationToken));
             return dt;
         }
     }

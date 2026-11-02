@@ -24,11 +24,11 @@ namespace MachineKarte.Web.Controllers
                     DateFrom = dateFrom,
                     DateTo = dateTo,
                     UserMode = userMode
-                });
+                }, HttpContext.RequestAborted);
 
                 return new JsonResult(AjaxResult.Ok(result));
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException || !HttpContext.RequestAborted.IsCancellationRequested)
             {
                 return new JsonResult(AjaxResult.Fail(ex.Message));
             }
@@ -46,11 +46,11 @@ namespace MachineKarte.Web.Controllers
                     DateFrom = dateFrom,
                     DateTo = dateTo,
                     UserMode = userMode
-                });
+                }, HttpContext.RequestAborted);
 
                 return new JsonResult(AjaxResult.Ok(result));
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException || !HttpContext.RequestAborted.IsCancellationRequested)
             {
                 return new JsonResult(AjaxResult.Fail(ex.Message));
             }

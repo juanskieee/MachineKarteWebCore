@@ -25,6 +25,14 @@ Workflows.register('McdMonitoring', (root, options, context) => {
     let loadSeq = 0;
     let cellSeq = 0;
     let progressTimer = null;
+    let summarySnapshot = null;
+    const cellRequests = new Map();
+    context.signal.addEventListener('abort', () => {
+        summarySnapshot = null;
+        cellRequests.clear();
+        loadSeq++;
+        cellSeq++;
+    }, { once: true });
 
     // ── DOM refs ─────────────────────────────────────────────────────────────
     const dtFrom = () => byId('dtFrom');
@@ -81,6 +89,9 @@ Workflows.register('McdMonitoring', (root, options, context) => {
         }
 
         const seq = ++loadSeq;
+        summarySnapshot = null;
+        cellRequests.clear();
+        closePanel();
         lastFilter = { dateFrom: from, dateTo: to, userRole };
 
         showProgress(true);
@@ -97,9 +108,15 @@ Workflows.register('McdMonitoring', (root, options, context) => {
             const res = await fetch(`/McdMonitoring?${params}`);
             const json = await res.json();
 
-            if (seq !== loadSeq) return;
+            if (seq !== loadSeq || context.signal.aborted) return;
             if (!json.success) { setStatus(json.message, true); return; }
 
+            const snapshot = {
+                cells: new Map(json.data.rows.flatMap(row => Object.values(row.cells).map(cell => [cell.key, cell]))),
+                expiresAt: Date.now() + 30000
+            };
+            summarySnapshot = snapshot;
+            setTimeout(() => { if (summarySnapshot === snapshot) summarySnapshot = null; }, 30000);
             renderGrid(json.data);
         } catch (err) {
             if (seq === loadSeq) setStatus(err.message, true);
@@ -189,6 +206,7 @@ Workflows.register('McdMonitoring', (root, options, context) => {
 
     // ── Cell click → open machine list panel ─────────────────────────────────
     async function onCellClick(e) {
+        if (btnSearch().disabled) return;
         const el = e.currentTarget;
         const count = parseInt(el.textContent, 10) || 0;
         if (count === 0) return;
@@ -216,8 +234,10 @@ Workflows.register('McdMonitoring', (root, options, context) => {
                 userRole: cell.userRole
             });
 
-            const res = await fetch(`/McdMonitoring?${params}`);
-            const json = await res.json();
+            const cached = summarySnapshot?.expiresAt > Date.now() ? summarySnapshot.cells.get(cell.key) : null;
+            const json = Array.isArray(cached?.machines)
+                ? { success: true, data: cached }
+                : await requestCell(`/McdMonitoring?${params}`);
 
             if (seq !== cellSeq) return;
 
@@ -253,6 +273,15 @@ Workflows.register('McdMonitoring', (root, options, context) => {
                 machineList().innerHTML = `<li class="mcd-list-error">${esc(err.message)}</li>`;
             }
         }
+    }
+
+    function requestCell(url) {
+        if (!cellRequests.has(url)) {
+            const request = fetch(url, { cache: 'no-store' }).then(res => res.json())
+                .finally(() => { if (cellRequests.get(url) === request) cellRequests.delete(url); });
+            cellRequests.set(url, request);
+        }
+        return cellRequests.get(url);
     }
 
     // ── Go to monitoring (mirrors Button2_Click) ─────────────────────────────

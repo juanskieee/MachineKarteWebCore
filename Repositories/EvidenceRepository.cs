@@ -1,5 +1,5 @@
 // Repositories/EvidenceRepository.cs
-// Converted from Form4.vb SQL queries — E-Karte System
+// Converted from Form4.vb SQL queries - E-Karte System
 // C# ASP.NET Core + plain SqlClient
 
 using Microsoft.Data.SqlClient;
@@ -24,10 +24,8 @@ namespace MachineKarte.Web.Repositories
         // Mirrors mSQLStr1..5 in Form4.vb (gridEvidenceMaking_Ver3 queries)
         // ----------------------------------------------------------------
 
-        public async Task<EvidenceImageGroups> GetEvidenceImagesAsync(int bmId, string process)
+        public async Task<EvidenceImageGroups> GetEvidenceImagesAsync(int bmId, string process, CancellationToken cancellationToken = default)
         {
-            const string tbl = "gridEvidenceMaking_Ver3";
-
             var groups = new EvidenceImageGroups
             {
                 ProblemPoint = new EvidenceImageRow[3],
@@ -45,55 +43,44 @@ namespace MachineKarte.Web.Repositories
             InitGroup(groups.QualityConfirm);
 
             await using var conn = Open();
-            await conn.OpenAsync();
+            await conn.OpenAsync(cancellationToken);
 
-            // Category 1 — PROBLEM POINT / PHENOMENON  (TOP 3)
-            await FillGroupAsync(conn, groups.ProblemPoint, tbl, bmId, process,
-                "PROBLEM POINT / PHENOMENON", 3);
-
-            // Category 2 — ACTION TAKEN / EVIDENCE AFTER ADJUSTMENT  (TOP 2)
-            await FillGroupAsync(conn, groups.ActionTaken, tbl, bmId, process,
-                "ACTION TAKEN / EVIDENCE AFTER ADJUSTMENT", 2);
-
-            // Category 3 — PARTS REPLACED BEFORE / PARTS REPLACED AFTER  (TOP 2)
-            await FillGroupAsync(conn, groups.PartsReplaced, tbl, bmId, process,
-                "PARTS REPLACED BEFORE / PARTS REPLACED AFTER", 2);
-
-            // Category 4 — DETAILS OF DIS-ASSEMBLY  DETAILS OF RE-ASSEMBLY  (TOP 2)
-            await FillGroupAsync(conn, groups.DisAssembly, tbl, bmId, process,
-                "DETAILS OF DIS-ASSEMBLY  DETAILS OF RE-ASSEMBLY", 2);
-
-            // Category 5 — BEFORE AND AFTER QUALITY CONFIRMATION  (TOP 3)
-            await FillGroupAsync(conn, groups.QualityConfirm, tbl, bmId, process,
-                "BEFORE AND AFTER QUALITY CONFIRMATION", 3);
-
-            return groups;
-        }
-
-        private static async Task FillGroupAsync(
-            SqlConnection conn, EvidenceImageRow[] group,
-            string table, int bmId, string process, string category, int top)
-        {
-            string sql = $@"SELECT TOP {top} BMEvidence_Desc, BMEvidence_ImgFile
-                            FROM {table}
-                            WHERE BMEvidence_Category = @Cat
-                              AND bmID = @BmId
-                              AND Process = @Process
-                            ORDER BY BMEvidenceID";
-
-            await using var cmd = new SqlCommand(sql, conn);
-            cmd.Parameters.AddWithValue("@Cat", category);
+            // Keep each category's TOP and ordering, but send all five SELECTs together.
+            var categories = new (string Category, EvidenceImageRow[] Rows)[]
+            {
+                ("PROBLEM POINT / PHENOMENON", groups.ProblemPoint),
+                ("ACTION TAKEN / EVIDENCE AFTER ADJUSTMENT", groups.ActionTaken),
+                ("PARTS REPLACED BEFORE / PARTS REPLACED AFTER", groups.PartsReplaced),
+                ("DETAILS OF DIS-ASSEMBLY  DETAILS OF RE-ASSEMBLY", groups.DisAssembly),
+                ("BEFORE AND AFTER QUALITY CONFIRMATION", groups.QualityConfirm)
+            };
+            await using var cmd = new SqlCommand("", conn);
             cmd.Parameters.AddWithValue("@BmId", bmId);
             cmd.Parameters.AddWithValue("@Process", process);
-
-            await using var reader = await cmd.ExecuteReaderAsync();
-            int i = 0;
-            while (await reader.ReadAsync() && i < group.Length)
+            for (var i = 0; i < categories.Length; i++)
             {
-                group[i].Description = reader["BMEvidence_Desc"].ToString()!;
-                group[i].ImageFile = reader["BMEvidence_ImgFile"].ToString()!;
-                i++;
+                cmd.CommandText += $@"SELECT TOP {categories[i].Rows.Length} BMEvidence_Desc, BMEvidence_ImgFile
+                    FROM gridEvidenceMaking_Ver3
+                    WHERE BMEvidence_Category = @Cat{i} AND bmID = @BmId AND Process = @Process
+                    ORDER BY BMEvidenceID;";
+                cmd.Parameters.AddWithValue($"@Cat{i}", categories[i].Category);
             }
+
+            await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+            for (var category = 0; category < categories.Length; category++)
+            {
+                var group = categories[category].Rows;
+                var i = 0;
+                while (await reader.ReadAsync(cancellationToken))
+                {
+                    group[i].Description = reader["BMEvidence_Desc"].ToString()!;
+                    group[i].ImageFile = reader["BMEvidence_ImgFile"].ToString()!;
+                    i++;
+                }
+                if (category + 1 < categories.Length)
+                    await reader.NextResultAsync(cancellationToken);
+            }
+            return groups;
         }
 
         // ----------------------------------------------------------------
@@ -102,7 +89,7 @@ namespace MachineKarte.Web.Repositories
         // ----------------------------------------------------------------
 
         public async Task<TscConfirmation> GetTscConfirmationAsync(
-            int bmId, string process, string evidenceView)
+            int bmId, string process, string evidenceView, CancellationToken cancellationToken = default)
         {
             bool isSing = process.Equals("SING", StringComparison.OrdinalIgnoreCase);
 
@@ -123,12 +110,12 @@ namespace MachineKarte.Web.Repositories
             var tsc = new TscConfirmation();
 
             await using var conn = Open();
-            await conn.OpenAsync();
+            await conn.OpenAsync(cancellationToken);
             await using var cmd = new SqlCommand(sql, conn);
             cmd.Parameters.AddWithValue("@BmId", bmId);
 
-            await using var reader = await cmd.ExecuteReaderAsync();
-            if (await reader.ReadAsync())
+            await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+            if (await reader.ReadAsync(cancellationToken))
             {
                 tsc.Tsc1 = reader["BMEvidence_TCConfirm1"].ToString()!;
                 tsc.Tsc2 = reader["BMEvidence_TCConfirm2"].ToString()!;
@@ -159,25 +146,26 @@ namespace MachineKarte.Web.Repositories
         // ----------------------------------------------------------------
 
         public async Task<EvidenceMachineHeader?> GetMachineHeaderAsync(
-            int bmId, string dataView)
+            int bmId, string dataView, CancellationToken cancellationToken = default)
         {
-            string sql = $@"SELECT MCNo, MCType, PkgName, DeviceName, LOTNo,
+            string sql = $@"SELECT MCNo, MCType, PkgName, DeviceName, LOTNo, Andon,
                                    PMConfirmGLOPReqBy, OccurrenceDate,
                                    StartOfRepair, EndOfRepair
                             FROM {dataView}
                             WHERE bmID = @BmId";
 
             await using var conn = Open();
-            await conn.OpenAsync();
+            await conn.OpenAsync(cancellationToken);
             await using var cmd = new SqlCommand(sql, conn);
             cmd.Parameters.AddWithValue("@BmId", bmId);
 
-            await using var reader = await cmd.ExecuteReaderAsync();
-            if (!await reader.ReadAsync()) return null;
+            await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+            if (!await reader.ReadAsync(cancellationToken)) return null;
 
             return new EvidenceMachineHeader
             {
                 McNo = reader["MCNo"].ToString()!,
+                Andon = reader["Andon"].ToString()!,
                 McType = reader["MCType"].ToString()!,
                 PkgName = reader["PkgName"].ToString()!,
                 DeviceName = reader["DeviceName"].ToString()!,

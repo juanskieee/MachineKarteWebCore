@@ -10,6 +10,7 @@ namespace MachineKarte.Web.Models
     /// </summary>
     public class EvidenceGenerateRequest
     {
+        public string Format { get; set; } = "xlsx";
         public string Process { get; set; } = string.Empty;   // DC, DB, WB, MP, PL, FL, SING, FT, TP, EDS, MEMS
         public int BmId { get; set; }
     }
@@ -72,6 +73,7 @@ namespace MachineKarte.Web.Models
     /// </summary>
     public class EvidenceMachineHeader
     {
+        public string Andon { get; set; } = string.Empty;
         public string McNo { get; set; } = string.Empty;
         public string McType { get; set; } = string.Empty;
         public string PkgName { get; set; } = string.Empty;

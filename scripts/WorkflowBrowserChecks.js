@@ -28,9 +28,9 @@
         const url = new URL(input, location.href);
         const handler = url.searchParams.get('handler');
         if (!handler) return nativeFetch(input, options);
-        requests.push({ path:url.pathname, handler, method:options.method || 'GET', query:Object.fromEntries(url.searchParams), body:options.body });
+        requests.push({ path:url.pathname, handler, method:options.method || 'GET', query:Object.fromEntries(url.searchParams), body:options.body, signal:options.signal });
         if (summaryGate && summaryNames.includes(url.pathname.slice(1)) && ['LoadBoard','Summary','LoadGrid'].includes(handler)) await summaryGate;
-        if (window.__summaryDrillGate && summaryNames.includes(url.pathname.slice(1)) && ['Drilldown','MachineList'].includes(handler)) await window.__summaryDrillGate;
+        if (window.__summaryDrillGate && [...summaryNames, 'McdMonitoring'].includes(url.pathname.slice(1)) && ['Drilldown','MachineList'].includes(handler)) await window.__summaryDrillGate;
         if (window.__failWorkflowData) return new Response(JSON.stringify({ success:false, message:'TEST: Connection unavailable. Try again.' }), { headers:{'content-type':'application/json'} });
         if (url.pathname === '/Monitoring') {
             if (handler === 'TrackSession') return new Response(null, { status:204 });
@@ -69,7 +69,7 @@
         }
         if (url.pathname === '/MachineSummary' || url.pathname === '/McdMonitoring') {
             if (handler === 'MachineList') return json({ process:'DC', location:'LSI1-1F', machines:['TEST-MC-01'] });
-            const te = url.searchParams.get('userMode')==='TE';
+            const te = url.searchParams.get('userMode')==='TE' || url.searchParams.get('userRole')==='TE';
             const activeProcess = te ? 'FL' : 'DC';
             const activeLocation = te ? 'LSI1-2F' : 'LSI1-1F';
             return json({ columns:locations, rows:processes.map(process=>({ process, rowTotal:process===activeProcess?1:0, cells:Object.fromEntries(locations.map((loc,locIndex)=>[loc,{ count:process===activeProcess&&loc===activeLocation?1:0,key:`${process}_${locIndex+1}`,machines:process===activeProcess&&loc===activeLocation?['TEST-MC-01']:[] }])) })), locationTotals:{[activeLocation]:1}, grandTotal:1 });
@@ -80,10 +80,10 @@
         }
         if (url.pathname === '/OcapViewer') return json({ rows:[{checkItem:'TEST: Safety interlock',checkingMethod:'Fixture check',treatmentAction:'Fixture action',judgement:'OK',remarks:'Test data only'}] });
         if (url.pathname === '/RawData') return json({ frequencyTable:[{frequency:'2x',dateLabel:'Oct 2026',total:2}],bmCaseTable:[{bmCase:'TEST: Sensor Fault',dateMonth:'October',dateYear:2026,bmCount:2}],frequencyChart:[{name:'2x',points:[{label:'Oct 2026',value:2}]}],bmCaseChart:[{name:'TEST: Sensor Fault',points:[{label:'Oct 2026',value:2}]}] });
-        if (url.pathname === '/PmReport') return json({ success:true,downloadUrl:'data:application/octet-stream;base64,VEVTVA==',fileName:'TEST.xlsx' });
-        if (url.pathname === '/EvidenceMaking') return json({ fileName:'TEST.xlsx', downloadUrl:'data:application/octet-stream;base64,VEVTVA==' });
+        if (url.pathname === '/PmReport') return json({ success:true,downloadUrl:'data:application/octet-stream;base64,VEVTVA==',fileName:`TEST.${url.searchParams.get('format')||'xlsx'}` });
+        if (url.pathname === '/EvidenceMaking') return json({ fileName:`TEST.${JSON.parse(options.body).format||'xlsx'}`, downloadUrl:'about:blank#TEST' });
         if (url.pathname === '/TeEvidenceMaking') return new Response(JSON.stringify({success:true}), {headers:{'content-type':'application/json'}});
-        if (url.pathname === '/BmReport') return new Response('TEST', { headers:{'content-type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'} });
+        if (url.pathname === '/BmReport') return new Response('TEST', { headers:{'content-type':options.body.get('format')==='pdf'?'application/pdf':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'} });
         throw new Error(`Unmocked handler ${url}`);
     };
     async function open(name, values = query) {
@@ -286,7 +286,10 @@
         let releaseFilter;
         window.__monitoringFilterGate = new Promise(resolve=>{releaseFilter=resolve;});
         const beforeClearFilter = onUserChanged();
+        const searchSignal = State.searchController.signal;
+        const filterSignal = State.filterController.signal;
         document.getElementById('btnClearFilters').click();
+        assert(searchSignal.aborted && filterSignal.aborted, 'Clear Filters did not cancel SQL-backed search/filter requests');
         window.__monitoringSearchGate = window.__monitoringFilterGate = null;
         releaseSearch(); releaseFilter();
         await Promise.all([beforeClearSearch, beforeClearFilter]);
@@ -300,8 +303,66 @@
         assert(errors.length===0, errors.join('; '));
         return 'PASS: ten-slot BM sizing for sparse/full results, right-docked steady/blinking MCD stars, legacy blink phases, O/R/E order, scrolling, counts, pagination, retry, and stale-card isolation';
     };
+    window.runRetrievalChecks = async () => {
+        const originalNow = Date.now;
+        try {
+            await open('McdMonitoring');
+            const root = document.querySelector('[data-workflow="McdMonitoring"]');
+            const button = root.querySelector('[data-id="btnSearch"]');
+            await waitFor(() => !button.disabled);
+            const active = () => root.querySelector('.mcd-cell-hot');
+            const list = () => root.querySelector('.mcd-list-item');
+            const count = () => requests.filter(request => request.path==='/McdMonitoring' && request.handler==='MachineList').length;
+            let before = count();
+            active().click();
+            await waitFor(list);
+            assert(count()===before, 'MCD snapshot click repeated a database read');
+            assert(list().textContent==='TEST-MC-01', 'MCD snapshot lost its machine');
+
+            Date.now = () => originalNow()+31000;
+            let release;
+            window.__summaryDrillGate = new Promise(resolve => { release = resolve; });
+            active().click(); active().click();
+            await tick();
+            assert(count()===before+1, 'MCD expired snapshot did not deduplicate concurrent reads');
+            window.__summaryDrillGate = null; release();
+            await waitFor(list);
+            before = count();
+            window.__failWorkflowData = true;
+            active().click();
+            await waitFor(() => root.querySelector('.mcd-list-error'));
+            window.__failWorkflowData = false;
+            active().click();
+            await waitFor(list);
+            assert(count()===before+2, 'MCD fallback failure prevented retry');
+
+            Date.now = originalNow;
+            button.click();
+            await waitFor(() => !button.disabled);
+            before = count();
+            active().click(); await waitFor(list);
+            assert(count()===before, 'MCD refresh did not replace its expired snapshot');
+            root.querySelector('[data-id="selUser"]').value = 'TE';
+            root.querySelector('[data-id="selUser"]').dispatchEvent(new Event('change'));
+            await waitFor(() => !button.disabled);
+            assert(active().closest('.mcd-grid-row').dataset.process==='FL', 'MCD retained another mode snapshot');
+            const beforeClose = requests.length;
+            Workflows.close();
+            window.dispatchEvent(new Event('monitoring:refresh'));
+            await tick();
+            assert(requests.length===beforeClose, 'Closed MCD retained a refresh listener');
+            assert(errors.length===0, errors.join('; '));
+            return 'PASS: MCD snapshot makes zero drilldown requests, expires, deduplicates fallback reads, retries failures, refreshes and isolates modes/closed windows; Monitoring reset aborts pending requests.';
+        } finally {
+            Date.now = originalNow;
+            window.__failWorkflowData = false;
+            window.__summaryDrillGate = null;
+            Workflows.close();
+        }
+    };
     window.runDocumentChecks = async () => {
         let recordToolbarStyle = null;
+        let downloadStyle = null;
         const flows = [
             {name:'PmReport', command:'report', user:'PM', trigger:'[data-id="pmGenerate"]', download:'[data-id="pmDownload"]'},
             {name:'BmReport', command:'report', user:'TE', trigger:'[data-id="btnDownload"]', download:'[data-id="reportDownload"]'},
@@ -334,10 +395,22 @@
             await waitFor(()=>!link.hidden && !link.closest('.is-hidden'));
             assert(downloadClicks===0, `${flow.name} downloaded automatically after generation`);
             assert(requests.filter(request=>request.path===`/${flow.name}`).length===before+1, `${flow.name} generation was not explicit`);
+            const currentDownloadStyle = JSON.stringify(styleValues(link, ['backgroundColor','color','padding','minHeight','textDecorationLine']));
+            if (downloadStyle===null) downloadStyle=currentDownloadStyle;
+            assert(currentDownloadStyle===downloadStyle, `${flow.name} download styling differs from R/E`);
             if (flow.name==='EvidenceMaking') {
                 const payload = JSON.parse(requests.filter(request => request.path==='/EvidenceMaking').at(-1).body);
                 assert(payload.process==='DC' && payload.bmId===123, 'Evidence generation did not use the clicked record');
             }
+            const format = root.querySelector('[data-id="outputFormat"]');
+            assert(format.value==='xlsx', `${flow.name} changed the default output format`);
+            format.value='pdf'; root.querySelector(flow.trigger).click();
+            await waitFor(()=>!root.querySelector(flow.trigger).disabled && !link.hidden && !link.closest('.is-hidden'));
+            const request = requests.filter(request=>request.path===`/${flow.name}`).at(-1);
+            const submittedFormat = flow.name==='EvidenceMaking' ? JSON.parse(request.body).format : flow.name==='BmReport' ? request.body.get('format') : request.query.format;
+            assert(submittedFormat==='pdf', `${flow.name} lost the selected PDF format`);
+            assert(link.download.endsWith('.pdf') || link.textContent.includes('.pdf'), `${flow.name} download still identifies PDF as Excel`);
+            assert(downloadClicks===0, `${flow.name} PDF generation downloaded automatically`);
         }
         Workflows.close();
         await Workflows.open('TeEvidenceMaking', {...query, autoGenerate:'1'});

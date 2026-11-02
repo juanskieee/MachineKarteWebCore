@@ -1,4 +1,4 @@
-﻿// Services/MonitoringService.cs
+// Services/MonitoringService.cs
 // Converted from Form1.vb business logic — E-Karte System
 // C# ASP.NET Core
 
@@ -54,12 +54,12 @@ namespace MachineKarte.Web.Services
         /// Mirrors cbFloor_SelectedIndexChanged in Form1.vb.
         /// </summary>
         public async Task<List<string>> GetMachineListAsync(
-            string userType, string process, string floor)
+            string userType, string process, string floor, CancellationToken cancellationToken = default)
         {
             if (floor == "All")
                 return new List<string> { "All" };
 
-            var machines = await _repo.GetMachinesAsync(userType, process, floor);
+            var machines = await _repo.GetMachinesAsync(userType, process, floor, cancellationToken);
             machines.Insert(0, "All");
             return machines;
         }
@@ -68,19 +68,20 @@ namespace MachineKarte.Web.Services
         // Dashboard search (btnSearch_Click equivalent)
         // ----------------------------------------------------------------
 
-        public async Task<MonitoringDashboardResult> SearchDashboardAsync(MonitoringFilter f)
+        public async Task<MonitoringDashboardResult> SearchDashboardAsync(MonitoringFilter f, CancellationToken cancellationToken = default)
         {
-            var (summaries, totalPages) = await _repo.GetPagedMachineSummariesAsync(f);
+            var (summaries, totalPages) = await _repo.GetPagedMachineSummariesAsync(f, cancellationToken);
             if (f.Page > totalPages)
             {
                 f.Page = totalPages;
-                (summaries, totalPages) = await _repo.GetPagedMachineSummariesAsync(f);
+                (summaries, totalPages) = await _repo.GetPagedMachineSummariesAsync(f, cancellationToken);
             }
             var rows = await _repo.GetBMCardsAsync(
-                f.UserType, f.Process, "All", "All", f.DateFrom, f.DateTo);
+                f.UserType, f.Process, "All", "All", f.DateFrom, f.DateTo, cancellationToken: cancellationToken);
+            var rowsByFloor = rows.ToLookup(row => row.Location);
             var floors = GetProcessFloors(f.Process).Select(floor =>
             {
-                var floorRows = rows.Where(row => row.Location == floor).ToList();
+                var floorRows = rowsByFloor[floor].ToList();
                 var repeats = floorRows.Where(row => row.NeedsAction).ToList();
                 var needAction = floorRows.Where(row => row.IsMCD == "Yes" && row.HaveAction == "No").ToList();
                 var withAction = floorRows.Where(row => row.IsMCD == "Yes" && row.HaveAction == "Yes").ToList();
@@ -113,11 +114,11 @@ namespace MachineKarte.Web.Services
         // ----------------------------------------------------------------
 
         public async Task<MachineCardResult> GetMachineCardAsync(
-            MonitoringFilter f, string machineNo, string machineType, int actionLine)
+            MonitoringFilter f, string machineNo, string machineType, int actionLine, CancellationToken cancellationToken = default)
         {
-            var rows = await _repo.GetBMCardsAsync(
+            var rows = await MonitoringQueryBatch.RunAsync(() => _repo.GetBMCardsAsync(
                 f.UserType, f.Process, f.Floor,
-                machineNo, f.DateFrom, f.DateTo, machineType);
+                machineNo, f.DateFrom, f.DateTo, machineType, cancellationToken), cancellationToken);
 
             return new MachineCardResult
             {

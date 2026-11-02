@@ -26,7 +26,7 @@ namespace MachineKarte.Web.Repositories
         // ----------------------------------------------------------------
 
         public async Task<ActionCardData?> LoadAsync(
-            string bmId, string mcNo, string userType)
+            string bmId, string mcNo, string userType, CancellationToken cancellationToken = default)
         {
             string table = ActionCardTableMap.GetTable(userType);
 
@@ -35,13 +35,13 @@ namespace MachineKarte.Web.Repositories
                             ORDER BY Seqno DESC";
 
             await using var conn = Open();
-            await conn.OpenAsync();
+            await conn.OpenAsync(cancellationToken);
             await using var cmd = new SqlCommand(sql, conn);
             cmd.Parameters.AddWithValue("@BmId", bmId);
             cmd.Parameters.AddWithValue("@McNo", mcNo);
 
-            await using var reader = await cmd.ExecuteReaderAsync();
-            if (!await reader.ReadAsync()) return null;
+            await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+            if (!await reader.ReadAsync(cancellationToken)) return null;
 
             return new ActionCardData
             {

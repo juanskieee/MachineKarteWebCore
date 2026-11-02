@@ -99,28 +99,38 @@ try {
     finally { $response.Dispose() }
     Write-Output 'PASS: real GET/JSON binding, case-insensitive handler selection, HTTP method restrictions, validation and all five POST antiforgery guards.'
 
-    $id = [Guid]::NewGuid().ToString('N')
-    $fileName = "Workflow-Endpoint-$id.xlsx"
-    $teFileName = "TE_Evidence_$id.xlsx"
+    $id = Get-Random -Minimum 1000000000 -Maximum 2000000000
     $bytes = [Text.Encoding]::UTF8.GetBytes('Workflow download endpoint fixture')
     $output = Join-Path $repo 'TempData/GeneratedPdf'
-    foreach ($name in @($fileName,$teFileName)) {
+    foreach ($format in @('xlsx','pdf')) {
+      $fileName = "Workflow-Endpoint-$id.$format"
+      $teFileName = "TE_Evidence_$id.$format"
+      $mime = if ($format -eq 'pdf') { 'application/pdf' } else { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }
+      foreach ($name in @($fileName,$teFileName)) {
         $path = Join-Path $output $name
         [IO.File]::WriteAllBytes($path, $bytes)
         $createdFiles += $path
-    }
-    foreach ($check in @(
+      }
+      foreach ($check in @(
         @{path="/PmReport?handler=Download&fileName=$fileName";name=$fileName},
         @{path="/EvidenceMaking?handler=Download&fileName=$fileName";name=$fileName},
-        @{path="/TeEvidenceMaking?handler=Download&bmId=$id";name=$teFileName}
+        @{path="/TeEvidenceMaking?handler=Download&bmId=$id&format=$format";name=$teFileName}
     )) {
         $response = Get-Response $check.path
         try {
             $actual = $response.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult()
             Require ([Convert]::ToBase64String($actual) -eq [Convert]::ToBase64String($bytes)) "$($check.path) changed download bytes."
-            Require ($response.Content.Headers.ContentType.MediaType -eq 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') 'Download content type changed.'
+            Require ($response.Content.Headers.ContentType.MediaType -eq $mime) 'Download content type changed.'
             Require ($response.Content.Headers.ContentDisposition.ToString().Contains($check.name)) 'Download filename changed.'
         } finally { $response.Dispose() }
+      }
+      if ($format -eq 'pdf') {
+        $response = Get-Response "/EvidenceMaking?handler=Download&fileName=$fileName&inline=true"
+        try {
+            Require ($null -eq $response.Content.Headers.ContentDisposition) 'PDF preview forces an attachment download.'
+            Require ($response.Content.Headers.ContentType.MediaType -eq 'application/pdf') 'PDF preview MIME type changed.'
+        } finally { $response.Dispose() }
+      }
     }
     foreach ($name in @('PmReport','EvidenceMaking')) {
         $response = Get-Response "/${name}?handler=Download&fileName=..%2Finvalid.xlsx" 400
@@ -130,7 +140,7 @@ try {
     }
     $response = Get-Response '/TeEvidenceMaking?handler=Download' 400
     $response.Dispose()
-    Write-Output 'PASS: all three existing download routes stream exact fixture bytes, MIME types and filenames; missing/invalid file validation is retained.'
+    Write-Output 'PASS: all three download routes stream exact Excel/PDF bytes, MIME types and filenames; PDF preview stays inline and missing/invalid file validation is retained.'
 } finally {
     foreach ($path in $createdFiles) { Remove-Item -LiteralPath $path }
     $client.Dispose()

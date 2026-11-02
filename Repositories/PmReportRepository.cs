@@ -2,6 +2,7 @@ using System.Data;
 using System.Globalization;
 using MachineKarte.Web.Models;
 using Microsoft.Data.SqlClient;
+using MachineKarte.Reporting;
 
 namespace MachineKarte.Web.Repositories;
 
@@ -104,19 +105,66 @@ public sealed class PmReportRepository
         addParameters(command);
 
         await using var reader = await command.ExecuteReaderAsync(CommandBehavior.SequentialAccess, cancellationToken);
+        var columns = Enumerable.Range(0, reader.FieldCount).Select(reader.GetName).ToArray();
         while (await reader.ReadAsync(cancellationToken))
         {
             var record = new PmReportRecord();
             for (var ordinal = 0; ordinal < reader.FieldCount; ordinal++)
             {
-                var value = reader.IsDBNull(ordinal)
+                var raw = reader.GetValue(ordinal);
+                record.Values[columns[ordinal]] = raw;
+                var value = raw is DBNull
                     ? string.Empty
-                    : Convert.ToString(reader.GetValue(ordinal), CultureInfo.InvariantCulture) ?? string.Empty;
-                record.Fields[reader.GetName(ordinal)] = value;
+                    : Convert.ToString(raw, CultureInfo.InvariantCulture) ?? string.Empty;
+                record.Fields[columns[ordinal]] = value;
             }
             records.Add(record);
         }
 
         return records;
+    }
+
+    public async Task<Dictionary<string, string>> GetLookupValuesAsync(
+        PmReportData data, CancellationToken cancellationToken = default)
+    {
+        var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var requests = LegacyReportWriter.LookupSpecs(data.Process)
+            .Select(spec => spec.Split('|'))
+            .SelectMany(spec => (spec[0] == "OtherUnitCheck"
+                ? data.Current.Fields.GetValueOrDefault(spec[0], "").Split('|').Select(row => row.Split(',')[0])
+                : new[] { data.Current.Fields.GetValueOrDefault(spec[0], "") })
+                .Select(id => (Id: id, Table: spec[1], Key: spec[2], Value: spec[3])))
+            .Where(spec => !string.IsNullOrWhiteSpace(spec.Id) && spec.Id != "Select").Distinct().ToArray();
+        if (requests.Length == 0) return values;
+
+        await using var connection = new SqlConnection(_connectionString);
+        await using var command = new SqlCommand("", connection);
+        for (var i = 0; i < requests.Length; i++)
+        {
+            var request = requests[i];
+            // Identifiers come from compiled source, and are also allowlisted here.
+            if ((request.Table, request.Key, request.Value) is not (
+                ("BMContent", "BMContentID", "BMContent") or ("BMCase", "BMCaseID", "BMCase") or
+                ("BMMCUnit", "BMMCUnitID", "BMMCUnit") or ("BMMCUnitWithType", "BMMCUnitID", "BMMCUnit") or
+                ("BMPoint", "BMPointID", "BMPoint") or ("BMWorkContent", "BMWorkContentID", "BMWorkContent") or
+                ("PMCategory", "PMCategoryID", "PMCategory") or ("BMWhy", "BMWhyID", "BM4M") or ("BMWhy", "BMWhyID", "BMWhy")))
+                throw new InvalidOperationException("Unknown report lookup mapping.");
+            command.CommandText += request.Table == "BMMCUnitWithType"
+                ? $"SELECT TOP (1) a.BMMCUnit FROM BMMCUnit a INNER JOIN MCType b ON a.MCTypeID = b.MCTypeID WHERE a.BMMCUnitID = @id{i};"
+                : $"SELECT [{request.Value}] FROM [{request.Table}] WHERE [{request.Key}] = @id{i};";
+            command.Parameters.AddWithValue($"@id{i}", request.Id);
+        }
+        await connection.OpenAsync(cancellationToken);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        for (var i = 0; i < requests.Length; i++)
+        {
+            var request = requests[i];
+            var key = $"{request.Table}|{request.Id}|{request.Value}";
+            // Original helpers return the last row (normally a primary-key lookup).
+            while (await reader.ReadAsync(cancellationToken))
+                values[key] = reader.GetValue(0).ToString() ?? "";
+            if (i + 1 < requests.Length) await reader.NextResultAsync(cancellationToken);
+        }
+        return values;
     }
 }

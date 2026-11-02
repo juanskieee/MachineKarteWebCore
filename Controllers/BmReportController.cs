@@ -29,17 +29,17 @@ namespace MachineKarte.Web.Controllers
         [HttpPost, WorkflowHandler("DownloadReport")]
         public async Task<IActionResult> DownloadReportAsync(
             [FromForm] int bmId,
-            [FromForm] string process)
+            [FromForm] string process, [FromForm] string format = "xlsx")
         {
             try
             {
                 var (bytes, fileName) = await _svc.GenerateAsync(
                     bmId,
-                    process ?? "TE");
+                    process ?? "TE", HttpContext.RequestAborted, format);
 
                 return File(
                     bytes,
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    LegacyReportExport.ContentType(format),
                     fileName);
             }
             catch (InvalidOperationException ex)
@@ -55,7 +55,7 @@ namespace MachineKarte.Web.Controllers
                     Message = ex.Message
                 });
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException || !HttpContext.RequestAborted.IsCancellationRequested)
             {
                 _log.LogError(
                     ex,
@@ -75,7 +75,7 @@ namespace MachineKarte.Web.Controllers
         {
             try
             {
-                var (_, _) = await _svc.GenerateAsync(bmId, "TE");
+                var (_, _) = await _svc.GenerateAsync(bmId, "TE", HttpContext.RequestAborted);
 
                 return new JsonResult(new AjaxResult<object>
                 {
@@ -83,7 +83,7 @@ namespace MachineKarte.Web.Controllers
                     Message = "OK"
                 });
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException || !HttpContext.RequestAborted.IsCancellationRequested)
             {
                 return new JsonResult(new AjaxResult<object>
                 {

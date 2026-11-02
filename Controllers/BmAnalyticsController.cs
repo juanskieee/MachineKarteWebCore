@@ -25,13 +25,13 @@ public class BmAnalyticsController : WorkflowController
     {
         try
         {
-            var result = await _svc.BuildGridAsync(req);
+            var result = await _svc.BuildGridAsync(req, HttpContext.RequestAborted);
 
             return new JsonResult(
                 AjaxResult.Ok(result)
             );
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || !HttpContext.RequestAborted.IsCancellationRequested)
         {
             return new JsonResult(
                 AjaxResult.Fail(ex.Message)
@@ -59,7 +59,7 @@ public class BmAnalyticsController : WorkflowController
                 LegacyForm = Request.Query["legacyForm"] == "12" ? "12" : "8"
             };
 
-            var result = await _svc.BuildGridAsync(req);
+            var result = await _svc.BuildGridAsync(req, HttpContext.RequestAborted);
 
             if (result.Cells.TryGetValue(key, out var cell))
             {
@@ -72,7 +72,7 @@ public class BmAnalyticsController : WorkflowController
                 AjaxResult.Ok(new List<string>())
             );
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || !HttpContext.RequestAborted.IsCancellationRequested)
         {
             return new JsonResult(
                 AjaxResult.Fail(ex.Message)

@@ -13,6 +13,8 @@ const State = {
     totalPages: 1,
     searchId: 0,
     filterId: 0,
+    searchController: null,
+    filterController: null,
     timerCount: 600,     // lblTimer
     timerHandle: null,    // Timer1 interval
     autoHandle: null,    // Timer2 interval (auto-refresh)
@@ -91,6 +93,8 @@ async function applyMonitoringSelection(selection) {
 /** Mirrors cbUser_SelectedIndexChanged — reload process list */
 async function onUserChanged() {
     const filterId = ++State.filterId;
+    State.filterController?.abort();
+    State.filterController = new AbortController();
     const userType = val('cbUser');
     document.getElementById('lblMachineLabel').textContent = userType === 'TE' ? 'Tester' : 'Machine';
     fillSelect('cbProcess', ['-Select-'], '-Select-');
@@ -98,7 +102,7 @@ async function onUserChanged() {
     fillSelect('cbMachine', [], '');
     if (!userType) return;
 
-    const resp = await get(`/Monitoring?handler=ProcessList&userType=${enc(userType)}`);
+    const resp = await get(`/Monitoring?handler=ProcessList&userType=${enc(userType)}`, State.filterController.signal);
     if (filterId !== State.filterId || !resp.success) return;
 
     fillSelect('cbProcess', resp.data, '-Select-');
@@ -108,11 +112,13 @@ async function onUserChanged() {
 /** Mirrors cbProcess_SelectedIndexChanged — reload floor list */
 async function onProcessChanged() {
     const filterId = ++State.filterId;
+    State.filterController?.abort();
+    State.filterController = new AbortController();
     fillSelect('cbFloor', ['-Select-'], '-Select-');
     fillSelect('cbMachine', [], '');
     if (val('cbProcess') === '-Select-') return;
 
-    const resp = await get('/Monitoring?handler=FloorList');
+    const resp = await get('/Monitoring?handler=FloorList', State.filterController.signal);
     if (filterId !== State.filterId || !resp.success) return;
 
     fillSelect('cbFloor', resp.data, '-Select-');
@@ -122,6 +128,8 @@ async function onProcessChanged() {
 /** Mirrors cbFloor_SelectedIndexChanged — reload machine list */
 async function onFloorChanged() {
     const filterId = ++State.filterId;
+    State.filterController?.abort();
+    State.filterController = new AbortController();
     fillSelect('cbMachine', [], '');
     const process = val('cbProcess');
     const floor = val('cbFloor');
@@ -133,7 +141,8 @@ async function onFloorChanged() {
 
     const userType = val('cbUser');
     const resp = await get(
-        `/Monitoring?handler=MachineList&userType=${enc(userType)}&process=${enc(process)}&floor=${enc(floor)}`
+        `/Monitoring?handler=MachineList&userType=${enc(userType)}&process=${enc(process)}&floor=${enc(floor)}`,
+        State.filterController.signal
     );
     if (filterId !== State.filterId || !resp.success) return;
 
@@ -147,6 +156,8 @@ function resetDates() {
 }
 
 function clearFilters() {
+    State.searchController?.abort();
+    State.filterController?.abort();
     ++State.searchId;
     ++State.filterId;
     State.lastFilter = null;
@@ -184,6 +195,8 @@ async function doSearch(page = 1) {
 
     State.page = page;
     const searchId = ++State.searchId;
+    State.searchController?.abort();
+    const controller = State.searchController = new AbortController();
     State.timerCount = 600;
 
     const filter = buildFilter();
@@ -194,7 +207,7 @@ async function doSearch(page = 1) {
     document.getElementById('noResultMsg').classList.add('is-hidden');
     clearCards();
 
-    const resp = await post('/Monitoring?handler=Search', filter);
+    const resp = await post('/Monitoring?handler=Search', filter, controller.signal);
     if (searchId !== State.searchId) return;
     showSpinner(false);
 
@@ -205,7 +218,7 @@ async function doSearch(page = 1) {
     filter.page = State.page;
     updatePagination();
     renderFloorSummary(resp.data.floorSummaries);
-    await renderMachineCards(resp.data.machineSummaries, filter);
+    await renderMachineCards(resp.data.machineSummaries, filter, controller.signal);
 }
 
 // ════════════════════════════════════════════════════════
@@ -352,7 +365,7 @@ function closeSidebar() {
 // MACHINE CARD RENDERING  (Panel1 / uC_Test in Form1)
 // ════════════════════════════════════════════════════════
 
-async function renderMachineCards(summaries, filter) {
+async function renderMachineCards(summaries, filter, signal) {
     const scroller = document.getElementById('cardScroller');
     const board = document.getElementById('machineBoard');
     const searchId = State.searchId;
@@ -383,7 +396,7 @@ async function renderMachineCards(summaries, filter) {
         board.appendChild(col);
 
         // Lazy-load BM cards for this column
-        await loadMachineCard(mc, filter, col.querySelector('.bm-card-list'));
+        await loadMachineCard(mc, filter, col.querySelector('.bm-card-list'), signal);
     }));
     // Resolve the shared content height (including horizontal overflow) before
     // starting at the legacy bottom position. Ignore superseded searches.
@@ -392,7 +405,7 @@ async function renderMachineCards(summaries, filter) {
 }
 
 /** Lazy loads BM card rows for one machine column (mirrors uC_Test.LoadMain) */
-async function loadMachineCard(mc, filter, container) {
+async function loadMachineCard(mc, filter, container, signal) {
     container.innerHTML = '<div class="card-loading" role="status">Loading…</div>';
     const url = `/Monitoring?handler=MachineCard` +
         `&userType=${enc(filter.userType)}` +
@@ -404,12 +417,12 @@ async function loadMachineCard(mc, filter, container) {
         `&dateFrom=${enc(filter.dateFrom)}` +
         `&dateTo=${enc(filter.dateTo)}`;
 
-    const resp = await get(url);
-    if (!container.isConnected) return;
+    const resp = await get(url, signal);
+    if (signal?.aborted || !container.isConnected) return;
 
     if (!resp || !resp.success || !resp.data) {
         container.innerHTML = `<div class="card-error" role="alert"><p>${escHtml(resp?.message || 'BM records could not be loaded.')}</p><button type="button">Retry</button></div>`;
-        container.querySelector('button').addEventListener('click', () => loadMachineCard(mc, filter, container));
+        container.querySelector('button').addEventListener('click', () => loadMachineCard(mc, filter, container, signal));
         return;
     }
 
@@ -428,13 +441,15 @@ async function loadMachineCard(mc, filter, container) {
         return;
     }
 
+    const fragment = document.createDocumentFragment();
     bmCards.forEach((card, index) => {
         const element = buildBMCard(card, actionLine, filter.userType);
         // LoadProcessCapa: Salmon at the bottom, then SM/DM/DV tiers overlapping its boundary.
         const tier = Math.floor((bmCards.length - 1 - actionLine - index) / 2);
         if (actionLine < bmCards.length && tier >= 0) element.classList.add(['band-sm', 'band-dm', 'band-dv'][Math.min(tier, 2)]);
-        container.appendChild(element);
+        fragment.appendChild(element);
     });
+    container.replaceChildren(fragment);
     synchronizeBlinkAnimations(container);
 }
 
@@ -645,19 +660,21 @@ function escHtml(s) {
         .replace(/"/g, '&quot;');
 }
 
-async function get(url) {
+async function get(url, signal) {
     try {
-        const r = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        const r = await fetch(url, { signal, headers: { 'X-Requested-With': 'XMLHttpRequest' } });
         return await r.json();
     } catch (e) {
+        if (e.name === 'AbortError') return { success: false, message: '' };
         console.error('GET error:', e);
         return { success: false, message: String(e) };
     }
 }
 
-async function post(url, body) {
+async function post(url, body, signal) {
     try {
         const r = await fetch(url, {
+            signal,
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -668,6 +685,7 @@ async function post(url, body) {
         });
         return await r.json();
     } catch (e) {
+        if (e.name === 'AbortError') return { success: false, message: '' };
         console.error('POST error:', e);
         return { success: false, message: String(e) };
     }

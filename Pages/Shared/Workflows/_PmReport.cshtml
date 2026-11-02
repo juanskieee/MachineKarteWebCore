@@ -11,12 +11,15 @@
         <div>
             <p>Process: <strong id="PmReport-pmProcess" data-id="pmProcess">@Model.Process</strong> | BM ID: <strong id="PmReport-pmBmId" data-id="pmBmId">@Model.BmId</strong></p>
         </div>
-        <button id="PmReport-pmGenerate" data-id="pmGenerate" class="pm-report-button" type="button">Generate report</button>
+        <div class="document-actions">
+            <label>Format <select data-id="outputFormat"><option value="xlsx">Excel (.xlsx)</option><option value="pdf">PDF</option></select></label>
+            <button id="PmReport-pmGenerate" data-id="pmGenerate" class="pm-report-button" type="button">Generate report</button>
+        </div>
     </header>
 
-    <p class="document-note">Generate the maintenance workbook, then choose Download to save it.</p>
+    <p class="document-note">Generate the report in Excel or PDF, then choose Download to save it.</p>
     <div id="PmReport-pmStatus" data-id="pmStatus" class="pm-report-status" role="status" aria-live="polite" hidden></div>
-    <a id="PmReport-pmDownload" data-id="pmDownload" class="pm-report-download" href="#" download hidden>Download report</a>
+    <a id="PmReport-pmDownload" data-id="pmDownload" class="btn-download" href="#" download hidden>Download report</a>
 </div>
 
 

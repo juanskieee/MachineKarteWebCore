@@ -25,6 +25,7 @@ namespace MachineKarte.Web.Models
     // ─── One evidence image slot ──────────────────────────────────────────────
     public class TeEvidenceImage
     {
+        public string CN { get; set; } = "";
         public string Category { get; set; } = "";
         public string Condition { get; set; } = "";   // "BEFORE" | "AFTER"
         public string ImgFile { get; set; } = "";   // server-relative path like ~/folder/file.png

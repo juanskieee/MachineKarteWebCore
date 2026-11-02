@@ -30,7 +30,7 @@ namespace MachineKarte.Web.Services
         // Main entry point – builds the complete process × location grid
         // ─────────────────────────────────────────────────────────────────────
 
-        public async Task<McdDashboardResult> BuildDashboardAsync(McdMonitoringFilter filter)
+        public async Task<McdDashboardResult> BuildDashboardAsync(McdMonitoringFilter filter, CancellationToken cancellationToken = default)
         {
             var (from, to) = ParseRange(filter.DateFrom, filter.DateTo);
             bool isTe = string.Equals(filter.UserRole, "TE", StringComparison.OrdinalIgnoreCase);
@@ -61,28 +61,36 @@ namespace MachineKarte.Web.Services
                     };
                 }
 
-                foreach (var location in McdMonitoringConfig.GetLocations(process, isTe))
-                {
-                    var machines = await _repo.GetMachinesAsync(process, location, from, to, isTe);
-
-                    var cell = new McdCellResult
-                    {
-                        Key = McdMonitoringConfig.CellKey(process, location),
-                        Process = process,
-                        Location = location,
-                        Count = machines.Count,
-                        Machines = machines,
-                        NotApplicable = false
-                    };
-
-                    row.Cells[location] = cell;
-                    row.RowTotal += cell.Count;
-                    result.LocationTotals[location] += cell.Count;
-                }
-
-                result.ProcessTotals[process] = row.RowTotal;
-                result.GrandTotal += row.RowTotal;
                 result.Rows.Add(row);
+            }
+
+            var cells = result.Rows.SelectMany(row =>
+                McdMonitoringConfig.GetLocations(row.Process, isTe)
+                    .Select(location => (Row: row, Location: location)));
+
+            await foreach (var (query, machines) in MonitoringQueryBatch.ReadAsync(cells,
+                query => _repo.GetMachinesAsync(query.Row.Process, query.Location, from, to, isTe, cancellationToken),
+                cancellationToken))
+            {
+                var row = query.Row;
+                var location = query.Location;
+                row.Cells[location] = new McdCellResult
+                {
+                    Key = McdMonitoringConfig.CellKey(row.Process, location),
+                    Process = row.Process,
+                    Location = location,
+                    Count = machines.Count,
+                    Machines = machines,
+                    NotApplicable = false
+                };
+                row.RowTotal += machines.Count;
+                result.LocationTotals[location] += machines.Count;
+            }
+
+            foreach (var row in result.Rows)
+            {
+                result.ProcessTotals[row.Process] = row.RowTotal;
+                result.GrandTotal += row.RowTotal;
             }
 
             return result;
@@ -94,7 +102,7 @@ namespace MachineKarte.Web.Services
         // ─────────────────────────────────────────────────────────────────────
 
         public async Task<McdMachineListResult> GetCellAsync(
-            string process, string location, McdMonitoringFilter filter)
+            string process, string location, McdMonitoringFilter filter, CancellationToken cancellationToken = default)
         {
             var (from, to) = ParseRange(filter.DateFrom, filter.DateTo);
             bool isTe = string.Equals(filter.UserRole, "TE", StringComparison.OrdinalIgnoreCase);
@@ -106,7 +114,7 @@ namespace MachineKarte.Web.Services
                     $"Location '{location}' is not valid for process '{process}'.");
             }
 
-            var machines = await _repo.GetMachinesAsync(process, location, from, to, isTe);
+            var machines = await _repo.GetMachinesAsync(process, location, from, to, isTe, cancellationToken);
 
             return new McdMachineListResult
             {

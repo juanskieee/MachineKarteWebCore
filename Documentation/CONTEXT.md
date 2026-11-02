@@ -3,7 +3,7 @@
 MachineKarteWebCore converts legacy E-Karte WinForms to the web. Forms 1–12 and
 Form_Input are implemented; live-data and report-output parity remain incomplete.
 
-- Stack: .NET 8 Razor Pages + MVC workflow controllers, SQL Server/`Microsoft.Data.SqlClient`, ClosedXML.
+- Stack: .NET 8 Razor Pages + MVC workflow controllers, SQL Server/`Microsoft.Data.SqlClient`, GemBox.Spreadsheet with compiled legacy VB report mappings.
 - `Pages/`: Monitoring and workflow partials; `Controllers/`: child workflow routes;
   `Models/`: contracts/view models; `Repositories/`: SQL; `Services/`:
   business/reports. Connection: `ConnectionStrings:DBConnection`.
@@ -16,8 +16,10 @@ Form_Input are implemented; live-data and report-output parity remain incomplete
   only when server-rendered context is needed.
 - `Assets/css/` and `Assets/js/` are outside `wwwroot`; use `Url.VersionedAsset`.
   `Pages/_ViewImports.cshtml` applies throughout Pages.
-- Preserve `Legacy/`, `schema.sql`, and `Templates/`. `Form3CellMappingMatrix.txt`
-  is a runtime dependency of `PmReportService`, included in build/publish output.
+- Preserve `Legacy/`, `schema.sql`, `Templates/`, and `Form3CellMappingMatrix.txt`.
+  The matrix is a reference index; `Reporting/LegacyReportMappings.vb` executes
+  the active original report conditions/loops. Templates and `Assets/images/`
+  are included in build/publish output.
 
 # Conversion Status
 
@@ -46,13 +48,24 @@ Verified locally:
 - OCAP mappings, including SING/ATC/MEMS, against `schema.sql`;
   Form11/Form12 white-cell layouts against both designers.
 - Build with zero warnings/errors, SQL-schema/status fixtures, and reviewed
-  desktop/mobile browser checks. Live SQL and workbook/PDF contents remain unverified.
+  desktop/mobile browser checks. Live production record/output parity remains unverified.
 - Summary reads use ordered batches with four shared read slots per app worker.
   AlertBoard/MachineSummary drilldowns reuse summary lists for 30 seconds, then
   use existing handlers with pending-request deduplication. Search/refresh clears
   snapshots; BmAnalytics retains its existing summary-backed drilldown.
   Designer metadata is static and machine lists render in one DOM batch.
   See `MONITORING_PERFORMANCE.md` for the audit and measurement limits.
+- Repository-wide reads propagate request cancellation; queued summary work is
+  cancellable. MCD summaries, Monitoring card reads, and evidence reads share the
+  existing four-slot scheduler. MCD drilldowns reuse modal-local summary lists for
+  30 seconds, then use deduplicated fresh-read fallbacks. Monitoring cancels old
+  searches/filter loads and renders card lists in one DOM batch.
+- BM reports batch VR/nine lookups (up to 11 commands to 2); PM/TE evidence batch
+  category SELECTs without changing TOP limits/order (7 to 3 and 15 to 8 commands).
+  Raw Data uses cancellable async I/O, reads its actual result set, validates table
+  names and uses the correct MEMS table. MCD DISTINCT ordering projects only the
+  sorted machine/tester number. Process identifiers are validated in Monitoring
+  and Analytics; Action Card save SQL/guards and production objects are unchanged.
 - Seventy AlertBoard/Analytics query variants execute against LocalDB temporary
   fixtures with duplicate action cards and normalized active-MCD matches. Both
   scalar-subquery errors are reproduced first; corrected reads retain one row
@@ -70,6 +83,17 @@ Verified locally:
 # Active Issues
 
 P1 blocks data-parity sign-off; P2 requires compatibility resolution.
+
+Report correction uses the supplied `Assets/images/` and existing `Templates/`.
+All 66 inventoried static files are present. `REPORT_GENERATION_CONTEXT.md`
+records the form/template/view map and remaining CWC limitation;
+`LEGACY_REPORT_ASSETS.csv` maps original server references to actual local files.
+The four dialogs support explicit Excel/PDF generation and styled downloads.
+All 25 template cases exported real XLSX/PDF locally. Fixtures verify original
+conditions, QC arrays, calculated durations, 0/1/2 history, conditional styles,
+approvals, TSC route/version, connector codes and Teleko dimensions. LocalDB
+lookup/raw-type/CN/misc-row checks and desktop/mobile workflow/download checks pass.
+Production was neither contacted nor modified during report restoration.
 
 Database-impact audit: see `DATABASE_AUDIT.md` (2026-11-02). The application is
 not read-only: Monitoring's after-load POST attempts PC-status writes, and Action Card
@@ -89,7 +113,8 @@ ran the SELECT-only diagnostics. No data repair has been applied.
 |---|---|---|
 | Confirmed duplicate PM Action Cards for BM 256152 / SW-18; database repair pending and desktop saves unprotected | Original Form2 still fails when this BM matches its filters; web saves prevent new duplicates and preserve existing rows; compare both cards before an owner-approved repair | P1 |
 | Live SQL validation pending; SQL Server was unreachable during last validation | Real filtering, counts, null/duplicate behavior, saves, and report data remain unverified | P1 |
-| Reports/evidence emit XLSX; legacy PDF/network-image parity incomplete | Documents require visual comparison and output-format reconciliation | P2 |
+| Supplied CWC.xlsx has one sheet; original Form10 refers to second/third sheets | Records needing CN5-CN8 connector or quality-condition sheets fail explicitly; main-sheet exports work; preserve the supplied template | P2 |
+| Live report/evidence parity and full photo archive unverified | Compare representative production records and original desktop output, including server fonts and dynamic evidence photos | P2 |
 
 # Legacy Parity Rules
 
@@ -121,6 +146,9 @@ overrides design preferences.
   Refresh follows Monitoring's 600-second timer.
 - Preserve Form3 templates/history/cell mappings. ATC PM reports are intentionally
   unsupported because legacy `ATCData` is empty.
+- Regenerate report bodies with `scripts/Update-LegacyReportMappings.ps1` and
+  verify `-Check`; use active VB control flow rather than flattened matrix writes.
+  Preserve original branch quirks unless explicitly authorized to change them.
 - Report/evidence Generate and Download are separate explicit actions; opening
   a dialog must not trigger either.
 
@@ -144,6 +172,14 @@ Validation:
 
 - Build: `dotnet build MachineKarteWebCore.csproj --nologo -v minimal`.
 - SQL/status: `powershell -ExecutionPolicy Bypass -File scripts/Test-MonitoringQueries.ps1`.
+- Read retrieval: `powershell -ExecutionPolicy Bypass -File scripts/Test-DataRetrieval.ps1`;
+  actual repository bodies tested only in a generated disposable LocalDB database,
+  with qualified application references redirected in temporary test copies.
+  Covers report/evidence batches, raw results/types, MCD filters/order, PM history
+  and cancellation. Does not load appsettings or host the application.
+- Report export: `powershell -ExecutionPolicy Bypass -File scripts/Test-ReportGeneration.ps1`;
+  offline fixtures use real supplied images and the 25 existing templates. Checks
+  XLSX/PDF bytes, mappings, conditions, styles, images and CWC missing-sheet guards.
 - Form2 parity: `powershell -ExecutionPolicy Bypass -File scripts/Test-ActionSummaryParity.ps1`;
   compiles the checked-in VB business routines and compares 1,250 fixed/seeded fixtures.
 - Duplicate SQL: `powershell -ExecutionPolicy Bypass -File scripts/Test-SummaryDuplicates.ps1`;

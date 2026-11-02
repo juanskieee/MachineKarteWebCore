@@ -24,15 +24,16 @@ public sealed class PmReportController : WorkflowController
         string process,
         int bmId,
         string timeOfRequest = "",
-        string machineNo = "")
+        string machineNo = "", string format = "xlsx")
     {
         var result = await _service.GenerateAsync(new PmReportRequest
         {
             Process = process,
             BmId = bmId,
             TimeOfRequest = timeOfRequest,
-            MachineNo = machineNo
-        });
+            MachineNo = machineNo,
+            Format = format
+        }, HttpContext.RequestAborted);
 
         return new JsonResult(new AjaxResult<PmReportResult>
         {
@@ -48,7 +49,7 @@ public sealed class PmReportController : WorkflowController
         if (string.IsNullOrWhiteSpace(fileName) ||
             fileName.Contains("..", StringComparison.Ordinal) ||
             Path.IsPathRooted(fileName) ||
-            !fileName.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
+            !(fileName.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase) || fileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase)))
             return BadRequest("Invalid report file name.");
 
         var path = Path.Combine(
@@ -62,7 +63,7 @@ public sealed class PmReportController : WorkflowController
 
         return PhysicalFile(
             path,
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            LegacyReportExport.ContentType(Path.GetExtension(fileName).TrimStart('.')),
             Path.GetFileName(fileName));
     }
 }

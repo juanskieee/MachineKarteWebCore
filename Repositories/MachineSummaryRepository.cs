@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
@@ -20,7 +20,7 @@ namespace MachineKarte.Web.Repositories
         }
 
         public async Task<List<string>> GetMachinesAsync(
-            string process, string location, DateTime from, DateTime to, bool isTe)
+            string process, string location, DateTime from, DateTime to, bool isTe, CancellationToken cancellationToken = default)
         {
             if (!MachineSummaryConfig.IsValidProcess(process, isTe))
                 throw new ArgumentException($"Unknown process '{process}'.", nameof(process));
@@ -30,7 +30,7 @@ namespace MachineKarte.Web.Repositories
             return await QueryMachinesAsync(
                 sql, process, location, from, to,
                 mcnoColumn: isTe ? "TesterNo" : "Mcno",
-                includeProcessParameter: isTe);
+                includeProcessParameter: isTe, cancellationToken: cancellationToken);
         }
 
         private static string StandardSql(string process) => $@"
@@ -84,12 +84,12 @@ namespace MachineKarte.Web.Repositories
 
         private async Task<List<string>> QueryMachinesAsync(
             string sql, string process, string location,
-            DateTime from, DateTime to, string mcnoColumn, bool includeProcessParameter)
+            DateTime from, DateTime to, string mcnoColumn, bool includeProcessParameter, CancellationToken cancellationToken)
         {
             var result = new List<string>();
 
             await using var conn = new SqlConnection(_connStr);
-            await conn.OpenAsync();
+            await conn.OpenAsync(cancellationToken);
 
             await using var cmd = new SqlCommand(sql, conn) { CommandType = CommandType.Text };
             cmd.Parameters.AddWithValue("@Range1",
@@ -101,8 +101,8 @@ namespace MachineKarte.Web.Repositories
             if (includeProcessParameter)
                 cmd.Parameters.AddWithValue("@Process", process);
 
-            await using var rdr = await cmd.ExecuteReaderAsync();
-            while (await rdr.ReadAsync())
+            await using var rdr = await cmd.ExecuteReaderAsync(cancellationToken);
+            while (await rdr.ReadAsync(cancellationToken))
             {
                 var value = rdr[mcnoColumn]?.ToString()?.Trim();
                 if (!string.IsNullOrEmpty(value))

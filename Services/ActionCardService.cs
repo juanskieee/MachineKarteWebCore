@@ -1,4 +1,4 @@
-﻿// Services/ActionCardService.cs
+// Services/ActionCardService.cs
 // Converted from Form_Input.vb business logic — E-Karte System
 // C# ASP.NET Core
 
@@ -29,11 +29,11 @@ namespace MachineKarte.Web.Services
         /// - "Existing" → fetches from DB, pre-populates all fields.
         /// - "New"      → returns empty card with DateCard = now, status pre-set from color.
         /// </summary>
-        public async Task<ActionCardData> PrepareCardAsync(ActionCardLoadRequest req)
+        public async Task<ActionCardData> PrepareCardAsync(ActionCardLoadRequest req, CancellationToken cancellationToken = default)
         {
             if (req.Status == "Existing")
             {
-                var existing = await _repo.LoadAsync(req.BmId, req.McNo, req.UserType);
+                var existing = await _repo.LoadAsync(req.BmId, req.McNo, req.UserType, cancellationToken);
 
                 if (existing is null)
                     throw new InvalidOperationException(

@@ -40,10 +40,10 @@ namespace MachineKarte.Web.Controllers
                     UserRole = userRole ?? string.Empty
                 };
 
-                var result = await _service.BuildDashboardAsync(filter);
+                var result = await _service.BuildDashboardAsync(filter, HttpContext.RequestAborted);
                 return new JsonResult(AjaxResult.Ok(result));
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException || !HttpContext.RequestAborted.IsCancellationRequested)
             {
                 return new JsonResult(AjaxResult.Fail(ex.Message));
             }
@@ -75,10 +75,10 @@ namespace MachineKarte.Web.Controllers
                     UserRole = userRole ?? string.Empty
                 };
 
-                var result = await _service.GetCellAsync(process, location, filter);
+                var result = await _service.GetCellAsync(process, location, filter, HttpContext.RequestAborted);
                 return new JsonResult(AjaxResult.Ok(result));
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException || !HttpContext.RequestAborted.IsCancellationRequested)
             {
                 return new JsonResult(AjaxResult.Fail(ex.Message));
             }

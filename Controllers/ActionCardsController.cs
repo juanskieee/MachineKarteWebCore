@@ -51,7 +51,7 @@ namespace MachineKarte.Web.Controllers
                     HeaderCase = headerCase
                 };
 
-                var card = await _svc.PrepareCardAsync(req);
+                var card = await _svc.PrepareCardAsync(req, HttpContext.RequestAborted);
 
                 return new JsonResult(new AjaxResult<ActionCardData>
                 {
@@ -59,7 +59,7 @@ namespace MachineKarte.Web.Controllers
                     Data = card
                 });
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException || !HttpContext.RequestAborted.IsCancellationRequested)
             {
                 _logger.LogWarning(ex, "ActionCard Load: BM={BmId} MC={McNo}", bmId, mcNo);
                 return new JsonResult(new AjaxResult<ActionCardData>

@@ -11,8 +11,8 @@ namespace MachineKarte.Web.Services
 
         public AlertBoardService(AlertBoardRepository repo) => _repo = repo;
 
-        public Task<AlertBoardData> LoadBoardAsync(AlertBoardRequest req)
-            => _repo.LoadBoardAsync(req);
+        public Task<AlertBoardData> LoadBoardAsync(AlertBoardRequest req, CancellationToken cancellationToken = default)
+            => _repo.LoadBoardAsync(req, cancellationToken);
 
         /// <summary>
         /// Returns the machine list for a cell key (e.g. "DC_0") plus a

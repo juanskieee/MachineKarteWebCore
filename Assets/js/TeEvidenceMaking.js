@@ -13,12 +13,14 @@ Workflows.register('TeEvidenceMaking', (root, options, context) => {
         status.className = '';
         status.textContent = 'Generating evidence…';
         try {
-            const response = await context.fetch(`/TeEvidenceMaking?handler=Generate&bmId=${encodeURIComponent(options.bmId)}`);
+            const format = find('outputFormat').value;
+            const response = await context.fetch(`/TeEvidenceMaking?handler=Generate&bmId=${encodeURIComponent(options.bmId)}&format=${format}`);
             const result = await response.json();
             if (!response.ok || !result.success) throw new Error(result.message || 'Evidence generation failed.');
-            download.href = `/TeEvidenceMaking?handler=Download&bmId=${encodeURIComponent(options.bmId)}`;
+            download.href = result.url || `/TeEvidenceMaking?handler=Download&bmId=${encodeURIComponent(options.bmId)}&format=${format}`;
+            download.textContent = `Download evidence (.${format})`;
             download.hidden = false;
-            status.textContent = 'Evidence ready. Select Download to save the workbook.';
+            status.textContent = 'Evidence ready. Select Download to save it.';
             status.className = 'status-success';
         } catch (error) {
             status.textContent = error.message;

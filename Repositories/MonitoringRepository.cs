@@ -76,11 +76,11 @@ namespace MachineKarte.Web.Repositories
         /// Mirrors cbFloor_SelectedIndexChanged in Form1.vb.
         /// </summary>
         public async Task<List<string>> GetMachinesAsync(
-            string userType, string process, string floor)
+            string userType, string process, string floor, CancellationToken cancellationToken = default)
         {
             var results = new List<string>();
             await using var conn = Open();
-            await conn.OpenAsync();
+            await conn.OpenAsync(cancellationToken);
 
             string sql;
             string colName;
@@ -111,8 +111,8 @@ namespace MachineKarte.Web.Repositories
             cmd.Parameters.AddWithValue("@Process", process);
             cmd.Parameters.AddWithValue("@Location", floor);
 
-            await using var reader = await cmd.ExecuteReaderAsync();
-            while (await reader.ReadAsync())
+            await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
                 results.Add(reader[colName].ToString()!);
 
             return results;
@@ -124,8 +124,9 @@ namespace MachineKarte.Web.Repositories
         // ----------------------------------------------------------------
 
         public async Task<(List<MachineSummary> Machines, int TotalPages)> GetPagedMachineSummariesAsync(
-            MonitoringFilter f)
+            MonitoringFilter f, CancellationToken cancellationToken = default)
         {
+            ValidateProcess(f.UserType, f.Process);
             int top2 = f.Page * 10;
             int top1 = (f.Page * 10) - 10;
 
@@ -138,7 +139,7 @@ namespace MachineKarte.Web.Repositories
 
             var list = new List<MachineSummary>();
             await using var conn = Open();
-            await conn.OpenAsync();
+            await conn.OpenAsync(cancellationToken);
             await using var cmd = new SqlCommand(sql, conn);
 
             cmd.Parameters.AddWithValue("@Range1", f.DateFrom);
@@ -148,8 +149,8 @@ namespace MachineKarte.Web.Repositories
             if (f.Machine != "All")
                 cmd.Parameters.AddWithValue("@Mcno", f.Machine);
 
-            await using var reader = await cmd.ExecuteReaderAsync();
-            while (await reader.ReadAsync())
+            await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
             {
                 list.Add(new MachineSummary
                 {
@@ -163,8 +164,8 @@ namespace MachineKarte.Web.Repositories
                                   : Convert.ToInt32(reader["actionline"])
                 });
             }
-            await reader.NextResultAsync();
-            await reader.ReadAsync();
+            await reader.NextResultAsync(cancellationToken);
+            await reader.ReadAsync(cancellationToken);
             var totalMachines = reader.GetInt32(0);
             return (list, Math.Max(1, (int)Math.Ceiling(totalMachines / 10d)));
         }
@@ -325,13 +326,15 @@ namespace MachineKarte.Web.Repositories
 
         public async Task<List<BMCardRow>> GetBMCardsAsync(
             string userType, string process, string location,
-            string machineNo, string dateFrom, string dateTo, string machineType = "")
+            string machineNo, string dateFrom, string dateTo, string machineType = "",
+            CancellationToken cancellationToken = default)
         {
+            ValidateProcess(userType, process);
             string sql = BuildBMCardSQL(userType, process);
 
             var list = new List<BMCardRow>();
             await using var conn = Open();
-            await conn.OpenAsync();
+            await conn.OpenAsync(cancellationToken);
             await using var cmd = new SqlCommand(sql, conn);
 
             cmd.Parameters.AddWithValue("@Range1", dateFrom);
@@ -340,8 +343,11 @@ namespace MachineKarte.Web.Repositories
             cmd.Parameters.AddWithValue("@Mcno", machineNo);
             cmd.Parameters.AddWithValue("@MCType", machineType);
 
-            await using var reader = await cmd.ExecuteReaderAsync();
-            while (await reader.ReadAsync())
+            await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+            // The optional columns are fixed for this result set, not per BM row.
+            var optionalColumns = Enumerable.Range(0, reader.FieldCount)
+                .Select(reader.GetName).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            while (await reader.ReadAsync(cancellationToken))
             {
                 list.Add(new BMCardRow
                 {
@@ -350,32 +356,32 @@ namespace MachineKarte.Web.Repositories
                     Process = reader["process"].ToString()!,
                     Location = reader["location"].ToString()!,
                     MachineNo = reader["Mcno"].ToString()!,
-                    MachineType = reader.HasColumn("mctype")
+                    MachineType = optionalColumns.Contains("mctype")
                                     ? reader["mctype"].ToString()! : string.Empty,
                     TimeOfRequest = reader["Timeofrequest"].ToString()!,
                     BMCase = reader["BMCase"].ToString()!,
-                    BMCaseId = reader.HasColumn("BMCaseID")
+                    BMCaseId = optionalColumns.Contains("BMCaseID")
                                     ? reader["BMCaseID"].ToString()! : string.Empty,
                     BMId = reader["bmid"] is DBNull ? 0 : Convert.ToInt32(reader["bmid"]),
-                    OcapCount = reader.HasColumn("OCAPCount") && reader["OCAPCount"] is not DBNull
+                    OcapCount = optionalColumns.Contains("OCAPCount") && reader["OCAPCount"] is not DBNull
                                     ? Convert.ToInt32(reader["OCAPCount"]) : 0,
                     HaveAction = reader["HaveAction"].ToString()!,
                     BMContentId = reader["BMContentID"].ToString()!,
-                    BMContent = reader.HasColumn("BMContent")
+                    BMContent = optionalColumns.Contains("BMContent")
                                     ? reader["BMContent"].ToString()! : string.Empty,
-                    Priority = reader.HasColumn("Priority")
+                    Priority = optionalColumns.Contains("Priority")
                                     ? reader["Priority"].ToString()! : string.Empty,
-                    MCStatus = reader.HasColumn("MCStatus")
+                    MCStatus = optionalColumns.Contains("MCStatus")
                                     ? reader["MCStatus"].ToString()! : string.Empty,
-                    FontColor = reader.HasColumn("FontColor")
+                    FontColor = optionalColumns.Contains("FontColor")
                                     ? reader["FontColor"].ToString()! : "None",
-                    ActionMarker = reader.HasColumn("Accre")
+                    ActionMarker = optionalColumns.Contains("Accre")
                                     ? reader["Accre"].ToString()! : string.Empty,
-                    SectionMarker = reader.HasColumn("Sect")
+                    SectionMarker = optionalColumns.Contains("Sect")
                                     ? reader["Sect"].ToString()! : string.Empty,
-                    DepartmentMarker = reader.HasColumn("Dept")
+                    DepartmentMarker = optionalColumns.Contains("Dept")
                                     ? reader["Dept"].ToString()! : string.Empty,
-                    DivisionMarker = reader.HasColumn("Div")
+                    DivisionMarker = optionalColumns.Contains("Div")
                                     ? reader["Div"].ToString()! : string.Empty
                 });
             }
@@ -455,6 +461,12 @@ namespace MachineKarte.Web.Repositories
         // ----------------------------------------------------------------
         // Private SQL builders
         // ----------------------------------------------------------------
+
+        private static void ValidateProcess(string userType, string process)
+        {
+            if (!MachineSummaryConfig.IsValidProcess(process, userType == "TE"))
+                throw new ArgumentException($"Unknown process '{process}'.", nameof(process));
+        }
 
         private static string BuildUserFilter(string userType) => userType switch
         {

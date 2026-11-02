@@ -87,6 +87,7 @@ try {
     Write-Output (Invoke-JavaScript 'window.runWorkflowChecks()')
     Write-Output (Invoke-JavaScript 'window.runSummaryChecks()')
     Write-Output (Invoke-JavaScript 'window.runMonitoringChecks()')
+    Write-Output (Invoke-JavaScript 'window.runRetrievalChecks()')
     Write-Output (Invoke-JavaScript 'window.runDocumentChecks()')
     foreach ($name in @('AlertBoard','MachineSummary','McdMonitoring','BmAnalytics','RawData','OcapViewer','PmReport','BmReport','EvidenceMaking','TeEvidenceMaking','ActionCards','MachineList')) {
         Invoke-JavaScript ("window.prepareWorkflowCapture('" + $name + "')") | Out-Null

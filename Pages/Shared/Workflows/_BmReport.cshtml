@@ -7,10 +7,11 @@
             @Html.AntiForgeryToken()
             <input type="hidden" name="bmId" value="@Model.BmId" />
             <input type="hidden" name="process" value="@(string.IsNullOrEmpty(Model.Process) ? "TE" : Model.Process)" />
+            <label>Format <select name="format" data-id="outputFormat"><option value="xlsx">Excel (.xlsx)</option><option value="pdf">PDF</option></select></label>
             <button type="submit" id="BmReport-btnDownload" data-id="btnDownload" class="btn-download">Generate report</button>
         </form>
     </div>
-    <p class="document-note">Generate the maintenance workbook, then choose Download to save it.</p>
+    <p class="document-note">Generate the report in Excel or PDF, then choose Download to save it.</p>
     <p id="BmReport-reportStatus" data-id="reportStatus" class="report-status" role="status" aria-live="polite" hidden></p>
     <a data-id="reportDownload" class="btn-download" hidden download>Download report (.xlsx)</a>
 </div>

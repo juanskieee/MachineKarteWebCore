@@ -4,6 +4,7 @@ namespace MachineKarte.Web.Models;
 
 public sealed class PmReportRequest
 {
+    public string Format { get; set; } = "xlsx";
     public string Process { get; set; } = string.Empty;
     public int BmId { get; set; }
     public string TimeOfRequest { get; set; } = string.Empty;
@@ -12,6 +13,8 @@ public sealed class PmReportRequest
 
 public sealed class PmReportRecord
 {
+    // Keep database types for the original VB DateDiff/CDate and numeric branches.
+    public Dictionary<string, object> Values { get; } = new(System.StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, string> Fields { get; } = new(System.StringComparer.OrdinalIgnoreCase);
 }
 

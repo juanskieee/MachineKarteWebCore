@@ -16,20 +16,22 @@ namespace MachineKarte.Web.Repositories
         // -----------------------------------------------------------------------
         // Main record from ViewTEData_Test
         // -----------------------------------------------------------------------
-        public async Task<BmReportData?> GetReportDataAsync(int bmId)
+        public async Task<BmReportData?> GetReportDataAsync(int bmId, CancellationToken cancellationToken = default)
         {
             const string sql = "SELECT TOP 1 * FROM ViewTEData_Test WHERE bmID = @bmID";
 
             await using var conn = new SqlConnection(_connStr);
-            await conn.OpenAsync();
+            await conn.OpenAsync(cancellationToken);
             await using var cmd = new SqlCommand(sql, conn);
             cmd.Parameters.AddWithValue("@bmID", bmId);
 
-            await using var dr = await cmd.ExecuteReaderAsync();
-            if (!await dr.ReadAsync())
+            await using var dr = await cmd.ExecuteReaderAsync(cancellationToken);
+            if (!await dr.ReadAsync(cancellationToken))
                 return null;
 
             var d = new BmReportData { BmId = bmId };
+            for (var ordinal = 0; ordinal < dr.FieldCount; ordinal++)
+                d.Values[dr.GetName(ordinal)] = dr.GetValue(ordinal);
 
             string S(string col)
             {
@@ -137,49 +139,55 @@ namespace MachineKarte.Web.Repositories
             return d;
         }
 
-        // -----------------------------------------------------------------------
-        // VR Numbers
-        // -----------------------------------------------------------------------
-        public async Task<(string vr1, string vr2, string vr3)> GetVrNumbersAsync(int bmId)
+        // Resolve VR numbers and the nine fixed lookups in one command. Each
+        // result retains the original first-row/null/empty-ID behavior.
+        public async Task LoadSupplementalDataAsync(
+            BmReportData data, CancellationToken cancellationToken = default)
         {
-            const string sql =
-                "SELECT VRNumber1, VRNumber2, VRNumber3 " +
-                "FROM [eMaintenanceSystemDB].[dbo].[VRNumber] WHERE bmID = @bmID";
-
-            await using var conn = new SqlConnection(_connStr);
-            await conn.OpenAsync();
-            await using var cmd = new SqlCommand(sql, conn);
-            cmd.Parameters.AddWithValue("@bmID", bmId);
-            await using var dr = await cmd.ExecuteReaderAsync();
-            if (await dr.ReadAsync())
-                return (dr["VRNumber1"]?.ToString() ?? "",
-                        dr["VRNumber2"]?.ToString() ?? "",
-                        dr["VRNumber3"]?.ToString() ?? "");
-            return ("", "", "");
-        }
-
-        // -----------------------------------------------------------------------
-        // Generic lookup helpers (mirrors getProcCodes / getPMCategory in VB)
-        // -----------------------------------------------------------------------
-        public async Task<string> GetLookupValueAsync(
-            string id, string tableName, string idColumn, string valueColumn)
-        {
-            if (string.IsNullOrWhiteSpace(id) || id == "0") return "";
-            // Only allow known table names to prevent SQL injection via table name interpolation
-            var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            var lookups = new (string Id, string Table, string Key, string Value, Action<string> Assign)[]
             {
-                "PMCategory", "BMContent", "TEContent", "TECase", "BMTEUnit",
-                "TEPoint", "TEWorkContent", "TECause", "TEPREVMeasure"
+                (data.PMCategoryID, "PMCategory", "PMCategoryID", "PMCategory", value => data.PMCategory = value),
+                (data.BMContentID, "BMContent", "BMContentID", "BMContent", value => data.BMContent = value),
+                (data.BMContentID, "TEContent", "BMContentID", "BMContent", value => data.TEContent = value),
+                (data.BMCaseID, "TECase", "BMCaseID", "BMCase", value => data.BMCase = value),
+                (data.BMUnitID, "BMTEUnit", "BMTEUnitID", "BMTEUnit", value => data.BMTEUnit = value),
+                (data.BMPointID, "TEPoint", "BMPointID", "BMPoint", value => data.BMPoint = value),
+                (data.BMWorkContentID, "TEWorkContent", "BMWorkContentID", "BMWorkContent", value => data.BMWorkContent = value),
+                (data.BMCauseID, "TECause", "BMCauseID", "BMCause", value => data.BMCause = value),
+                (data.PrevMeasureID, "TEPREVMeasure", "PREVMeasureID", "PREVMeasure", value => data.PREVMeasure = value)
             };
-            if (!allowed.Contains(tableName)) return "";
-
-            var sql = $"SELECT {valueColumn} FROM {tableName} WHERE {idColumn} = @id";
             await using var conn = new SqlConnection(_connStr);
-            await conn.OpenAsync();
-            await using var cmd = new SqlCommand(sql, conn);
-            cmd.Parameters.AddWithValue("@id", id);
-            var result = await cmd.ExecuteScalarAsync();
-            return result?.ToString() ?? "";
+            await using var cmd = new SqlCommand(@"SELECT VRNumber1, VRNumber2, VRNumber3
+                FROM [eMaintenanceSystemDB].[dbo].[VRNumber] WHERE bmID = @bmID;", conn);
+            cmd.Parameters.AddWithValue("@bmID", data.BmId);
+            for (var i = 0; i < lookups.Length; i++)
+            {
+                var lookup = lookups[i];
+                if (string.IsNullOrWhiteSpace(lookup.Id))
+                    cmd.CommandText += "SELECT N'';";
+                else
+                {
+                    cmd.CommandText += $"SELECT [{lookup.Value}] FROM [{lookup.Table}] WHERE [{lookup.Key}] = @id{i};";
+                    cmd.Parameters.AddWithValue($"@id{i}", lookup.Id);
+                }
+            }
+            await conn.OpenAsync(cancellationToken);
+            await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+            if (await reader.ReadAsync(cancellationToken))
+            {
+                data.VRNumber1 = reader["VRNumber1"].ToString() ?? "";
+                data.VRNumber2 = reader["VRNumber2"].ToString() ?? "";
+                data.VRNumber3 = reader["VRNumber3"].ToString() ?? "";
+            }
+            foreach (var lookup in lookups)
+            {
+                await reader.NextResultAsync(cancellationToken);
+                var found = await reader.ReadAsync(cancellationToken);
+                var value = found ? reader.GetValue(0).ToString() ?? "" : "";
+                lookup.Assign(value);
+                data.LookupValues[$"{lookup.Table}|{lookup.Id}|{lookup.Value}"] =
+                    found && !string.IsNullOrWhiteSpace(lookup.Id) ? value : "0";
+            }
         }
     }
 }

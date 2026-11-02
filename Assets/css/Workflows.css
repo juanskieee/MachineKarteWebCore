@@ -100,6 +100,8 @@
 .workflow .document-note { margin: 8px 0; color: #484848; font-size: 12px; }
 .workflow .document-toolbar p, .workflow .document-workspace p { margin: 0; }
 .workflow .document-toolbar form { margin: 0; }
+.workflow :is(.document-actions, .document-toolbar form) { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.workflow .document-actions select, .workflow .document-toolbar select { min-height: 36px; }
 .workflow .status-msg { margin: 0; }
 .workflow .bmreport-actions { padding: 12px 0; }
 .workflow :is(.report-status, .pm-report-status) { min-height: 0; margin: 6px 0; }

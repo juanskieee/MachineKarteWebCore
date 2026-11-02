@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -14,7 +14,7 @@ namespace MachineKarte.Web.Services
 
         public MachineSummaryService(MachineSummaryRepository repo) => _repo = repo;
 
-        public async Task<MachineSummaryResult> BuildSummaryAsync(MachineSummaryQuery query)
+        public async Task<MachineSummaryResult> BuildSummaryAsync(MachineSummaryQuery query, CancellationToken cancellationToken = default)
         {
             var (from, to) = ParseRange(query);
             var isTe = IsTe(query.UserMode);
@@ -50,7 +50,7 @@ namespace MachineKarte.Web.Services
                     .Select(location => (Row: row, Location: location)));
 
             await foreach (var (cell, machines) in MonitoringQueryBatch.ReadAsync(cells,
-                cell => _repo.GetMachinesAsync(cell.Row.Process, cell.Location, from, to, isTe)))
+                cell => _repo.GetMachinesAsync(cell.Row.Process, cell.Location, from, to, isTe, cancellationToken), cancellationToken))
             {
                 var row = cell.Row;
                 var location = cell.Location;
@@ -79,7 +79,7 @@ namespace MachineKarte.Web.Services
         }
 
         public async Task<MachineSummaryMachineListResult> GetCellAsync(
-            string process, string location, MachineSummaryQuery query)
+            string process, string location, MachineSummaryQuery query, CancellationToken cancellationToken = default)
         {
             var (from, to) = ParseRange(query);
             var isTe = IsTe(query.UserMode);
@@ -91,7 +91,7 @@ namespace MachineKarte.Web.Services
                     $"Location '{location}' is not valid for process '{process}'.");
             }
 
-            var machines = await _repo.GetMachinesAsync(process, location, from, to, isTe);
+            var machines = await _repo.GetMachinesAsync(process, location, from, to, isTe, cancellationToken);
 
             return new MachineSummaryMachineListResult
             {

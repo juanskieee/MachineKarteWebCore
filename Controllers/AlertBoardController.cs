@@ -23,10 +23,10 @@ public class AlertBoardController : WorkflowController
 	{
 		try
 		{
-			var board = await _service.LoadBoardAsync(request);
+			var board = await _service.LoadBoardAsync(request, HttpContext.RequestAborted);
 			return new JsonResult(new AjaxResult<AlertBoardData> { Data = board });
 		}
-		catch (Exception ex)
+		catch (Exception ex) when (ex is not OperationCanceledException || !HttpContext.RequestAborted.IsCancellationRequested)
 		{
 			_logger.LogError(ex, "Alert Board load failed");
 			return new JsonResult(new AjaxResult<AlertBoardData>
@@ -48,14 +48,14 @@ public class AlertBoardController : WorkflowController
 				DateFrom = dateFrom,
 				DateTo = dateTo,
 				User = user
-			});
+			}, HttpContext.RequestAborted);
 			var drilldown = _service.GetDrilldown(board, cellKey);
 			return new JsonResult(new AjaxResult<object>
 			{
 				Data = new { machines = drilldown.Machines, title = drilldown.Title }
 			});
 		}
-		catch (Exception ex)
+		catch (Exception ex) when (ex is not OperationCanceledException || !HttpContext.RequestAborted.IsCancellationRequested)
 		{
 			_logger.LogError(ex, "Alert Board drilldown failed for {CellKey}", cellKey);
 			return new JsonResult(new AjaxResult<object>

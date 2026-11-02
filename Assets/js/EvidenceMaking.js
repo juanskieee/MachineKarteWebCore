@@ -40,7 +40,7 @@ async function generateEvidence() {
     showSpinner(true);
     closePreview();
 
-    const resp = await post('/EvidenceMaking?handler=Generate', { process, bmId });
+    const resp = await post('/EvidenceMaking?handler=Generate', { process, bmId, format: byId('outputFormat').value });
 
     showSpinner(false);
 
@@ -66,7 +66,7 @@ function openPreview(url, fileName) {
     // PDF files render natively in modern browsers via iframe
     // xlsx files: prompt download instead of iframe preview
     if (fileName.endsWith('.pdf')) {
-        frame.src = url;
+        frame.src = url.startsWith('/') ? url + '&inline=true' : url;
         frame.classList.remove('is-hidden');
     } else {
         // For xlsx, just hide the iframe and let the download link do the work

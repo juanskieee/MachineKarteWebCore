@@ -60,7 +60,7 @@ namespace MachineKarte.Web.Controllers
 
             try
             {
-                var result = await _svc.GenerateEvidenceAsync(request);
+                var result = await _svc.GenerateEvidenceAsync(request, HttpContext.RequestAborted);
                 return new JsonResult(new AjaxResult<EvidenceGenerateResult>
                 {
                     Success = result.Success,
@@ -68,7 +68,7 @@ namespace MachineKarte.Web.Controllers
                     Data = result
                 });
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException || !HttpContext.RequestAborted.IsCancellationRequested)
             {
                 _logger.LogError(ex, "Evidence generation failed for BM {BmId}", request.BmId);
                 return new JsonResult(new AjaxResult<EvidenceGenerateResult>
@@ -85,7 +85,7 @@ namespace MachineKarte.Web.Controllers
         // GET /EvidenceMaking?handler=Download&fileName=DCEvidence_123.xlsx
 
         [HttpGet, WorkflowHandler("Download")]
-        public IActionResult Download(string fileName)
+        public IActionResult Download(string fileName, bool inline = false)
         {
             if (string.IsNullOrWhiteSpace(fileName) ||
                 fileName.Contains("..") || Path.IsPathRooted(fileName))
@@ -104,7 +104,9 @@ namespace MachineKarte.Web.Controllers
                 ? "application/pdf"
                 : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
-            return PhysicalFile(filePath, contentType, fileName);
+            return inline && contentType == "application/pdf"
+                ? PhysicalFile(filePath, contentType)
+                : PhysicalFile(filePath, contentType, fileName);
         }
     }
 }

@@ -15,7 +15,7 @@ Workflows.register('BmReport', (root, options, context) => {
         try {
             const response = await context.fetch(form.action, { method: 'POST', body: new FormData(form) });
             const type = response.headers.get('content-type') || '';
-            if (!response.ok || !type.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) {
+            if (!response.ok || !(type.includes('application/pdf') || type.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'))) {
                 const result = type.includes('application/json') ? await response.json() : null;
                 throw new Error(result?.message || 'Report generation failed. Try again.');
             }
@@ -26,9 +26,10 @@ Workflows.register('BmReport', (root, options, context) => {
             const utf8 = /filename\*=UTF-8''([^;]+)/i.exec(disposition);
             const plain = /filename="?([^";]+)"?/i.exec(disposition);
             download.href = downloadUrl;
-            download.download = utf8 ? decodeURIComponent(utf8[1]) : (plain?.[1] || `BM_${options.bmId}.xlsx`);
+            download.download = utf8 ? decodeURIComponent(utf8[1]) : (plain?.[1] || `BM_${options.bmId}.${form.elements.format.value}`);
+            download.textContent = `Download ${download.download}`;
             download.hidden = false;
-            status.textContent = 'Report ready. Select Download to save the workbook.';
+            status.textContent = 'Report ready. Select Download to save it.';
         } catch (error) {
             status.textContent = error.message;
             status.classList.add('status-error');

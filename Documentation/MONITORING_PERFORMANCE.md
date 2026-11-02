@@ -1,7 +1,70 @@
 # Monitoring performance audit
 
-Scope: Form2/AlertBoard, Form11/MachineSummary, and Form12/BmAnalytics;
-the existing Form8 profile is also preserved. Application changes only.
+Scope: all twelve repositories and their retrieval paths, including the original
+Form2/AlertBoard, Form11/MachineSummary, and Form8/Form12/BmAnalytics work.
+Application changes only.
+
+## Repository-wide read optimization (2026-11-02)
+
+The same application-only approach now covers all twelve repositories. No
+production connection was opened for this work. Connection settings, stored
+procedures, views, permanent tables, indexes, `schema.sql`, templates, and legacy
+source were not changed. Action Card INSERT/UPDATE statements and their duplicate
+and Seqno protections are unchanged; only the load path gains cancellation.
+
+| Read path | Resulting change |
+|---|---|
+| Monitoring | Cancel connection acquisition, execution, and row reads when the request ends. Check optional reader columns once per result set; group floor rows once. Share four read slots for concurrent card requests. Cancel superseded browser searches/filter requests, and append each card list in one DOM batch. Validate process identifiers before dynamic SQL. |
+| AlertBoard | Pass request cancellation through the existing ordered four-read batches, including queued waits. Preserve all Form2 counting, duplicate-location, repeat/color and drilldown rules. |
+| MachineSummary | Request cancellation reaches the existing batch and individual machine-list queries. Row counts and distinct lists remain separate. |
+| BmAnalytics | Cancel both summary and fallback reads. Use case-insensitive hash membership while retaining every qualifying row count and the first-seen machine-list order. Validate process identifiers. |
+| McdMonitoring | Use the existing shared four-slot batch scheduler, aggregating in original process/location order. Fix invalid DISTINCT ordering to sort only the projected machine/tester number descending. Reuse summary machine lists for 30 seconds; deduplicate identical pending fallback requests, with expiry, refresh/mode isolation and failure retry. |
+| BmReport | Fetch VR numbers and nine fixed lookups in one multi-result command after the main record: **up to 11 commands becomes 2**. Keep first-row, missing/zero ID and DBNull behavior; all identifiers remain fixed in code. Cancel reads on request termination. |
+| Evidence | Send the five original category SELECTs in one command: **7 commands becomes 3** including confirmation/header. Preserve each category's TOP limit, ordering and empty slots. Independent reads share the four-slot scheduler. |
+| TeEvidence | Batch six category SELECTs into one command and three quality SELECTs into one: **15 commands becomes 8**, including schema inspection. Preserve combined BEFORE/AFTER limits, ordering, path normalization and optional-column inspection. Replace seven unbounded concurrent reads with reads sharing the four-slot scheduler. |
+| PmReport | Retain bounded current/history queries and cancellation; resolve column names once per reader and retain raw SQL types. Resolve original helper lookups in one parameterized, allowlisted batch rather than per-cell SQL. Check cancellation before workbook construction. |
+| RawData | Replace synchronous connection/command/DataTable I/O with asynchronous, cancellable reads. Read the current tabular result instead of skipping it; consume the remainder of the batch, including local-temp-table cleanup. Correct MEMS's table name, enforce the table allowlist at the repository boundary, and build case chart groups in one pass. Both existing SQL calculations and their different date-filter placement are retained. |
+| ActionCard | Cancel existing-card reads when the dialog closes. Saves retain their existing completion, locking, duplicate rejection and exact-Seqno update behavior. |
+| OcapViewer | Already asynchronous and request-cancellable; existing SELECTs, process mapping and response fields retained. |
+
+The shared scheduler bounds these batched/dashboard card/report operations to
+four at a time **per application worker**; it is not a global limit for every
+standalone repository call or multiple deployed workers. Waiting reads honor
+cancellation and release slots on failure. Parallel reads remain separate
+statements/connections without a new snapshot transaction; validate concurrent
+load on a representative staging copy before deployment.
+
+Fresh searches still retrieve current data. MCD's new snapshot is modal-local,
+expires after 30 seconds, and is cleared on refresh/close; there is no new shared
+cache of live records. Monitoring request IDs still protect against late responses
+even when a server or fixture does not honor cancellation.
+
+Validation for this extension:
+
+- Build and offline schema/routes/status checks; scheduler queue-cancellation
+  and slot-recovery checks; 1,250 fixtures against compiled Form2 VB routines.
+- `scripts/Test-DataRetrieval.ps1`: actual repository bodies in an isolated,
+  generated LocalDB database. Fully qualified application references are rewritten
+  only in temporary test copies and checked for surviving production references.
+  Covers raw result materialization/types, MCD filters/order, PM history/nulls,
+  all report lookups, evidence category limits/order/empty results and cancellation.
+  The test never loads appsettings or hosts the application, and drops only its
+  generated fixture database afterward.
+- Duplicate-summary fixtures and all five modes/40 concurrent Action Card save
+  attempts use LocalDB only. The first sandboxed LocalDB launches failed before
+  executing SQL; rerunning the isolated checks with LocalDB access succeeded.
+- Endpoint and desktop/mobile browser fixtures use a separate app with an
+  unreachable localhost SQL override. Monitoring reset cancellation and MCD
+  snapshot reuse, expiry, pending-read deduplication, retry, refresh and mode
+  isolation are included.
+- Startup with a loopback non-SQL sink: first HTML 240.2 ms; HTML during tracking
+  8.8 ms and OCAP wait 6.6 ms; tracking 2,022.6 ms. These are local regression
+  observations, not a before/after production benchmark.
+
+Command counts above are source/fixture facts, not measured SQL Server speedups.
+Production plans, server CPU/I/O, result transfer, payload sizes, end-to-end
+latency and concurrent-user capacity remain unmeasured. No claim of maximum
+possible production performance or completed live-data parity is made.
 
 Database-safety scope clarification (2026-11-02): the PASS statements below
 refer to the summary transformations, not the entire application or every test
