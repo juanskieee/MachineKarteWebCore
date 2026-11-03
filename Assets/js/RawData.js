@@ -84,7 +84,7 @@ Workflows.register('RawData', (root, options, context) => {
             svg.append(element('text', { x: left - 8, y: y + 4, 'text-anchor': 'end' }, String(Math.round(maximum * step / 4))));
         }
         const slot = plotWidth / Math.max(1, labels.length);
-        const barWidth = Math.min(64, slot * .6);
+        const barWidth = Math.min(64, slot * 0.6);
         stacks.forEach((stack, index) => {
             let total = 0;
             stack.forEach((value, band) => {
@@ -98,7 +98,7 @@ Workflows.register('RawData', (root, options, context) => {
                 svg.append(rect);
                 total += value;
             });
-            svg.append(element('text', { x: left + (index + .5) * slot, y: 274, 'text-anchor': 'middle' }, labels[index]));
+            svg.append(element('text', { x: left + (index + 0.5) * slot, y: 274, 'text-anchor': 'middle' }, labels[index]));
         });
         container.append(svg);
         const legend = document.createElement('div');
