@@ -8,13 +8,21 @@
             <input type="hidden" name="bmId" value="@Model.BmId" />
             <input type="hidden" name="process" value="@(string.IsNullOrEmpty(Model.Process) ? "TE" : Model.Process)" />
             <label>Format <select name="format" data-id="outputFormat"><option value="xlsx">Excel (.xlsx)</option><option value="pdf">PDF</option></select></label>
-            <button type="submit" id="BmReport-btnDownload" data-id="btnDownload" class="btn-download">Generate report</button>
+            <button type="submit" id="BmReport-btnDownload" data-id="btnDownload" class="btn-generate">Generate report</button>
         </form>
     </div>
     <p class="document-note">Generate the report in Excel or PDF, then choose Download to save it.</p>
-    <p id="BmReport-reportStatus" data-id="reportStatus" class="report-status" role="status" aria-live="polite" hidden></p>
-    <a data-id="reportDownload" class="btn-download" hidden download>Download report (.xlsx)</a>
-    <div data-id="pdfPreviewPanel" class="preview-panel" hidden>
-        <iframe data-id="pdfPreviewFrame" class="preview-frame" title="BM maintenance report PDF preview" loading="lazy"></iframe>
+    <div data-id="statusArea" class="status-area is-hidden">
+        <div data-id="statusSpinner" class="status-spinner is-hidden">
+            <span class="spinner"></span><span>Generating report…</span>
+        </div>
+        <p id="BmReport-reportStatus" data-id="reportStatus" class="status-msg" role="status" aria-live="polite"></p>
+    </div>
+    <div data-id="previewPanel" class="preview-panel is-hidden">
+        <div class="preview-toolbar">
+            <span data-id="previewFileName" class="preview-filename"></span>
+            <a data-id="reportDownload" class="btn-download" href="#" download>Download</a>
+        </div>
+        <iframe data-id="previewFrame" class="preview-frame is-hidden" title="TE maintenance report PDF preview" loading="lazy"></iframe>
     </div>
 </div>
