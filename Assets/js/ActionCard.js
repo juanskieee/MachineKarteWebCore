@@ -13,11 +13,12 @@
  */
 
 Workflows.register('ActionCards', (root, options, context) => {
-// Preserve Seqno: existing Action Card edits must target the exact loaded record.
+    // Preserve Seqno: existing Action Card edits must target the exact loaded record.
     const byId = id => root.querySelector(`[data-id="${id}"]`);
     const antiForgery = root.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
     const fetch = context.fetch;
     let cardSeqno = 0;
+
     function initializeActionCard(params) {
 
         hf('hfBmId', params.bmId);
@@ -263,8 +264,8 @@ Workflows.register('ActionCards', (root, options, context) => {
         }
     }
 
-        root.querySelector('form').addEventListener('submit', event => { event.preventDefault(); saveCard(); });
-        root.querySelectorAll('[data-comment-idx]').forEach(field => field.addEventListener('blur', () => onCommentBlur(field, Number(field.dataset.commentIdx))));
-        root.querySelectorAll('[data-reply-idx]').forEach(field => field.addEventListener('blur', () => onReplyBlur(field, Number(field.dataset.replyIdx))));
+    root.querySelector('form').addEventListener('submit', event => { event.preventDefault(); saveCard(); });
+    root.querySelectorAll('[data-comment-idx]').forEach(field => field.addEventListener('blur', () => onCommentBlur(field, Number(field.dataset.commentIdx))));
+    root.querySelectorAll('[data-reply-idx]').forEach(field => field.addEventListener('blur', () => onReplyBlur(field, Number(field.dataset.replyIdx))));
         initializeActionCard({ userType: 'PM', status: 'New', colorName: '', headerCase: '', ...options });
-    });
+});
