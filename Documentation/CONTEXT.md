@@ -85,7 +85,14 @@ Verified locally:
 P1 blocks data-parity sign-off; P2 requires compatibility resolution.
 
 Report correction uses the supplied `Assets/images/` and existing `Templates/`.
-All 66 inventoried static files are present. `REPORT_GENERATION_CONTEXT.md`
+All 66 inventoried static files are present. These are static template marks
+and noimage fallbacks, not the live database-linked evidence archive.
+Dynamic PM/TE evidence photographs are read from the original server shares
+(`eMaintenanceSystem` for Form4, `TEeMaintenanceSystem` for Form10) by
+joining the legacy system root from `NetworkShare:Server` with the SQL image
+path; only Form10 strips `~`. Custom `ImagesRoot` / `Legacy*UploadRoots`
+photo-search logic is not used. Hosting identity share access and actual
+database file paths remain to be verified after deployment. `REPORT_GENERATION_CONTEXT.md`
 records the form/template/view map and remaining CWC limitation;
 `LEGACY_REPORT_ASSETS.csv` maps original server references to actual local files.
 The four dialogs support explicit Excel/PDF generation and styled downloads.
@@ -161,6 +168,10 @@ overrides design preferences.
 
 # Modification Rules
 
+- **Always read this `Documentation/CONTEXT.md` before editing code**, then
+  consult relevant documentation and compare the corresponding original
+  `Legacy/Form*.vb.txt` implementations before changing a migrated workflow.
+  Update context/docs when verified behavior or deployment requirements change.
 - Make minimal changes; reuse existing handlers, services, and styles. Avoid
   unnecessary files, dependencies, and architectural rewrites.
 - Preserve backend logic/queries unless required by the correction. Retain SQL
@@ -249,5 +260,6 @@ and BmAnalytics. Primary summaries share `Workflows.css`.
 - [ ] Restore SQL access; compare all five user modes, repeat/MCD counts, date
   boundaries, Action Card saves, and duplicate-record behavior with legacy data.
 - [ ] Validate Form11/Form12 totals/drilldowns and the distinct Form8 profile.
-- [ ] Compare Form3 computed/history cells and Forms4/9/10 workbooks, network images,
-  and PDF requirements with legacy output.
+- [ ] Compare Form3 computed/history cells and Forms4/9/10 workbooks, server
+  evidence images, and PDF requirements with legacy output. Under the hosting
+  identity, verify read access to original PM/TE shares and SQL image paths.

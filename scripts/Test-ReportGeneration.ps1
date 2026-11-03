@@ -30,6 +30,40 @@ CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en-US");
 var root=args[0]; var output=Path.Combine(AppContext.BaseDirectory,"artifacts"); Directory.CreateDirectory(output);
 void Require(bool condition,string message){if(!condition)throw new Exception(message);}
 string Images(bool te)=>Path.Combine(root,"Assets","images",te?"TEeMaintenanceSystems_images":"eMaintenanceSystems_images");
+
+// Form4 and Form10 resolve the SQL image path under distinct legacy shares.
+// Exercise this offline against temporary share-shaped directories, never a server.
+var pmLegacyShare=Path.Combine(output,"legacy-PM-share");
+var teLegacyShare=Path.Combine(output,"legacy-TE-share");
+var pmUpload=Path.Combine(pmLegacyShare,"Upload","2026");
+var teUpload=Path.Combine(teLegacyShare,"Upload","2026");
+Directory.CreateDirectory(pmUpload); Directory.CreateDirectory(teUpload);
+var pmImage=Path.Combine(pmUpload,"photo.png");
+var teImage=Path.Combine(teUpload,"photo.png");
+File.Copy(Path.Combine(Images(false),"noimage.png"),pmImage);
+File.Copy(Path.Combine(Images(true),"noimage.png"),teImage);
+var pmPlaceholder=Path.Combine(Images(false),"noimage.png");
+var tePlaceholder=Path.Combine(Images(true),"noimage.png");
+Require(LegacyReportExport.ResolveEvidenceImage(@"\Upload\2026\photo.png",pmLegacyShare,Images(false))==Path.GetFullPath(pmImage),
+    "Form4 did not find the image in its original PM server folder");
+Require(LegacyReportExport.ResolveEvidenceImage(@"~\Upload\2026\photo.png",teLegacyShare,Images(true),te:true)==Path.GetFullPath(teImage),
+    "Form10 failed to strip ~ and find the image in its separate TE server folder");
+Require(LegacyReportExport.ResolveEvidenceImage(@"~\Upload\2026\photo.png",pmLegacyShare,Images(false))==pmPlaceholder,
+    "Form4 must not silently strip the Form10-only tilde");
+Require(LegacyReportExport.ResolveEvidenceImage(@"\Upload\2026\missing.png",pmLegacyShare,Images(false))==pmPlaceholder,
+    "Form4 missing image must use the original PM noimage mark");
+Require(LegacyReportExport.ResolveEvidenceImage(@"\Upload\2026\missing.png",teLegacyShare,Images(true),te:true)==tePlaceholder,
+    "Form10 missing image must use the original TE noimage mark");
+Require(LegacyReportExport.ResolveEvidenceImage(@"\..\other.png",pmLegacyShare,Images(false))==pmPlaceholder &&
+        LegacyReportExport.ResolveEvidenceImage(@"\\other-server\secret.png",teLegacyShare,Images(true),te:true)==tePlaceholder,
+    "DB image paths must not escape their respective legacy system share");
+var serverConfig=new Microsoft.Extensions.Configuration.ConfigurationBuilder()
+    .AddInMemoryCollection(new Dictionary<string,string?> { ["NetworkShare:Server"]="test-file-server" }).Build();
+Require(LegacyReportExport.LegacyEvidenceRoot(serverConfig,false)==@"\\test-file-server\eMaintenanceSystem" &&
+        LegacyReportExport.LegacyEvidenceRoot(serverConfig,true)==@"\\test-file-server\TEeMaintenanceSystem",
+    "Web server path mapping diverged from Form4/Form10");
+Console.WriteLine("PASS: original PM/TE server image roots, Form10 tilde, PM noimage and path boundaries.");
+
 var date=new DateTime(2026,10,1,10,0,0);
 Dictionary<string,object> Record(string profile){
  var record=LegacyReportWriter.RequiredFields(profile).ToDictionary(field=>field,field=>(object)"",StringComparer.OrdinalIgnoreCase);
