@@ -1,6 +1,3 @@
-Workflows.register('BmAnalytics', (root, options, context) => {
-    const byId = id => root.querySelector('[data-id="' + id + '"], [id="' + id + '"]');
-    const fetch = context.fetch;
 /**
  * BmAnalytics.js
  * Client-side logic for the BM Analytics page (Form8/Form12 conversion).
@@ -12,7 +9,10 @@ Workflows.register('BmAnalytics', (root, options, context) => {
  * Auto-refreshes on the legacy Form1 timer cycle.
  */
 
-    'use strict';
+Workflows.register('BmAnalytics', (root, options, context) => {
+// Form 8 and Form 12 use distinct legacy grid layouts and query profiles.
+    const byId = id => root.querySelector('[data-id="' + id + '"], [id="' + id + '"]');
+    const fetch = context.fetch;
 
     // -----------------------------------------------------------------------
     // State
