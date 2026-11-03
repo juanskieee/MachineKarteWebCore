@@ -1,19 +1,36 @@
-/** PM Maintenance Record (Form3): preserve explicit generate and download actions. */
+/** PM Maintenance Record (Form3): keep Generate and Download as separate user actions. */
 Workflows.register('PmReport', (root, options, context) => {
-    const byId = id => root.querySelector('[data-id="' + id + '"], [id="' + id + '"]');
-    const fetch = context.fetch;
-
+    const byId = id => root.querySelector('[data-id="' + id + '"]');
     const button = byId('pmGenerate');
+    const statusArea = byId('statusArea');
+    const statusSpinner = byId('statusSpinner');
     const status = byId('pmStatus');
+    const previewPanel = byId('previewPanel');
+    const previewFileName = byId('previewFileName');
+    const previewFrame = byId('previewFrame');
     const download = byId('pmDownload');
 
-    button?.addEventListener('click', generate);
+    context.signal.addEventListener('abort', () => previewFrame.removeAttribute('src'), { once: true });
+    button.addEventListener('click', generate);
 
-    // Request the report only when the user explicitly selects Generate.
+    function showStatus(message, type) {
+        statusArea.classList.remove('is-hidden');
+        status.textContent = message;
+        status.className = `status-msg status-${type}`;
+    }
+
+    function clearPreview() {
+        previewPanel.classList.add('is-hidden');
+        previewFrame.removeAttribute('src');
+        previewFrame.classList.add('is-hidden');
+        download.removeAttribute('href');
+    }
+
     async function generate() {
-        setStatus('Generating report...', 'busy');
         button.disabled = true;
-        download.hidden = true;
+        clearPreview();
+        showStatus('', 'info');
+        statusSpinner.classList.remove('is-hidden');
 
         const query = new URLSearchParams({
             process: options.process ?? '',
@@ -24,27 +41,33 @@ Workflows.register('PmReport', (root, options, context) => {
         });
 
         try {
-            const response = await fetch(`/PmReport?handler=Generate&${query.toString()}`);
+            const response = await context.fetch(`/PmReport?handler=Generate&${query}`);
             const result = await response.json();
             if (!response.ok || !result.success || !result.data?.success) {
                 throw new Error(result.message || result.data?.message || 'Report generation failed.');
             }
+            if (context.signal.aborted) return;
 
-            download.href = result.data.downloadUrl;
-            download.download = result.data.fileName;
-            download.hidden = false;
-            download.textContent = `Download ${result.data.fileName}`;
-            setStatus('Report generated.', 'success');
+            const { fileName, downloadUrl } = result.data;
+            download.href = downloadUrl;
+            download.download = fileName;
+            download.textContent = 'Download';
+            previewFileName.textContent = fileName;
+
+            // Excel stays download-only; the same PDF endpoint also supports inline display.
+            if (fileName.toLowerCase().endsWith('.pdf')) {
+                const inlineUrl = new URL(downloadUrl, window.location.href);
+                inlineUrl.searchParams.set('inline', 'true');
+                previewFrame.src = inlineUrl.href;
+                previewFrame.classList.remove('is-hidden');
+            }
+            previewPanel.classList.remove('is-hidden');
+            showStatus(`Evidence generated: ${fileName}`, 'success');
         } catch (error) {
-            setStatus(error.message || 'Report generation failed.', 'error');
+            if (!context.signal.aborted) showStatus(error.message || 'Report generation failed.', 'error');
         } finally {
+            statusSpinner.classList.add('is-hidden');
             button.disabled = false;
         }
-    }
-
-    function setStatus(message, state) {
-        status.hidden = false;
-        status.textContent = message;
-        status.dataset.state = state;
     }
 });
