@@ -16,6 +16,10 @@ Form_Input are implemented; live-data and report-output parity remain incomplete
   only when server-rendered context is needed.
 - `Assets/css/` and `Assets/js/` are outside `wwwroot`; use `Url.VersionedAsset`.
   `Pages/_ViewImports.cshtml` applies throughout Pages.
+- `Program.cs` creates `TempData/GeneratedPdf` before initializing its
+  `PhysicalFileProvider`: fresh checkouts may not contain the empty directory.
+  Report services continue writing generated Excel/PDF files to that location;
+  the hosting identity needs write permission there.
 - Preserve `Legacy/`, `schema.sql`, `Templates/`, and `Form3CellMappingMatrix.txt`.
   The matrix is a reference index; `Reporting/LegacyReportMappings.vb` executes
   the active original report conditions/loops. Templates and `Assets/images/`
