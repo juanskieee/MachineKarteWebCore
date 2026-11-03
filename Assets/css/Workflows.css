@@ -103,13 +103,17 @@
 .workflow :is(.document-actions, .document-toolbar form) { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .workflow .document-actions select, .workflow .document-toolbar select { min-height: 36px; }
 .workflow .status-msg { margin: 0; }
+.workflow .status-msg.status-success { color: #006b00; }
+.workflow .status-msg.status-error { color: #a00000; }
+.workflow .preview-toolbar .btn-download { margin-left: auto; text-align: center; }
+.workflow .preview-toolbar .btn-download:focus-visible { outline: 2px solid #111; outline-offset: 2px; }
 .workflow .bmreport-actions { padding: 12px 0; }
 .workflow :is(.report-status, .pm-report-status) { min-height: 0; margin: 6px 0; }
 .workflow .pm-report-status[data-state="error"] { color: #a00000; }
 .workflow .ev-header { padding: 6px 0; }
 .workflow .form-group { display: flex; flex-direction: column; gap: 3px; }
 .workflow .preview-panel { background: #fff; margin-top: 8px; }
-.workflow .preview-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px; background: #ddd; }
+.workflow .preview-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 8px; background: #ddd; }
 .workflow .preview-frame { width: 100%; min-height: 50dvh; border: 0; }
 .workflow .preview-filename { overflow-wrap: anywhere; flex: 1; }
 .workflow .status-spinner { display: flex; gap: 8px; align-items: center; }

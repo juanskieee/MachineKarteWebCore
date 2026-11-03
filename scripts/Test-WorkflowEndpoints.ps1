@@ -125,11 +125,19 @@ try {
         } finally { $response.Dispose() }
       }
       if ($format -eq 'pdf') {
-        $response = Get-Response "/EvidenceMaking?handler=Download&fileName=$fileName&inline=true"
-        try {
-            Require ($null -eq $response.Content.Headers.ContentDisposition) 'PDF preview forces an attachment download.'
-            Require ($response.Content.Headers.ContentType.MediaType -eq 'application/pdf') 'PDF preview MIME type changed.'
-        } finally { $response.Dispose() }
+        foreach ($inlinePath in @(
+            "/PmReport?handler=Download&fileName=$fileName&inline=true",
+            "/EvidenceMaking?handler=Download&fileName=$fileName&inline=true",
+            "/TeEvidenceMaking?handler=Download&bmId=$id&format=pdf&inline=true"
+        )) {
+            $response = Get-Response $inlinePath
+            try {
+                Require ($null -eq $response.Content.Headers.ContentDisposition) "$inlinePath forces an attachment download."
+                Require ($response.Content.Headers.ContentType.MediaType -eq 'application/pdf') "$inlinePath PDF preview MIME type changed."
+                $actual = $response.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult()
+                Require ([Convert]::ToBase64String($actual) -eq [Convert]::ToBase64String($bytes)) "$inlinePath changed inline PDF bytes."
+            } finally { $response.Dispose() }
+        }
       }
     }
     foreach ($name in @('PmReport','EvidenceMaking')) {
@@ -140,7 +148,7 @@ try {
     }
     $response = Get-Response '/TeEvidenceMaking?handler=Download' 400
     $response.Dispose()
-    Write-Output 'PASS: all three download routes stream exact Excel/PDF bytes, MIME types and filenames; PDF preview stays inline and missing/invalid file validation is retained.'
+    Write-Output 'PASS: all three download routes stream exact Excel/PDF bytes, MIME types and filenames; all three PDF preview routes stay inline and missing/invalid file validation is retained.'
 } finally {
     foreach ($path in $createdFiles) { Remove-Item -LiteralPath $path }
     $client.Dispose()

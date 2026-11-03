@@ -44,7 +44,7 @@ public sealed class PmReportController : WorkflowController
     }
 
     [HttpGet, WorkflowHandler("Download")]
-    public IActionResult Download(string fileName)
+    public IActionResult Download(string fileName, bool inline = false)
     {
         if (string.IsNullOrWhiteSpace(fileName) ||
             fileName.Contains("..", StringComparison.Ordinal) ||
@@ -61,9 +61,10 @@ public sealed class PmReportController : WorkflowController
         if (!System.IO.File.Exists(path))
             return NotFound("Report file not found.");
 
-        return PhysicalFile(
-            path,
-            LegacyReportExport.ContentType(Path.GetExtension(fileName).TrimStart('.')),
-            Path.GetFileName(fileName));
+        var contentType = LegacyReportExport.ContentType(Path.GetExtension(fileName).TrimStart('.'));
+        // A PDF iframe must not receive Content-Disposition: attachment.
+        return inline && contentType == "application/pdf"
+            ? PhysicalFile(path, contentType)
+            : PhysicalFile(path, contentType, Path.GetFileName(fileName));
     }
 }

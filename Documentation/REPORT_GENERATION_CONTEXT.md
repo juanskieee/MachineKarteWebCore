@@ -85,9 +85,17 @@ it does not reduce them to TOP 1 and lose an earlier nonempty QC table.
 ## Excel/PDF output and R styling
 
 All four dialogs have an explicit Excel/PDF selector. Excel remains the default.
-Generation and download remain separate user actions. PM R uses the same
-`.btn-download` styling as E. Download extensions/MIME types match the chosen
-format; PM evidence PDF previews use an inline response.
+Generation and download remain separate user actions. All four document
+workflows (PM/TE Record and PM/TE Evidence) now use the PM Evidence
+`status-area`, `preview-panel`, `preview-toolbar`, and `preview-frame`
+layout. Successful generation shows the green
+`Evidence generated: {filename}.xlsx/.pdf` message and a toolbar with the
+filename on the left and a styled Download link on the right. PDFs display in
+an iframe; Excel intentionally shows only the toolbar. PM Record and TE
+Evidence support `inline=true` for PDF-only preview responses, while ordinary
+downloads retain their attachment disposition. The TE Record renders its
+in-memory PDF blob directly; its object URL is revoked when replaced or closed.
+No modal automatically generates or downloads a report.
 
 `LegacyReportExport` uses GemBox.Spreadsheet 2026.10.101, the original form's
 library family, for actual XLSX and PDF serialization. No Office installation,
