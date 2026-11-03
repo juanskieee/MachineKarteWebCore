@@ -7,7 +7,7 @@
  *  • Render count cells with alert colour
  *  • Handle cell clicks → drilldown panel
  *  • "View in Monitoring" navigates with querystring params
- *  • Auto-refresh when Monitoring signals timer=0 via sessionStorage
+ *  • Refresh when Monitoring emits its shared 600-second timer event
  */
 
 Workflows.register('AlertBoard', (root, options, context) => {
@@ -259,8 +259,8 @@ Workflows.register('AlertBoard', (root, options, context) => {
     }
 
     // ── Auto-refresh (mirrors VB tmrRefresh_Tick) ─────────────────────────
-    // Monitoring page writes sessionStorage.monitoringTimer = "0" when its
-    // countdown hits zero.  AlertBoard polls that and auto-reloads.
+    // Monitoring raises monitoring:refresh on the legacy 600-second cycle;
+    // the workflow context removes this listener when the dialog closes.
 
     context.onRefresh(loadBoard);
 
