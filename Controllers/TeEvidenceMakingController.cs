@@ -53,7 +53,7 @@ namespace MachineKarte.Web.Controllers
         // GET /TeEvidenceMaking?handler=Download&bmId=12345
 
         [HttpGet, WorkflowHandler("Download")]
-        public IActionResult Download(string bmId, string format = "xlsx")
+        public IActionResult Download(string bmId, string format = "xlsx", bool inline = false)
         {
             if (string.IsNullOrWhiteSpace(bmId))
                 return BadRequest("bmId required.");
@@ -67,9 +67,11 @@ namespace MachineKarte.Web.Controllers
                 return NotFound($"Evidence file for BM {bmId} has not been generated yet.");
 
             var stream = System.IO.File.OpenRead(path);
-            return File(stream,
-                LegacyReportExport.ContentType(format),
-                fileName);
+            var contentType = LegacyReportExport.ContentType(format);
+            // Preserve attachment downloads; only inline PDF previews omit the filename.
+            return inline && format == "pdf"
+                ? File(stream, contentType)
+                : File(stream, contentType, fileName);
         }
     }
 }
