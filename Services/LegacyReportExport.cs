@@ -57,15 +57,23 @@ public static class LegacyReportExport
         if (parts.Any(part => part.Length == 0 || part is "." or ".."))
             return placeholder;
 
-        var candidate = Path.Combine(new[] { legacySystemRoot }.Concat(parts).ToArray());
-        // Windows UNC paths are normalized and bounded by the original share.
-        if (OperatingSystem.IsWindows())
+        try
         {
-            var root = Path.GetFullPath(legacySystemRoot).TrimEnd('\\') + "\\";
-            candidate = Path.GetFullPath(candidate);
-            if (!candidate.StartsWith(root, StringComparison.OrdinalIgnoreCase))
-                return placeholder;
+            var candidate = Path.Combine(new[] { legacySystemRoot }.Concat(parts).ToArray());
+            // Windows UNC paths are normalized and bounded by the original share.
+            if (OperatingSystem.IsWindows())
+            {
+                var root = Path.GetFullPath(legacySystemRoot).TrimEnd('\\') + "\\";
+                candidate = Path.GetFullPath(candidate);
+                if (!candidate.StartsWith(root, StringComparison.OrdinalIgnoreCase))
+                    return placeholder;
+            }
+            return File.Exists(candidate) ? candidate : placeholder;
         }
-        return File.Exists(candidate) ? candidate : placeholder;
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            // Form4/Form10 use File.Exists; malformed or missing records use noimage.
+            return placeholder;
+        }
     }
 }
