@@ -19,12 +19,13 @@ The server itself was not accessed.
 | `\\172.26.220.161\eMaintenanceSystem\Templates\` | `Templates/PmReport/` and `Templates/EvidenceMaking/` |
 | `\\172.26.220.161\TEeMaintenanceSystem\Templates\` | `Templates/BmReport/` |
 
-Keep both image directories distinct, including PM `Inspection/` images. Static
-marks resolve locally. Record-specific photos resolve under the configured
-`EvidenceMaking:ImagesRoot` or supplied image directory; absent photos use that
-form's original `noimage.png`. The copied folders contain sample photos, not a
-verified complete production evidence archive. Both templates and images are
-included in build/publish output.
+Keep both image directories distinct, including PM `Inspection/` images. The
+copied `Assets/images/` trees supply original static template marks and each
+form's `noimage.png` fallback, **not** record-specific uploaded photographs.
+For dynamic evidence, the web app now uses the original server path constructed
+from `NetworkShare:Server` plus the SQL `BMEvidence_ImgFile` value, following
+Form4 and Form10. Static template assets and workbook templates remain included
+in build/publish output.
 
 ## Why the matrix alone was insufficient
 
@@ -118,23 +119,49 @@ The TE templates also have small recorded used-range dimensions compared with
 legacy cell writes. Their original active-sheet/index selection is retained;
 metadata dimensions alone are not used to remap cells.
 
-## Optional legacy uploaded-photo roots (pending production validation)
+## Record-specific evidence images: original server path parity
 
-The web evidence services now accept optional configuration arrays
-`EvidenceMaking:LegacyPmUploadRoots` and `EvidenceMaking:LegacyTeUploadRoots`.
-Each entry is an existing directory containing uploaded photographs, for example
-an administrator-mounted share or a locally mirrored `Upload` directory.
-Configure these in deployment environment configuration, not in committed
-credentials. PM and TE roots are kept separate. The resolver uses only these
-trusted roots, the existing evidence directory, and static image assets;
-missing photos still use the legacy placeholder. Full database-stored UNC paths
-are reduced to their relative suffix below `Upload` rather than opened directly.
+**Source of truth:** `Legacy/Form4.vb.txt` and `Legacy/Form10.vb.txt`.
 
-No network share has been accessed or verified by this change. Verify that the
-application's deployment identity has read-only access and compare representative
-Form4/Form10 output with the desktop originals. Missing/incorrect cell mappings,
-scattered zeroes, and the incomplete CWC workbook remain unresolved until
-representative source data and output comparisons are available.
+| Original form | Base folder from `My.Settings.PathServer` | SQL evidence path | Original image handling |
+|---|---|---|---|
+| Form4, PM Evidence | `\\\\{PathServer}\\eMaintenanceSystem` | `gridEvidenceMaking_Ver3.BMEvidence_ImgFile` | Concatenate the base and stored path; use PM `noimage.png` when absent |
+| Form10, TE Evidence | `\\\\{PathServer}\\TEeMaintenanceSystem` | `TEBMEvidenceMaking.BMEvidence_ImgFile` / `TelekoEvidence` | Remove `~` from stored path before concatenation; use TE `noimage.png` when absent |
+
+The web host uses the existing `NetworkShare:Server` setting in place of the
+legacy desktop `PathServer`; no new upload directories, configurable upload
+roots or duplicated photo archives are used. Paths are anchored to their
+respective original share and reject attempts to traverse outside that share.
+The Form10 tilde conversion does **not** apply to Form4. Static icons remain
+local while dynamic images are read directly from the existing server.
+
+Deploying the web app on the legacy file server may make these pictures
+accessible, provided the ASP.NET Core process identity has **read access** to
+both shares and the database contains correct relative paths. An IIS application
+pool or service identity is not necessarily the same as the interactive desktop
+identity; a separate authenticated share session may be required. On a
+non-Windows web host, native Windows UNC paths will not automatically work and
+the target shares must be mounted or served through an approved infrastructure
+mechanism. Do not commit share credentials or impersonate a user through new
+custom upload code.
+
+### Deployment verification (read-only)
+
+1. Under the **actual web-host process identity**, verify file read access to
+   both original share folders, not only to the application directory.
+2. Read representative stored `BMEvidence_ImgFile` records for PM and TE,
+   keep the original leading `\\` / `~/` form, and confirm the constructed
+   file exists under the matching legacy system folder.
+3. Generate the same PM and TE evidence records in the original desktop forms
+   and the deployed web app. Compare expected photo counts, positions and
+   original no-image fallbacks. Distinguish an inaccessible share from a
+   genuinely absent photograph.
+
+The offline report test creates disposable share-shaped test directories and
+checks Form4/Form10 resolution without contacting production. **No live network
+share has been accessed or validated**. Missing photos may still appear until
+deployment permissions and actual SQL paths are verified. The unrelated
+`CWC.xlsx` missing-sheet limitation remains.
 
 ## Descriptive lookup zeroes (web output correction)
 
