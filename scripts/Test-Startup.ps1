@@ -60,6 +60,9 @@ try {
         } else { Start-Sleep -Milliseconds 25 }
     }
     Require $ready 'Test app did not start within 45 seconds.'
+    # The first launch must work even if the Git checkout has no output directory.
+    $generatedReports = Join-Path $repo 'TempData/GeneratedPdf'
+    Require (Test-Path -LiteralPath $generatedReports -PathType Container) 'Startup did not create the generated-report directory.'
     $hostMs = [Math]::Round($launch.Elapsed.TotalMilliseconds, 1)
     $first = Page
     Write-Output "MEASURE: host ready=${hostMs}ms; first Monitoring HTML=$($first.Milliseconds)ms; SQL sink timeout=8000ms. No SQL server was contacted."

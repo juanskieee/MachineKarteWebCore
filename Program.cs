@@ -130,13 +130,13 @@ app.UseStaticFiles(new StaticFileOptions
 });
 
 // Generated PDF / Excel output folder
+// Git does not preserve empty directories; create it before PhysicalFileProvider.
+var generatedOutputPath = Path.Combine(app.Environment.ContentRootPath, "TempData", "GeneratedPdf");
+Directory.CreateDirectory(generatedOutputPath);
+
 app.UseStaticFiles(new StaticFileOptions
 {
-    FileProvider = new PhysicalFileProvider(
-        Path.Combine(
-            builder.Environment.ContentRootPath,
-            "TempData",
-            "GeneratedPdf")),
+    FileProvider = new PhysicalFileProvider(generatedOutputPath),
     RequestPath = "/TempData/GeneratedPdf"
 });
 
