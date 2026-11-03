@@ -3,7 +3,6 @@ Workflows.register('PmReport', (root, options, context) => {
     const byId = id => root.querySelector('[data-id="' + id + '"], [id="' + id + '"]');
     const fetch = context.fetch;
 
-    const config = options;
     const button = byId('pmGenerate');
     const status = byId('pmStatus');
     const download = byId('pmDownload');
@@ -17,10 +16,10 @@ Workflows.register('PmReport', (root, options, context) => {
         download.hidden = true;
 
         const query = new URLSearchParams({
-            process: config.process ?? '',
-            bmId: String(config.bmId ?? ''),
-            timeOfRequest: config.timeOfRequest ?? '',
-            machineNo: config.machineNo ?? '',
+            process: options.process ?? '',
+            bmId: String(options.bmId ?? ''),
+            timeOfRequest: options.timeOfRequest ?? '',
+            machineNo: options.machineNo ?? '',
             format: byId('outputFormat').value
         });
 
