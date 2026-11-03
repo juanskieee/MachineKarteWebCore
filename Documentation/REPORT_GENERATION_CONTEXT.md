@@ -130,7 +130,9 @@ metadata dimensions alone are not used to remap cells.
 
 The web host uses the existing `NetworkShare:Server` setting in place of the
 legacy desktop `PathServer`; no new upload directories, configurable upload
-roots or duplicated photo archives are used. Paths are anchored to their
+roots or duplicated photo archives are used. A previous
+`EvidenceMaking:ImagesRoot` setting may remain in existing deployment config,
+but the evidence services no longer read it. Paths are anchored to their
 respective original share and reject attempts to traverse outside that share.
 The Form10 tilde conversion does **not** apply to Form4. Static icons remain
 local while dynamic images are read directly from the existing server.
@@ -158,7 +160,8 @@ custom upload code.
    genuinely absent photograph.
 
 The offline report test creates disposable share-shaped test directories and
-checks Form4/Form10 resolution without contacting production. **No live network
+checks Form4/Form10 resolution, Form10-only `~` removal, missing-file fallbacks
+and traversal protections without contacting production. **No live network
 share has been accessed or validated**. Missing photos may still appear until
 deployment permissions and actual SQL paths are verified. The unrelated
 `CWC.xlsx` missing-sheet limitation remains.
