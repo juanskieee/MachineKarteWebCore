@@ -95,6 +95,13 @@ approvals, TSC route/version, connector codes and Teleko dimensions. LocalDB
 lookup/raw-type/CN/misc-row checks and desktop/mobile workflow/download checks pass.
 Production was neither contacted nor modified during report restoration.
 
+Web report lookups now leave missing descriptive PM/TE codes blank instead of
+printing the legacy `"0"` sentinel; genuine numeric zeroes are preserved.
+Offline PM/TE cell and LocalDB regression assertions were added, but cannot
+be marked passed until run on a Windows .NET/PowerShell environment.
+Remaining report sign-off still requires production-image completeness and
+side-by-side record/template comparison with the original desktop output.
+
 Database-impact audit: see `DATABASE_AUDIT.md` (2026-11-02). The application is
 not read-only: Monitoring's after-load POST attempts PC-status writes, and Action Card
 saves write shared legacy tables. Duplicate cards can break original Form2
