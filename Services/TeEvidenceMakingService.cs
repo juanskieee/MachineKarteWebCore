@@ -32,7 +32,8 @@ public class TeEvidenceMakingService
         var workbook = LegacyReportExport.Load(Path.Combine(_env.ContentRootPath, "Templates", "BmReport", "CWC.xlsx"));
         PopulateWorkbook(workbook, header, await descriptionsTask, await imagesTask, await telekoTask, await qualityTask,
             LegacyReportExport.ImageRoot(_env, true),
-            _config["EvidenceMaking:ImagesRoot"] ?? Path.Combine(_env.ContentRootPath, "Uploads", "EvidenceImages"), await miscTask);
+            _config["EvidenceMaking:ImagesRoot"] ?? Path.Combine(_env.ContentRootPath, "Uploads", "EvidenceImages"), await miscTask,
+            _config.GetSection("EvidenceMaking:LegacyTeUploadRoots").Get<string[]>());
         var directory = _config["EvidenceMaking:OutputRoot"] ?? Path.Combine(_env.ContentRootPath, "TempData", "GeneratedPdf");
         Directory.CreateDirectory(directory);
         var fileName = $"TE_Evidence_{id}.{format}";
@@ -43,7 +44,8 @@ public class TeEvidenceMakingService
     public static void PopulateWorkbook(ExcelFile workbook, TeEvidenceHeader header,
         List<TeEvidenceCategoryDesc> descriptions, List<TeEvidenceImage> images,
         List<TelekoEvidenceImage> teleko, List<QualityConditionImage> quality, string imageRoot, string evidenceRoot,
-        IList<IDictionary<string, object>>? miscRows = null)
+        IList<IDictionary<string, object>>? miscRows = null,
+        IEnumerable<string>? legacyUploadRoots = null)
     {
         // Fail explicitly when a record requires a sheet absent from the supplied template.
         // Never silently discard board connectors or quality-condition data.
@@ -55,7 +57,7 @@ public class TeEvidenceMakingService
             throw new InvalidDataException("CWC.xlsx has no third worksheet required by this record's quality-condition evidence.");
         IList<IDictionary<string, object>> Rows(IEnumerable<Dictionary<string, object>> source)
             => source.Cast<IDictionary<string, object>>().ToList();
-        string Image(string path) => LegacyReportExport.ResolveEvidenceImage(path, evidenceRoot, imageRoot);
+        string Image(string path) => LegacyReportExport.ResolveEvidenceImage(path, evidenceRoot, imageRoot, legacyUploadRoots);
         var rows = new Dictionary<string, IList<IDictionary<string, object>>>(StringComparer.OrdinalIgnoreCase)
         {
             ["DR"] = Rows(new[] { new Dictionary<string, object> {
