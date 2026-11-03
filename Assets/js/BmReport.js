@@ -1,3 +1,4 @@
+/** BM Maintenance Record (Form9): keep report generation, download, and preview separate. */
 Workflows.register('BmReport', (root, options, context) => {
     const form = root.querySelector('form');
     const status = root.querySelector('[data-id="reportStatus"]');
@@ -6,6 +7,8 @@ Workflows.register('BmReport', (root, options, context) => {
     const previewPanel = root.querySelector('[data-id="pdfPreviewPanel"]');
     const previewFrame = root.querySelector('[data-id="pdfPreviewFrame"]');
     let downloadUrl = null;
+
+    // Release the temporary PDF/XLSX object URL when this workflow is dismissed.
     context.signal.addEventListener('abort', () => {
         previewFrame.removeAttribute('src');
         if (downloadUrl) URL.revokeObjectURL(downloadUrl);
@@ -46,6 +49,8 @@ Workflows.register('BmReport', (root, options, context) => {
         } catch (error) {
             status.textContent = error.message;
             status.classList.add('status-error');
-        } finally { button.disabled = false; }
+        } finally {
+            button.disabled = false;
+        }
     });
 });
