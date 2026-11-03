@@ -1,6 +1,3 @@
-Workflows.register('AlertBoard', (root, options, context) => {
-    const byId = id => root.querySelector('[data-id="' + id + '"], [id="' + id + '"]');
-    const fetch = context.fetch;
 /**
  * AlertBoard.js
  * Handles the BM Alert Board (Form2 → AlertBoard.cshtml).
@@ -13,7 +10,10 @@ Workflows.register('AlertBoard', (root, options, context) => {
  *  • Auto-refresh when Monitoring signals timer=0 via sessionStorage
  */
 
-    'use strict';
+Workflows.register('AlertBoard', (root, options, context) => {
+// A modal-local snapshot keeps drilldowns consistent for 30 seconds.
+    const byId = id => root.querySelector('[data-id="' + id + '"], [id="' + id + '"]');
+    const fetch = context.fetch;
 
     // ── Token ────────────────────────────────────────────────────────────────
     const token = () =>
