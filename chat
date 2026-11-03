@@ -1,4 +1,0 @@
-Error Description:
-The application throws a System.IO.DirectoryNotFoundException when trying to serve static files from the directory C:\Users\cmbandiola.REPI\source\repos\MachineKarteWebCore\TempData\GeneratedPdf\. This happens at the line where app.UseStaticFiles(new StaticFileOptions { ... }) is configured for the "Generated PDF / Excel output folder".
-Why You Are Getting the Error:
-The root cause is that the directory TempData/GeneratedPdf does not exist at application startup. The PhysicalFileProvider expects the directory to exist when it is initialized. If it does not, it throws a DirectoryNotFoundException.

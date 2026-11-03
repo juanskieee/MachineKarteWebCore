@@ -45,4 +45,5 @@ public sealed record PmReportTemplateDefinition(
     string TemplateFile,
     string WorksheetName,
     string ViewName,
-    bool HasHistory);
+    bool HasHistory,
+    string TemplateFolder = "PmReport");

@@ -22,6 +22,53 @@ function Add-Body([string]$form, [string]$profile, [string[]]$body) {
     if ($text -match '\b(SqlConnection|SqlCommand|ExecuteReader|LogonUser|MsgBox|Process\.Start|My\.Settings|oConn|wb\.Save)\b') { throw "Desktop/SQL operation escaped extraction: $profile" }
     $text = $text.Replace('ws.Pictures.Add(', 'AddPicture(ws, ')
     $text = $text.Replace('SetSolid(Color.Red)', 'SetSolid(SpreadsheetColor.FromName(ColorName.Red))')
+    # Empty parts rows must not display SQL quantity/type defaults. Keep real zero quantities.
+    $text = [regex]::Replace($text, 'DR\("ChangeParts(Type|Qty)([1-5])"\)\.ToString(?!\w)', 'If(String.IsNullOrWhiteSpace(DR("ChangePartsName$2").ToString), "", DR("ChangeParts$1$2").ToString)')
+    $text = [regex]::Replace($text, 'DR\("(ChangePartsName[1-5])"\)\.ToString IsNot ""', 'Not String.IsNullOrWhiteSpace(DR("$1").ToString)')
+    if ($profile -eq 'PL') {
+        # Row three's NG count belongs under NG, not the Action Done column.
+        $text = $text.Replace('ws.Cells("AZ71").Value = arrOtherUnitCheckDataVal3(2)', 'ws.Cells("AX71").Value = arrOtherUnitCheckDataVal3(2)')
+        $text = $text.Replace('ws.Cells("BD27").Value = DR("ReqToOtherSec").ToString', "' ReqToOtherSec is already rendered at AU56; BD27 is GL Confirmation.")
+    }
+    if ($profile -eq 'MEMS') {
+        $text = $text.Replace('ws.Cells("AF27").Value = DR("ProdTreatLotNo")', 'ws.Cells("AA27").Value = DR("ProdTreatLotNo")')
+        $text = $text.Replace('ws.Cells("AF28").Value = DR("ProdTreatPackage")', 'ws.Cells("AK27").Value = DR("ProdTreatPackage")')
+        $text = $text.Replace('ws.Cells("AF29").Value = DR("ProdTreatInspResult")', 'ws.Cells("AC28").Value = DR("ProdTreatInspResult")')
+        $text = $text.Replace('ws.Cells("D20").Value = DR("Situation").ToString', "' The template's D20:W23 region is Why1, not a separate Situation field.")
+        foreach($pair in @(@('OccurrenceFreq','OccurrenceFreqLotFrame'),@('UseDummyFrames','ProdTreatUsageOfDummy'),@('DummyIn','ProdTreatDummyIn'),@('DummyOut','ProdTreatDummyOut'))) {
+            $primary=$pair[0];$fallback=$pair[1]
+            $text=[regex]::Replace($text,'(?m)^\s*ws.Cells\("[A-Z]+\d+"\).Value = DR\("'+$fallback+'"\).ToString\s*$', '')
+            $expression='DR("'+$primary+'").ToString'
+            $text=$text.Replace($expression, 'If(String.IsNullOrWhiteSpace('+ $expression+'), DR("'+$fallback+'").ToString, '+$expression+')')
+        }
+    }
+    if ($profile -eq 'MP') {
+        $text = $text.Replace('ws.Cells("AH36").Value = DR("PmRelatedBM")', 'ws.Cells("AL36").Value = DR("PmRelatedBM")')
+        $text = $text.Replace('ws.Cells("G50").Value = DR("LotNoForInspection").ToString', "' Inspection lot is rendered at G55, not over Treatment9.")
+        $text = $text.Replace('ws.Cells("G55").Value = DR("LOTNo").ToString', 'ws.Cells("G55").Value = If(String.IsNullOrWhiteSpace(DR("LotNoForInspection").ToString), DR("LOTNo").ToString, DR("LotNoForInspection").ToString)')
+    }
+    if ($profile -eq 'WB') {
+        $text = $text.Replace('ws.Cells("G50").Value = DR("LotNoForInspection").ToString', "' No inspection-lot slot exists here; G50 is Treatment9 and overwrote this legacy shadow write.")
+    }
+    if ($profile -eq 'FT') {
+        $text = $text.Replace('ws.Cells("AN68").Value = DR("EndBMBy").ToString', "' EndBMBy is rendered in the completion header; AH68:AS68 is PKGDev1B.")
+    }
+    if ($profile -eq 'EDS') {
+        # The supplied sheet has twelve treatment rows followed by Turnover To.
+        # Never erase that header or silently discard a populated thirteenth row.
+        $text = [regex]::Replace($text, 'ws.Cells\("(?:F|X|AB)51"\).Value = DR\("(Treatment(?:Before|After)?13)"\).ToString', 'If Not String.IsNullOrWhiteSpace(DR("$1").ToString) Then Throw New InvalidDataException("The supplied EDS template has only twelve treatment rows; a template supporting treatment 13 is required.")')
+    }
+    if ($profile -in @('PM_EVIDENCE','TE_EVIDENCE')) {
+        $text = $text.Replace('AddPicture(', 'AddEvidencePicture(')
+    }
+    if ($profile -eq 'PM_EVIDENCE') {
+        # Both layouts already render the third Safety photo but omit its caption.
+        $text=$text.Replace('ws.Cells("B20").Value = remarksData(0)', 'ws.Cells("Z19").Value = remarksData(2)'+"`n"+'ws.Cells("B20").Value = remarksData(0)')
+        $text=$text.Replace('ws.Cells("Y10").Value = remarksData(1)', 'ws.Cells("Y10").Value = remarksData(1)'+"`n"+'ws.Cells("AD21").Value = remarksData(2)')
+    }
+    if ($profile -eq 'TE_EVIDENCE') {
+        $text=$text.Replace('ws.PrintOptions.BottomMargin = (0)', 'ws.PrintOptions.BottomMargin = 0.3')
+    }
     [void]$output.AppendLine($text)
     $fields[$profile] = @([regex]::Matches($text,'\bDR\("([^\"]+)"\)') | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
     $requests = New-Object Collections.Generic.List[string]
@@ -83,7 +130,10 @@ if($bodies.Count -ne 2) { throw 'Expected both Form9 branches' }
 for($i=0; $i -lt 2; $i++) {
     $profile = if($i -eq 0){'TE_EDS'}else{'TE'}
     [void]$output.AppendLine('Private Sub '+$profile+'(wb As ExcelFile, DR As LegacyRecord, ProcessStr As String)')
-    [void]$output.AppendLine('Dim ws = wb.Worksheets.ActiveWorksheet')
+    [void]$output.AppendLine('Dim ws = wb.Worksheets("TE Template")')
+    if ($profile -eq 'TE_EDS') {
+        [void]$output.AppendLine('ws.Cells.GetSubrange("BK59", "BL74").Value = Nothing')
+    }
     $body = $bodies[$i].Groups[1].Value
     $body = [regex]::Replace($body,'"\\\\"\s*&\s*My.Settings.PathServer\s*&\s*"\\TEeMaintenanceSystem\\images\\([^\"]+)"','ImagePath("$1")')
     Add-Body 'Form9' $profile ($body -split "`r?`n")
@@ -115,6 +165,11 @@ $body=$body.Substring(0,$qualityStart)+"If ws_3 IsNot Nothing Then`n"+$body.Subs
 $body=$body.Replace('ws_2.Pictures.Add(', 'AddPicture(ws_2, ').Replace('ws_3.Pictures.Add(', 'AddPicture(ws_3, ')
 [void]$output.AppendLine('Public Sub PopulateTeEvidence(wb As ExcelFile, rows As IDictionary(Of String, IList(Of IDictionary(Of String, Object))), teAssign As String)')
 [void]$output.AppendLine('Dim ws = wb.Worksheets(0)')
+[void]$output.AppendLine('ws.NamedRanges.SetPrintArea(ws.Cells.GetSubrange("A1", "Q80"))')
+[void]$output.AppendLine('ws.PrintOptions.FooterMargin = 0.1')
+[void]$output.AppendLine('ws.Cells("B77").Value = "Ideas:"')
+[void]$output.AppendLine('ws.Cells.GetSubrange("B78", "Q80").Merged = True')
+[void]$output.AppendLine('ws.Cells("B78").Style.WrapText = True')
 [void]$output.AppendLine('Dim ws_2 = If(wb.Worksheets.Count > 1, wb.Worksheets(1), Nothing)')
 [void]$output.AppendLine('Dim ws_3 = If(wb.Worksheets.Count > 2, wb.Worksheets(2), Nothing)')
 [void]$output.AppendLine('Dim strFolder As String = ""')
@@ -148,11 +203,11 @@ foreach($profile in @($profiles)+@('TE','TE_EDS','PM_EVIDENCE','TE_EVIDENCE')) {
 }
 [void]$output.AppendLine('End Class')
 [void]$output.AppendLine('End Namespace')
-$target=Join-Path $repo 'Reporting/LegacyReportMappings.vb'
+$target=Join-Path $repo 'Services/Reporting/LegacyReportMappings.vb'
 $text=$output.ToString().Replace("`r`n","`n").Replace("`n","`r`n")
 if($Check) {
     if(!(Test-Path -LiteralPath $target) -or [IO.File]::ReadAllText($target) -cne $text) { throw 'Generated mappings differ; regenerate and review.' }
-    Write-Output 'PASS: compiled mapping bodies match the active checked-in Form3/Form4/Form9/Form10 source.'
+    Write-Output 'PASS: compiled mapping bodies match legacy extraction plus documented presentation corrections.'
 } else {
     [IO.File]::WriteAllText($target,$text,(New-Object Text.UTF8Encoding $false))
     Write-Output ('Generated '+$target)

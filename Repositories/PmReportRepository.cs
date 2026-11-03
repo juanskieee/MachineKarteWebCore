@@ -12,12 +12,12 @@ public sealed class PmReportRepository
         new Dictionary<string, PmReportTemplateDefinition>(StringComparer.OrdinalIgnoreCase)
         {
             ["DC"] = new("DC", "DCTemplate2.xlsx", "DC", "ViewDCData_Ver4", true),
-            ["DB"] = new("DB", "DBTemplate.xlsx", " Proposed Template", "ViewDBData_Ver4", true),
-            ["WB"] = new("WB", "WBTemplate.xlsx", "wbnew 2", "ViewWBData_Ver4", true),
-            ["MP"] = new("MP", "MPTemplate.xlsx", "MP", "ViewMPData_Ver4", true),
-            ["PL"] = new("PL", "PLTemplate.xlsx", "PLForm_REV1.3.2", "ViewPLData_Ver2", true),
-            ["FT"] = new("FT", "FTTemplate.xlsx", "FT TEMPLATE", "ViewFTData", true),
-            ["FL"] = new("FL", "FLTemplate2.xlsx", "Proposed Template", "ViewFLData_V2", true),
+            ["DB"] = new("DB", "DBTemplate.xlsx", "DB", "ViewDBData_Ver4", true, "EvidenceMaking"),
+            ["WB"] = new("WB", "WBTemplate.xlsx", "Front Blank (2)", "ViewWBData_Ver4", true, "EvidenceMaking"),
+            ["MP"] = new("MP", "MPTemplate.xlsx", "MP", "ViewMPData_Ver4", true, "EvidenceMaking"),
+            ["PL"] = new("PL", "PLTemplate.xlsx", "PL", "ViewPLData_Ver2", true, "EvidenceMaking"),
+            ["FT"] = new("FT", "FTTemplate.xlsx", "FT", "ViewFTData", true, "EvidenceMaking"),
+            ["FL"] = new("FL", "FLTemplate2.xlsx", "FL", "ViewFLData_V2", true, "EvidenceMaking"),
             ["TP"] = new("TP", "TPTemplate.xlsx", "TP", "ViewTPData", true),
             ["SING"] = new("SING", "SINGTemplate.xlsx", "SING", "ViewSINGData", true),
             ["MEMS"] = new("MEMS", "MEMS FT-TPTemplate.xlsx", "MEMS", "ViewMEMSData", true),

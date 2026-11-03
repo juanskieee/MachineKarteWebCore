@@ -28,7 +28,8 @@ public sealed class PmReportService
             if (data is null) return PmReportResult.Failed($"No PM report record was found for BM ID {request.BmId}.");
             var lookups = await _repository.GetLookupValuesAsync(data, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
-            var workbook = LegacyReportExport.Load(Path.Combine(_environment.ContentRootPath, "Templates", "PmReport", definition.TemplateFile));
+            var workbook = LegacyReportExport.Load(Path.Combine(_environment.ContentRootPath, "Templates", definition.TemplateFolder, definition.TemplateFile));
+            workbook.Worksheets.ActiveWorksheet = workbook.Worksheets[definition.WorksheetName];
             var writer = new LegacyReportWriter(LegacyReportExport.ImageRoot(_environment, false), lookups);
             writer.PopulatePm(workbook, process, data.Current.Values,
                 data.History.Select(record => (IDictionary<string, object>)record.Values).ToList());

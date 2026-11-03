@@ -1,6 +1,7 @@
 Imports System
 Imports System.IO
 Imports System.Collections.Generic
+Imports System.Linq
 Imports GemBox.Spreadsheet
 
 Namespace MachineKarte.Reporting
@@ -25,6 +26,22 @@ Namespace MachineKarte.Reporting
 
         Private Function AddPicture(sheet As ExcelWorksheet, file As String, cell As String, width As Double, height As Double, unit As LengthUnit) As ExcelPicture
             Return sheet.Pictures.Add(file, cell, width, height, unit)
+        End Function
+
+        Private Function AddEvidencePicture(sheet As ExcelWorksheet, file As String, cell As String, width As Double, height As Double, unit As LengthUnit) As ExcelPicture
+            Dim maxWidth = LengthUnitConverter.Convert(width, unit, LengthUnit.Point)
+            Dim maxHeight = LengthUnitConverter.Convert(height, unit, LengthUnit.Point)
+            Dim area = sheet.Cells(cell).MergedRange
+            If area IsNot Nothing Then
+                maxWidth = Math.Min(maxWidth, Enumerable.Range(area.FirstColumnIndex, area.Width).Sum(Function(column) sheet.Columns(column).GetWidth(LengthUnit.Point)))
+                maxHeight = Math.Min(maxHeight, Enumerable.Range(area.FirstRowIndex, area.Height).Sum(Function(row) sheet.Rows(row).GetHeight(LengthUnit.Point)))
+            End If
+            Dim picture = sheet.Pictures.Add(file, cell)
+            Dim scale = Math.Min(maxWidth / picture.Position.Width, maxHeight / picture.Position.Height)
+            picture.Position.Width *= scale
+            picture.Position.Height *= scale
+            picture.Position.Mode = PositioningMode.MoveAndSize
+            Return picture
         End Function
 
         Private Function RetPFImg(value As String) As String

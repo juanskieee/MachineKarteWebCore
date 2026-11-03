@@ -22,53 +22,72 @@ public static class LegacyReportExport
     public static byte[] Save(ExcelFile workbook, string format)
     {
         using var stream = new MemoryStream();
-        workbook.Save(stream, NormalizeFormat(format) == "pdf" ? SaveOptions.PdfDefault : SaveOptions.XlsxDefault);
+        workbook.Save(stream, NormalizeFormat(format) == "pdf"
+            ? new PdfSaveOptions { SelectionType = SelectionType.EntireFile }
+            : SaveOptions.XlsxDefault);
         return stream.ToArray();
     }
 
     public static string ImageRoot(IWebHostEnvironment environment, bool te) =>
         Path.Combine(environment.ContentRootPath, "Assets", "images", te ? "TEeMaintenanceSystems_images" : "eMaintenanceSystems_images");
 
-    // Form4:  \\\\PathServer\\eMaintenanceSystem + BMEvidence_ImgFile
-    // Form10: \\\\PathServer\\TEeMaintenanceSystem + BMEvidence_ImgFile.Replace("~", "")
-    // The network share and its directories already exist; there is no web upload path.
-    public static string LegacyEvidenceRoot(IConfiguration config, bool te)
+    public static string LegacyEvidenceRoot(IConfiguration config, bool te) =>
+        LegacyServerRoot(config) + (te ? @"\TEeMaintenanceSystem" : @"\eMaintenanceSystem");
+
+    public static string SharedEvidenceRoot(IConfiguration config) =>
+        LegacyServerRoot(config) + @"\Upload\Evidence";
+
+    private static string LegacyServerRoot(IConfiguration config)
     {
         var server = config["NetworkShare:Server"]?.Trim();
         if (string.IsNullOrEmpty(server) || server is "." or ".." ||
             server.IndexOfAny(new[] { '\\', '/', ':' }) >= 0)
             throw new InvalidOperationException("NetworkShare:Server must be the legacy file server hostname or IP.");
-        return @"\\" + server + (te ? @"\TEeMaintenanceSystem" : @"\eMaintenanceSystem");
+        return @"\\" + server;
     }
 
-    // Database evidence paths are share-relative (usually \\Upload\\...). Reject
-    // foreign absolute paths and traversal rather than probing arbitrary locations.
-    // An absent file uses the original Form4/Form10 noimage.png mark.
-    public static string ResolveEvidenceImage(string storedPath, string legacySystemRoot, string imageRoot, bool te = false)
+    // Read existing uploads under the workflow's own share or the shared archive.
+    // Absolute paths must name one of those roots; never search by filename alone.
+    public static string ResolveEvidenceImage(string storedPath, string legacySystemRoot, string imageRoot,
+        bool te = false, string? sharedEvidenceRoot = null)
     {
         var placeholder = Path.Combine(imageRoot, "noimage.png");
         if (string.IsNullOrEmpty(storedPath)) return placeholder;
 
         var path = (te ? storedPath.Replace("~", "") : storedPath).Replace('/', '\\');
-        if (!path.StartsWith('\\') || path.StartsWith(@"\\") || path.Contains(':'))
-            return placeholder;
-
-        var parts = path.Substring(1).Split('\\');
-        if (parts.Any(part => part.Length == 0 || part is "." or ".."))
-            return placeholder;
-
         try
         {
-            var candidate = Path.Combine(new[] { legacySystemRoot }.Concat(parts).ToArray());
-            // Windows UNC paths are normalized and bounded by the original share.
-            if (OperatingSystem.IsWindows())
+            string? ExistingImage(string root, string relative)
             {
-                var root = Path.GetFullPath(legacySystemRoot).TrimEnd('\\') + "\\";
-                candidate = Path.GetFullPath(candidate);
-                if (!candidate.StartsWith(root, StringComparison.OrdinalIgnoreCase))
-                    return placeholder;
+                var parts = relative.Split('\\');
+                if (parts.Any(part => part.Length == 0 || part is "." or ".." || part.Contains(':')))
+                    return null;
+                var prefix = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+                var candidate = Path.GetFullPath(Path.Combine(new[] { root }.Concat(parts).ToArray()));
+                return candidate.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) && File.Exists(candidate)
+                    ? candidate : null;
             }
-            return File.Exists(candidate) ? candidate : placeholder;
+
+            if (path.StartsWith(@"\\") || Path.IsPathFullyQualified(path))
+            {
+                foreach (var root in new[] { Path.Combine(legacySystemRoot, "Upload"), sharedEvidenceRoot })
+                {
+                    if (string.IsNullOrEmpty(root)) continue;
+                    var prefix = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+                    if (path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                        return ExistingImage(root, path[prefix.Length..]) ?? placeholder;
+                }
+                return placeholder;
+            }
+
+            if (!path.StartsWith(@"\Upload\", StringComparison.OrdinalIgnoreCase)) return placeholder;
+            var image = ExistingImage(legacySystemRoot, path[1..]);
+            if (image is not null) return image;
+
+            const string archivePrefix = @"\Upload\Evidence\";
+            return sharedEvidenceRoot is not null && path.StartsWith(archivePrefix, StringComparison.OrdinalIgnoreCase)
+                ? ExistingImage(sharedEvidenceRoot, path[archivePrefix.Length..]) ?? placeholder
+                : placeholder;
         }
         catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
         {

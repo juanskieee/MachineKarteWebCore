@@ -4,27 +4,32 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <DefaultItemExcludes>$(DefaultItemExcludes);Reporting/bin/**;Reporting/obj/**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="Reporting/LegacyReports.vbproj" />
+    <Compile Remove="Uploads\**" />
+    <Content Remove="Uploads\**" />
+    <EmbeddedResource Remove="Uploads\**" />
+    <None Remove="Uploads\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="Services\Reporting\LegacyReports.vbproj" />
     <None Update="Templates/**/*;Assets/images/**/*">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-    </None>
-    <None Update="Form3CellMappingMatrix.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </None>
     <Folder Include="Assets\js\" />
     <Folder Include="Repositories\" />
-    <Folder Include="Services\" />
     <Folder Include="TempData\GeneratedPdf\" />
-    <Folder Include="Uploads\EvidenceImages\" />
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="Services\Reporting\LegacyReports.vbproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="GemBox.Spreadsheet" Version="2026.10.101" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="7.1.1" />
     <PackageReference Include="System.Data.SqlClient" Version="4.9.1" />
   </ItemGroup>

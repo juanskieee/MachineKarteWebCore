@@ -48,8 +48,8 @@ End If
                 ws.Cells("AD13").Value = "No"
             End If
             ws.Cells("AD14").Value = DR("OccurrenceFreqQuantity").ToString
-            ws.Cells("AG14").Value = DR("OccurrenceFreqLotFrame").ToString
-            ws.Cells("AG14").Value = DR("OccurrenceFreq").ToString
+
+            ws.Cells("AG14").Value = If(String.IsNullOrWhiteSpace(DR("OccurrenceFreq").ToString), DR("OccurrenceFreqLotFrame").ToString, DR("OccurrenceFreq").ToString)
             Dim cellStyle = ws.Cells("AD15").Style
             If DR("MCStatus").ToString = "EMGStop" Then
                 ws.Cells("AD15").Value = DR("MCStatus").ToString
@@ -132,17 +132,15 @@ End If
             ws.Cells("AF21").Value = DR("EndOfRepair").ToString 'Time Ended
             ws.Cells("I10").Value = DR("RequestItem").ToString
             ws.Cells("I12").Value = DR("RequestContent")
-            ws.Cells("D20").Value = DR("Situation").ToString
+            ' The template's D20:W23 region is Why1, not a separate Situation field.
             ws.Cells("D23").Value = DR("Why1")
             ws.Cells("D26").Value = DR("Why2")
             ws.Cells("D29").Value = DR("Why3")
             ws.Cells("F32").Value = DR("BMwhy4")
-            ws.Cells("AF27").Value = DR("ProdTreatLotNo").ToString
-            ws.Cells("AF28").Value = DR("ProdTreatPackage").ToString
-            ws.Cells("AF29").Value = DR("ProdTreatInspResult").ToString
-            ws.Cells("AD33").Value = DR("ProdTreatUsageOfDummy").ToString
-            ws.Cells("AH33").Value = DR("ProdTreatDummyIn").ToString
-            ws.Cells("AN33").Value = DR("ProdTreatDummyOut").ToString
+            ws.Cells("AA27").Value = DR("ProdTreatLotNo").ToString
+            ws.Cells("AK27").Value = DR("ProdTreatPackage").ToString
+            ws.Cells("AC28").Value = DR("ProdTreatInspResult").ToString
+
             ws.Cells("AD12").Value = "ALL OCAP ITEMS TREATED"
             ws.Cells("D38").Value = DR("Treatment1").ToString
             ws.Cells("Q38").Value = DR("TreatmentBefore1").ToString
@@ -187,14 +185,14 @@ End If
             ws.Cells("Q51").Value = DR("TreatmentBefore14").ToString
             ws.Cells("U51").Value = DR("TreatmentAfter14").ToString
             ws.Cells("Y42").Value = DR("ChangePartsName1").ToString
-            ws.Cells("AF42").Value = DR("ChangePartsType1").ToString
-            ws.Cells("AQ42").Value = DR("ChangePartsQty1").ToString
+            ws.Cells("AF42").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName1").ToString), "", DR("ChangePartsType1").ToString)
+            ws.Cells("AQ42").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName1").ToString), "", DR("ChangePartsQty1").ToString)
             ws.Cells("Y43").Value = DR("ChangePartsName2").ToString
-            ws.Cells("AF43").Value = DR("ChangePartsType2").ToString
-            ws.Cells("AQ43").Value = DR("ChangePartsQty2").ToString
+            ws.Cells("AF43").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName2").ToString), "", DR("ChangePartsType2").ToString)
+            ws.Cells("AQ43").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName2").ToString), "", DR("ChangePartsQty2").ToString)
             ws.Cells("Y44").Value = DR("ChangePartsName3").ToString
-            ws.Cells("AF44").Value = DR("ChangePartsType3").ToString
-            ws.Cells("AQ44").Value = DR("ChangePartsQty3").ToString
+            ws.Cells("AF44").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName3").ToString), "", DR("ChangePartsType3").ToString)
+            ws.Cells("AQ44").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName3").ToString), "", DR("ChangePartsQty3").ToString)
             Dim wtTotal As Decimal = DateDiff(DateInterval.Minute, CDate(DR("GLConfirmOPReqDate").ToString), CDate(DR("PMConfirmGLOPReqDate").ToString)) 'convert it to min instead of hour
             ws.Cells("AF22").Value = wtTotal.ToString 'WT
             Dim rtTotal As Decimal = DateDiff(DateInterval.Minute, CDate(DR("StartOfRepair").ToString), CDate(DR("EndOfRepair").ToString)) 'convert it to min instead of hour
@@ -205,9 +203,9 @@ End If
             End If
             Dim TST As Decimal = wtTotal + rtTotal + CDec(WT2)
             ws.Cells("AF25").Value = TST.ToString
-            ws.Cells("AD33").Value = DR("UseDummyFrames").ToString
-            ws.Cells("AH33").Value = DR("DummyIn").ToString
-            ws.Cells("AN33").Value = DR("DummyOut").ToString
+            ws.Cells("AD33").Value = If(String.IsNullOrWhiteSpace(DR("UseDummyFrames").ToString), DR("ProdTreatUsageOfDummy").ToString, DR("UseDummyFrames").ToString)
+            ws.Cells("AH33").Value = If(String.IsNullOrWhiteSpace(DR("DummyIn").ToString), DR("ProdTreatDummyIn").ToString, DR("DummyIn").ToString)
+            ws.Cells("AN33").Value = If(String.IsNullOrWhiteSpace(DR("DummyOut").ToString), DR("ProdTreatDummyOut").ToString, DR("DummyOut").ToString)
             Dim _QCData As String = DR("QCData").ToString
             If _QCData <> "" Then
                 Dim arrQCData() As String = _QCData.Split("|")
@@ -497,21 +495,21 @@ End If
             Catch ex As Exception
             End Try
             ws.Cells("AN51").Value = DR("ChangePartsName1").ToString 'vanessa
-            ws.Cells("AT51").Value = DR("ChangePartsType1").ToString 'vanessa
-            ws.Cells("BB51").Value = DR("ChangePartsQty1").ToString 'vanessa
-            ws.Cells("BD51").Value = If(DR("ChangePartsName1").ToString IsNot "", DR("ChangePartsNewReworked1").ToString, "") 'vanessa
+            ws.Cells("AT51").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName1").ToString), "", DR("ChangePartsType1").ToString) 'vanessa
+            ws.Cells("BB51").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName1").ToString), "", DR("ChangePartsQty1").ToString) 'vanessa
+            ws.Cells("BD51").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName1").ToString), DR("ChangePartsNewReworked1").ToString, "") 'vanessa
             ws.Cells("AN52").Value = DR("ChangePartsName2").ToString 'vanessa
-            ws.Cells("AT52").Value = DR("ChangePartsType2").ToString 'vanessa
-            ws.Cells("BB52").Value = DR("ChangePartsQty2").ToString 'vanessa
-            ws.Cells("BD52").Value = If(DR("ChangePartsName2").ToString IsNot "", DR("ChangePartsNewReworked2").ToString, "") 'vanessa
+            ws.Cells("AT52").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName2").ToString), "", DR("ChangePartsType2").ToString) 'vanessa
+            ws.Cells("BB52").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName2").ToString), "", DR("ChangePartsQty2").ToString) 'vanessa
+            ws.Cells("BD52").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName2").ToString), DR("ChangePartsNewReworked2").ToString, "") 'vanessa
             ws.Cells("AN53").Value = DR("ChangePartsName3").ToString 'vanessa
-            ws.Cells("AT53").Value = DR("ChangePartsType3").ToString 'vanessa
-            ws.Cells("BB53").Value = DR("ChangePartsQty3").ToString 'vanessa
-            ws.Cells("BD53").Value = If(DR("ChangePartsName3").ToString IsNot "", DR("ChangePartsNewReworked3").ToString, "") 'vanessa
+            ws.Cells("AT53").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName3").ToString), "", DR("ChangePartsType3").ToString) 'vanessa
+            ws.Cells("BB53").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName3").ToString), "", DR("ChangePartsQty3").ToString) 'vanessa
+            ws.Cells("BD53").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName3").ToString), DR("ChangePartsNewReworked3").ToString, "") 'vanessa
             ws.Cells("AN54").Value = DR("ChangePartsName4").ToString 'vanessa
-            ws.Cells("AT54").Value = DR("ChangePartsType4").ToString 'vanessa
-            ws.Cells("BB54").Value = DR("ChangePartsQty4").ToString 'vanessa
-            ws.Cells("BD54").Value = If(DR("ChangePartsName4").ToString IsNot "", DR("ChangePartsNewReworked4").ToString, "") 'vanessa
+            ws.Cells("AT54").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName4").ToString), "", DR("ChangePartsType4").ToString) 'vanessa
+            ws.Cells("BB54").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName4").ToString), "", DR("ChangePartsQty4").ToString) 'vanessa
+            ws.Cells("BD54").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName4").ToString), DR("ChangePartsNewReworked4").ToString, "") 'vanessa
             Dim wtTotal As Decimal
             Try
                 wtTotal = DateDiff(DateInterval.Minute, CDate(DR("OccurrenceDate").ToString), CDate(DR("PMConfirmGLOPReqDate").ToString))
@@ -530,7 +528,7 @@ End If
             End If
             Dim TST As Decimal = wtTotal + rtTotal + CDec(WT2)
             ws.Cells("AR25").Value = TST.ToString
-            ws.Cells("G50").Value = DR("LotNoForInspection").ToString
+            ' No inspection-lot slot exists here; G50 is Treatment9 and overwrote this legacy shadow write.
             If DR("InspectionReq").ToString = "Yes" Then
                 ws.Cells("AW27").Style.Font.UnderlineStyle = UnderlineStyle.Single 'vanessa
             ElseIf DR("InspectionReq").ToString = "No" Then
@@ -895,17 +893,17 @@ End If
             Catch ex As Exception
             End Try
             ws.Cells("AO51").Value = DR("ChangePartsName1").ToString
-            ws.Cells("AW51").Value = DR("ChangePartsType1").ToString
-            ws.Cells("BE51").Value = If(DR("ChangePartsName1").ToString IsNot "", DR("ChangePartsNewReworked1").ToString, "")
+            ws.Cells("AW51").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName1").ToString), "", DR("ChangePartsType1").ToString)
+            ws.Cells("BE51").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName1").ToString), DR("ChangePartsNewReworked1").ToString, "")
             ws.Cells("AO52").Value = DR("ChangePartsName2").ToString
-            ws.Cells("AW52").Value = DR("ChangePartsType2").ToString
-            ws.Cells("BE52").Value = If(DR("ChangePartsName2").ToString IsNot "", DR("ChangePartsNewReworked2").ToString, "")
+            ws.Cells("AW52").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName2").ToString), "", DR("ChangePartsType2").ToString)
+            ws.Cells("BE52").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName2").ToString), DR("ChangePartsNewReworked2").ToString, "")
             ws.Cells("AO53").Value = DR("ChangePartsName3").ToString
-            ws.Cells("AW53").Value = DR("ChangePartsType3").ToString
-            ws.Cells("BE53").Value = If(DR("ChangePartsName3").ToString IsNot "", DR("ChangePartsNewReworked3").ToString, "")
+            ws.Cells("AW53").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName3").ToString), "", DR("ChangePartsType3").ToString)
+            ws.Cells("BE53").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName3").ToString), DR("ChangePartsNewReworked3").ToString, "")
             ws.Cells("AO54").Value = DR("ChangePartsName4").ToString
-            ws.Cells("AW54").Value = DR("ChangePartsType4").ToString
-            ws.Cells("BE54").Value = If(DR("ChangePartsName4").ToString IsNot "", DR("ChangePartsNewReworked4").ToString, "")
+            ws.Cells("AW54").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName4").ToString), "", DR("ChangePartsType4").ToString)
+            ws.Cells("BE54").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName4").ToString), DR("ChangePartsNewReworked4").ToString, "")
             Dim wtTotal As Decimal
             Try
                 wtTotal = DateDiff(DateInterval.Minute, CDate(DR("GLConfirmOPReqDate").ToString), CDate(DR("PMConfirmGLOPReqDate").ToString)) 'convert it to min instead of hour
@@ -1318,17 +1316,17 @@ End If
             ws.Cells("AG67").Value = DR("AoPen2").ToString
             ws.Cells("AG68").Value = DR("AoPen3").ToString
             ws.Cells("AP51").Value = DR("ChangePartsName1").ToString
-            ws.Cells("AX51").Value = DR("ChangePartsType1").ToString
-            ws.Cells("BF51").Value = If(DR("ChangePartsName1").ToString IsNot "", DR("ChangePartsNewReworked1").ToString, "")
+            ws.Cells("AX51").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName1").ToString), "", DR("ChangePartsType1").ToString)
+            ws.Cells("BF51").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName1").ToString), DR("ChangePartsNewReworked1").ToString, "")
             ws.Cells("AP52").Value = DR("ChangePartsName2").ToString
-            ws.Cells("AX52").Value = DR("ChangePartsType2").ToString
-            ws.Cells("BF52").Value = If(DR("ChangePartsName2").ToString IsNot "", DR("ChangePartsNewReworked2").ToString, "")
+            ws.Cells("AX52").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName2").ToString), "", DR("ChangePartsType2").ToString)
+            ws.Cells("BF52").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName2").ToString), DR("ChangePartsNewReworked2").ToString, "")
             ws.Cells("AP53").Value = DR("ChangePartsName3").ToString
-            ws.Cells("AX53").Value = DR("ChangePartsType3").ToString
-            ws.Cells("BF53").Value = If(DR("ChangePartsName3").ToString IsNot "", DR("ChangePartsNewReworked3").ToString, "")
+            ws.Cells("AX53").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName3").ToString), "", DR("ChangePartsType3").ToString)
+            ws.Cells("BF53").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName3").ToString), DR("ChangePartsNewReworked3").ToString, "")
             ws.Cells("AP54").Value = DR("ChangePartsName4").ToString
-            ws.Cells("AX54").Value = DR("ChangePartsType4").ToString
-            ws.Cells("BF54").Value = If(DR("ChangePartsName4").ToString IsNot "", DR("ChangePartsNewReworked4").ToString, "")
+            ws.Cells("AX54").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName4").ToString), "", DR("ChangePartsType4").ToString)
+            ws.Cells("BF54").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName4").ToString), DR("ChangePartsNewReworked4").ToString, "")
             Dim wtTotal As Decimal
             Try
                 wtTotal = DateDiff(DateInterval.Minute, CDate(DR("GLConfirmOPReqDate").ToString), CDate(DR("PMConfirmGLOPReqDate").ToString)) 'convert it to min instead of hour
@@ -1654,7 +1652,7 @@ End If
             ws.Cells("AL10").Value = DR("MCType").ToString 'M/CT ype
             ws.Cells("AL11").Value = DR("PkgName").ToString 'PkgName
             ws.Cells("AL12").Value = DR("DeviceName").ToString 'Device Name
-            ws.Cells("G55").Value = DR("LOTNo").ToString 'Lot No
+            ws.Cells("G55").Value = If(String.IsNullOrWhiteSpace(DR("LotNoForInspection").ToString), DR("LOTNo").ToString, DR("LotNoForInspection").ToString) 'Lot No
             ws.Cells("AL13").Value = DR("LOTNo").ToString 'Lot No Jameson2023
             ws.Cells("AL14").Value = DR("OccurrenceDate").ToString 'Time Requested
             ws.Cells("AL17").Value = DR("StartOfRepair").ToString 'Time Start
@@ -1693,25 +1691,25 @@ End If
             End If
             ws.Cells("AK71").Value = DR("AccreditorPMReply").ToString
             ws.Cells("AB56").Value = DR("ChangePartsName1").ToString
-            ws.Cells("AK56").Value = DR("ChangePartsType1").ToString
-            ws.Cells("AT56").Value = DR("ChangePartsQty1").ToString
-            ws.Cells("AX56").Value = If(DR("ChangePartsName1").ToString IsNot "", DR("ChangePartsNewReworked1").ToString, "")
+            ws.Cells("AK56").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName1").ToString), "", DR("ChangePartsType1").ToString)
+            ws.Cells("AT56").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName1").ToString), "", DR("ChangePartsQty1").ToString)
+            ws.Cells("AX56").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName1").ToString), DR("ChangePartsNewReworked1").ToString, "")
             ws.Cells("AB57").Value = DR("ChangePartsName2").ToString
-            ws.Cells("AK57").Value = DR("ChangePartsType2").ToString
-            ws.Cells("AT57").Value = DR("ChangePartsQty2").ToString
-            ws.Cells("AX57").Value = If(DR("ChangePartsName2").ToString IsNot "", DR("ChangePartsNewReworked2").ToString, "")
+            ws.Cells("AK57").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName2").ToString), "", DR("ChangePartsType2").ToString)
+            ws.Cells("AT57").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName2").ToString), "", DR("ChangePartsQty2").ToString)
+            ws.Cells("AX57").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName2").ToString), DR("ChangePartsNewReworked2").ToString, "")
             ws.Cells("AB58").Value = DR("ChangePartsName3").ToString
-            ws.Cells("AK58").Value = DR("ChangePartsType3").ToString
-            ws.Cells("AT58").Value = DR("ChangePartsQty3").ToString
-            ws.Cells("AX58").Value = If(DR("ChangePartsName3").ToString IsNot "", DR("ChangePartsNewReworked3").ToString, "")
+            ws.Cells("AK58").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName3").ToString), "", DR("ChangePartsType3").ToString)
+            ws.Cells("AT58").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName3").ToString), "", DR("ChangePartsQty3").ToString)
+            ws.Cells("AX58").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName3").ToString), DR("ChangePartsNewReworked3").ToString, "")
             ws.Cells("AB59").Value = DR("ChangePartsName4").ToString
-            ws.Cells("AK59").Value = DR("ChangePartsType4").ToString
-            ws.Cells("AT59").Value = DR("ChangePartsQty4").ToString
-            ws.Cells("AX59").Value = If(DR("ChangePartsName4").ToString IsNot "", DR("ChangePartsNewReworked4").ToString, "")
+            ws.Cells("AK59").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName4").ToString), "", DR("ChangePartsType4").ToString)
+            ws.Cells("AT59").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName4").ToString), "", DR("ChangePartsQty4").ToString)
+            ws.Cells("AX59").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName4").ToString), DR("ChangePartsNewReworked4").ToString, "")
             ws.Cells("AB60").Value = DR("ChangePartsName5").ToString
-            ws.Cells("AK60").Value = DR("ChangePartsType5").ToString
-            ws.Cells("AT60").Value = DR("ChangePartsQty5").ToString
-            ws.Cells("AX60").Value = If(DR("ChangePartsName5").ToString IsNot "", DR("ChangePartsNewReworked5").ToString, "")
+            ws.Cells("AK60").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName5").ToString), "", DR("ChangePartsType5").ToString)
+            ws.Cells("AT60").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName5").ToString), "", DR("ChangePartsQty5").ToString)
+            ws.Cells("AX60").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName5").ToString), DR("ChangePartsNewReworked5").ToString, "")
             Dim wtTotal As Decimal = DateDiff(DateInterval.Minute, CDate(DR("OccurrenceDate").ToString), CDate(DR("PMConfirmGLOPReqDate").ToString)) 'convert it to min instead of hour
             ws.Cells("AL19").Value = wtTotal.ToString 'WT
             Dim rtTotal As Decimal
@@ -1726,10 +1724,10 @@ End If
             End If
             Dim TST As Decimal = wtTotal + rtTotal + CDec(WT2)
             ws.Cells("AL22").Value = TST.ToString
-            ws.Cells("G50").Value = DR("LotNoForInspection").ToString
+            ' Inspection lot is rendered at G55, not over Treatment9.
             ws.Cells("AL34").Value = DR("ScrappedFrame").ToString
             ws.Cells("AL35").Value = DR("ShotCount").ToString
-            ws.Cells("AH36").Value = DR("PmRelatedBM").ToString
+            ws.Cells("AL36").Value = DR("PmRelatedBM").ToString
             ws.Cells("AR38").Value = DR("MoldCon").ToString
             ws.Cells("AO40").Value = DR("KatazureBefore").ToString
             ws.Cells("AO41").Value = DR("KatazureAfter").ToString
@@ -2179,25 +2177,25 @@ End If
             ws.Cells("AF59").Value = DR("TreatmentAfter9").ToString
             ws.Cells("N60").Value = DR("MajorTreatment").ToString
             ws.Cells("AN63").Value = DR("ChangePartsName1").ToString
-            ws.Cells("AV63").Value = DR("ChangePartsType1").ToString
-            ws.Cells("BE63").Value = DR("ChangePartsQty1").ToString
-            ws.Cells("BI63").Value = If(DR("ChangePartsName1").ToString IsNot "", DR("ChangePartsNewReworked1").ToString, "")
+            ws.Cells("AV63").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName1").ToString), "", DR("ChangePartsType1").ToString)
+            ws.Cells("BE63").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName1").ToString), "", DR("ChangePartsQty1").ToString)
+            ws.Cells("BI63").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName1").ToString), DR("ChangePartsNewReworked1").ToString, "")
             ws.Cells("AN64").Value = DR("ChangePartsName2").ToString
-            ws.Cells("AV64").Value = DR("ChangePartsType2").ToString
-            ws.Cells("BE64").Value = DR("ChangePartsQty2").ToString
-            ws.Cells("BI64").Value = If(DR("ChangePartsName2").ToString IsNot "", DR("ChangePartsNewReworked2").ToString, "")
+            ws.Cells("AV64").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName2").ToString), "", DR("ChangePartsType2").ToString)
+            ws.Cells("BE64").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName2").ToString), "", DR("ChangePartsQty2").ToString)
+            ws.Cells("BI64").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName2").ToString), DR("ChangePartsNewReworked2").ToString, "")
             ws.Cells("AN65").Value = DR("ChangePartsName3").ToString
-            ws.Cells("AV65").Value = DR("ChangePartsType3").ToString
-            ws.Cells("BE65").Value = DR("ChangePartsQty3").ToString
-            ws.Cells("BI65").Value = If(DR("ChangePartsName3").ToString IsNot "", DR("ChangePartsNewReworked3").ToString, "")
+            ws.Cells("AV65").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName3").ToString), "", DR("ChangePartsType3").ToString)
+            ws.Cells("BE65").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName3").ToString), "", DR("ChangePartsQty3").ToString)
+            ws.Cells("BI65").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName3").ToString), DR("ChangePartsNewReworked3").ToString, "")
             ws.Cells("AN66").Value = DR("ChangePartsName4").ToString
-            ws.Cells("AV66").Value = DR("ChangePartsType4").ToString
-            ws.Cells("BE66").Value = DR("ChangePartsQty4").ToString
-            ws.Cells("BI66").Value = If(DR("ChangePartsName4").ToString IsNot "", DR("ChangePartsNewReworked4").ToString, "")
+            ws.Cells("AV66").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName4").ToString), "", DR("ChangePartsType4").ToString)
+            ws.Cells("BE66").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName4").ToString), "", DR("ChangePartsQty4").ToString)
+            ws.Cells("BI66").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName4").ToString), DR("ChangePartsNewReworked4").ToString, "")
             ws.Cells("AN67").Value = DR("ChangePartsName5").ToString
-            ws.Cells("AV67").Value = DR("ChangePartsType5").ToString
-            ws.Cells("BE67").Value = DR("ChangePartsQty5").ToString
-            ws.Cells("BI67").Value = If(DR("ChangePartsName5").ToString IsNot "", DR("ChangePartsNewReworked5").ToString, "")
+            ws.Cells("AV67").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName5").ToString), "", DR("ChangePartsType5").ToString)
+            ws.Cells("BE67").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName5").ToString), "", DR("ChangePartsQty5").ToString)
+            ws.Cells("BI67").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName5").ToString), DR("ChangePartsNewReworked5").ToString, "")
             Dim wtTotal As Decimal = DateDiff(DateInterval.Minute, CDate(DR("OccurrenceDate").ToString), CDate(DR("PMConfirmGLOPReqDate").ToString)) 'convert it to min instead of hour
             ws.Cells("BD20").Value = wtTotal.ToString 'WT
             Dim rtTotal As Decimal = DateDiff(DateInterval.Minute, CDate(DR("StartOfRepair").ToString), CDate(DR("EndOfRepair").ToString)) 'convert it to min instead of hour
@@ -2232,7 +2230,7 @@ End If
                         ws.Cells("AN71").Value = getBMMCUnit(arrOtherUnitCheckDataVal3(0))
                     End If
                     ws.Cells("AV71").Value = arrOtherUnitCheckDataVal3(1)
-                    ws.Cells("AZ71").Value = arrOtherUnitCheckDataVal3(2)
+                    ws.Cells("AX71").Value = arrOtherUnitCheckDataVal3(2)
                     If arrOtherUnitCheckDataVal3(3) <> "0" Then
                         ws.Cells("AZ71").Value = arrOtherUnitCheckDataVal3(3)
                     End If
@@ -2332,7 +2330,7 @@ End If
             Dim TST As Decimal = wtTotal + rtTotal + CDec(WT2)
             ws.Cells("BD19").Value = TST.ToString
             ws.Cells("BD27").Value = DR("GLConfirmOPReqBy").ToString 'Time Start 
-            ws.Cells("BD27").Value = DR("ReqToOtherSec").ToString
+            ' ReqToOtherSec is already rendered at AU56; BD27 is GL Confirmation.
             ws.Cells("AG26").Value = DR("LotProduced").ToString
             ws.Cells("Z20").Value = DR("OCAPTreatment").ToString
             ws.Cells("BD29").Value = DR("NGRate").ToString
@@ -2411,7 +2409,7 @@ End If
             End If
             ws.Cells("AG4").Value = DR("GLRepairConfirmationBy").ToString 'GL ID No.
             ws.Cells("AP4").Value = DR("EndBMBy").ToString 'PM ID No.
-            ws.Cells("AN68").Value = DR("EndBMBy").ToString 'PM ID No.
+            ' EndBMBy is rendered in the completion header; AH68:AS68 is PKGDev1B. 'PM ID No.
             ws.Cells("AN13").Value = DR("MCNo").ToString 'M/C No
             ws.Cells("AN12").Value = DR("MCType").ToString 'M/CT ype
             ws.Cells("AN14").Value = DR("PkgName").ToString 'Package
@@ -2600,25 +2598,25 @@ End If
             ws.Cells("Q54").Value = DR("TreatmentBefore13").ToString
             ws.Cells("U54").Value = DR("TreatmentAfter13").ToString
             ws.Cells("Y56").Value = DR("ChangePartsName1").ToString
-            ws.Cells("AG56").Value = DR("ChangePartsType1").ToString
-            ws.Cells("AO56").Value = DR("ChangePartsQty1").ToString
-            ws.Cells("AQ56").Value = If(DR("ChangePartsName1").ToString IsNot "", DR("ChangePartsNewReworked1").ToString, "")
+            ws.Cells("AG56").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName1").ToString), "", DR("ChangePartsType1").ToString)
+            ws.Cells("AO56").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName1").ToString), "", DR("ChangePartsQty1").ToString)
+            ws.Cells("AQ56").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName1").ToString), DR("ChangePartsNewReworked1").ToString, "")
             ws.Cells("Y57").Value = DR("ChangePartsName2").ToString
-            ws.Cells("AG57").Value = DR("ChangePartsType2").ToString
-            ws.Cells("AO57").Value = DR("ChangePartsQty2").ToString
-            ws.Cells("AQ57").Value = If(DR("ChangePartsName2").ToString IsNot "", DR("ChangePartsNewReworked2").ToString, "")
+            ws.Cells("AG57").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName2").ToString), "", DR("ChangePartsType2").ToString)
+            ws.Cells("AO57").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName2").ToString), "", DR("ChangePartsQty2").ToString)
+            ws.Cells("AQ57").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName2").ToString), DR("ChangePartsNewReworked2").ToString, "")
             ws.Cells("Y58").Value = DR("ChangePartsName3").ToString
-            ws.Cells("AG58").Value = DR("ChangePartsType3").ToString
-            ws.Cells("AO58").Value = DR("ChangePartsQty3").ToString
-            ws.Cells("AQ58").Value = If(DR("ChangePartsName3").ToString IsNot "", DR("ChangePartsNewReworked3").ToString, "")
+            ws.Cells("AG58").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName3").ToString), "", DR("ChangePartsType3").ToString)
+            ws.Cells("AO58").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName3").ToString), "", DR("ChangePartsQty3").ToString)
+            ws.Cells("AQ58").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName3").ToString), DR("ChangePartsNewReworked3").ToString, "")
             ws.Cells("Y59").Value = DR("ChangePartsName4").ToString
-            ws.Cells("AG59").Value = DR("ChangePartsType4").ToString
-            ws.Cells("AO59").Value = DR("ChangePartsQty4").ToString
-            ws.Cells("AQ59").Value = If(DR("ChangePartsName4").ToString IsNot "", DR("ChangePartsNewReworked4").ToString, "")
+            ws.Cells("AG59").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName4").ToString), "", DR("ChangePartsType4").ToString)
+            ws.Cells("AO59").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName4").ToString), "", DR("ChangePartsQty4").ToString)
+            ws.Cells("AQ59").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName4").ToString), DR("ChangePartsNewReworked4").ToString, "")
             ws.Cells("Y60").Value = DR("ChangePartsName5").ToString
-            ws.Cells("AG60").Value = DR("ChangePartsType5").ToString
-            ws.Cells("AO60").Value = DR("ChangePartsQty5").ToString
-            ws.Cells("AQ60").Value = If(DR("ChangePartsName5").ToString IsNot "", DR("ChangePartsNewReworked5").ToString, "")
+            ws.Cells("AG60").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName5").ToString), "", DR("ChangePartsType5").ToString)
+            ws.Cells("AO60").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName5").ToString), "", DR("ChangePartsQty5").ToString)
+            ws.Cells("AQ60").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName5").ToString), DR("ChangePartsNewReworked5").ToString, "")
             Dim wtTotal As Decimal
             Try
                 wtTotal = DateDiff(DateInterval.Minute, CDate(DR("OccurrenceDate").ToString), CDate(DR("PMConfirmGLOPReqDate").ToString))
@@ -2924,25 +2922,25 @@ End If
             ws.Cells("AP70").Value = DR("AccreditorPMReply").ToString
             ws.Cells("I56").Value = Me.getBMWhyInfo(DR("Why4"), "BM4M")
             ws.Cells("AN51").Value = DR("ChangePartsName1").ToString
-            ws.Cells("AT51").Value = DR("ChangePartsType1").ToString
-            ws.Cells("BB51").Value = DR("ChangePartsQty1").ToString
-            ws.Cells("BD51").Value = If(DR("ChangePartsName1").ToString IsNot "", DR("ChangePartsNewReworked1").ToString, "")
+            ws.Cells("AT51").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName1").ToString), "", DR("ChangePartsType1").ToString)
+            ws.Cells("BB51").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName1").ToString), "", DR("ChangePartsQty1").ToString)
+            ws.Cells("BD51").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName1").ToString), DR("ChangePartsNewReworked1").ToString, "")
             ws.Cells("AN52").Value = DR("ChangePartsName2").ToString
-            ws.Cells("AT52").Value = DR("ChangePartsType2").ToString
-            ws.Cells("BB52").Value = DR("ChangePartsQty2").ToString
-            ws.Cells("BD52").Value = If(DR("ChangePartsName2").ToString IsNot "", DR("ChangePartsNewReworked2").ToString, "")
+            ws.Cells("AT52").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName2").ToString), "", DR("ChangePartsType2").ToString)
+            ws.Cells("BB52").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName2").ToString), "", DR("ChangePartsQty2").ToString)
+            ws.Cells("BD52").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName2").ToString), DR("ChangePartsNewReworked2").ToString, "")
             ws.Cells("AN53").Value = DR("ChangePartsName3").ToString
-            ws.Cells("AT53").Value = DR("ChangePartsType3").ToString
-            ws.Cells("BB53").Value = DR("ChangePartsQty3").ToString
-            ws.Cells("BD53").Value = If(DR("ChangePartsName3").ToString IsNot "", DR("ChangePartsNewReworked3").ToString, "")
+            ws.Cells("AT53").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName3").ToString), "", DR("ChangePartsType3").ToString)
+            ws.Cells("BB53").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName3").ToString), "", DR("ChangePartsQty3").ToString)
+            ws.Cells("BD53").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName3").ToString), DR("ChangePartsNewReworked3").ToString, "")
             ws.Cells("AN54").Value = DR("ChangePartsName4").ToString
-            ws.Cells("AT54").Value = DR("ChangePartsType4").ToString
-            ws.Cells("BB54").Value = DR("ChangePartsQty4").ToString
-            ws.Cells("BD54").Value = If(DR("ChangePartsName4").ToString IsNot "", DR("ChangePartsNewReworked4").ToString, "")
+            ws.Cells("AT54").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName4").ToString), "", DR("ChangePartsType4").ToString)
+            ws.Cells("BB54").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName4").ToString), "", DR("ChangePartsQty4").ToString)
+            ws.Cells("BD54").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName4").ToString), DR("ChangePartsNewReworked4").ToString, "")
             ws.Cells("AN55").Value = DR("ChangePartsName5").ToString
-            ws.Cells("AT55").Value = DR("ChangePartsType5").ToString
-            ws.Cells("BB55").Value = DR("ChangePartsQty5").ToString
-            ws.Cells("BD55").Value = If(DR("ChangePartsName5").ToString IsNot "", DR("ChangePartsNewReworked5").ToString, "")
+            ws.Cells("AT55").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName5").ToString), "", DR("ChangePartsType5").ToString)
+            ws.Cells("BB55").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName5").ToString), "", DR("ChangePartsQty5").ToString)
+            ws.Cells("BD55").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName5").ToString), DR("ChangePartsNewReworked5").ToString, "")
             Dim wtTotal As Decimal = DateDiff(DateInterval.Minute, CDate(DR("OccurrenceDate").ToString), CDate(DR("PMConfirmGLOPReqDate").ToString))
             ws.Cells("AR22").Value = wtTotal.ToString 'WT
             Dim rtTotal As Decimal = DateDiff(DateInterval.Minute, CDate(DR("StartOfRepair").ToString), CDate(DR("EndOfRepair").ToString)) 'convert it to min instead of hour
@@ -3461,17 +3459,17 @@ End If
             ws.Cells("Z52").Value = DR("TreatmentBefore14").ToString
             ws.Cells("AD52").Value = DR("TreatmentAfter14").ToString
             ws.Cells("AN51").Value = DR("ChangePartsName1").ToString
-            ws.Cells("AT51").Value = DR("ChangePartsType1").ToString
-            ws.Cells("BB51").Value = DR("ChangePartsQty1").ToString
-            ws.Cells("BD51").Value = If(DR("ChangePartsName1").ToString IsNot "", DR("ChangePartsNewReworked1").ToString, "")
+            ws.Cells("AT51").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName1").ToString), "", DR("ChangePartsType1").ToString)
+            ws.Cells("BB51").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName1").ToString), "", DR("ChangePartsQty1").ToString)
+            ws.Cells("BD51").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName1").ToString), DR("ChangePartsNewReworked1").ToString, "")
             ws.Cells("AN52").Value = DR("ChangePartsName2").ToString
-            ws.Cells("AT52").Value = DR("ChangePartsType2").ToString
-            ws.Cells("BB52").Value = DR("ChangePartsQty2").ToString
-            ws.Cells("BD52").Value = If(DR("ChangePartsName2").ToString IsNot "", DR("ChangePartsNewReworked2").ToString, "")
+            ws.Cells("AT52").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName2").ToString), "", DR("ChangePartsType2").ToString)
+            ws.Cells("BB52").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName2").ToString), "", DR("ChangePartsQty2").ToString)
+            ws.Cells("BD52").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName2").ToString), DR("ChangePartsNewReworked2").ToString, "")
             ws.Cells("AN53").Value = DR("ChangePartsName3").ToString
-            ws.Cells("AT53").Value = DR("ChangePartsType3").ToString
-            ws.Cells("BB53").Value = DR("ChangePartsQty3").ToString
-            ws.Cells("BD53").Value = If(DR("ChangePartsName3").ToString IsNot "", DR("ChangePartsNewReworked3").ToString, "")
+            ws.Cells("AT53").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName3").ToString), "", DR("ChangePartsType3").ToString)
+            ws.Cells("BB53").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName3").ToString), "", DR("ChangePartsQty3").ToString)
+            ws.Cells("BD53").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName3").ToString), DR("ChangePartsNewReworked3").ToString, "")
             ws.Cells("AU33").Value = DR("DummyIn").ToString
             ws.Cells("BC33").Value = DR("DummyOut").ToString
             AddPicture(ws, (Me.RetPFImg(DR("Check5SAfterPMWork").ToString)), "AV55", 72, 24, LengthUnit.Pixel)
@@ -3987,21 +3985,21 @@ End If
             ws.Cells("Q57").Value = DR("TreatmentBefore13").ToString
             ws.Cells("U57").Value = DR("TreatmentAfter13").ToString
             ws.Cells("Y44").Value = DR("ChangePartsName1").ToString
-            ws.Cells("AF44").Value = DR("ChangePartsType1").ToString
-            ws.Cells("AN44").Value = DR("ChangePartsQty1").ToString
-            ws.Cells("AP44").Value = If(DR("ChangePartsName1").ToString IsNot "", DR("ChangePartsNewReworked1").ToString, "")
+            ws.Cells("AF44").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName1").ToString), "", DR("ChangePartsType1").ToString)
+            ws.Cells("AN44").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName1").ToString), "", DR("ChangePartsQty1").ToString)
+            ws.Cells("AP44").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName1").ToString), DR("ChangePartsNewReworked1").ToString, "")
             ws.Cells("Y45").Value = DR("ChangePartsName2").ToString
-            ws.Cells("AF45").Value = DR("ChangePartsType2").ToString
-            ws.Cells("AN45").Value = DR("ChangePartsQty2").ToString
-            ws.Cells("AP45").Value = If(DR("ChangePartsName2").ToString IsNot "", DR("ChangePartsNewReworked2").ToString, "")
+            ws.Cells("AF45").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName2").ToString), "", DR("ChangePartsType2").ToString)
+            ws.Cells("AN45").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName2").ToString), "", DR("ChangePartsQty2").ToString)
+            ws.Cells("AP45").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName2").ToString), DR("ChangePartsNewReworked2").ToString, "")
             ws.Cells("Y46").Value = DR("ChangePartsName3").ToString
-            ws.Cells("AF46").Value = DR("ChangePartsType3").ToString
-            ws.Cells("AN46").Value = DR("ChangePartsQty3").ToString
-            ws.Cells("AP46").Value = If(DR("ChangePartsName3").ToString IsNot "", DR("ChangePartsNewReworked3").ToString, "")
+            ws.Cells("AF46").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName3").ToString), "", DR("ChangePartsType3").ToString)
+            ws.Cells("AN46").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName3").ToString), "", DR("ChangePartsQty3").ToString)
+            ws.Cells("AP46").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName3").ToString), DR("ChangePartsNewReworked3").ToString, "")
             ws.Cells("Y47").Value = DR("ChangePartsName4").ToString
-            ws.Cells("AF47").Value = DR("ChangePartsType4").ToString
-            ws.Cells("AN47").Value = DR("ChangePartsQty4").ToString
-            ws.Cells("AP47").Value = If(DR("ChangePartsName4").ToString IsNot "", DR("ChangePartsNewReworked4").ToString, "")
+            ws.Cells("AF47").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName4").ToString), "", DR("ChangePartsType4").ToString)
+            ws.Cells("AN47").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName4").ToString), "", DR("ChangePartsQty4").ToString)
+            ws.Cells("AP47").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName4").ToString), DR("ChangePartsNewReworked4").ToString, "")
             Try
                 Dim wtTotal As Decimal = DateDiff(DateInterval.Minute, CDate(DR("GLConfirmOPReqDate").ToString), CDate(DR("PMConfirmGLOPReqDate").ToString)) 'convert it to min instead of hour
                 ws.Cells("AF22").Value = wtTotal.ToString 'WT
@@ -4333,29 +4331,29 @@ Dim ws = wb.Worksheets.ActiveWorksheet
             ws.Cells("F50").Value = DR("Treatment12").ToString
             ws.Cells("X50").Value = DR("TreatmentBefore12").ToString
             ws.Cells("AB50").Value = DR("TreatmentAfter12").ToString
-            ws.Cells("F51").Value = DR("Treatment13").ToString
-            ws.Cells("X51").Value = DR("TreatmentBefore13").ToString
-            ws.Cells("AB51").Value = DR("TreatmentAfter13").ToString
+            If Not String.IsNullOrWhiteSpace(DR("Treatment13").ToString) Then Throw New InvalidDataException("The supplied EDS template has only twelve treatment rows; a template supporting treatment 13 is required.")
+            If Not String.IsNullOrWhiteSpace(DR("TreatmentBefore13").ToString) Then Throw New InvalidDataException("The supplied EDS template has only twelve treatment rows; a template supporting treatment 13 is required.")
+            If Not String.IsNullOrWhiteSpace(DR("TreatmentAfter13").ToString) Then Throw New InvalidDataException("The supplied EDS template has only twelve treatment rows; a template supporting treatment 13 is required.")
             ws.Cells("AG59").Value = DR("ChangePartsName1").ToString
-            ws.Cells("AM59").Value = DR("ChangePartsType1").ToString
-            ws.Cells("AU59").Value = DR("ChangePartsQty1").ToString
-            ws.Cells("AW59").Value = If(DR("ChangePartsName1").ToString IsNot "", DR("ChangePartsNewReworked1").ToString, "")
+            ws.Cells("AM59").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName1").ToString), "", DR("ChangePartsType1").ToString)
+            ws.Cells("AU59").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName1").ToString), "", DR("ChangePartsQty1").ToString)
+            ws.Cells("AW59").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName1").ToString), DR("ChangePartsNewReworked1").ToString, "")
             ws.Cells("AG60").Value = DR("ChangePartsName2").ToString
-            ws.Cells("AM60").Value = DR("ChangePartsType2").ToString
-            ws.Cells("AU60").Value = DR("ChangePartsQty2").ToString
-            ws.Cells("AW60").Value = If(DR("ChangePartsName2").ToString IsNot "", DR("ChangePartsNewReworked2").ToString, "")
+            ws.Cells("AM60").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName2").ToString), "", DR("ChangePartsType2").ToString)
+            ws.Cells("AU60").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName2").ToString), "", DR("ChangePartsQty2").ToString)
+            ws.Cells("AW60").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName2").ToString), DR("ChangePartsNewReworked2").ToString, "")
             ws.Cells("AG61").Value = DR("ChangePartsName3").ToString
-            ws.Cells("AM61").Value = DR("ChangePartsType3").ToString
-            ws.Cells("AU61").Value = DR("ChangePartsQty3").ToString
-            ws.Cells("AW61").Value = If(DR("ChangePartsName3").ToString IsNot "", DR("ChangePartsNewReworked3").ToString, "")
+            ws.Cells("AM61").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName3").ToString), "", DR("ChangePartsType3").ToString)
+            ws.Cells("AU61").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName3").ToString), "", DR("ChangePartsQty3").ToString)
+            ws.Cells("AW61").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName3").ToString), DR("ChangePartsNewReworked3").ToString, "")
             ws.Cells("AG62").Value = DR("ChangePartsName4").ToString
-            ws.Cells("AM62").Value = DR("ChangePartsType4").ToString
-            ws.Cells("AU62").Value = DR("ChangePartsQty4").ToString
-            ws.Cells("AW62").Value = If(DR("ChangePartsName4").ToString IsNot "", DR("ChangePartsNewReworked4").ToString, "")
+            ws.Cells("AM62").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName4").ToString), "", DR("ChangePartsType4").ToString)
+            ws.Cells("AU62").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName4").ToString), "", DR("ChangePartsQty4").ToString)
+            ws.Cells("AW62").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName4").ToString), DR("ChangePartsNewReworked4").ToString, "")
             ws.Cells("AG63").Value = DR("ChangePartsName5").ToString
-            ws.Cells("AM63").Value = DR("ChangePartsType5").ToString
-            ws.Cells("AU63").Value = DR("ChangePartsQty5").ToString
-            ws.Cells("AW63").Value = If(DR("ChangePartsName5").ToString IsNot "", DR("ChangePartsNewReworked5").ToString, "")
+            ws.Cells("AM63").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName5").ToString), "", DR("ChangePartsType5").ToString)
+            ws.Cells("AU63").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName5").ToString), "", DR("ChangePartsQty5").ToString)
+            ws.Cells("AW63").Value = If(Not String.IsNullOrWhiteSpace(DR("ChangePartsName5").ToString), DR("ChangePartsNewReworked5").ToString, "")
             Dim wtTotal As Decimal = DateDiff(DateInterval.Minute, CDate(DR("OccurrenceDate").ToString), CDate(DR("PMConfirmGLOPReqDate").ToString)) 'convert it to min instead of hour
             ws.Cells("AL26").Value = wtTotal.ToString 'WT
             Dim rtTotal As Decimal = DateDiff(DateInterval.Minute, CDate(DR("StartOfRepair").ToString), CDate(DR("EndOfRepair").ToString)) 'convert it to min instead of hour
@@ -4707,50 +4705,52 @@ Dim remarksData5 As String() = remarks(4)
                         ws.Cells("AA4").Value = DR("StartOfRepair").ToString 'Start Time
                         ws.Cells("AA5").Value = DR("EndOfRepair").ToString 'End Time
                         If ProcessGroup = "SING" Then
-                            AddPicture(ws, If(File.Exists(strFolder & (imagesData(0))), strFolder & (imagesData(0)), (noImage)), "C11", 350, 200, LengthUnit.Pixel)
-                            ws.Cells("B20").Value = remarksData(0)
-                            AddPicture(ws, If(File.Exists(strFolder & (imagesData(1))), strFolder & (imagesData(1)), (noImage)), "O11", 270, 200, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData(0))), strFolder & (imagesData(0)), (noImage)), "C11", 350, 200, LengthUnit.Pixel)
+                            ws.Cells("Z19").Value = remarksData(2)
+ws.Cells("B20").Value = remarksData(0)
+                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData(1))), strFolder & (imagesData(1)), (noImage)), "O11", 270, 200, LengthUnit.Pixel)
                             ws.Cells("N20").Value = remarksData(1)
-                            AddPicture(ws, If(File.Exists(strFolder & (imagesData(2))), strFolder & (imagesData(2)), (noImage)), "Z11", 310, 200, LengthUnit.Pixel)
-                            AddPicture(ws, If(File.Exists(strFolder & (imagesData2(0))), strFolder & (imagesData2(0)), (noImage)), "C27", 280, 200, LengthUnit.Pixel)
-                            AddPicture(ws, If(File.Exists(strFolder & (imagesData2(1))), strFolder & (imagesData2(1)), (noImage)), "L27", 285, 200, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData(2))), strFolder & (imagesData(2)), (noImage)), "Z11", 310, 200, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData2(0))), strFolder & (imagesData2(0)), (noImage)), "C27", 280, 200, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData2(1))), strFolder & (imagesData2(1)), (noImage)), "L27", 285, 200, LengthUnit.Pixel)
                             ws.Cells("B37").Value = remarksData2(0)
                             ws.Cells("K37").Value = remarksData2(1)
-                            AddPicture(ws, If(File.Exists(strFolder & (imagesData3(0))), strFolder & (imagesData3(0)), (noImage)), "V27", 215, 200, LengthUnit.Pixel)
-                            AddPicture(ws, If(File.Exists(strFolder & (imagesData3(1))), strFolder & (imagesData3(1)), (noImage)), "AD27", 225, 200, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData3(0))), strFolder & (imagesData3(0)), (noImage)), "V27", 215, 200, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData3(1))), strFolder & (imagesData3(1)), (noImage)), "AD27", 225, 200, LengthUnit.Pixel)
                             ws.Cells("U37").Value = remarksData3(0)
                             ws.Cells("AC37").Value = remarksData3(1)
-                            AddPicture(ws, If(File.Exists(strFolder & (imagesData4(0))), strFolder & (imagesData4(0)), (noImage)), "C47", 420, 210, LengthUnit.Pixel)
-                            AddPicture(ws, If(File.Exists(strFolder & (imagesData4(1))), strFolder & (imagesData4(1)), (noImage)), "T47", 350, 210, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData4(0))), strFolder & (imagesData4(0)), (noImage)), "C47", 420, 210, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData4(1))), strFolder & (imagesData4(1)), (noImage)), "T47", 350, 210, LengthUnit.Pixel)
                             ws.Cells("P46").Value = remarksData4(0)
                             ws.Cells("AH46").Value = remarksData4(1)
-                            AddPicture(ws, If(File.Exists(strFolder & (imagesData5(0))), strFolder & (imagesData5(0)), (noImage)), "C69", 365, 220, LengthUnit.Pixel)
-                            AddPicture(ws, If(File.Exists(strFolder & (imagesData5(1))), strFolder & (imagesData5(1)), (noImage)), "O69", 310, 220, LengthUnit.Pixel)
-                            AddPicture(ws, If(File.Exists(strFolder & (imagesData5(2))), strFolder & (imagesData5(2)), (noImage)), "AA69", 275, 220, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData5(0))), strFolder & (imagesData5(0)), (noImage)), "C69", 365, 220, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData5(1))), strFolder & (imagesData5(1)), (noImage)), "O69", 310, 220, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData5(2))), strFolder & (imagesData5(2)), (noImage)), "AA69", 275, 220, LengthUnit.Pixel)
                             ws.Cells("D82").Value = remarksData5(0)
                             ws.Cells("P82").Value = remarksData5(1)
                             ws.Cells("AB82").Value = remarksData5(2)
                         Else
-                            AddPicture(ws, If(File.Exists(strFolder & (imagesData(0))), strFolder & (imagesData(0)), (noImage)), "C11", 280, 240, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData(0))), strFolder & (imagesData(0)), (noImage)), "C11", 280, 240, LengthUnit.Pixel)
                             ws.Cells("K10").Value = remarksData(0)
-                            AddPicture(ws, If(File.Exists(strFolder & (imagesData(1))), strFolder & (imagesData(1)), (noImage)), "P11", 270, 240, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData(1))), strFolder & (imagesData(1)), (noImage)), "P11", 270, 240, LengthUnit.Pixel)
                             ws.Cells("Y10").Value = remarksData(1)
-                            AddPicture(ws, If(File.Exists(strFolder & (imagesData(2))), strFolder & (imagesData(2)), (noImage)), "AC11", 240, 240, LengthUnit.Pixel)
-                            AddPicture(ws, If(File.Exists(strFolder & (imagesData2(0))), strFolder & (imagesData2(0)), (noImage)), "C26", 280, 220, LengthUnit.Pixel)
-                            AddPicture(ws, If(File.Exists(strFolder & (imagesData2(1))), strFolder & (imagesData2(1)), (noImage)), "L26", 285, 220, LengthUnit.Pixel)
+ws.Cells("AD21").Value = remarksData(2)
+                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData(2))), strFolder & (imagesData(2)), (noImage)), "AC11", 240, 240, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData2(0))), strFolder & (imagesData2(0)), (noImage)), "C26", 280, 220, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData2(1))), strFolder & (imagesData2(1)), (noImage)), "L26", 285, 220, LengthUnit.Pixel)
                             ws.Cells("B24").Value = remarksData2(0)
                             ws.Cells("K24").Value = remarksData2(1)
-                            AddPicture(ws, If(File.Exists(strFolder & (imagesData3(0))), strFolder & (imagesData3(0)), (noImage)), "V26", 215, 220, LengthUnit.Pixel)
-                            AddPicture(ws, If(File.Exists(strFolder & (imagesData3(1))), strFolder & (imagesData3(1)), (noImage)), "AD26", 225, 220, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData3(0))), strFolder & (imagesData3(0)), (noImage)), "V26", 215, 220, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData3(1))), strFolder & (imagesData3(1)), (noImage)), "AD26", 225, 220, LengthUnit.Pixel)
                             ws.Cells("U24").Value = remarksData3(0)
                             ws.Cells("AC24").Value = remarksData3(1)
-                            AddPicture(ws, If(File.Exists(strFolder & (imagesData4(0))), strFolder & (imagesData4(0)), (noImage)), "C46", 420, 220, LengthUnit.Pixel)
-                            AddPicture(ws, If(File.Exists(strFolder & (imagesData4(1))), strFolder & (imagesData4(1)), (noImage)), "T46", 350, 215, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData4(0))), strFolder & (imagesData4(0)), (noImage)), "C46", 420, 220, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData4(1))), strFolder & (imagesData4(1)), (noImage)), "T46", 350, 215, LengthUnit.Pixel)
                             ws.Cells("P45").Value = remarksData4(0)
                             ws.Cells("AH45").Value = remarksData4(1)
-                            AddPicture(ws, If(File.Exists(strFolder & (imagesData5(0))), strFolder & (imagesData5(0)), (noImage)), "C68", 365, 250, LengthUnit.Pixel)
-                            AddPicture(ws, If(File.Exists(strFolder & (imagesData5(1))), strFolder & (imagesData5(1)), (noImage)), "O68", 310, 250, LengthUnit.Pixel)
-                            AddPicture(ws, If(File.Exists(strFolder & (imagesData5(2))), strFolder & (imagesData5(2)), (noImage)), "AA68", 275, 250, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData5(0))), strFolder & (imagesData5(0)), (noImage)), "C68", 365, 250, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData5(1))), strFolder & (imagesData5(1)), (noImage)), "O68", 310, 250, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData5(2))), strFolder & (imagesData5(2)), (noImage)), "AA68", 275, 250, LengthUnit.Pixel)
                             ws.Cells("B81").Value = remarksData5(0)
                             ws.Cells("N81").Value = remarksData5(1)
                             ws.Cells("Z81").Value = remarksData5(2)
@@ -4766,7 +4766,8 @@ Dim remarksData5 As String() = remarks(4)
                         ws.PrintOptions.Portrait = True
 End Sub
 Private Sub TE_EDS(wb As ExcelFile, DR As LegacyRecord, ProcessStr As String)
-Dim ws = wb.Worksheets.ActiveWorksheet
+Dim ws = wb.Worksheets("TE Template")
+ws.Cells.GetSubrange("BK59", "BL74").Value = Nothing
                             If getVRNumber(1) = "" Or getVRNumber(1) = DBNull.Value.ToString Then
                                 ws.Cells("K39").Value = "VR(1)"
                             Else
@@ -5043,17 +5044,17 @@ Dim ws = wb.Worksheets.ActiveWorksheet
                                 ws.Cells("AT92").Value = DR("AccreditorRemarks_Max").ToString
                             End If
                             ws.Cells("AB83").Value = DR("ChangePartsName1").ToString
-                            ws.Cells("AQ83").Value = DR("ChangePartsType1").ToString
-                            ws.Cells("BE83").Value = DR("ChangePartsQty1").ToString
+                            ws.Cells("AQ83").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName1").ToString), "", DR("ChangePartsType1").ToString)
+                            ws.Cells("BE83").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName1").ToString), "", DR("ChangePartsQty1").ToString)
                             ws.Cells("AB84").Value = DR("ChangePartsName2").ToString
-                            ws.Cells("AQ84").Value = DR("ChangePartsType2").ToString
-                            ws.Cells("BE84").Value = DR("ChangePartsQty2").ToString
+                            ws.Cells("AQ84").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName2").ToString), "", DR("ChangePartsType2").ToString)
+                            ws.Cells("BE84").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName2").ToString), "", DR("ChangePartsQty2").ToString)
                             ws.Cells("AB85").Value = DR("ChangePartsName3").ToString
-                            ws.Cells("AQ85").Value = DR("ChangePartsType3").ToString
-                            ws.Cells("BE85").Value = DR("ChangePartsQty3").ToString
+                            ws.Cells("AQ85").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName3").ToString), "", DR("ChangePartsType3").ToString)
+                            ws.Cells("BE85").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName3").ToString), "", DR("ChangePartsQty3").ToString)
                             ws.Cells("AB86").Value = DR("ChangePartsName4").ToString
-                            ws.Cells("AQ86").Value = DR("ChangePartsType4").ToString
-                            ws.Cells("BE86").Value = DR("ChangePartsQty4").ToString
+                            ws.Cells("AQ86").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName4").ToString), "", DR("ChangePartsType4").ToString)
+                            ws.Cells("BE86").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName4").ToString), "", DR("ChangePartsQty4").ToString)
                             Dim wtTotal As Decimal = DateDiff(DateInterval.Minute, CDate(DR("GLConfirmOPReqDate").ToString), CDate(DR("PMConfirmGLOPReqDate").ToString)) 'convert it to min instead of hour
                             Dim TStopTime As String = DR("TotalStopTime").ToString
                             If TStopTime = "" Then
@@ -5488,7 +5489,7 @@ Dim ws = wb.Worksheets.ActiveWorksheet
                             ws.PrintOptions.Portrait = True
 End Sub
 Private Sub TE(wb As ExcelFile, DR As LegacyRecord, ProcessStr As String)
-Dim ws = wb.Worksheets.ActiveWorksheet
+Dim ws = wb.Worksheets("TE Template")
                             If getVRNumber(1) = "" Or getVRNumber(1) = DBNull.Value.ToString Then
                                 ws.Cells("L38").Value = "VR( 1 )"
                             Else
@@ -5814,17 +5815,17 @@ Dim ws = wb.Worksheets.ActiveWorksheet
                                 ws.Cells("AO91").Value = DR("AccreditorRemarks_Max").ToString
                             End If
                             ws.Cells("AB82").Value = DR("ChangePartsName1").ToString
-                            ws.Cells("AQ82").Value = DR("ChangePartsType1").ToString
-                            ws.Cells("BE82").Value = DR("ChangePartsQty1").ToString
+                            ws.Cells("AQ82").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName1").ToString), "", DR("ChangePartsType1").ToString)
+                            ws.Cells("BE82").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName1").ToString), "", DR("ChangePartsQty1").ToString)
                             ws.Cells("AB83").Value = DR("ChangePartsName2").ToString
-                            ws.Cells("AQ83").Value = DR("ChangePartsType2").ToString
-                            ws.Cells("BE83").Value = DR("ChangePartsQty2").ToString
+                            ws.Cells("AQ83").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName2").ToString), "", DR("ChangePartsType2").ToString)
+                            ws.Cells("BE83").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName2").ToString), "", DR("ChangePartsQty2").ToString)
                             ws.Cells("AB84").Value = DR("ChangePartsName3").ToString
-                            ws.Cells("AQ84").Value = DR("ChangePartsType3").ToString
-                            ws.Cells("BE84").Value = DR("ChangePartsQty3").ToString
+                            ws.Cells("AQ84").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName3").ToString), "", DR("ChangePartsType3").ToString)
+                            ws.Cells("BE84").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName3").ToString), "", DR("ChangePartsQty3").ToString)
                             ws.Cells("AB85").Value = DR("ChangePartsName4").ToString
-                            ws.Cells("AQ85").Value = DR("ChangePartsType4").ToString
-                            ws.Cells("BE85").Value = DR("ChangePartsQty4").ToString
+                            ws.Cells("AQ85").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName4").ToString), "", DR("ChangePartsType4").ToString)
+                            ws.Cells("BE85").Value = If(String.IsNullOrWhiteSpace(DR("ChangePartsName4").ToString), "", DR("ChangePartsQty4").ToString)
                             Dim wtTotal As Decimal = DateDiff(DateInterval.Minute, CDate(DR("GLConfirmOPReqDate").ToString), CDate(DR("PMConfirmGLOPReqDate").ToString)) 'convert it to min instead of hour
                             Dim TStopTime As String = DR("TotalStopTime").ToString
                             If TStopTime = "" Then
@@ -6350,6 +6351,11 @@ Dim ws = wb.Worksheets.ActiveWorksheet
 End Sub
 Public Sub PopulateTeEvidence(wb As ExcelFile, rows As IDictionary(Of String, IList(Of IDictionary(Of String, Object))), teAssign As String)
 Dim ws = wb.Worksheets(0)
+ws.NamedRanges.SetPrintArea(ws.Cells.GetSubrange("A1", "Q80"))
+ws.PrintOptions.FooterMargin = 0.1
+ws.Cells("B77").Value = "Ideas:"
+ws.Cells.GetSubrange("B78", "Q80").Merged = True
+ws.Cells("B78").Style.WrapText = True
 Dim ws_2 = If(wb.Worksheets.Count > 1, wb.Worksheets(1), Nothing)
 Dim ws_3 = If(wb.Worksheets.Count > 2, wb.Worksheets(2), Nothing)
 Dim strFolder As String = ""
@@ -6399,7 +6405,7 @@ Dim emDR1_QD As New LegacyRows(rows("emDR1_QD"))
                             imagesDat1_A_QD(0) = emDR1_QD("BMEvidence_ImgFile").ToString
                         Loop
                         emDR1_QD.Close()
-                        AddPicture(ws_3, If(File.Exists(strFolder & imagesDat1_A_QD(0).ToString().Replace("~", "")), strFolder & imagesDat1_A_QD(0).ToString().Replace("~", ""), (noImage)), "F3", 2.1, 1.7, LengthUnit.Inch)
+                        AddEvidencePicture(ws_3, If(File.Exists(strFolder & imagesDat1_A_QD(0).ToString().Replace("~", "")), strFolder & imagesDat1_A_QD(0).ToString().Replace("~", ""), (noImage)), "F3", 2.1, 1.7, LengthUnit.Inch)
 Dim emDR2_QD As New LegacyRows(rows("emDR2_QD"))
                         Dim imagesDat2_A_QD(5) As String
                         imagesDat2_A_QD(0) = ""
@@ -6407,7 +6413,7 @@ Dim emDR2_QD As New LegacyRows(rows("emDR2_QD"))
                             imagesDat2_A_QD(0) = emDR2_QD("BMEvidence_ImgFile").ToString
                         Loop
                         emDR2_QD.Close()
-                        AddPicture(ws_3, If(File.Exists(strFolder & imagesDat2_A_QD(0).ToString().Replace("~", "")), strFolder & imagesDat2_A_QD(0).ToString().Replace("~", ""), (noImage)), "K3", 2.1, 1.7, LengthUnit.Inch)
+                        AddEvidencePicture(ws_3, If(File.Exists(strFolder & imagesDat2_A_QD(0).ToString().Replace("~", "")), strFolder & imagesDat2_A_QD(0).ToString().Replace("~", ""), (noImage)), "K3", 2.1, 1.7, LengthUnit.Inch)
 Dim emDR3_QD As New LegacyRows(rows("emDR3_QD"))
                         Dim imagesDat3_A_QD(5) As String
                         imagesDat3_A_QD(0) = ""
@@ -6415,7 +6421,7 @@ Dim emDR3_QD As New LegacyRows(rows("emDR3_QD"))
                             imagesDat3_A_QD(0) = emDR3_QD("BMEvidence_ImgFile").ToString
                         Loop
                         emDR3_QD.Close()
-                        AddPicture(ws_3, If(File.Exists(strFolder & imagesDat3_A_QD(0).ToString().Replace("~", "")), strFolder & imagesDat3_A_QD(0).ToString().Replace("~", ""), (noImage)), "P3", 2.1, 1.7, LengthUnit.Inch)
+                        AddEvidencePicture(ws_3, If(File.Exists(strFolder & imagesDat3_A_QD(0).ToString().Replace("~", "")), strFolder & imagesDat3_A_QD(0).ToString().Replace("~", ""), (noImage)), "P3", 2.1, 1.7, LengthUnit.Inch)
                     Catch ex As Exception
                     End Try
 End If
@@ -6442,12 +6448,12 @@ Dim emDR1 As New LegacyRows(rows("emDR1"))
                         End If
                     Loop
                     emDR1.Close()
-                    AddPicture(ws, If(File.Exists(strFolder & imagesDat1_A(0).ToString().Replace("~", "")), strFolder & imagesDat1_A(0).ToString().Replace("~", ""), (noImage)), "B20", 1.3, 1.61, LengthUnit.Inch)
-                    AddPicture(ws, If(File.Exists(strFolder & imagesDat1_A(1).ToString().Replace("~", "")), strFolder & imagesDat1_A(1).ToString().Replace("~", ""), (noImage)), "D20", 1.46, 1.61, LengthUnit.Inch)
-                    AddPicture(ws, If(File.Exists(strFolder & imagesDat1_A(2).ToString().Replace("~", "")), strFolder & imagesDat1_A(2).ToString().Replace("~", ""), (noImage)), "F20", 1.52, 1.61, LengthUnit.Inch)
-                    AddPicture(ws, If(File.Exists(strFolder & imagesDat1_B(0).ToString().Replace("~", "")), strFolder & imagesDat1_B(0).Replace("~", ""), (noImage)), "J20", 1.3, 1.61, LengthUnit.Inch)
-                    AddPicture(ws, If(File.Exists(strFolder & imagesDat1_B(1).ToString().Replace("~", "")), strFolder & imagesDat1_B(1).Replace("~", ""), (noImage)), "L20", 1.46, 1.61, LengthUnit.Inch)
-                    AddPicture(ws, If(File.Exists(strFolder & imagesDat1_B(2).ToString().Replace("~", "")), strFolder & imagesDat1_B(2).Replace("~", ""), (noImage)), "N20", 1.52, 1.61, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat1_A(0).ToString().Replace("~", "")), strFolder & imagesDat1_A(0).ToString().Replace("~", ""), (noImage)), "B20", 1.3, 1.61, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat1_A(1).ToString().Replace("~", "")), strFolder & imagesDat1_A(1).ToString().Replace("~", ""), (noImage)), "D20", 1.46, 1.61, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat1_A(2).ToString().Replace("~", "")), strFolder & imagesDat1_A(2).ToString().Replace("~", ""), (noImage)), "F20", 1.52, 1.61, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat1_B(0).ToString().Replace("~", "")), strFolder & imagesDat1_B(0).Replace("~", ""), (noImage)), "J20", 1.3, 1.61, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat1_B(1).ToString().Replace("~", "")), strFolder & imagesDat1_B(1).Replace("~", ""), (noImage)), "L20", 1.46, 1.61, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat1_B(2).ToString().Replace("~", "")), strFolder & imagesDat1_B(2).Replace("~", ""), (noImage)), "N20", 1.52, 1.61, LengthUnit.Inch)
 Dim emDR2 As New LegacyRows(rows("emDR2"))
                     Dim imagesDat2_A(4) As String
                     Dim imagesDat2_B(4) As String
@@ -6471,12 +6477,12 @@ Dim emDR2 As New LegacyRows(rows("emDR2"))
                         End If
                     Loop
                     emDR2.Close()
-                    AddPicture(ws, If(File.Exists(strFolder & imagesDat2_A(0).ToString().Replace("~", "")), strFolder & imagesDat2_A(0).ToString().Replace("~", ""), (noImage)), "B31", 1.29, 1.44, LengthUnit.Inch)
-                    AddPicture(ws, If(File.Exists(strFolder & imagesDat2_A(1).ToString().Replace("~", "")), strFolder & imagesDat2_A(1).ToString().Replace("~", ""), (noImage)), "D31", 1.44, 1.44, LengthUnit.Inch)
-                    AddPicture(ws, If(File.Exists(strFolder & imagesDat2_A(2).ToString().Replace("~", "")), strFolder & imagesDat2_A(2).ToString().Replace("~", ""), (noImage)), "F31", 1.48, 1.44, LengthUnit.Inch)
-                    AddPicture(ws, If(File.Exists(strFolder & imagesDat2_B(0).ToString().Replace("~", "")), strFolder & imagesDat2_B(0).ToString().Replace("~", ""), (noImage)), "J31", 1.27, 1.44, LengthUnit.Inch)
-                    AddPicture(ws, If(File.Exists(strFolder & imagesDat2_B(1).ToString().Replace("~", "")), strFolder & imagesDat2_B(1).ToString().Replace("~", ""), (noImage)), "L31", 1.48, 1.44, LengthUnit.Inch)
-                    AddPicture(ws, If(File.Exists(strFolder & imagesDat2_B(2).ToString().Replace("~", "")), strFolder & imagesDat2_B(2).ToString().Replace("~", ""), (noImage)), "N31", 1.52, 1.44, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat2_A(0).ToString().Replace("~", "")), strFolder & imagesDat2_A(0).ToString().Replace("~", ""), (noImage)), "B31", 1.29, 1.44, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat2_A(1).ToString().Replace("~", "")), strFolder & imagesDat2_A(1).ToString().Replace("~", ""), (noImage)), "D31", 1.44, 1.44, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat2_A(2).ToString().Replace("~", "")), strFolder & imagesDat2_A(2).ToString().Replace("~", ""), (noImage)), "F31", 1.48, 1.44, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat2_B(0).ToString().Replace("~", "")), strFolder & imagesDat2_B(0).ToString().Replace("~", ""), (noImage)), "J31", 1.27, 1.44, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat2_B(1).ToString().Replace("~", "")), strFolder & imagesDat2_B(1).ToString().Replace("~", ""), (noImage)), "L31", 1.48, 1.44, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat2_B(2).ToString().Replace("~", "")), strFolder & imagesDat2_B(2).ToString().Replace("~", ""), (noImage)), "N31", 1.52, 1.44, LengthUnit.Inch)
 Dim emDR3 As New LegacyRows(rows("emDR3"))
                     Dim imagesDat3_A(4) As String
                     Dim imagesDat3_B(4) As String
@@ -6500,53 +6506,53 @@ Dim emDR3 As New LegacyRows(rows("emDR3"))
                         End If
                     Loop
                     emDR3.Close()
-                    AddPicture(ws, If(File.Exists(strFolder & imagesDat3_A(0).ToString().Replace("~", "")), strFolder & imagesDat3_A(0).ToString().Replace("~", ""), (noImage)), "B36", 1.27, 1.66, LengthUnit.Inch)
-                    AddPicture(ws, If(File.Exists(strFolder & imagesDat3_A(1).ToString().Replace("~", "")), strFolder & imagesDat3_A(1).ToString().Replace("~", ""), (noImage)), "D36", 1.46, 1.66, LengthUnit.Inch)
-                    AddPicture(ws, If(File.Exists(strFolder & imagesDat3_A(2).ToString().Replace("~", "")), strFolder & imagesDat3_A(2).ToString().Replace("~", ""), (noImage)), "F36", 1.46, 1.66, LengthUnit.Inch)
-                    AddPicture(ws, If(File.Exists(strFolder & imagesDat3_B(0).ToString().Replace("~", "")), strFolder & imagesDat3_B(0).ToString().Replace("~", ""), (noImage)), "J36", 1.26, 1.66, LengthUnit.Inch)
-                    AddPicture(ws, If(File.Exists(strFolder & imagesDat3_B(1).ToString().Replace("~", "")), strFolder & imagesDat3_B(1).ToString().Replace("~", ""), (noImage)), "L36", 1.46, 1.66, LengthUnit.Inch)
-                    AddPicture(ws, If(File.Exists(strFolder & imagesDat3_B(2).ToString().Replace("~", "")), strFolder & imagesDat3_B(2).ToString().Replace("~", ""), (noImage)), "N36", 1.52, 1.66, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat3_A(0).ToString().Replace("~", "")), strFolder & imagesDat3_A(0).ToString().Replace("~", ""), (noImage)), "B36", 1.27, 1.66, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat3_A(1).ToString().Replace("~", "")), strFolder & imagesDat3_A(1).ToString().Replace("~", ""), (noImage)), "D36", 1.46, 1.66, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat3_A(2).ToString().Replace("~", "")), strFolder & imagesDat3_A(2).ToString().Replace("~", ""), (noImage)), "F36", 1.46, 1.66, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat3_B(0).ToString().Replace("~", "")), strFolder & imagesDat3_B(0).ToString().Replace("~", ""), (noImage)), "J36", 1.26, 1.66, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat3_B(1).ToString().Replace("~", "")), strFolder & imagesDat3_B(1).ToString().Replace("~", ""), (noImage)), "L36", 1.46, 1.66, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat3_B(2).ToString().Replace("~", "")), strFolder & imagesDat3_B(2).ToString().Replace("~", ""), (noImage)), "N36", 1.52, 1.66, LengthUnit.Inch)
 Dim emDR4 As New LegacyRows(rows("emDR4"))
                     Do While emDR4.Read
                         If (emDR4("Condition").ToString) = "BEFORE" Then
                             If (emDR4("CN").ToString) = "CN1" Then
-                                AddPicture(ws, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "B45", 1.27, 0.8, LengthUnit.Inch)
+                                AddEvidencePicture(ws, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "B45", 1.27, 0.8, LengthUnit.Inch)
                             ElseIf (emDR4("CN").ToString) = "CN2" Then
-                                AddPicture(ws, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "D45", 1.27, 0.8, LengthUnit.Inch)
+                                AddEvidencePicture(ws, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "D45", 1.27, 0.8, LengthUnit.Inch)
                             ElseIf (emDR4("CN").ToString) = "CN3" Then
-                                AddPicture(ws, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "B49", 1.27, 0.8, LengthUnit.Inch)
+                                AddEvidencePicture(ws, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "B49", 1.27, 0.8, LengthUnit.Inch)
                             ElseIf (emDR4("CN").ToString) = "CN4" Then
-                                AddPicture(ws, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "D49", 1.27, 0.8, LengthUnit.Inch)
+                                AddEvidencePicture(ws, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "D49", 1.27, 0.8, LengthUnit.Inch)
                             ElseIf (emDR4("CN").ToString) = "CN5" Then
-                                AddPicture(ws_2, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "A3", 1.26, 0.88, LengthUnit.Inch)
+                                AddEvidencePicture(ws_2, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "A3", 1.26, 0.88, LengthUnit.Inch)
                             ElseIf (emDR4("CN").ToString) = "CN6" Then
-                                AddPicture(ws_2, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "C3", 1.26, 0.88, LengthUnit.Inch)
+                                AddEvidencePicture(ws_2, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "C3", 1.26, 0.88, LengthUnit.Inch)
                             ElseIf (emDR4("CN").ToString) = "CN7" Then
-                                AddPicture(ws_2, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "A7", 1.26, 0.88, LengthUnit.Inch)
+                                AddEvidencePicture(ws_2, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "A7", 1.26, 0.88, LengthUnit.Inch)
                             ElseIf (emDR4("CN").ToString) = "CN8" Then
-                                AddPicture(ws_2, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "C7", 1.26, 0.88, LengthUnit.Inch)
+                                AddEvidencePicture(ws_2, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "C7", 1.26, 0.88, LengthUnit.Inch)
                             Else
-                                AddPicture(ws, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "F45", 1.46, 1.66, LengthUnit.Inch)
+                                AddEvidencePicture(ws, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "F45", 1.46, 1.66, LengthUnit.Inch)
                             End If
                         Else
                             If (emDR4("CN").ToString) = "CN1" Then
-                                AddPicture(ws, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "J45", 1.27, 0.8, LengthUnit.Inch)
+                                AddEvidencePicture(ws, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "J45", 1.27, 0.8, LengthUnit.Inch)
                             ElseIf (emDR4("CN").ToString) = "CN2" Then
-                                AddPicture(ws, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "L45", 1.27, 0.8, LengthUnit.Inch)
+                                AddEvidencePicture(ws, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "L45", 1.27, 0.8, LengthUnit.Inch)
                             ElseIf (emDR4("CN").ToString) = "CN3" Then
-                                AddPicture(ws, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "J49", 1.27, 0.8, LengthUnit.Inch)
+                                AddEvidencePicture(ws, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "J49", 1.27, 0.8, LengthUnit.Inch)
                             ElseIf (emDR4("CN").ToString) = "CN4" Then
-                                AddPicture(ws, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "L49", 1.27, 0.8, LengthUnit.Inch)
+                                AddEvidencePicture(ws, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "L49", 1.27, 0.8, LengthUnit.Inch)
                             ElseIf (emDR4("CN").ToString) = "CN5" Then
-                                AddPicture(ws_2, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "G3", 1.26, 0.88, LengthUnit.Inch)
+                                AddEvidencePicture(ws_2, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "G3", 1.26, 0.88, LengthUnit.Inch)
                             ElseIf (emDR4("CN").ToString) = "CN6" Then
-                                AddPicture(ws_2, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "I3", 1.26, 0.88, LengthUnit.Inch)
+                                AddEvidencePicture(ws_2, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "I3", 1.26, 0.88, LengthUnit.Inch)
                             ElseIf (emDR4("CN").ToString) = "CN7" Then
-                                AddPicture(ws_2, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "G7", 1.26, 0.88, LengthUnit.Inch)
+                                AddEvidencePicture(ws_2, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "G7", 1.26, 0.88, LengthUnit.Inch)
                             ElseIf (emDR4("CN").ToString) = "CN8" Then
-                                AddPicture(ws_2, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "I7", 1.26, 0.88, LengthUnit.Inch)
+                                AddEvidencePicture(ws_2, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "I7", 1.26, 0.88, LengthUnit.Inch)
                             Else
-                                AddPicture(ws, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "N45", 1.46, 1.66, LengthUnit.Inch)
+                                AddEvidencePicture(ws, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "N45", 1.46, 1.66, LengthUnit.Inch)
                             End If
                         End If
                     Loop
@@ -6574,12 +6580,12 @@ Dim emDR5 As New LegacyRows(rows("emDR5"))
                         End If
                     Loop
                     emDR5.Close()
-                    AddPicture(ws, If(File.Exists(strFolder & imagesDat5_A(0).ToString().Replace("~", "")), strFolder & imagesDat5_A(0).ToString().Replace("~", ""), (noImage)), "B54", 1.27, 1.42, LengthUnit.Inch)
-                    AddPicture(ws, If(File.Exists(strFolder & imagesDat5_A(1).ToString().Replace("~", "")), strFolder & imagesDat5_A(1).ToString().Replace("~", ""), (noImage)), "D54", 1.46, 1.42, LengthUnit.Inch)
-                    AddPicture(ws, If(File.Exists(strFolder & imagesDat5_A(2).ToString().Replace("~", "")), strFolder & imagesDat5_A(2).ToString().Replace("~", ""), (noImage)), "F54", 1.46, 1.42, LengthUnit.Inch)
-                    AddPicture(ws, If(File.Exists(strFolder & imagesDat5_B(0).ToString().Replace("~", "")), strFolder & imagesDat5_B(0).ToString().Replace("~", ""), (noImage)), "J54", 1.27, 1.42, LengthUnit.Inch)
-                    AddPicture(ws, If(File.Exists(strFolder & imagesDat5_B(1).ToString().Replace("~", "")), strFolder & imagesDat5_B(1).ToString().Replace("~", ""), (noImage)), "L54", 1.46, 1.42, LengthUnit.Inch)
-                    AddPicture(ws, If(File.Exists(strFolder & imagesDat5_B(2).ToString().Replace("~", "")), strFolder & imagesDat5_B(2).ToString().Replace("~", ""), (noImage)), "N54", 1.53, 1.42, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat5_A(0).ToString().Replace("~", "")), strFolder & imagesDat5_A(0).ToString().Replace("~", ""), (noImage)), "B54", 1.27, 1.42, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat5_A(1).ToString().Replace("~", "")), strFolder & imagesDat5_A(1).ToString().Replace("~", ""), (noImage)), "D54", 1.46, 1.42, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat5_A(2).ToString().Replace("~", "")), strFolder & imagesDat5_A(2).ToString().Replace("~", ""), (noImage)), "F54", 1.46, 1.42, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat5_B(0).ToString().Replace("~", "")), strFolder & imagesDat5_B(0).ToString().Replace("~", ""), (noImage)), "J54", 1.27, 1.42, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat5_B(1).ToString().Replace("~", "")), strFolder & imagesDat5_B(1).ToString().Replace("~", ""), (noImage)), "L54", 1.46, 1.42, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat5_B(2).ToString().Replace("~", "")), strFolder & imagesDat5_B(2).ToString().Replace("~", ""), (noImage)), "N54", 1.53, 1.42, LengthUnit.Inch)
 Dim emDR6 As New LegacyRows(rows("emDR6"))
                     Dim imagesDat6_A(10) As String
                     Dim imagesDat6_B(10) As String
@@ -6603,12 +6609,12 @@ Dim emDR6 As New LegacyRows(rows("emDR6"))
                         End If
                     Loop
                     emDR6.Close()
-                    AddPicture(ws, If(File.Exists(strFolder & imagesDat6_A(0).ToString().Replace("~", "")), strFolder & imagesDat6_A(0).ToString().Replace("~", ""), (noImage)), "B62", 1.27, 1.42, LengthUnit.Inch)
-                    AddPicture(ws, If(File.Exists(strFolder & imagesDat6_A(1).ToString().Replace("~", "")), strFolder & imagesDat6_A(1).ToString().Replace("~", ""), (noImage)), "D62", 1.46, 1.42, LengthUnit.Inch)
-                    AddPicture(ws, If(File.Exists(strFolder & imagesDat6_A(2).ToString().Replace("~", "")), strFolder & imagesDat6_A(2).ToString().Replace("~", ""), (noImage)), "F62", 1.46, 1.42, LengthUnit.Inch)
-                    AddPicture(ws, If(File.Exists(strFolder & imagesDat6_B(0).ToString().Replace("~", "")), strFolder & imagesDat6_B(0).ToString().Replace("~", ""), (noImage)), "J62", 1.26, 1.42, LengthUnit.Inch)
-                    AddPicture(ws, If(File.Exists(strFolder & imagesDat6_B(1).ToString().Replace("~", "")), strFolder & imagesDat6_B(1).ToString().Replace("~", ""), (noImage)), "L62", 1.46, 1.42, LengthUnit.Inch)
-                    AddPicture(ws, If(File.Exists(strFolder & imagesDat6_B(2).ToString().Replace("~", "")), strFolder & imagesDat6_B(2).ToString().Replace("~", ""), (noImage)), "N62", 1.52, 1.42, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat6_A(0).ToString().Replace("~", "")), strFolder & imagesDat6_A(0).ToString().Replace("~", ""), (noImage)), "B62", 1.27, 1.42, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat6_A(1).ToString().Replace("~", "")), strFolder & imagesDat6_A(1).ToString().Replace("~", ""), (noImage)), "D62", 1.46, 1.42, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat6_A(2).ToString().Replace("~", "")), strFolder & imagesDat6_A(2).ToString().Replace("~", ""), (noImage)), "F62", 1.46, 1.42, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat6_B(0).ToString().Replace("~", "")), strFolder & imagesDat6_B(0).ToString().Replace("~", ""), (noImage)), "J62", 1.26, 1.42, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat6_B(1).ToString().Replace("~", "")), strFolder & imagesDat6_B(1).ToString().Replace("~", ""), (noImage)), "L62", 1.46, 1.42, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat6_B(2).ToString().Replace("~", "")), strFolder & imagesDat6_B(2).ToString().Replace("~", ""), (noImage)), "N62", 1.52, 1.42, LengthUnit.Inch)
                     Dim tsc1 As String = ""
                     Dim tsc2 As String = ""
                     Dim tsc3 As String = ""
@@ -6616,7 +6622,7 @@ Dim emDR6 As New LegacyRows(rows("emDR6"))
                     Dim intTeleko As Int32 = 0
 Dim emDR_DataTeleko As New LegacyRows(rows("emDR_DataTeleko"))
                     Do While emDR_DataTeleko.Read
-                        AddPicture(ws, If(File.Exists(strFolder & emDR_DataTeleko("TelekoEvidence").ToString().Replace("~", "")), strFolder & emDR_DataTeleko("TelekoEvidence").ToString().Replace("~", ""), (noImage)), arrTeleko(intTeleko) + "70", 1.54, 1.4, LengthUnit.Inch)
+                        AddEvidencePicture(ws, If(File.Exists(strFolder & emDR_DataTeleko("TelekoEvidence").ToString().Replace("~", "")), strFolder & emDR_DataTeleko("TelekoEvidence").ToString().Replace("~", ""), (noImage)), arrTeleko(intTeleko) + "70", 1.54, 1.4, LengthUnit.Inch)
                         intTeleko += 1
                     Loop
                     emDR_DataTeleko.Close()
@@ -6675,7 +6681,7 @@ Dim DR As New LegacyRows(rows("DR"))
                             ws.Cells("O10").Value = dte.ToString("MM-dd-yyyy") 'End Date
                             ws.Cells("O11").Value = dte.ToString("HH:mm:ss -tt") 'End Time
                         End If
-                        ws.PrintOptions.BottomMargin = (0)
+                        ws.PrintOptions.BottomMargin = 0.3
                         ws.PrintOptions.LeftMargin = 0
                         ws.PrintOptions.TopMargin = 0
                         ws.PrintOptions.RightMargin = (0)
@@ -6731,14 +6737,14 @@ End Select
 End Function
 Public Shared Function RequiredFields(profile As String) As String()
 Select Case profile
-Case "MEMS" : Return New String() {"Abnormality", "AccreditorPMReply", "AccreditorRemarks", "AFTERccpassline", "AFTERcscover", "AFTERitem1", "AFTERitem2", "AFTERitem3", "AFTERitem4", "AFTERitem5", "AkaPen1", "AkaPen2", "AkaPen3", "AlarmNo", "Andon", "AoPen1", "AoPen2", "AoPen3", "AQI", "BEFOREccpassline", "BEFOREcscover", "BEFOREitem1", "BEFOREitem2", "BEFOREitem3", "BEFOREitem4", "BEFOREitem5", "BMwhy4", "ChangePartsName1", "ChangePartsName2", "ChangePartsName3", "ChangePartsQty1", "ChangePartsQty2", "ChangePartsQty3", "ChangePartsType1", "ChangePartsType2", "ChangePartsType3", "Check4S", "CheckItem", "DateWhen", "ddlAfterAR", "ddlAfterCRM", "ddlAfterFA", "ddlAfterRJ", "ddlAfterTC", "DummyIn", "DummyOut", "EndBMBy", "EndOfRepair", "GLAndon", "GLAndon2", "GLConfirmOPReqBy", "GLConfirmOPReqDate", "GLRepairConfirmationBy", "LastActBeforeProb", "LeaderChk", "LineLoc", "LOTNo", "LotRetrieval", "LotRetrievalConfirm", "LotRetrievalDate1", "MCNo", "MCStatus", "MCType", "OccurrenceDate", "OccurrenceFreq", "OccurrenceFreqLotFrame", "OccurrenceFreqQuantity", "PartsRepCommon", "PentaMaster1", "PentaMaster2", "PKGDev1A", "PKGDev1B", "PKGDev2A", "PKGDev2B", "PKGDev3A", "PKGDev3B", "PKGDev4A", "PKGDev4B", "PKGDev5A", "PKGDev5B", "PkgDevFixed", "PkgName", "PMAndon", "PMCategoryID", "PMConfirmGLOPReqBy", "PMConfirmGLOPReqDate", "ProdTreatDummyIn", "ProdTreatDummyOut", "ProdTreatInspResult", "ProdTreatLotNo", "ProdTreatPackage", "ProdTreatUsageOfDummy", "QCData", "qualityitem1", "qualityitem2", "qualityitem3", "qualityitem4", "qualityitem5", "Rate", "Remarks", "RepairedByEnd", "ReqTo", "RequestContent", "RequestedBy", "RequestItem", "SetSTDCommon", "Situation", "StartOfRepair", "TotalStopTime", "Treatment1", "Treatment10", "Treatment11", "Treatment12", "Treatment13", "Treatment14", "Treatment2", "Treatment3", "Treatment4", "Treatment5", "Treatment6", "Treatment7", "Treatment8", "Treatment9", "TreatmentAfter1", "TreatmentAfter10", "TreatmentAfter11", "TreatmentAfter12", "TreatmentAfter13", "TreatmentAfter14", "TreatmentAfter2", "TreatmentAfter3", "TreatmentAfter4", "TreatmentAfter5", "TreatmentAfter6", "TreatmentAfter7", "TreatmentAfter8", "TreatmentAfter9", "TreatmentBefore1", "TreatmentBefore10", "TreatmentBefore11", "TreatmentBefore12", "TreatmentBefore13", "TreatmentBefore14", "TreatmentBefore2", "TreatmentBefore3", "TreatmentBefore4", "TreatmentBefore5", "TreatmentBefore6", "TreatmentBefore7", "TreatmentBefore8", "TreatmentBefore9", "UseDummyFrames", "Why1", "Why2", "Why3", "XAxis1PM1", "XAxis1PM2", "XAxis2PM1", "XAxis2PM2", "ZAxis1PM1", "ZAxis1PM2", "ZAxis2PM1", "ZAxis2PM2"}
-Case "WB" : Return New String() {"AbnormalityTreatment", "AccreditorPMReply", "AccreditorRemarks", "AcredBMCaseID", "AcredBMCauseID", "AcredBMContentID", "AcredBMMCUnitID", "AcredBMWorkContentID", "AcredPMCategoryID", "AkaPen1", "AkaPen2", "AkaPen3", "Andon", "AoPen1", "AoPen2", "AoPen3", "AQI", "BMCaseID", "BMCategoryID", "BMContentID", "BMStatusID", "BMUnitID", "BMWhy4", "BMWorkContentID", "CapillaryNo", "ChangePartsName1", "ChangePartsName2", "ChangePartsName3", "ChangePartsName4", "ChangePartsNewReworked1", "ChangePartsNewReworked2", "ChangePartsNewReworked3", "ChangePartsNewReworked4", "ChangePartsQty1", "ChangePartsQty2", "ChangePartsQty3", "ChangePartsQty4", "ChangePartsType1", "ChangePartsType2", "ChangePartsType3", "ChangePartsType4", "CheckItem", "ChipNo", "ConSafety", "CPData", "DateWhen", "DeviceName", "EndBM", "EndBMBy", "EndOfRepair", "EndPM1", "EndPM2", "FourSConfAfterPM", "Freq1", "Freq2", "GLAndon", "GLAndon2", "GLConfirmOPReqBy", "GLConfirmOPReqDate", "GLRepairConfirmation", "GLRepairConfirmationBy", "InspectionReq", "InspQtyNeeded", "Judgement1", "Judgement10", "Judgement11", "Judgement12", "Judgement13", "Judgement2", "Judgement3", "Judgement4", "Judgement5", "Judgement6", "Judgement7", "Judgement8", "Judgement9", "LOTNo", "LotNoForInspection", "LotRetrieval", "LotRetrievalConfirm", "LotRetrievalDate", "MCNo", "MCStatus", "MCType", "OccurrenceDate", "OccurrenceFreqLotFrame", "OccurrenceFreqQuantity", "OperationLine", "PcsScrapped", "PkgDevFixed", "PkgName", "PMAndon", "PMCategoryID", "PMConfirmGLOPReqBy", "PMConfirmGLOPReqDate", "PrepofDummyFrames", "QCData", "Rate", "Remarks", "RepairedByEnd", "ReporttoGL", "ReqTo", "RequestContent", "RequestedBy", "RequestItem", "Result", "RowNo", "RPMAfter", "RPMBefore", "RPMRelAdj", "RPMStandard", "Situation", "StartOfRepair", "StartPM1", "StartPM2", "TotalStopTime", "Treatment1", "Treatment10", "Treatment11", "Treatment12", "Treatment13", "Treatment2", "Treatment3", "Treatment4", "Treatment5", "Treatment6", "Treatment7", "Treatment8", "Treatment9", "TreatmentAfter1", "TreatmentAfter10", "TreatmentAfter11", "TreatmentAfter12", "TreatmentAfter13", "TreatmentAfter2", "TreatmentAfter3", "TreatmentAfter4", "TreatmentAfter5", "TreatmentAfter6", "TreatmentAfter7", "TreatmentAfter8", "TreatmentAfter9", "TreatmentBefore1", "TreatmentBefore10", "TreatmentBefore11", "TreatmentBefore12", "TreatmentBefore13", "TreatmentBefore2", "TreatmentBefore3", "TreatmentBefore4", "TreatmentBefore5", "TreatmentBefore6", "TreatmentBefore7", "TreatmentBefore8", "TreatmentBefore9", "TurnOverTo", "WBCon", "Why1", "Why2", "Why3", "Why4", "WiringData"}
+Case "MEMS" : Return New String() {"Abnormality", "AccreditorPMReply", "AccreditorRemarks", "AFTERccpassline", "AFTERcscover", "AFTERitem1", "AFTERitem2", "AFTERitem3", "AFTERitem4", "AFTERitem5", "AkaPen1", "AkaPen2", "AkaPen3", "AlarmNo", "Andon", "AoPen1", "AoPen2", "AoPen3", "AQI", "BEFOREccpassline", "BEFOREcscover", "BEFOREitem1", "BEFOREitem2", "BEFOREitem3", "BEFOREitem4", "BEFOREitem5", "BMwhy4", "ChangePartsName1", "ChangePartsName2", "ChangePartsName3", "ChangePartsQty1", "ChangePartsQty2", "ChangePartsQty3", "ChangePartsType1", "ChangePartsType2", "ChangePartsType3", "Check4S", "CheckItem", "DateWhen", "ddlAfterAR", "ddlAfterCRM", "ddlAfterFA", "ddlAfterRJ", "ddlAfterTC", "DummyIn", "DummyOut", "EndBMBy", "EndOfRepair", "GLAndon", "GLAndon2", "GLConfirmOPReqBy", "GLConfirmOPReqDate", "GLRepairConfirmationBy", "LastActBeforeProb", "LeaderChk", "LineLoc", "LOTNo", "LotRetrieval", "LotRetrievalConfirm", "LotRetrievalDate1", "MCNo", "MCStatus", "MCType", "OccurrenceDate", "OccurrenceFreq", "OccurrenceFreqLotFrame", "OccurrenceFreqQuantity", "PartsRepCommon", "PentaMaster1", "PentaMaster2", "PKGDev1A", "PKGDev1B", "PKGDev2A", "PKGDev2B", "PKGDev3A", "PKGDev3B", "PKGDev4A", "PKGDev4B", "PKGDev5A", "PKGDev5B", "PkgDevFixed", "PkgName", "PMAndon", "PMCategoryID", "PMConfirmGLOPReqBy", "PMConfirmGLOPReqDate", "ProdTreatDummyIn", "ProdTreatDummyOut", "ProdTreatInspResult", "ProdTreatLotNo", "ProdTreatPackage", "ProdTreatUsageOfDummy", "QCData", "qualityitem1", "qualityitem2", "qualityitem3", "qualityitem4", "qualityitem5", "Rate", "Remarks", "RepairedByEnd", "ReqTo", "RequestContent", "RequestedBy", "RequestItem", "SetSTDCommon", "StartOfRepair", "TotalStopTime", "Treatment1", "Treatment10", "Treatment11", "Treatment12", "Treatment13", "Treatment14", "Treatment2", "Treatment3", "Treatment4", "Treatment5", "Treatment6", "Treatment7", "Treatment8", "Treatment9", "TreatmentAfter1", "TreatmentAfter10", "TreatmentAfter11", "TreatmentAfter12", "TreatmentAfter13", "TreatmentAfter14", "TreatmentAfter2", "TreatmentAfter3", "TreatmentAfter4", "TreatmentAfter5", "TreatmentAfter6", "TreatmentAfter7", "TreatmentAfter8", "TreatmentAfter9", "TreatmentBefore1", "TreatmentBefore10", "TreatmentBefore11", "TreatmentBefore12", "TreatmentBefore13", "TreatmentBefore14", "TreatmentBefore2", "TreatmentBefore3", "TreatmentBefore4", "TreatmentBefore5", "TreatmentBefore6", "TreatmentBefore7", "TreatmentBefore8", "TreatmentBefore9", "UseDummyFrames", "Why1", "Why2", "Why3", "XAxis1PM1", "XAxis1PM2", "XAxis2PM1", "XAxis2PM2", "ZAxis1PM1", "ZAxis1PM2", "ZAxis2PM1", "ZAxis2PM2"}
+Case "WB" : Return New String() {"AbnormalityTreatment", "AccreditorPMReply", "AccreditorRemarks", "AcredBMCaseID", "AcredBMCauseID", "AcredBMContentID", "AcredBMMCUnitID", "AcredBMWorkContentID", "AcredPMCategoryID", "AkaPen1", "AkaPen2", "AkaPen3", "Andon", "AoPen1", "AoPen2", "AoPen3", "AQI", "BMCaseID", "BMCategoryID", "BMContentID", "BMStatusID", "BMUnitID", "BMWhy4", "BMWorkContentID", "CapillaryNo", "ChangePartsName1", "ChangePartsName2", "ChangePartsName3", "ChangePartsName4", "ChangePartsNewReworked1", "ChangePartsNewReworked2", "ChangePartsNewReworked3", "ChangePartsNewReworked4", "ChangePartsQty1", "ChangePartsQty2", "ChangePartsQty3", "ChangePartsQty4", "ChangePartsType1", "ChangePartsType2", "ChangePartsType3", "ChangePartsType4", "CheckItem", "ChipNo", "ConSafety", "CPData", "DateWhen", "DeviceName", "EndBM", "EndBMBy", "EndOfRepair", "EndPM1", "EndPM2", "FourSConfAfterPM", "Freq1", "Freq2", "GLAndon", "GLAndon2", "GLConfirmOPReqBy", "GLConfirmOPReqDate", "GLRepairConfirmation", "GLRepairConfirmationBy", "InspectionReq", "InspQtyNeeded", "Judgement1", "Judgement10", "Judgement11", "Judgement12", "Judgement13", "Judgement2", "Judgement3", "Judgement4", "Judgement5", "Judgement6", "Judgement7", "Judgement8", "Judgement9", "LOTNo", "LotRetrieval", "LotRetrievalConfirm", "LotRetrievalDate", "MCNo", "MCStatus", "MCType", "OccurrenceDate", "OccurrenceFreqLotFrame", "OccurrenceFreqQuantity", "OperationLine", "PcsScrapped", "PkgDevFixed", "PkgName", "PMAndon", "PMCategoryID", "PMConfirmGLOPReqBy", "PMConfirmGLOPReqDate", "PrepofDummyFrames", "QCData", "Rate", "Remarks", "RepairedByEnd", "ReporttoGL", "ReqTo", "RequestContent", "RequestedBy", "RequestItem", "Result", "RowNo", "RPMAfter", "RPMBefore", "RPMRelAdj", "RPMStandard", "Situation", "StartOfRepair", "StartPM1", "StartPM2", "TotalStopTime", "Treatment1", "Treatment10", "Treatment11", "Treatment12", "Treatment13", "Treatment2", "Treatment3", "Treatment4", "Treatment5", "Treatment6", "Treatment7", "Treatment8", "Treatment9", "TreatmentAfter1", "TreatmentAfter10", "TreatmentAfter11", "TreatmentAfter12", "TreatmentAfter13", "TreatmentAfter2", "TreatmentAfter3", "TreatmentAfter4", "TreatmentAfter5", "TreatmentAfter6", "TreatmentAfter7", "TreatmentAfter8", "TreatmentAfter9", "TreatmentBefore1", "TreatmentBefore10", "TreatmentBefore11", "TreatmentBefore12", "TreatmentBefore13", "TreatmentBefore2", "TreatmentBefore3", "TreatmentBefore4", "TreatmentBefore5", "TreatmentBefore6", "TreatmentBefore7", "TreatmentBefore8", "TreatmentBefore9", "TurnOverTo", "WBCon", "Why1", "Why2", "Why3", "Why4", "WiringData"}
 Case "DB" : Return New String() {"AbnormalityTreatment", "AccreditorPMReply", "AccreditorRemarks", "AcredBMCaseID", "AcredBMCauseID", "AcredBMContentID", "AcredBMMCUnitID", "AcredBMPointID", "AcredBMWorkContentID", "AcredPMCategoryID", "AkaPen1", "AkaPen2", "AkaPen3", "Andon", "AoPen1", "AoPen2", "AoPen3", "AQI", "BacksideAdj", "BMCaseID", "BMCategoryID", "BMContentID", "BMPointID", "BMStatusID", "BMUnitID", "BMWhy4", "BMWorkContentID", "ChangePartsName1", "ChangePartsName2", "ChangePartsName3", "ChangePartsName4", "ChangePartsNewReworked1", "ChangePartsNewReworked2", "ChangePartsNewReworked3", "ChangePartsNewReworked4", "ChangePartsType1", "ChangePartsType2", "ChangePartsType3", "ChangePartsType4", "CheckItem", "CPData", "DateWhen1", "DeviceName", "EndBM", "EndBMBy", "EndOfRepair", "EndPM1", "EndPM2", "FourSConfAfterPM", "GLAndon", "GLAndon2", "GLConf", "GLConfirmOPReqBy", "GLConfirmOPReqDate", "GLRepairConfirmation", "InspectionReq", "InspQtyNeeded", "LOTNo", "LotRetrieval", "LotRetrievalConfirm", "LotRetrievalDate1", "MCInspRel", "MCNo", "MCStatus", "MCType", "OccMode", "OccurrenceDate", "OccurrenceFreqLotFrame", "OccurrenceFreqQuantity", "PartsRepCommon", "PcsScrapped", "PcsUsed", "PkgDevFixed", "PkgName", "PMAndon", "PMCategoryID", "PMConfirmGLOPReqBy", "PMConfirmGLOPReqDate", "PrepofDummyFrames", "QCData", "Rate", "Remarks", "RepairedByEnd", "ReqTo", "RequestContent", "RequestedBy", "RequestItem", "Result", "RPMAfter", "RPMBefore", "RPMRelAdj", "RPMStandard", "SetSTDCommon", "Situation", "StartOfRepair", "StartPM1", "StartPM2", "TotalStopTime", "Treatment1", "Treatment10", "Treatment11", "Treatment12", "Treatment13", "Treatment14", "Treatment2", "Treatment3", "Treatment4", "Treatment5", "Treatment6", "Treatment7", "Treatment8", "Treatment9", "TreatmentAfter1", "TreatmentAfter10", "TreatmentAfter11", "TreatmentAfter12", "TreatmentAfter13", "TreatmentAfter14", "TreatmentAfter2", "TreatmentAfter3", "TreatmentAfter4", "TreatmentAfter5", "TreatmentAfter6", "TreatmentAfter7", "TreatmentAfter8", "TreatmentAfter9", "TreatmentBefore1", "TreatmentBefore10", "TreatmentBefore11", "TreatmentBefore12", "TreatmentBefore13", "TreatmentBefore14", "TreatmentBefore2", "TreatmentBefore3", "TreatmentBefore4", "TreatmentBefore5", "TreatmentBefore6", "TreatmentBefore7", "TreatmentBefore8", "TreatmentBefore9", "Why1", "Why2", "Why3", "Why4"}
 Case "DC" : Return New String() {"AbnormalityTreatment", "AccreditorPMReply", "AccreditorRemarks", "AcredBMCaseID", "AcredBMCauseID", "AcredBMContentID", "AcredBMMCUnitID", "AcredBMPointID", "AcredBMWorkContentID", "AcredPMCategoryID", "AkaPen1", "AkaPen2", "AkaPen3", "Andon", "AoPen1", "AoPen2", "AoPen3", "AQI", "BacksideAdj", "BMCaseID", "BMCategoryID", "BMContentID", "BMPointID", "BMStatusID", "BMUnitID", "BMWhy4", "BMWorkContentID", "ChangePartsName1", "ChangePartsName2", "ChangePartsName3", "ChangePartsName4", "ChangePartsNewReworked1", "ChangePartsNewReworked2", "ChangePartsNewReworked3", "ChangePartsNewReworked4", "ChangePartsType1", "ChangePartsType2", "ChangePartsType3", "ChangePartsType4", "CheckItem", "CPData", "DateWhen", "DeviceName", "EndBM", "EndBMBy", "EndOfRepair", "EndPM1", "EndPM2", "FourSConfAfterPM", "Freq1", "Freq2", "GLAndon", "GLAndon2", "GLConfirmOPReqBy", "GLConfirmOPReqDate", "GLRepairConfirmation", "GLRepairConfirmationBy", "InspectionReq", "InspQtyNeeded", "LOTNo", "LotRetrieval", "LotRetrievalConfirm", "LotRetrievalDate", "MCInspRel", "MCNo", "MCStatus", "MCType", "OccMode", "OccurrenceDate", "OccurrenceFreqLotFrame", "OccurrenceFreqQuantity", "PartsRepCommon", "PcsScrapped", "PcsUsed", "PKGDev1A", "PkgDevFixed", "PkgName", "PMAndon", "PMCategoryID", "PMConfirmGLOPReqBy", "PMConfirmGLOPReqDate", "PrepofDummyFrames", "QCData", "Rate", "Remarks", "RepairedByEnd", "ReqTo", "RequestContent", "RequestedBy", "RequestItem", "Result", "RPMAfter", "RPMBefore", "RPMRelAdj", "RPMStandard", "SetSTDCommon", "Situation", "StartOfRepair", "StartPM1", "StartPM2", "TotalStopTime", "Treatment1", "Treatment10", "Treatment11", "Treatment12", "Treatment13", "Treatment2", "Treatment3", "Treatment4", "Treatment5", "Treatment6", "Treatment7", "Treatment8", "Treatment9", "TreatmentAfter1", "TreatmentAfter10", "TreatmentAfter11", "TreatmentAfter12", "TreatmentAfter13", "TreatmentAfter2", "TreatmentAfter3", "TreatmentAfter4", "TreatmentAfter5", "TreatmentAfter6", "TreatmentAfter7", "TreatmentAfter8", "TreatmentAfter9", "TreatmentBefore1", "TreatmentBefore10", "TreatmentBefore11", "TreatmentBefore12", "TreatmentBefore13", "TreatmentBefore2", "TreatmentBefore3", "TreatmentBefore4", "TreatmentBefore5", "TreatmentBefore6", "TreatmentBefore7", "TreatmentBefore8", "TreatmentBefore9", "Why1", "Why2", "Why3", "Why4"}
 Case "MP" : Return New String() {"4SCheck", "AccreditorPMReply", "AccreditorRemarks", "AkaPen1", "AkaPen2", "AkaPen3", "AlarmNo", "AoPen1", "AoPen2", "AoPen3", "AQI", "BMWhy4", "ChangePartsName1", "ChangePartsName2", "ChangePartsName3", "ChangePartsName4", "ChangePartsName5", "ChangePartsNewReworked1", "ChangePartsNewReworked2", "ChangePartsNewReworked3", "ChangePartsNewReworked4", "ChangePartsNewReworked5", "ChangePartsQty1", "ChangePartsQty2", "ChangePartsQty3", "ChangePartsQty4", "ChangePartsQty5", "ChangePartsType1", "ChangePartsType2", "ChangePartsType3", "ChangePartsType4", "ChangePartsType5", "CheckItem", "ConfirmationOfSafeGuard", "CPData", "DateWhen1", "DeviceName", "EndBMBy", "EndOfRepair", "GLConfirmOPReqBy", "GLRepairConfirmationBy", "InspectionReq", "InspQtyNeeded", "JudgementAfter", "JudgementBefore", "KatazureAfter", "KatazureBefore", "LOTNo", "LotNoForInspection", "LotRetrieval", "LotRetrievalConfirm", "LotRetrievalDate1", "MCNo", "MCStatus", "MCType", "MoldCon", "MPRData", "New4M", "OccurrenceDate", "OccurrenceFreq", "PartsRepCommon", "PKGDev1A", "PKGDev1B", "PKGDev2A", "PKGDev2B", "PKGDev3A", "PKGDev3B", "PkgDevFixed", "PkgName", "PMCategoryID", "PMConfirmGLOPReqBy", "PMConfirmGLOPReqDate", "PmRelatedBM", "Prioritization", "QCData", "Remarks", "RepairedByEnd", "RequestContent", "RequestedBy", "RequestItem", "RPMAfter", "RPMBefore", "RPMRelAdj", "ScrappedFrame", "SetSTDCommon", "ShotCount", "StartOfRepair", "TotalStopTime", "Treatment1", "Treatment10", "Treatment2", "Treatment3", "Treatment4", "Treatment5", "Treatment6", "Treatment7", "Treatment8", "Treatment9", "TreatmentAfter1", "TreatmentAfter10", "TreatmentAfter2", "TreatmentAfter3", "TreatmentAfter4", "TreatmentAfter5", "TreatmentAfter6", "TreatmentAfter7", "TreatmentAfter8", "TreatmentAfter9", "TreatmentBefore1", "TreatmentBefore10", "TreatmentBefore2", "TreatmentBefore3", "TreatmentBefore4", "TreatmentBefore5", "TreatmentBefore6", "TreatmentBefore7", "TreatmentBefore8", "TreatmentBefore9", "Why1", "Why2", "Why3", "Why4"}
 Case "PL" : Return New String() {"AccreditorPMReply", "AccreditorRemarks", "AkaPen1", "AkaPen2", "AkaPen3", "Andon", "AoPen1", "AoPen2", "AoPen3", "AQIYN", "BMContentID", "BMINSPN", "BMWhy4", "ChangePartsName1", "ChangePartsName2", "ChangePartsName3", "ChangePartsName4", "ChangePartsName5", "ChangePartsNewReworked1", "ChangePartsNewReworked2", "ChangePartsNewReworked3", "ChangePartsNewReworked4", "ChangePartsNewReworked5", "ChangePartsQty1", "ChangePartsQty2", "ChangePartsQty3", "ChangePartsQty4", "ChangePartsQty5", "ChangePartsType1", "ChangePartsType2", "ChangePartsType3", "ChangePartsType4", "ChangePartsType5", "CheckItem", "ConBeforeAfterAdjItem1", "ConBeforeAfterAdjItem2", "ConBeforeAfterAdjItem3", "ConBeforeAfterAdjValue1", "ConBeforeAfterAdjValue2", "ConBeforeAfterAdjValue3", "ConBeforeAfterAdjValue4", "ConBeforeAfterAdjValue5", "ConBeforeAfterAdjValue6", "DateWhen", "DummyIn", "DummyOut", "EndBM", "EndBMBy", "EndOfRepair", "FiveSMaintenance", "GLAndon", "GLAndon2", "GLConfirmOPReqBy", "GLConfirmOPReqDate", "GLRepairConfirmation", "GLRepairConfirmationBy", "HowCN", "IfYes", "InspectionReq", "InspectionResults", "InspQtyNeeded", "LotNo1", "LotNo2", "LotNo3", "LotNo4", "LotNoForInspection", "LotProduced", "LotRetrieval", "LotRetrievalConfirm", "LotRetrievalDate", "MajorTreatment", "MCNo", "MCStatGood", "MCStatNG", "MCStatTotal", "MCType", "NGRate", "OCAPTreatment", "OccurenceRatePM", "OccurenceRatePM1", "OccurenceRatePM2", "OccurrenceDate", "OccurrenceFreq", "OccurrenceFreqLotFrame", "OccurrenceFreqQuantity", "OPConfAfterWork", "OtherQuality", "OtherUnitCheck", "PMAndon", "PMCategoryID", "PMConfAfterWork", "PMConfirmGLOPReqBy", "PMConfirmGLOPReqDate", "PMReqInsp", "Prioritization", "QCData", "Remarks", "ReOccurenceMode", "RepairedByEnd", "ReqToOtherSec", "RequestedBy", "RequestItem", "RequesttoPD", "RoBMTimes", "RPMAfter", "RPMBefore", "RPMRelAdj", "RPMStandard", "SafetyCheck", "Situation", "StartOfRepair", "TimeOfRequest", "TotalStopTime", "TRC", "Treatment1", "Treatment2", "Treatment3", "Treatment4", "Treatment5", "Treatment6", "Treatment7", "Treatment8", "Treatment9", "TreatmentAfter1", "TreatmentAfter2", "TreatmentAfter3", "TreatmentAfter4", "TreatmentAfter5", "TreatmentAfter6", "TreatmentAfter7", "TreatmentAfter8", "TreatmentAfter9", "TreatmentBefore1", "TreatmentBefore2", "TreatmentBefore3", "TreatmentBefore4", "TreatmentBefore5", "TreatmentBefore6", "TreatmentBefore7", "TreatmentBefore8", "TreatmentBefore9", "Why1", "Why2", "Why3", "Why4", "WhyCN"}
 Case "FT" : Return New String() {"AccreditorPMReply", "AccreditorRemarks", "AkaPen1", "AkaPen2", "AkaPen3", "AlarmNo", "Andon", "AoPen1", "AoPen2", "AoPen3", "AQI", "BMStatusID", "BMUnitID", "BMWhy4", "C5SConAction", "C5SConAfter", "C5SConBefore", "ChangePartsName1", "ChangePartsName2", "ChangePartsName3", "ChangePartsName4", "ChangePartsName5", "ChangePartsNewReworked1", "ChangePartsNewReworked2", "ChangePartsNewReworked3", "ChangePartsNewReworked4", "ChangePartsNewReworked5", "ChangePartsQty1", "ChangePartsQty2", "ChangePartsQty3", "ChangePartsQty4", "ChangePartsQty5", "ChangePartsType1", "ChangePartsType2", "ChangePartsType3", "ChangePartsType4", "ChangePartsType5", "CheckItemGL", "DateWhen", "DeviceforInspection", "DeviceName", "EndBMBy", "EndOfRepair", "GLAndon", "GLAndon2", "GLConfirmOPReqBy", "GLRepairConfirmationBy", "InspectionQtyNeeded", "LOTNo", "LotNoForInspection", "LotRetrieval", "LotRetrievalConfirm", "LotRetrievalDate", "MCNo", "MCStatus", "MCType", "NGrate", "OccurrenceDate", "OccurrenceFreq", "OccurrenceFreqLotFrame", "OccurrenceFreqQuantity", "PackageForInspection", "PartsRepCommon", "PKGDev1A", "PKGDev1B", "PKGDev2A", "PKGDev2B", "PKGDev3A", "PKGDev3B", "PKGDev4A", "PKGDev4B", "PKGDev5A", "PKGDev5B", "PkgDevFixed", "PkgName", "PMAndon", "PMCategoryID", "PMConfirmGLOPReqBy", "PMConfirmGLOPReqDate", "PMProdQtyData", "PMSafetyData", "ProdQtyGood", "ProdQtyNG", "ProdQtyTotal", "ProdQtyVNG", "ProdTreatDummyIn", "ProdTreatDummyOut", "ProdTreatInspResult", "ProdTreatLotTreat", "ProdTreatOccStatus", "ProdTreatTRC", "ProdTreatUsageOfDummy", "QCData", "Remarks", "RepairedByEnd", "RequestContent", "RequestedBy", "RequestItem", "RequestTo", "RPMAfter", "RPMBefore", "RPMRelAdj", "RPMStandard", "SetSTDCommon", "StartOfRepair", "TotalStopTime", "Treatment1", "Treatment10", "Treatment11", "Treatment12", "Treatment13", "Treatment2", "Treatment3", "Treatment4", "Treatment5", "Treatment6", "Treatment7", "Treatment8", "Treatment9", "TreatmentAfter1", "TreatmentAfter10", "TreatmentAfter11", "TreatmentAfter12", "TreatmentAfter13", "TreatmentAfter2", "TreatmentAfter3", "TreatmentAfter4", "TreatmentAfter5", "TreatmentAfter6", "TreatmentAfter7", "TreatmentAfter8", "TreatmentAfter9", "TreatmentBefore1", "TreatmentBefore10", "TreatmentBefore11", "TreatmentBefore12", "TreatmentBefore13", "TreatmentBefore2", "TreatmentBefore3", "TreatmentBefore4", "TreatmentBefore5", "TreatmentBefore6", "TreatmentBefore7", "TreatmentBefore8", "TreatmentBefore9", "TSCData", "TurnOverTo", "UsageOfProdLot", "UsageOfProdLotYN", "Why1", "Why2", "Why3"}
-Case "SING" : Return New String() {"AccreditorPMReply", "AccreditorRemarks", "Akapen1", "Akapen2", "Akapen3", "Andon", "AoPen1", "AoPen2", "AoPen3", "AQI", "AssyUnit1", "AssyUnit10", "AssyUnit11", "AssyUnit12", "AssyUnit13", "AssyUnit14", "AssyUnit2", "AssyUnit3", "AssyUnit4", "AssyUnit5", "AssyUnit6", "AssyUnit7", "AssyUnit8", "AssyUnit9", "BMContentID", "ChangePartsName1", "ChangePartsName2", "ChangePartsName3", "ChangePartsName4", "ChangePartsName5", "ChangePartsNewReworked1", "ChangePartsNewReworked2", "ChangePartsNewReworked3", "ChangePartsNewReworked4", "ChangePartsNewReworked5", "ChangePartsQty1", "ChangePartsQty2", "ChangePartsQty3", "ChangePartsQty4", "ChangePartsQty5", "ChangePartsType1", "ChangePartsType2", "ChangePartsType3", "ChangePartsType4", "ChangePartsType5", "CheckItem", "ChuckTJigTReplaced", "ChuckTJigTUsed", "ColletAdherePadReplaced", "ColletAdherePadUsed", "DateWhen", "DeviceName", "disassembleAfter1", "disassembleAfter2", "disassembleAfter3", "disassembleBefore1", "disassembleBefore2", "disassembleBefore3", "DroppedWork", "DroppedWorkBeforePM", "DroppeWorkAfterPM", "EndBM", "EndBMBy", "EndOfRepair", "FlangeReplaced", "FlangeUsed", "FourSConfAfterPM", "Freq1", "Freq2", "FreqOccurAfterPM", "GLAndon", "GLAndon2", "GLConf", "GLConfirmOPReqBy", "GLConfirmOPReqDate", "GLRemarks", "GLRepairConfirmation", "GLRepairConfirmationBy", "InspectionReq", "InspQtyNeeded", "Judgement1", "Judgement10", "Judgement11", "Judgement12", "Judgement13", "Judgement14", "Judgement2", "Judgement3", "Judgement4", "Judgement5", "Judgement6", "Judgement7", "Judgement8", "Judgement9", "LOTNo", "LotRetrieval", "LotRetrievalConfirm", "LotRetrievalDate", "MCNo", "MCStatus", "MCType", "OccurFreqUnit", "OccurrenceDate", "OccurrenceFreqLotFrame", "OccurrenceFreqQuantity", "PartsRepCommon", "PcsScrapped", "PKGDev1A", "PKGDev1B", "PKGDev2A", "PKGDev2B", "PkgDevFixed", "PkgName", "PMAndon", "PMCategoryID", "PMConfirmGLOPReqBy", "PMConfirmGLOPReqDate", "PrepofDummyFrames", "QCData", "Rate", "Remarks", "RepairedByEnd", "ReqTo", "RequestContent", "RequestedBy", "RequestItem", "Result", "RPMAfter", "RPMBefore", "RPMStandard", "SetSTDCommon", "StartOfRepair", "TotalStopTime", "Treatment1", "Treatment10", "Treatment11", "Treatment12", "Treatment13", "Treatment14", "Treatment2", "Treatment3", "Treatment4", "Treatment5", "Treatment6", "Treatment7", "Treatment8", "Treatment9", "TreatmentAfter1", "TreatmentAfter10", "TreatmentAfter11", "TreatmentAfter12", "TreatmentAfter13", "TreatmentAfter14", "TreatmentAfter2", "TreatmentAfter3", "TreatmentAfter4", "TreatmentAfter5", "TreatmentAfter6", "TreatmentAfter7", "TreatmentAfter8", "TreatmentAfter9", "TreatmentBefore1", "TreatmentBefore10", "TreatmentBefore11", "TreatmentBefore12", "TreatmentBefore13", "TreatmentBefore14", "TreatmentBefore2", "TreatmentBefore3", "TreatmentBefore4", "TreatmentBefore5", "TreatmentBefore6", "TreatmentBefore7", "TreatmentBefore8", "TreatmentBefore9", "TurnOverTo", "Why1", "Why2", "Why3", "Why4"}
+Case "SING" : Return New String() {"AccreditorPMReply", "AccreditorRemarks", "Akapen1", "AkaPen2", "Akapen3", "Andon", "AoPen1", "AoPen2", "AoPen3", "AQI", "AssyUnit1", "AssyUnit10", "AssyUnit11", "AssyUnit12", "AssyUnit13", "AssyUnit14", "AssyUnit2", "AssyUnit3", "AssyUnit4", "AssyUnit5", "AssyUnit6", "AssyUnit7", "AssyUnit8", "AssyUnit9", "BMContentID", "ChangePartsName1", "ChangePartsName2", "ChangePartsName3", "ChangePartsName4", "ChangePartsName5", "ChangePartsNewReworked1", "ChangePartsNewReworked2", "ChangePartsNewReworked3", "ChangePartsNewReworked4", "ChangePartsNewReworked5", "ChangePartsQty1", "ChangePartsQty2", "ChangePartsQty3", "ChangePartsQty4", "ChangePartsQty5", "ChangePartsType1", "ChangePartsType2", "ChangePartsType3", "ChangePartsType4", "ChangePartsType5", "CheckItem", "ChuckTJigTReplaced", "ChuckTJigTUsed", "ColletAdherePadReplaced", "ColletAdherePadUsed", "DateWhen", "DeviceName", "disassembleAfter1", "disassembleAfter2", "disassembleAfter3", "disassembleBefore1", "disassembleBefore2", "disassembleBefore3", "DroppedWork", "DroppedWorkBeforePM", "DroppeWorkAfterPM", "EndBM", "EndBMBy", "EndOfRepair", "FlangeReplaced", "FlangeUsed", "FourSConfAfterPM", "Freq1", "Freq2", "FreqOccurAfterPM", "GLAndon", "GLAndon2", "GLConf", "GLConfirmOPReqBy", "GLConfirmOPReqDate", "GLRemarks", "GLRepairConfirmation", "GLRepairConfirmationBy", "InspectionReq", "InspQtyNeeded", "Judgement1", "Judgement10", "Judgement11", "Judgement12", "Judgement13", "Judgement14", "Judgement2", "Judgement3", "Judgement4", "Judgement5", "Judgement6", "Judgement7", "Judgement8", "Judgement9", "LOTNo", "LotRetrieval", "LotRetrievalConfirm", "LotRetrievalDate", "MCNo", "MCStatus", "MCType", "OccurFreqUnit", "OccurrenceDate", "OccurrenceFreqLotFrame", "OccurrenceFreqQuantity", "PartsRepCommon", "PcsScrapped", "PKGDev1A", "PKGDev1B", "PKGDev2A", "PKGDev2B", "PkgDevFixed", "PkgName", "PMAndon", "PMCategoryID", "PMConfirmGLOPReqBy", "PMConfirmGLOPReqDate", "PrepofDummyFrames", "QCData", "Rate", "Remarks", "RepairedByEnd", "ReqTo", "RequestContent", "RequestedBy", "RequestItem", "Result", "RPMAfter", "RPMBefore", "RPMStandard", "SetSTDCommon", "StartOfRepair", "TotalStopTime", "Treatment1", "Treatment10", "Treatment11", "Treatment12", "Treatment13", "Treatment14", "Treatment2", "Treatment3", "Treatment4", "Treatment5", "Treatment6", "Treatment7", "Treatment8", "Treatment9", "TreatmentAfter1", "TreatmentAfter10", "TreatmentAfter11", "TreatmentAfter12", "TreatmentAfter13", "TreatmentAfter14", "TreatmentAfter2", "TreatmentAfter3", "TreatmentAfter4", "TreatmentAfter5", "TreatmentAfter6", "TreatmentAfter7", "TreatmentAfter8", "TreatmentAfter9", "TreatmentBefore1", "TreatmentBefore10", "TreatmentBefore11", "TreatmentBefore12", "TreatmentBefore13", "TreatmentBefore14", "TreatmentBefore2", "TreatmentBefore3", "TreatmentBefore4", "TreatmentBefore5", "TreatmentBefore6", "TreatmentBefore7", "TreatmentBefore8", "TreatmentBefore9", "TurnOverTo", "Why1", "Why2", "Why3", "Why4"}
 Case "FL" : Return New String() {"AccreditorPMReply", "AccreditorRemarks", "AkaPen1", "AkaPen2", "AkaPen3", "Andon", "AoPen1", "AoPen2", "AoPen3", "AQI", "BMCaseID", "BMContentID", "BMWhy4", "ChangePartsName1", "ChangePartsName2", "ChangePartsName3", "ChangePartsNewReworked1", "ChangePartsNewReworked2", "ChangePartsNewReworked3", "ChangePartsQty1", "ChangePartsQty2", "ChangePartsQty3", "ChangePartsType1", "ChangePartsType2", "ChangePartsType3", "Check5SAfterPMWork", "CheckItem", "CheckSensorColorNo", "CheckSensorReaction", "ConditionAfterAdj", "ConditionAfterAdjMax", "ConditionAfterAdjMin", "CPData", "DateWhen", "DeviceName", "DummyIn", "DummyOut", "EndBMBy", "EndOfRepair", "GLAndon", "GLAndon2", "GLConfirmOPReqBy", "GLRepairConfirmationBy", "InspectionReq", "InspQtyNeeded", "LOTNo", "LotRetrieval", "LotRetrievalConfirm", "LotRetrievalDate", "MCNo", "MCType", "OccurrenceDate", "OccurrenceFreq", "OccurrenceFreqLotFrame", "OccurrenceFreqQuantity", "PartsRepCommon", "PKGDev1A", "PKGDev1B", "PKGDev2A", "PKGDev2B", "PkgDevFixed", "PkgName", "PMAndon", "PMCategoryID", "PMConfirmGLOPReqBy", "QCData", "Remarks", "RepairedByEnd", "ReqSATInsp", "RequestContent", "RequestedBy", "RequesttoPD", "RPMAfter", "RPMBefore", "RPMStandard", "SATInspResult", "SATInspResultStatus", "SetSTDCommon", "StartOfRepair", "Treatment1", "Treatment10", "Treatment11", "Treatment12", "Treatment13", "Treatment14", "Treatment2", "Treatment3", "Treatment4", "Treatment5", "Treatment6", "Treatment7", "Treatment8", "Treatment9", "TreatmentAfter1", "TreatmentAfter10", "TreatmentAfter11", "TreatmentAfter12", "TreatmentAfter13", "TreatmentAfter14", "TreatmentAfter2", "TreatmentAfter3", "TreatmentAfter4", "TreatmentAfter5", "TreatmentAfter6", "TreatmentAfter7", "TreatmentAfter8", "TreatmentAfter9", "TreatmentBefore1", "TreatmentBefore10", "TreatmentBefore11", "TreatmentBefore12", "TreatmentBefore13", "TreatmentBefore14", "TreatmentBefore2", "TreatmentBefore3", "TreatmentBefore4", "TreatmentBefore5", "TreatmentBefore6", "TreatmentBefore7", "TreatmentBefore8", "TreatmentBefore9", "Why1", "Why2", "Why3", "Why4"}
 Case "TP" : Return New String() {"AccreditorPMReply", "AccreditorRemarks", "AcredBMCaseID", "AcredBMCauseID", "AcredBMMCUnitID", "AcredBMWorkContentID", "AcredPMCategoryID", "AkaPen1", "AkaPen2", "AkaPen3", "Andon", "AoPen1", "AoPen2", "AoPen3", "AQI", "BMCaseID", "BMCategoryID", "BMStatusID", "BMUnitID", "BMWhy4", "BMWorkContentID", "ChangePartsName1", "ChangePartsName2", "ChangePartsName3", "ChangePartsName4", "ChangePartsNewReworked1", "ChangePartsNewReworked2", "ChangePartsNewReworked3", "ChangePartsNewReworked4", "ChangePartsQty1", "ChangePartsQty2", "ChangePartsQty3", "ChangePartsQty4", "ChangePartsType1", "ChangePartsType2", "ChangePartsType3", "ChangePartsType4", "DateWhen", "DeviceforInspection", "DummyIn", "DummyOut", "EndBMBy", "EndOfRepair", "GLAndon", "GLAndon2", "GLConfirmOPReqBy", "GLConfirmOPReqDate", "GLRepairConfirmationBy", "LastActBeforeProb", "LeaderChk", "LineLoc", "LOTNo", "LotNoForInspection", "LotRetrieval", "LotRetrievalConfirm", "LotRetrievalDate", "MCNo", "MCStatus", "MCType", "OccurrenceDate", "OccurrenceFreq", "OccurrenceFreqLotFrame", "OccurrenceFreqQuantity", "PackageForInspection", "PartsRepCommon", "PKGDev1A", "PKGDev1B", "PKGDev2A", "PKGDev2B", "PKGDev3A", "PKGDev3B", "PKGDev4A", "PKGDev4B", "PKGDev5A", "PKGDev5B", "PkgDevFixed", "PkgName", "PMAndon", "PMCategoryID", "PMConfirmGLOPReqBy", "PMConfirmGLOPReqDate", "PMProdQtyData", "PMRPMData", "PMSafetyData", "ProdTreatDummyIn", "ProdTreatDummyOut", "ProdTreatInspResult", "ProdTreatOccStatus", "ProdTreatUsageOfDummy", "QCData", "Remarks", "RepairedByEnd", "RequestContent", "RequestedBy", "RequestItem", "SetSTDCommon", "StartOfRepair", "TotalStopTime", "Treatment1", "Treatment10", "Treatment11", "Treatment12", "Treatment13", "Treatment2", "Treatment3", "Treatment4", "Treatment5", "Treatment6", "Treatment7", "Treatment8", "Treatment9", "TreatmentAfter1", "TreatmentAfter10", "TreatmentAfter11", "TreatmentAfter12", "TreatmentAfter13", "TreatmentAfter2", "TreatmentAfter3", "TreatmentAfter4", "TreatmentAfter5", "TreatmentAfter6", "TreatmentAfter7", "TreatmentAfter8", "TreatmentAfter9", "TreatmentBefore1", "TreatmentBefore10", "TreatmentBefore11", "TreatmentBefore12", "TreatmentBefore13", "TreatmentBefore2", "TreatmentBefore3", "TreatmentBefore4", "TreatmentBefore5", "TreatmentBefore6", "TreatmentBefore7", "TreatmentBefore8", "TreatmentBefore9", "TSCData", "UseDummyFrames", "Why1", "Why2", "Why3", "Why4"}
 Case "EDS" : Return New String() {"AccreditorPMReply", "AccreditorRemarks", "AkaPen1", "AkaPen2", "AkaPen3", "Andon", "AoPen1", "AoPen2", "AoPen3", "AQI", "BMWhy4", "CC1", "CC2", "CC3", "CC4", "CC5", "ChangePartsName1", "ChangePartsName2", "ChangePartsName3", "ChangePartsName4", "ChangePartsName5", "ChangePartsNewReworked1", "ChangePartsNewReworked2", "ChangePartsNewReworked3", "ChangePartsNewReworked4", "ChangePartsNewReworked5", "ChangePartsQty1", "ChangePartsQty2", "ChangePartsQty3", "ChangePartsQty4", "ChangePartsQty5", "ChangePartsType1", "ChangePartsType2", "ChangePartsType3", "ChangePartsType4", "ChangePartsType5", "Check5SAfterPMWork", "CheckItem", "ChuckTopReplaced", "ChuckTopUsed", "ConditionAfterAdjMax", "ConditionAfterAdjMin", "CPData", "DateWhen", "DeviceforInspection", "DeviceName", "EndBMBy", "EndOfRepair", "GLAndon", "GLAndon2", "GLConfirmOPReqBy", "GLRepairConfirmationBy", "InspectionReq", "InspQtyNeeded", "LineLoc", "LOTNo", "LotNoForInspection", "LotRetrieval", "LotRetrievalConfirm", "LotRetrievalDate", "MCNo", "MCStatus", "MCType", "NGDetectionCircumtances", "OccurrenceDate", "OccurrenceFreq", "OccurrenceFreqLotFrame", "OccurrenceFreqQuantity", "PartsRepCommon", "PincettePadReplaced", "PincettePadUsed", "PkgDevFixed", "PMAndon", "PMCategoryID", "PMConfirmGLOPReqBy", "PMConfirmGLOPReqDate", "PrevAdjStatus", "PrevAdjValue", "QCData", "Rate", "Remarks", "RepairedByEnd", "ReqTo", "RequestContent", "RequestedBy", "RequestItem", "Result", "RPMAfter", "RPMBefore", "RPMRelAdj", "RPMStandard", "SetSTDCommon", "Situation", "StartOfRepair", "SubChuckReplaced", "SubChuckUsed", "TotalStopTime", "Treatment1", "Treatment10", "Treatment11", "Treatment12", "Treatment13", "Treatment2", "Treatment3", "Treatment4", "Treatment5", "Treatment6", "Treatment7", "Treatment8", "Treatment9", "TreatmentAfter1", "TreatmentAfter10", "TreatmentAfter11", "TreatmentAfter12", "TreatmentAfter13", "TreatmentAfter2", "TreatmentAfter3", "TreatmentAfter4", "TreatmentAfter5", "TreatmentAfter6", "TreatmentAfter7", "TreatmentAfter8", "TreatmentAfter9", "TreatmentBefore1", "TreatmentBefore10", "TreatmentBefore11", "TreatmentBefore12", "TreatmentBefore13", "TreatmentBefore2", "TreatmentBefore3", "TreatmentBefore4", "TreatmentBefore5", "TreatmentBefore6", "TreatmentBefore7", "TreatmentBefore8", "TreatmentBefore9", "TSCData", "WaferNo", "Why1", "Why2", "Why3", "Why4"}

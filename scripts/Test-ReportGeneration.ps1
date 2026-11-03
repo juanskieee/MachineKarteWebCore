@@ -27,7 +27,7 @@ using MachineKarte.Web.Services;
 using MachineKarte.Web.Services.Reporting;
 
 CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en-US");
-var root=args[0]; var output=Path.Combine(AppContext.BaseDirectory,"artifacts"); Directory.CreateDirectory(output);
+var root=args[0]; var output=Path.GetFullPath(Path.Combine(AppContext.BaseDirectory,"artifacts")); Directory.CreateDirectory(output);
 void Require(bool condition,string message){if(!condition)throw new Exception(message);}
 string Images(bool te)=>Path.Combine(root,"Assets","images",te?"TEeMaintenanceSystems_images":"eMaintenanceSystems_images");
 
@@ -40,8 +40,12 @@ var teUpload=Path.Combine(teLegacyShare,"Upload","2026");
 Directory.CreateDirectory(pmUpload); Directory.CreateDirectory(teUpload);
 var pmImage=Path.Combine(pmUpload,"photo.png");
 var teImage=Path.Combine(teUpload,"photo.png");
-File.Copy(Path.Combine(Images(false),"noimage.png"),pmImage);
-File.Copy(Path.Combine(Images(true),"noimage.png"),teImage);
+File.Copy(Path.Combine(Images(false),"A.png"),pmImage);
+File.Copy(Path.Combine(Images(true),"B.png"),teImage);
+var sharedArchive=Path.Combine(output,"legacy-shared","Upload","Evidence");
+Directory.CreateDirectory(Path.Combine(sharedArchive,"2020"));
+var archivedImage=Path.Combine(sharedArchive,"2020","photo.png");
+File.Copy(Path.Combine(Images(false),"C.png"),archivedImage);
 var pmPlaceholder=Path.Combine(Images(false),"noimage.png");
 var tePlaceholder=Path.Combine(Images(true),"noimage.png");
 Require(LegacyReportExport.ResolveEvidenceImage(@"\Upload\2026\photo.png",pmLegacyShare,Images(false))==Path.GetFullPath(pmImage),
@@ -57,12 +61,38 @@ Require(LegacyReportExport.ResolveEvidenceImage(@"\Upload\2026\missing.png",teLe
 Require(LegacyReportExport.ResolveEvidenceImage(@"\..\other.png",pmLegacyShare,Images(false))==pmPlaceholder &&
         LegacyReportExport.ResolveEvidenceImage(@"\\other-server\secret.png",teLegacyShare,Images(true),te:true)==tePlaceholder,
     "DB image paths must not escape their respective legacy system share");
+foreach(var te in new[]{false,true}) {
+ var share=te?teLegacyShare:pmLegacyShare;
+ var placeholder=te?tePlaceholder:pmPlaceholder;
+ var archivedResult=LegacyReportExport.ResolveEvidenceImage(@"\Upload\Evidence\2020\photo.png",share,Images(te),te,sharedArchive);
+ Require(archivedResult==Path.GetFullPath(archivedImage),
+     $"Shared historical evidence was not resolved for PM/TE: expected {archivedImage}, got {archivedResult}");
+ Require(LegacyReportExport.ResolveEvidenceImage(archivedImage,share,Images(te),te,sharedArchive)==archivedImage,
+     "An absolute archive path inside an allowed root was rejected");
+ foreach(var invalid in new[]{@"\Upload\Evidence\..\2020\photo.png",@"\Upload\Evidence\2020\photo.png:stream",@"\\other-server\Upload\Evidence\2020\photo.png"})
+  Require(LegacyReportExport.ResolveEvidenceImage(invalid,share,Images(te),te,sharedArchive)==placeholder,
+      "Shared evidence accepted traversal, alternate streams or another file server");
+}
+Require(LegacyReportExport.ResolveEvidenceImage(pmImage,pmLegacyShare,Images(false),sharedEvidenceRoot:sharedArchive)==pmImage &&
+        LegacyReportExport.ResolveEvidenceImage(teImage,teLegacyShare,Images(true),te:true,sharedEvidenceRoot:sharedArchive)==teImage,
+    "Absolute upload paths inside the workflow's own root were rejected");
+Require(LegacyReportExport.ResolveEvidenceImage(teImage,pmLegacyShare,Images(false),sharedEvidenceRoot:sharedArchive)==pmPlaceholder,
+    "PM evidence must not read a TE photo with the same filename");
+var collision=Path.Combine(pmLegacyShare,"Upload","Evidence","2020","photo.png");
+Directory.CreateDirectory(Path.GetDirectoryName(collision)!); File.Copy(pmImage,collision);
+Require(LegacyReportExport.ResolveEvidenceImage(@"\Upload\Evidence\2020\photo.png",pmLegacyShare,Images(false),sharedEvidenceRoot:sharedArchive)==collision &&
+        LegacyReportExport.ResolveEvidenceImage(archivedImage,pmLegacyShare,Images(false),sharedEvidenceRoot:sharedArchive)==archivedImage,
+    "Share-relative paths must prefer their original system share; explicit archive paths must stay in the archive");
+File.Copy(archivedImage,Path.Combine(sharedArchive,"archive-only.png"));
+Require(LegacyReportExport.ResolveEvidenceImage(@"\Upload\2026\archive-only.png",pmLegacyShare,Images(false),sharedEvidenceRoot:sharedArchive)==pmPlaceholder,
+    "Evidence must not guess another photo by filename alone");
 var serverConfig=new Microsoft.Extensions.Configuration.ConfigurationBuilder()
     .AddInMemoryCollection(new Dictionary<string,string?> { ["NetworkShare:Server"]="test-file-server" }).Build();
 Require(LegacyReportExport.LegacyEvidenceRoot(serverConfig,false)==@"\\test-file-server\eMaintenanceSystem" &&
-        LegacyReportExport.LegacyEvidenceRoot(serverConfig,true)==@"\\test-file-server\TEeMaintenanceSystem",
+        LegacyReportExport.LegacyEvidenceRoot(serverConfig,true)==@"\\test-file-server\TEeMaintenanceSystem" &&
+        LegacyReportExport.SharedEvidenceRoot(serverConfig)==@"\\test-file-server\Upload\Evidence",
     "Web server path mapping diverged from Form4/Form10");
-Console.WriteLine("PASS: original PM/TE server image roots, Form10 tilde, PM noimage and path boundaries.");
+Console.WriteLine("PASS: PM/TE and shared archive roots, absolute/relative paths, collisions, Form10 tilde, placeholders and path boundaries.");
 
 var date=new DateTime(2026,10,1,10,0,0);
 Dictionary<string,object> Record(string profile){
@@ -74,6 +104,13 @@ Dictionary<string,object> Record(string profile){
  foreach(var field in new[]{"TimeOfRequest","OccurrenceDate","GLConfirmOPReqDate","PMConfirmGLOPReqDate","StartOfRepair","EndOfRepair"}) record[field]=date;
  record["PMConfirmGLOPReqDate"]=date.AddMinutes(15);record["StartOfRepair"]=date.AddMinutes(20);record["EndOfRepair"]=date.AddMinutes(50);
  record["TotalStopTime"]="7";record["WaitingTime1"]="15";record["RepairTime1"]="30";record["MCNo"]="FIXTURE-MC";record["MCStatus"]="Stop";
+ record["PkgName"]="QFN-48";record["DeviceName"]="DEVICE-ALPHA";record["LOTNo"]="LOT-20261103-A";
+ for(var part=1;part<=5;part++) {
+  if(record.ContainsKey("ChangePartsName"+part)) {
+   record["ChangePartsName"+part]="";record["ChangePartsQty"+part]="0.00";
+   record["ChangePartsType"+part]="0";record["ChangePartsNewReworked"+part]="0";
+  }
+ }
  record["RepairedByEnd"]="REPAIR";record["PMConfirmGLOPReqBy"]="REQUEST";
  return record;
 }
@@ -86,17 +123,52 @@ Dictionary<string,string> Lookups(string profile,Dictionary<string,object> recor
  return lookups;
 }
 void Save(ExcelFile book,string name,bool preview=false){
+ string Positions(ExcelFile file)=>string.Join("|",file.Worksheets.SelectMany(sheet=>sheet.Pictures.Select(p=>
+  $"{sheet.Name}:{Math.Round(p.Position!.Left,2)}:{Math.Round(p.Position.Top,2)}:{Math.Round(p.Position.Width,2)}:{Math.Round(p.Position.Height,2)}:{p.Position.Mode}")));
+ var before=Positions(book);
+ var geometry=new List<string>{"Sheet,Anchor,MergedRange,WidthPoints,HeightPoints,AvailableWidthPoints,AvailableHeightPoints,Overflow"};
+ foreach(var sheet in book.Worksheets) foreach(var picture in sheet.Pictures) {
+  var position=picture.Position!; var from=position.From!;
+  var range=sheet.Cells[from.Row.Index,from.Column.Index].MergedRange;
+  if(range is null)continue;
+  var width=Enumerable.Range(from.Column.Index,range.LastColumnIndex-from.Column.Index+1).Sum(c=>sheet.Columns[c].GetWidth(LengthUnit.Point));
+  var height=Enumerable.Range(from.Row.Index,range.LastRowIndex-from.Row.Index+1).Sum(r=>sheet.Rows[r].GetHeight(LengthUnit.Point));
+  var overflow=position.Width>width+0.75||position.Height>height+0.75;
+  if(name.StartsWith("E-")||name=="TE-EVIDENCE") Require(!overflow,name+" photo exceeds merged placeholder "+range.Name);
+  geometry.Add($"\"{sheet.Name}\",{sheet.Cells[from.Row.Index,from.Column.Index].Name},{range.Name},{position.Width},{position.Height},{width},{height},{overflow}");
+ }
+ File.WriteAllLines(Path.Combine(output,name+"-images.csv"),geometry);
  var xlsx=LegacyReportExport.Save(book,"xlsx");var pdf=LegacyReportExport.Save(book,"pdf");
+ Require(Positions(book)==before,name+" PDF serialization changed picture geometry");
+ Require(Positions(ExcelFile.Load(new MemoryStream(xlsx)))==before,name+" XLSX round trip changed picture geometry");
  Require(xlsx[0]=='P'&&xlsx[1]=='K',name+" is not XLSX");Require(Encoding.ASCII.GetString(pdf,0,5)=="%PDF-",name+" is not real PDF");
+ if(name is "TE-FT" or "TE-EDS") Require(Regex.Matches(Encoding.Latin1.GetString(pdf),@"/Type\s*/Page\b").Count>=3,
+     name+" PDF omitted visible work-detail/accessories worksheets");
  using(var zip=new ZipArchive(new MemoryStream(xlsx)))Require(zip.GetEntry("xl/styles.xml")!=null,name+" lost workbook styles");
  File.WriteAllBytes(Path.Combine(output,name+".xlsx"),xlsx);File.WriteAllBytes(Path.Combine(output,name+".pdf"),pdf);
  if(preview) book.Save(Path.Combine(output,name+".png"),new ImageSaveOptions{Format=ImageSaveFormat.Png,PageNumber=0});
  Console.WriteLine($"PASS: {name} real XLSX/PDF ({xlsx.Length}/{pdf.Length} bytes), sheets={book.Worksheets.Count}.");
 }
+bool ContainsPhoto(ExcelFile book,string photo){
+ var expected=File.ReadAllBytes(photo);
+ using var zip=new ZipArchive(new MemoryStream(LegacyReportExport.Save(book,"xlsx")));
+ return zip.Entries.Where(entry=>entry.FullName.StartsWith("xl/media/")).Any(entry=>{
+  using var stream=entry.Open(); using var bytes=new MemoryStream(); stream.CopyTo(bytes);
+  return bytes.ToArray().SequenceEqual(expected);
+ });
+}
+void PhotoAt(ExcelFile book,string anchor,string photo){
+ var expected=File.ReadAllBytes(photo);var cell=book.Worksheets.ActiveWorksheet!.Cells[anchor];
+ var picture=book.Worksheets.ActiveWorksheet.Pictures.Single(p=>p.Position!.From!.Row.Index==cell.Row.Index&&p.Position.From.Column.Index==cell.Column.Index);
+ var stream=picture.PictureStream;var previous=stream.Position;stream.Position=0;
+ using var bytes=new MemoryStream();stream.CopyTo(bytes);stream.Position=previous;
+ Require(bytes.ToArray().SequenceEqual(expected),"Wrong source photograph at "+anchor);
+}
 var processes=new[]{"MEMS","WB","DB","DC","MP","PL","FT","SING","FL","TP","EDS"};
 foreach(var process in processes){
  Require(PmReportRepository.TryGetDefinition(process,out var definition),"Missing PM definition");
- var book=LegacyReportExport.Load(Path.Combine(root,"Templates","PmReport",definition.TemplateFile));
+ var book=LegacyReportExport.Load(Path.Combine(root,"Templates",definition.TemplateFolder,definition.TemplateFile));
+ book.Worksheets.ActiveWorksheet=book.Worksheets[definition.WorksheetName];
  var data=Record(process);var writer=new LegacyReportWriter(Images(false),Lookups(process,data));
  try{writer.PopulatePm(book,process,data,new List<IDictionary<string,object>>());}
  catch(Exception ex){throw new Exception("PM fixture failed for "+process,ex);}
@@ -122,11 +194,30 @@ var one=Mems(mems,History("FIRST"));var two=Mems(mems,History("FIRST"),History("
 Require(one.Worksheets.ActiveWorksheet!.Cells["G35"].StringValue=="FIRST"&&one.Worksheets.ActiveWorksheet!.Cells["G36"].StringValue=="FIRST","One-record history differs from the original TOP 1/TOP 2 loops");
 Require(two.Worksheets.ActiveWorksheet!.Cells["G35"].StringValue=="FIRST"&&two.Worksheets.ActiveWorksheet!.Cells["G36"].StringValue=="SECOND","Two-record history order changed");
 Console.WriteLine("PASS: mutually exclusive category marks, QC arrays, conditional styles, computed minute totals, and 0/1/2 history records.");
+var memsProduct=Record("MEMS");memsProduct["ProdTreatLotNo"]="INSPECT-LOT";memsProduct["ProdTreatPackage"]="QFN-64";memsProduct["ProdTreatInspResult"]="PASS-INSPECTION";
+memsProduct["ProdTreatUsageOfDummy"]="Historical dummy usage";memsProduct["ProdTreatDummyIn"]="11";memsProduct["ProdTreatDummyOut"]="12";
+memsProduct["UseDummyFrames"]="";memsProduct["DummyIn"]="";memsProduct["DummyOut"]="";
+var memsProductBook=Mems(memsProduct);
+Require(memsProductBook.Worksheets[0].Cells["AA27"].StringValue=="INSPECT-LOT"&&memsProductBook.Worksheets[0].Cells["AK27"].StringValue=="QFN-64"&&memsProductBook.Worksheets[0].Cells["AC28"].StringValue=="PASS-INSPECTION"&&memsProductBook.Worksheets[0].Cells["AF27"].StringValue=="Package / Device",
+    "MEMS product-treatment fields overwrite headers or each other");
+Require(memsProductBook.Worksheets[0].Cells["AD33"].StringValue=="Historical dummy usage"&&memsProductBook.Worksheets[0].Cells["AH33"].StringValue=="11"&&memsProductBook.Worksheets[0].Cells["AN33"].StringValue=="12",
+    "Blank new MEMS aliases erased historical dummy data");
+var mpData=Record("MP");mpData["LotNoForInspection"]="INSPECT-MP";mpData["PmRelatedBM"]="Yes";mpData["Treatment9"]="Treatment nine";
+var mpBook=LegacyReportExport.Load(Path.Combine(root,"Templates","EvidenceMaking","MPTemplate.xlsx"));
+new LegacyReportWriter(Images(false),Lookups("MP",mpData)).PopulatePm(mpBook,"MP",mpData,new List<IDictionary<string,object>>());
+Require(mpBook.Worksheets[0].Cells["AL36"].StringValue=="Yes"&&mpBook.Worksheets[0].Cells["G55"].StringValue=="INSPECT-MP"&&mpBook.Worksheets[0].Cells["C50"].StringValue=="Treatment nine"&&mpBook.Worksheets[0].Cells["AB36"].StringValue=="Pm Related BM",
+    "MP inspection lot or related-BM answer overwrote another section");
+var edsOverflow=Record("EDS");edsOverflow["Treatment13"]="Must not disappear";
+try {
+ var book=LegacyReportExport.Load(Path.Combine(root,"Templates","PmReport","EDSTemplate.xlsx"));
+ new LegacyReportWriter(Images(false),Lookups("EDS",edsOverflow)).PopulatePm(book,"EDS",edsOverflow,new List<IDictionary<string,object>>());
+ throw new Exception("EDS treatment 13 silently overwrote the Turnover To section");
+} catch(InvalidDataException ex)when(ex.Message.Contains("twelve treatment rows")){}
 // Missing descriptive lookup IDs should leave a blank cell; valid zero values are preserved.
 var wbRecord=Record("WB"); wbRecord["BMStatusID"]="14"; wbRecord["AcredPMCategoryID"]="99999";
 var wbLookups=Lookups("WB",wbRecord);
 wbLookups.Remove("PMCategory|99999|PMCategory");
-var wbTemplate=Path.Combine(root,"Templates","PmReport","WBTemplate.xlsx");
+var wbTemplate=Path.Combine(root,"Templates","EvidenceMaking","WBTemplate.xlsx");
 var missingLookupBook=LegacyReportExport.Load(wbTemplate);
 new LegacyReportWriter(Images(false),wbLookups).PopulatePm(missingLookupBook,"WB",wbRecord,new List<IDictionary<string,object>>());
 Require(missingLookupBook.Worksheets.ActiveWorksheet!.Cells["H65"].StringValue=="",
@@ -143,40 +234,104 @@ new LegacyReportWriter(Images(true),new Dictionary<string,string>(),new[]{"ONE",
 Require(teNoLookupBook.Worksheets.ActiveWorksheet!.Cells["K91"].StringValue=="",
     "Missing TE case lookup wrote an incorrect zero in K91");
 Console.WriteLine("PASS: PM/TE missing lookup zeros removed, genuine zero lookup values preserved.");
+foreach(var process in processes) {
+ var data=Record(process);PmReportRepository.TryGetDefinition(process,out var definition);
+ var book=LegacyReportExport.Load(Path.Combine(root,"Templates",definition.TemplateFolder,definition.TemplateFile));
+ book.Worksheets.ActiveWorksheet=book.Worksheets[definition.WorksheetName];
+ new LegacyReportWriter(Images(false),Lookups(process,data)).PopulatePm(book,process,data,new List<IDictionary<string,object>>());
+ Require(!book.Worksheets.ActiveWorksheet.GetUsedCellRange(true)!.Any(cell=>cell.Value?.ToString()=="0.00"),process+" leaked an empty parts-row quantity");
+}
+var plData=Record("PL");plData["OtherUnitCheck"]="1,11,12,13|1,21,22,23|1,31,32,33";
+plData["GLConfirmOPReqBy"]="GL-123";plData["ReqToOtherSec"]="Yes";
+var pl=LegacyReportExport.Load(Path.Combine(root,"Templates","EvidenceMaking","PLTemplate.xlsx"));
+new LegacyReportWriter(Images(false),Lookups("PL",plData)).PopulatePm(pl,"PL",plData,new List<IDictionary<string,object>>());
+Require(pl.Worksheets.ActiveWorksheet!.Cells["AX71"].StringValue=="32"&&pl.Worksheets.ActiveWorksheet.Cells["AZ71"].StringValue=="33",
+    "PL row-three NG and Action Done values share a destination");
+Require(pl.Worksheets[0].Cells["BD27"].StringValue=="GL-123"&&pl.Worksheets[0].Cells["AU56"].StringValue=="Yes",
+    "PL other-section request overwrote GL Confirmation");
+var partsData=Record("WB");partsData["ChangePartsName1"]="Drive belt";partsData["ChangePartsQty1"]="0";
+var parts=LegacyReportExport.Load(wbTemplate);new LegacyReportWriter(Images(false),Lookups("WB",partsData)).PopulatePm(parts,"WB",partsData,new List<IDictionary<string,object>>());
+Require(parts.Worksheets.ActiveWorksheet!.Cells["BB51"].StringValue=="0"&&parts.Worksheets.ActiveWorksheet.Cells["BB52"].StringValue=="",
+    "Real zero quantity was removed or an empty parts row leaked a default");
+Console.WriteLine("PASS: empty part-row defaults, real zero quantities and PL NG/Action Done separation.");
 foreach(var process in new[]{"FT","EDS"}){
  var profile=process=="EDS"?"TE_EDS":"TE";var data=Record(profile);data["WD1"]="DIARY-FIRST";data["WD10"]="DIARY-LAST";data["TESign"]="TE-SIGN";data["PDSign1"]="PD-SIGN";
  var book=LegacyReportExport.Load(Path.Combine(root,"Templates","BmReport",process=="EDS"?"EDS-CSPTemplate.xlsx":"TETemplate.xlsx"));
  new LegacyReportWriter(Images(true),Lookups(profile,data),new[]{"ONE","TWO","THREE"}).PopulateTe(book,process,data);
+ if(process=="EDS")Require(book.Worksheets[0].Cells["BK59"].Value is null&&book.Worksheets[0].Cells["BL59"].Value is null,
+     "EDS developer row indices/code leaked into the report");
  Save(book,"TE-"+process,true);
  Require(book.Worksheets[1].Cells["B2"].Value?.ToString()==data["WD1"].ToString(),"Work diary sheet mapping changed");
  if(process=="FT") Require(book.Worksheets.ActiveWorksheet!.Cells["BE52"].StringValue=="TE-SIGN"&&book.Worksheets.ActiveWorksheet.Cells["BE53"].StringValue=="PD-SIGN","TE approval mapping changed");
 }
-EvidenceImageRow[] Group(int count)=>Enumerable.Range(0,count).Select(i=>new EvidenceImageRow{Description="NOTE-"+i,ImageFile=""}).ToArray();
+var photoSources=new[]{"A.png","B.png","C.png","PBox2.png","FBox2.png","PFNBox2.png","ABox.png","BBox.png","CBox.png","NBox.png","68e9d436-c7ac-4152-b771-1e2c2bc005d2.jpg","ROHM_logo.jpg"};
+var photoNumber=0;
+EvidenceImageRow[] Group(int count)=>Enumerable.Range(0,count).Select(i=>{
+ var number=photoNumber++;var file=number+Path.GetExtension(photoSources[number]);
+ File.Copy(Path.Combine(Images(false),photoSources[number]),Path.Combine(pmUpload,file));
+ return new EvidenceImageRow{Description="Evidence slot "+number+": alignment and inspection",ImageFile=@"\Upload\2026\"+file};
+}).ToArray();
 var groups=new EvidenceImageGroups{ProblemPoint=Group(3),ActionTaken=Group(2),PartsReplaced=Group(2),DisAssembly=Group(2),QualityConfirm=Group(3)};
 var header=new EvidenceMachineHeader{McNo="FIXTURE-MC",OccurrenceDate="10/01/2026",PmConfirmBy="FIXTURE"};
 foreach(var process in processes){
  var config=ProcessTemplateMap.Get(process)!;var book=LegacyReportExport.Load(Path.Combine(root,"Templates","EvidenceMaking",config.TemplateFile));
- EvidenceMakingService.PopulateWorkbook(book,process,header,new TscConfirmation{Tsc1="No",Tsc6="N/A",RouteNo="SHOULD-NOT-PRINT",VersionNo="SHOULD-NOT-PRINT"},groups,Images(false),Images(false));
- Require(book.Worksheets.ActiveWorksheet!.Pictures.Count>=12,"Evidence placeholders were omitted");
+ EvidenceMakingService.PopulateWorkbook(book,process,header,new TscConfirmation{Tsc1="No",Tsc6="N/A",RouteNo="SHOULD-NOT-PRINT",VersionNo="SHOULD-NOT-PRINT"},groups,Images(false),pmLegacyShare,sharedArchive);
+ var anchors=process=="SING"?new[]{"C11","O11","Z11","C27","L27","V27","AD27","C47","T47","C69","O69","AA69"}:new[]{"C11","P11","AC11","C26","L26","V26","AD26","C46","T46","C68","O68","AA68"};
+ var rowImages=new[]{groups.ProblemPoint,groups.ActionTaken,groups.PartsReplaced,groups.DisAssembly,groups.QualityConfirm}
+  .SelectMany(group=>group).ToArray();
+ for(var slot=0;slot<anchors.Length;slot++)PhotoAt(book,anchors[slot],LegacyReportExport.ResolveEvidenceImage(rowImages[slot].ImageFile,pmLegacyShare,Images(false),sharedEvidenceRoot:sharedArchive));
+ Require(book.Worksheets[0].Cells[process=="SING"?"Z19":"AD21"].StringValue==groups.ProblemPoint[2].Description,
+     "Third problem/safety photograph lost its description");
  Require(book.Worksheets.ActiveWorksheet!.Cells[process=="SING"?"AF63":"AF62"].Value?.ToString()!="SHOULD-NOT-PRINT","Unconfirmed route printed");
  Save(book,"E-"+process,process=="SING");
 }
 var confirmed=LegacyReportExport.Load(Path.Combine(root,"Templates","EvidenceMaking","EvidenceMaking_DC.xlsx"));
 EvidenceMakingService.PopulateWorkbook(confirmed,"DC",header,new TscConfirmation{Tsc1="Yes",Tsc6="Yes",RouteNo="ROUTE",VersionNo="VERSION"},groups,Images(false),Images(false));
 Require(confirmed.Worksheets.ActiveWorksheet!.Cells["S60"].StringValue=="\u2714"&&confirmed.Worksheets.ActiveWorksheet.Cells["AF62"].StringValue=="ROUTE"&&confirmed.Worksheets.ActiveWorksheet.Cells["AF41"].StringValue=="VERSION","Confirmed route/version or TSC mark lost");
+groups.ProblemPoint[0].ImageFile=@"\Upload\2026\photo.png";
+groups.ActionTaken[0].ImageFile=archivedImage;
+var uploadedEvidence=LegacyReportExport.Load(Path.Combine(root,"Templates","EvidenceMaking","EvidenceMaking_DC.xlsx"));
+EvidenceMakingService.PopulateWorkbook(uploadedEvidence,"DC",header,new(),groups,Images(false),pmLegacyShare,sharedArchive);
+Require(ContainsPhoto(uploadedEvidence,pmImage)&&ContainsPhoto(uploadedEvidence,archivedImage),
+    "Form4 workbook did not embed the actual PM and historical archive photos");
+Save(uploadedEvidence,"E-UPLOADED-PHOTOS");
 var cwc=LegacyReportExport.Load(Path.Combine(root,"Templates","BmReport","CWC.xlsx"));
 var teHeader=new TeEvidenceHeader{MCNo="FIXTURE-MC",TesterNo="FIXTURE-TE",StartOfRepair="10/01/2026 10:20:00",EndOfRepair="10/01/2026 10:50:00",TEAssign="TE1",Ideas="IDEA",TelekoCheckingData="1,2,3,4|5,6,7,8|9,10,11,12|13,14,15,16|17,18,19,20"};
-TeEvidenceMakingService.PopulateWorkbook(cwc,teHeader,new(),new(){new(){Category="TEST BOARD",Condition="BEFORE",CN="CN3",ImgFile=""},new(){Category="TEST BOARD",Condition="AFTER",CN="CN1",ImgFile=""}},Enumerable.Range(0,4).Select(_=>new TelekoEvidenceImage()).ToList(),new(),Images(true),Images(true));
+var teCategories=new[]{"PHENOMENON","MACHINE COUNTER AND VISUAL BIN","PROGRAM LOADED","TEST CABLE","OTHER EVIDENCE"};
+var tePhotos=new List<TeEvidenceImage>();
+for(var category=0;category<teCategories.Length;category++)for(var condition=0;condition<2;condition++) {
+ var file=$"category-{category}-{condition}.png";
+ File.Copy(Path.Combine(Images(false),photoSources[category*2+condition]),Path.Combine(teUpload,file));
+ for(var slot=0;slot<3;slot++)tePhotos.Add(new TeEvidenceImage{Category=teCategories[category],Condition=condition==0?"BEFORE":"AFTER",ImgFile=@"~\Upload\2026\"+file});
+}
+tePhotos.AddRange(new[]{new TeEvidenceImage{Category="TEST BOARD",Condition="BEFORE",CN="CN3",ImgFile=@"~\Upload\2026\photo.png"},new TeEvidenceImage{Category="TEST BOARD",Condition="AFTER",CN="CN1",ImgFile=@"~\Upload\2026\photo.png"}});
+tePhotos.Add(new TeEvidenceImage{Category="TEST BOARD",Condition="BEFORE",CN="CN3",ImgFile=@"~\Upload\Evidence\2020\photo.png"});
+TeEvidenceMakingService.PopulateWorkbook(cwc,teHeader,new(),tePhotos,Enumerable.Range(0,4).Select(_=>new TelekoEvidenceImage{TelekoEvidence=@"~/Upload/Evidence/2020/photo.png"}).ToList(),new(),Images(true),teLegacyShare,sharedEvidenceRoot:sharedArchive);
+var teRows=new[]{20,31,36,54,62};
+for(var category=0;category<teRows.Length;category++)for(var condition=0;condition<2;condition++)
+ foreach(var column in condition==0?new[]{"B","D","F"}:new[]{"J","L","N"})PhotoAt(cwc,column+teRows[category],Path.Combine(teUpload,$"category-{category}-{condition}.png"));
+foreach(var column in new[]{"H","J","M","O"})PhotoAt(cwc,column+"70",archivedImage);
+PhotoAt(cwc,"B49",archivedImage);
+Require(ContainsPhoto(cwc,teImage)&&ContainsPhoto(cwc,archivedImage),
+    "Form10 workbook did not embed the actual TE and shared Teleko photos");
 Require(cwc.Worksheets[0].Cells["G76"].StringValue=="20","TE QC array mapping failed");
 Require(cwc.Worksheets[0].Cells["M11"].StringValue=="10:20:00 -AM","TE repair time format differs from legacy");
 var pictures=cwc.Worksheets[0].Pictures;
 Require(pictures.Any(p=>p.Position!.From!.Row.Index==48&&p.Position!.From!.Column.Index==1)&&pictures.Any(p=>p.Position!.From!.Row.Index==44&&p.Position!.From!.Column.Index==9),"CN3-before/CN1-after was mapped by list position instead of connector code");
-foreach(var column in new[]{7,9,12,14}) Require(pictures.Any(p=>p.Position!.From!.Row.Index==69&&p.Position!.From!.Column.Index==column&&Math.Abs(p.Position!.GetWidth(LengthUnit.Inch)-1.54)<0.01&&Math.Abs(p.Position!.GetHeight(LengthUnit.Inch)-1.4)<0.01),"Teleko anchor/dimensions changed");
+foreach(var column in new[]{7,9,12,14}) Require(pictures.Any(p=>p.Position!.From!.Row.Index==69&&p.Position!.From!.Column.Index==column&&p.Position.GetWidth(LengthUnit.Inch)<=1.54+0.001&&p.Position.GetHeight(LengthUnit.Inch)<=1.4+0.001&&p.Position.Mode==PositioningMode.MoveAndSize),"Teleko anchor/containment changed");
 Save(cwc,"TE-EVIDENCE",true);
 try{TeEvidenceMakingService.PopulateWorkbook(cwc,teHeader,new(),new(){new(){Category="TEST BOARD",CN="CN5"}},new(),new(),Images(true),Images(true));throw new Exception("Missing connector sheet was ignored");}
 catch(InvalidDataException ex)when(ex.Message.Contains("second worksheet")){}
 try{TeEvidenceMakingService.PopulateWorkbook(cwc,teHeader,new(),new(),new(),new(){new(){Category="BEFORE QUALITY CONDITION"}},Images(true),Images(true));throw new Exception("Missing quality sheet was ignored");}
 catch(InvalidDataException ex)when(ex.Message.Contains("third worksheet")){}
+// Test-only sheets exercise quality-image resolution without changing CWC.xlsx.
+var qualityBook=LegacyReportExport.Load(Path.Combine(root,"Templates","BmReport","CWC.xlsx"));
+qualityBook.Worksheets.Add("Test connectors"); qualityBook.Worksheets.Add("Test quality");
+TeEvidenceMakingService.PopulateWorkbook(qualityBook,teHeader,new(),new(),new(),
+    new(){new(){Category="BEFORE QUALITY CONDITION",ImgFile=@"~\Upload\Evidence\2020\photo.png"}},
+    Images(true),teLegacyShare,sharedEvidenceRoot:sharedArchive);
+var qualityPictures=new ExcelFile(); qualityPictures.Worksheets.AddCopy("Quality",qualityBook.Worksheets[2]);
+Require(ContainsPhoto(qualityPictures,archivedImage),"Quality-condition sheet did not embed the shared evidence photo");
 Console.WriteLine("PASS: TE QC/time fields, connector/Teleko placement and explicit missing-sheet errors.");
 Console.WriteLine("Report artifacts: "+output);
 '@ | Set-Content -Encoding UTF8 (Join-Path $directory 'Program.cs')
