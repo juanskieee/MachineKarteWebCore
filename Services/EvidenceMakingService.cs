@@ -36,7 +36,8 @@ public class EvidenceMakingService
             cancellationToken.ThrowIfCancellationRequested();
             var workbook = LegacyReportExport.Load(Path.Combine(_env.ContentRootPath, "Templates", "EvidenceMaking", cfg.TemplateFile));
             PopulateWorkbook(workbook, request.Process, header, await tscTask, await imagesTask,
-                LegacyReportExport.ImageRoot(_env, false), _config["EvidenceMaking:ImagesRoot"] ?? Path.Combine(_env.ContentRootPath, "Uploads", "EvidenceImages"));
+                LegacyReportExport.ImageRoot(_env, false), _config["EvidenceMaking:ImagesRoot"] ?? Path.Combine(_env.ContentRootPath, "Uploads", "EvidenceImages"),
+                _config.GetSection("EvidenceMaking:LegacyPmUploadRoots").Get<string[]>());
             var fileName = $"{request.Process}Evidence_{request.BmId}.{format}";
             var directory = Path.Combine(_env.ContentRootPath, "TempData", "GeneratedPdf");
             Directory.CreateDirectory(directory);
@@ -55,7 +56,8 @@ public class EvidenceMakingService
     }
 
     public static void PopulateWorkbook(ExcelFile workbook, string process, EvidenceMachineHeader h,
-        TscConfirmation t, EvidenceImageGroups images, string imageRoot, string evidenceRoot)
+        TscConfirmation t, EvidenceImageGroups images, string imageRoot, string evidenceRoot,
+        IEnumerable<string>? legacyUploadRoots = null)
     {
         var header = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
         {
@@ -73,7 +75,7 @@ public class EvidenceMakingService
         for (var i=0; i<flags.Length; i++) confirmation[$"BMEvidence_TCConfirm{i+1}"]=flags[i];
         var groups = new[] {images.ProblemPoint,images.ActionTaken,images.PartsReplaced,images.DisAssembly,images.QualityConfirm};
         var paths = groups.Select(group => group.Select(row =>
-            LegacyReportExport.ResolveEvidenceImage(row.ImageFile, evidenceRoot, imageRoot)).ToArray()).ToArray();
+            LegacyReportExport.ResolveEvidenceImage(row.ImageFile, evidenceRoot, imageRoot, legacyUploadRoots)).ToArray()).ToArray();
         var descriptions = groups.Select(group => group.Select(row => row.Description).ToArray()).ToArray();
         new LegacyReportWriter(imageRoot, new Dictionary<string,string>())
             .PopulateEvidence(workbook, process, header, confirmation, paths, descriptions);
