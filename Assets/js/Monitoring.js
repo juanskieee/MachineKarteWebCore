@@ -17,7 +17,6 @@ const State = {
     filterController: null,
     timerCount: 600,     // lblTimer
     timerHandle: null,    // Timer1 interval
-    autoHandle: null,    // Timer2 interval (auto-refresh)
     lastFilter: null,    // cached last successful MonitoringFilter
     antiForgery: ''
 };
