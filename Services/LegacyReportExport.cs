@@ -29,36 +29,43 @@ public static class LegacyReportExport
     public static string ImageRoot(IWebHostEnvironment environment, bool te) =>
         Path.Combine(environment.ContentRootPath, "Assets", "images", te ? "TEeMaintenanceSystems_images" : "eMaintenanceSystems_images");
 
-    // Only configured, trusted roots are searched. Never use a database-supplied
-    // absolute/UNC path directly, and never allow parent-directory traversal.
-    public static string ResolveEvidenceImage(string relativePath, string evidenceRoot, string imageRoot,
-        IEnumerable<string>? legacyUploadRoots = null)
+    // Form4:  \\\\PathServer\\eMaintenanceSystem + BMEvidence_ImgFile
+    // Form10: \\\\PathServer\\TEeMaintenanceSystem + BMEvidence_ImgFile.Replace("~", "")
+    // The network share and its directories already exist; there is no web upload path.
+    public static string LegacyEvidenceRoot(IConfiguration config, bool te)
     {
-        var path = (relativePath ?? string.Empty).Trim().Trim('"').Replace('\\', '/');
-        var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
-        if (segments.Length == 0 || segments.Any(segment => segment is "." or ".."))
-            return Path.Combine(imageRoot, "noimage.png");
+        var server = config["NetworkShare:Server"]?.Trim();
+        if (string.IsNullOrEmpty(server) || server is "." or ".." ||
+            server.IndexOfAny(new[] { '\\', '/', ':' }) >= 0)
+            throw new InvalidOperationException("NetworkShare:Server must be the legacy file server hostname or IP.");
+        return @"\\" + server + (te ? @"\TEeMaintenanceSystem" : @"\eMaintenanceSystem");
+    }
 
-        // Legacy records can store full UNC paths. Extract only their path below
-        // the Upload directory and resolve it under an explicitly trusted root.
-        var uploadIndex = Array.FindLastIndex(segments, segment =>
-            segment.Equals("Upload", StringComparison.OrdinalIgnoreCase));
-        var relative = uploadIndex >= 0
-            ? segments.Skip(uploadIndex + 1).ToArray()
-            : segments;
-        if (relative.Length == 0 || relative.Any(segment => segment.Contains(':')))
-            return Path.Combine(imageRoot, "noimage.png");
+    // Database evidence paths are share-relative (usually \\Upload\\...). Reject
+    // foreign absolute paths and traversal rather than probing arbitrary locations.
+    // An absent file uses the original Form4/Form10 noimage.png mark.
+    public static string ResolveEvidenceImage(string storedPath, string legacySystemRoot, string imageRoot, bool te = false)
+    {
+        var placeholder = Path.Combine(imageRoot, "noimage.png");
+        if (string.IsNullOrEmpty(storedPath)) return placeholder;
 
-        var localRelative = relative[0].Equals("images", StringComparison.OrdinalIgnoreCase)
-            ? relative.Skip(1).ToArray() : relative;
-        var roots = new[] { evidenceRoot }.Concat(legacyUploadRoots ?? Array.Empty<string>());
-        foreach (var root in roots)
+        var path = (te ? storedPath.Replace("~", "") : storedPath).Replace('/', '\\');
+        if (!path.StartsWith('\\') || path.StartsWith(@"\\") || path.Contains(':'))
+            return placeholder;
+
+        var parts = path.Substring(1).Split('\\');
+        if (parts.Any(part => part.Length == 0 || part is "." or ".."))
+            return placeholder;
+
+        var candidate = Path.Combine(new[] { legacySystemRoot }.Concat(parts).ToArray());
+        // Windows UNC paths are normalized and bounded by the original share.
+        if (OperatingSystem.IsWindows())
         {
-            if (string.IsNullOrWhiteSpace(root)) continue;
-            var candidate = Path.Combine(new[] { root }.Concat(relative).ToArray());
-            if (File.Exists(candidate)) return Path.GetFullPath(candidate);
+            var root = Path.GetFullPath(legacySystemRoot).TrimEnd('\\') + "\\";
+            candidate = Path.GetFullPath(candidate);
+            if (!candidate.StartsWith(root, StringComparison.OrdinalIgnoreCase))
+                return placeholder;
         }
-        var staticCandidate = Path.Combine(new[] { imageRoot }.Concat(localRelative).ToArray());
-        return File.Exists(staticCandidate) ? Path.GetFullPath(staticCandidate) : Path.Combine(imageRoot, "noimage.png");
+        return File.Exists(candidate) ? candidate : placeholder;
     }
 }
