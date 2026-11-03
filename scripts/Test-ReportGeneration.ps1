@@ -88,6 +88,27 @@ var one=Mems(mems,History("FIRST"));var two=Mems(mems,History("FIRST"),History("
 Require(one.Worksheets.ActiveWorksheet!.Cells["G35"].StringValue=="FIRST"&&one.Worksheets.ActiveWorksheet!.Cells["G36"].StringValue=="FIRST","One-record history differs from the original TOP 1/TOP 2 loops");
 Require(two.Worksheets.ActiveWorksheet!.Cells["G35"].StringValue=="FIRST"&&two.Worksheets.ActiveWorksheet!.Cells["G36"].StringValue=="SECOND","Two-record history order changed");
 Console.WriteLine("PASS: mutually exclusive category marks, QC arrays, conditional styles, computed minute totals, and 0/1/2 history records.");
+// Missing descriptive lookup IDs should leave a blank cell; valid zero values are preserved.
+var wbRecord=Record("WB"); wbRecord["BMStatusID"]="14"; wbRecord["AcredPMCategoryID"]="99999";
+var wbLookups=Lookups("WB",wbRecord);
+wbLookups.Remove("PMCategory|99999|PMCategory");
+var wbTemplate=Path.Combine(root,"Templates","PmReport","WBTemplate.xlsx");
+var missingLookupBook=LegacyReportExport.Load(wbTemplate);
+new LegacyReportWriter(Images(false),wbLookups).PopulatePm(missingLookupBook,"WB",wbRecord,new List<IDictionary<string,object>>());
+Require(missingLookupBook.Worksheets.ActiveWorksheet!.Cells["H65"].StringValue=="",
+    "Missing category lookup wrote an incorrect zero in WB H65");
+wbLookups["PMCategory|99999|PMCategory"]="0";
+var realZeroBook=LegacyReportExport.Load(wbTemplate);
+new LegacyReportWriter(Images(false),wbLookups).PopulatePm(realZeroBook,"WB",wbRecord,new List<IDictionary<string,object>>());
+Require(realZeroBook.Worksheets.ActiveWorksheet!.Cells["H65"].StringValue=="0",
+    "A genuine zero-valued lookup was incorrectly stripped");
+var teNoLookup=Record("TE");
+var teNoLookupBook=LegacyReportExport.Load(Path.Combine(root,"Templates","BmReport","TETemplate.xlsx"));
+new LegacyReportWriter(Images(true),new Dictionary<string,string>(),new[]{"ONE","TWO","THREE"})
+    .PopulateTe(teNoLookupBook,"FT",teNoLookup);
+Require(teNoLookupBook.Worksheets.ActiveWorksheet!.Cells["K91"].StringValue=="",
+    "Missing TE case lookup wrote an incorrect zero in K91");
+Console.WriteLine("PASS: PM/TE missing lookup zeros removed, genuine zero lookup values preserved.");
 foreach(var process in new[]{"FT","EDS"}){
  var profile=process=="EDS"?"TE_EDS":"TE";var data=Record(profile);data["WD1"]="DIARY-FIRST";data["WD10"]="DIARY-LAST";data["TESign"]="TE-SIGN";data["PDSign1"]="PD-SIGN";
  var book=LegacyReportExport.Load(Path.Combine(root,"Templates","BmReport",process=="EDS"?"EDS-CSPTemplate.xlsx":"TETemplate.xlsx"));
