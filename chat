@@ -1,17 +1,4 @@
-
-TODAY ISSUES:
-
-PDFS STYLING MODALS
-1. ON THE BM MAINTENANCE RECORD (PM, EEE, VIS, CC) THERE'S NO PDF PREVIEW AND PROPER STYLING ON THE DOWNLOAD BUTTON, I WANT IT TOO LOOK LIKE THE BM MAINTENANCE EVIDENENCE (PM, EEE, VIS, CC) WHICH HAS PDF PREVIEW "EvidenceMaking-previewPanel", "preview-toolbar", AND "preview-frame" ALIGN THE CONTENT AND STYLING OF "PmReport-pmStatus" TO THE "EvidenceMaking-statusArea" WHICH IS GREEN AND "Evidence generated: {filename}.pdf" INSTEAD OF JUST BLACK "Report Generated"
-
-2. ON THE BM MAINTENANCE RECORD (TE, EEE, VIS, CC) THERE'S NO PDF PREVIEW AND PROPER STYLING ON THE DOWNLOAD BUTTON, I WANT IT TOO LOOK LIKE THE BM MAINTENANCE EVIDENENCE (PM, EEE, VIS, CC) WHICH HAS PDF PREVIEW "EvidenceMaking-previewPanel", "preview-toolbar", AND "preview-frame" ALIGN THE CONTENT AND STYLING OF "BmReport-reportStatus" TO THE "EvidenceMaking-statusArea" WHICH IS GREEN AND "Evidence generated: {filename}.pdf" INSTEAD OF JUST BLACK "PDF ready. Preview below or select Download to save it."​‌
-
-3. ON THE BM MAINTENANCE EVIDENCE (TE, EEE, VIS, CC) THERE'S NO PDF PREVIEW AND PROPER STYLING ON THE DOWNLOAD BUTTON, I WANT IT TOO LOOK LIKE THE BM MAINTENANCE EVIDENENCE (PM, EEE, VIS, CC) WHICH HAS PDF PREVIEW "EvidenceMaking-previewPanel", "preview-toolbar", AND "preview-frame"​‌
-ALING THE CONTENT AND STYLING OF "status-successs" TO THE "EvidenceMaking-statusArea" WHICH IS GREEN AND "Evidence generated: {filename}.pdf" INSTEAD OF JUST GREEN "Evidence ready. Select Download to save it."​‌
-
-EXCEL STYLING MODALS:​‌
-1. ON THE BM MAINTENANCE RECORD (PM) I WANT IT TOO LOOK LIKE THE BM MAINTENANCE EVIDENENCE (PM) WHICH HAS "EvidenceMaking-statusArea" AND THE CONTENT IS GREEN AND IS LIKE "Evidence generated: {filename}.xlsx", ALSO THE BM MAINTENANCE EVIDENENCE (PM) HAS "preview-toolbar" WHICH HAS THE FILE NAME ON THE LEFT AND THE DOWNLOAD BUTTON ON THE RIGHT SIDE
-
-2. ON THE BM MAINTENANCE RECORD (TE, EEE, VIS, CC) I WANT IT TOO LOOK LIKE THE BM MAINTENANCE EVIDENCE (PM) WHICH HAS "EvidenceMaking-statusArea" AND THE CONTENT IS GREEN AND IS LIKE "Evidence generated: {filename}.xlsx" NOT JUST BLACK "Report ready. Select Download to save it.", ALSO THE BM MAINTENANCE EVIDENCE(PM) HAS "preview-toolbar" WHICH HAS THE FILE NAME ON THE LEFT AND THE DOWNLOAD BUTTON ON THE RIGHT SIDE​‌
-
-3. ON THE BM MAINTENANCE EVIDENCE (TE, EEE, VIS, CC) I WANT IT TOO LOOK LIKE THE BM MAINTENANCE EVIDENENCE (PM) WHICH HAS "EvidenceMaking-statusArea" AND THE CONTENT IS GREEN AND IS LIKE "Evidence generated: {filename}.xlsx" NOT JUST GREEN "Evidence ready. Select Download to save it.", ALSO THE BM MAINTENANCE EVIDENENCE (PM) HAS "preview-toolbar" WHICH HAS THE FILE NAME ON THE LEFT AND THE DOWNLOAD BUTTON ON THE RIGHT SIDE
+Error Description:
+The application throws a System.IO.DirectoryNotFoundException when trying to serve static files from the directory C:\Users\cmbandiola.REPI\source\repos\MachineKarteWebCore\TempData\GeneratedPdf\. This happens at the line where app.UseStaticFiles(new StaticFileOptions { ... }) is configured for the "Generated PDF / Excel output folder".
+Why You Are Getting the Error:
+The root cause is that the directory TempData/GeneratedPdf does not exist at application startup. The PhysicalFileProvider expects the directory to exist when it is initialized. If it does not, it throws a DirectoryNotFoundException.
