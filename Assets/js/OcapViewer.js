@@ -16,7 +16,7 @@ Workflows.register('OcapViewer', (root, options, context) => {
     }
 
 
-// Public API — parent page (e.g. Monitoring) can call this directly
+    // Load the current dialog's selected OCAP record.
 
     async function loadOcap(bmId, bmProcess, bmCaseId) {
         setLoading(true);
@@ -91,4 +91,4 @@ Workflows.register('OcapViewer', (root, options, context) => {
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;');
     }
-    });
+});
