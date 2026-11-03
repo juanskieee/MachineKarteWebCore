@@ -124,6 +124,8 @@ INSERT ViewDCData_Ver4 VALUES (5,'MC-Z','10/05/2026 00:00:00','CURRENT'),
     await bm.LoadSupplementalDataAsync(emptyReport);
     Require(emptyReport.VRNumber1 == "" && emptyReport.PMCategory == "" && emptyReport.BMCase == "" &&
         emptyReport.BMPoint == "" && emptyReport.PREVMeasure == "", "Empty/zero/missing/null report lookup changed");
+    Require(emptyReport.LookupValues.Values.All(value => value != "0"),
+        "Missing or null TE lookups were incorrectly rendered as literal zeroes");
     Console.WriteLine("PASS: batched VR and all nine report lookups, including empty/zero/missing/DBNull results.");
     await Sql(@"
 CREATE TABLE MCType (MCTypeID int, MCType nvarchar(100)); INSERT MCType VALUES (1,'TYPE');

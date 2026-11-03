@@ -42,7 +42,7 @@ Namespace MachineKarte.Reporting
 
         Private Function getProcCodes(id As String, table As String, keyColumn As String, valueColumn As String) As String
             Dim value As String = Nothing
-            Return If(lookups.TryGetValue(table.Trim() & "|" & id & "|" & valueColumn, value), value, "0")
+            Return If(lookups.TryGetValue(table.Trim() & "|" & id & "|" & valueColumn, value), value, "")
         End Function
 
         Private Function getBMWhyInfo(id As String, field As String) As String

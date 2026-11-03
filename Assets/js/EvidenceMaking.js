@@ -120,6 +120,5 @@ async function post(url, body) {
     }
 }
 root.querySelector('[data-action="generate"]')?.addEventListener('click', generateEvidence);
-root.querySelector('[data-action="close-preview"]')?.addEventListener('click', closePreview);
 
 });

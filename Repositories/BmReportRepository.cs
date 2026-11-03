@@ -186,7 +186,7 @@ namespace MachineKarte.Web.Repositories
                 var value = found ? reader.GetValue(0).ToString() ?? "" : "";
                 lookup.Assign(value);
                 data.LookupValues[$"{lookup.Table}|{lookup.Id}|{lookup.Value}"] =
-                    found && !string.IsNullOrWhiteSpace(lookup.Id) ? value : "0";
+                    found && !string.IsNullOrWhiteSpace(lookup.Id) ? value : "";
             }
         }
     }

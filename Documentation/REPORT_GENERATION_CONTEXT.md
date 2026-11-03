@@ -110,6 +110,47 @@ The TE templates also have small recorded used-range dimensions compared with
 legacy cell writes. Their original active-sheet/index selection is retained;
 metadata dimensions alone are not used to remap cells.
 
+## Optional legacy uploaded-photo roots (pending production validation)
+
+The web evidence services now accept optional configuration arrays
+`EvidenceMaking:LegacyPmUploadRoots` and `EvidenceMaking:LegacyTeUploadRoots`.
+Each entry is an existing directory containing uploaded photographs, for example
+an administrator-mounted share or a locally mirrored `Upload` directory.
+Configure these in deployment environment configuration, not in committed
+credentials. PM and TE roots are kept separate. The resolver uses only these
+trusted roots, the existing evidence directory, and static image assets;
+missing photos still use the legacy placeholder. Full database-stored UNC paths
+are reduced to their relative suffix below `Upload` rather than opened directly.
+
+No network share has been accessed or verified by this change. Verify that the
+application's deployment identity has read-only access and compare representative
+Form4/Form10 output with the desktop originals. Missing/incorrect cell mappings,
+scattered zeroes, and the incomplete CWC workbook remain unresolved until
+representative source data and output comparisons are available.
+
+## Descriptive lookup zeroes (web output correction)
+
+The desktop `getProcCodes` helper returns literal `"0"` when a descriptive
+code cannot be resolved. The original mapping bodies also call this helper
+for several cells, so the web conversion could print scattered zeroes for
+missing PM/TE maintenance category, case, unit, work-content, point and cause
+descriptions. This is not a numeric measurement of zero.
+
+The web report writer now renders missing descriptive lookups as blank strings.
+The TE BM report repository also no longer injects `"0"` for absent or null
+lookups. A lookup that genuinely resolves to the string `"0"` is preserved;
+numeric measures, legitimate formula zeroes, worksheet styles, original cell
+addresses, and workbook templates are unchanged. The compiled legacy mapping
+bodies remain generated verbatim from the original Form3/Form4/Form9/Form10
+sources. This intentionally overrides only the desktop's missing-description
+sentinel, following the explicit requirement to remove scattered zeroes.
+
+Regression assertions were added for PM WB cell H65, TE report cell K91, and
+missing/null lookup values returned by the isolated data retrieval runner.
+These tests have not been executed in this session because a Windows .NET 8
+and PowerShell environment is unavailable here. Do not mark production output
+parity as verified until representative input/output comparisons pass.
+
 ## Verification
 
 - `scripts/Update-LegacyReportMappings.ps1 -Check`: source-extraction parity.

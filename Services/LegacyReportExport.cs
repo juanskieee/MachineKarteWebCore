@@ -29,15 +29,36 @@ public static class LegacyReportExport
     public static string ImageRoot(IWebHostEnvironment environment, bool te) =>
         Path.Combine(environment.ContentRootPath, "Assets", "images", te ? "TEeMaintenanceSystems_images" : "eMaintenanceSystems_images");
 
-    public static string ResolveEvidenceImage(string relativePath, string evidenceRoot, string imageRoot)
+    // Only configured, trusted roots are searched. Never use a database-supplied
+    // absolute/UNC path directly, and never allow parent-directory traversal.
+    public static string ResolveEvidenceImage(string relativePath, string evidenceRoot, string imageRoot,
+        IEnumerable<string>? legacyUploadRoots = null)
     {
-        var relative = relativePath.Replace("~", "").Replace('\\', '/').TrimStart('/');
-        if (!relative.Split('/').Contains("..") && !relative.Contains(':'))
+        var path = (relativePath ?? string.Empty).Trim().Trim('"').Replace('\\', '/');
+        var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (segments.Length == 0 || segments.Any(segment => segment is "." or ".."))
+            return Path.Combine(imageRoot, "noimage.png");
+
+        // Legacy records can store full UNC paths. Extract only their path below
+        // the Upload directory and resolve it under an explicitly trusted root.
+        var uploadIndex = Array.FindLastIndex(segments, segment =>
+            segment.Equals("Upload", StringComparison.OrdinalIgnoreCase));
+        var relative = uploadIndex >= 0
+            ? segments.Skip(uploadIndex + 1).ToArray()
+            : segments;
+        if (relative.Length == 0 || relative.Any(segment => segment.Contains(':')))
+            return Path.Combine(imageRoot, "noimage.png");
+
+        var localRelative = relative[0].Equals("images", StringComparison.OrdinalIgnoreCase)
+            ? relative.Skip(1).ToArray() : relative;
+        var roots = new[] { evidenceRoot }.Concat(legacyUploadRoots ?? Array.Empty<string>());
+        foreach (var root in roots)
         {
-            var imageRelative = relative.StartsWith("images/", StringComparison.OrdinalIgnoreCase) ? relative[7..] : relative;
-            foreach (var candidate in new[] { Path.Combine(evidenceRoot, relative), Path.Combine(imageRoot, imageRelative) })
-                if (File.Exists(candidate)) return Path.GetFullPath(candidate);
+            if (string.IsNullOrWhiteSpace(root)) continue;
+            var candidate = Path.Combine(new[] { root }.Concat(relative).ToArray());
+            if (File.Exists(candidate)) return Path.GetFullPath(candidate);
         }
-        return Path.Combine(imageRoot, "noimage.png");
+        var staticCandidate = Path.Combine(new[] { imageRoot }.Concat(localRelative).ToArray());
+        return File.Exists(staticCandidate) ? Path.GetFullPath(staticCandidate) : Path.Combine(imageRoot, "noimage.png");
     }
 }
