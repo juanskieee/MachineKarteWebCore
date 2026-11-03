@@ -10,13 +10,10 @@
  */
 
 Workflows.register('EvidenceMaking', (root, options, context) => {
-// Keep generation and download separate; image/format mapping stays on the server.
+    // Keep generation and download separate; image/format mapping stays on the server.
     const byId = id => root.querySelector('[data-id="' + id + '"], [id="' + id + '"]');
     const fetch = context.fetch;
-let antiForgery = '';
-
-
-    antiForgery = root.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '';
+    const antiForgery = root.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '';
 
     // Pre-fill from query string (when opened from Monitoring card click)
     const params = new URLSearchParams(options);
@@ -27,7 +24,7 @@ let antiForgery = '';
     byId('recordBmId').textContent = bmId || '—';
 
 
-// ── Generate Evidence (mirrors EMakingPrint) ──────────────────────
+    // ── Generate Evidence (mirrors EMakingPrint) ──────────────────────
     async function generateEvidence() {
         const process = proc || '';
         const bmId = Number(options.bmId);
@@ -120,4 +117,4 @@ let antiForgery = '';
     }
     root.querySelector('[data-action="generate"]')?.addEventListener('click', generateEvidence);
 
-    });
+});
