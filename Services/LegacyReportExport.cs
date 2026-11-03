@@ -34,7 +34,7 @@ public static class LegacyReportExport
     public static string ResolveEvidenceImage(string relativePath, string evidenceRoot, string imageRoot,
         IEnumerable<string>? legacyUploadRoots = null)
     {
-        var path = (relativePath ?? string.Empty).Trim().Trim('"').Replace('\\\\', '/');
+        var path = (relativePath ?? string.Empty).Trim().Trim('"').Replace('\\', '/');
         var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
         if (segments.Length == 0 || segments.Any(segment => segment is "." or ".."))
             return Path.Combine(imageRoot, "noimage.png");
