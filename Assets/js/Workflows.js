@@ -1,4 +1,8 @@
-/* Monitoring owns navigation; the legacy child forms are AJAX-loaded partials. */
+/**
+ * Monitoring owns navigation; the legacy child forms are AJAX-loaded partials.
+ * Every open creates an AbortController to cancel pending requests, timers and
+ * registered listeners when the dialog closes or another workflow opens.
+ */
 window.Workflows = (() => {
     'use strict';
     const initializers = new Map();
@@ -8,14 +12,19 @@ window.Workflows = (() => {
         McdMonitoring: 'Summary of Need Action With MCD',
         BmAnalytics: 'Summary of Action With MCD',
         ActionCards: 'Check And Action Card',
-        RawData: 'Raw Data', OcapViewer: 'OCAP',
-        PmReport: 'BM Maintenance Record', BmReport: 'BM Maintenance Record',
-        EvidenceMaking: 'BM Maintenance Evidence', TeEvidenceMaking: 'BM Maintenance Evidence'
+        RawData: 'Raw Data',
+        OcapViewer: 'OCAP',
+        PmReport: 'BM Maintenance Record',
+        BmReport: 'BM Maintenance Record',
+        EvidenceMaking: 'BM Maintenance Evidence',
+        TeEvidenceMaking: 'BM Maintenance Evidence'
     };
     let active = null;
     let opener = null;
 
-    function register(name, initialize) { initializers.set(name, initialize); }
+    function register(name, initialize) {
+        initializers.set(name, initialize);
+    }
 
     function dispose() {
         active?.abort();
@@ -118,7 +127,10 @@ window.Workflows = (() => {
         }
     }
 
-    function close() { dispose(); document.getElementById('workflowDialog').close(); }
+    function close() {
+        dispose();
+        document.getElementById('workflowDialog').close();
+    }
 
     async function selectMachine(params) {
         close();

@@ -1,6 +1,3 @@
-Workflows.register('MachineSummary', (root, options, context) => {
-    const byId = id => root.querySelector('[data-id="' + id + '"], [id="' + id + '"]');
-    const fetch = context.fetch;
 /**
  * MachineSummary.js
  * Form11 → _MachineSummary.cshtml  (E-Karte System)
@@ -11,7 +8,11 @@ Workflows.register('MachineSummary', (root, options, context) => {
  *  • "View in Monitoring" navigates to Monitoring with pre-filled filters
  *  • Auto-refresh when Monitoring signals the shared legacy timer reaching zero
  */
-    'use strict';
+
+Workflows.register('MachineSummary', (root, options, context) => {
+// Retain the Form11 designer cells and their legacy process/location mapping.
+    const byId = id => root.querySelector('[data-id="' + id + '"], [id="' + id + '"]');
+    const fetch = context.fetch;
 
     const BASE = { summaryUrl: '/MachineSummary', machineListUrl: '/MachineSummary' };
 

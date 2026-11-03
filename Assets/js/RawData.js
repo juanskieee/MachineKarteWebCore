@@ -1,4 +1,4 @@
-// Form5: both monthly stacked charts and their source tables stay together.
+/** Form5: monthly stacked charts and their source tables are one read-only workflow. */
 Workflows.register('RawData', (root, options, context) => {
     const find = id => root.querySelector(`[data-id="${id}"]`);
     const colors = ['#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f', '#edc948', '#b07aa1', '#ff9da7', '#9c755f'];
@@ -58,7 +58,17 @@ Workflows.register('RawData', (root, options, context) => {
         const months = { Jan: 1, Feb: 2, Mar: 3, Apr: 4, May: 5, Jun: 6, Jul: 7, Aug: 8, Sep: 9, Oct: 10, Nov: 11, Dec: 12 };
         const order = label => { const [month, year] = label.split(' '); return Number(year) * 100 + (months[month] || 0); };
         const labels = [...new Set(series.flatMap(item => item.points.map(point => point.label)))].sort((a, b) => order(a) - order(b));
-        const stacks = labels.map(label => series.map(item => Math.max(0, Number(item.points.find(point => point.label === label)?.value) || 0)));
+        // Index the first point for each month once (matching Array.find on duplicates).
+        // Rendering then scales with series + months instead of scanning every point per bar.
+        const valuesBySeries = series.map(item => {
+            const values = new Map();
+            for (const point of item.points) {
+                if (!values.has(point.label)) values.set(point.label, point.value);
+            }
+            return values;
+        });
+        const stacks = labels.map(label =>
+            valuesBySeries.map(values => Math.max(0, Number(values.get(label)) || 0)));
         const largestStack = Math.max(1, ...stacks.map(stack => stack.reduce((sum, value) => sum + value, 0)));
         const maximum = Math.max(1, Math.ceil(largestStack / 4)) * 4;
         const width = Math.max(920, labels.length * 65);
@@ -74,7 +84,7 @@ Workflows.register('RawData', (root, options, context) => {
             svg.append(element('text', { x: left - 8, y: y + 4, 'text-anchor': 'end' }, String(Math.round(maximum * step / 4))));
         }
         const slot = plotWidth / Math.max(1, labels.length);
-        const barWidth = Math.min(64, slot * .6);
+        const barWidth = Math.min(64, slot * 0.6);
         stacks.forEach((stack, index) => {
             let total = 0;
             stack.forEach((value, band) => {
@@ -88,7 +98,7 @@ Workflows.register('RawData', (root, options, context) => {
                 svg.append(rect);
                 total += value;
             });
-            svg.append(element('text', { x: left + (index + .5) * slot, y: 274, 'text-anchor': 'middle' }, labels[index]));
+            svg.append(element('text', { x: left + (index + 0.5) * slot, y: 274, 'text-anchor': 'middle' }, labels[index]));
         });
         container.append(svg);
         const legend = document.createElement('div');

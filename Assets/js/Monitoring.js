@@ -17,7 +17,6 @@ const State = {
     filterController: null,
     timerCount: 600,     // lblTimer
     timerHandle: null,    // Timer1 interval
-    autoHandle: null,    // Timer2 interval (auto-refresh)
     lastFilter: null,    // cached last successful MonitoringFilter
     antiForgery: ''
 };
@@ -284,6 +283,13 @@ function renderFloorSummary(summaries) {
         { id: 'btnMCD', section: 'MCD', name: 'Important Device (Need Action)', count: 'needActionCount', machines: 'needActionMachines', className: 'summary-need' },
         { id: 'btnWithAction', section: 'WithAction', name: 'Important Device (With Action)', count: 'withActionCount', machines: 'withActionMachines', className: 'summary-with' }
     ];
+    // Index summaries once per render. Keep the first matching floor, as Array.find did.
+    const summariesByFloor = new Map();
+    for (const summary of summaries || []) {
+        if (!summariesByFloor.has(summary.floorCode)) {
+            summariesByFloor.set(summary.floorCode, summary);
+        }
+    }
     grid.innerHTML = `<thead><tr><th scope="col">Action Item</th>${floors.map(floor => `<th scope="col">${floor}</th>`).join('')}</tr></thead><tbody></tbody>`;
     const body = grid.querySelector('tbody');
     rows.forEach(row => {
@@ -292,7 +298,7 @@ function renderFloorSummary(summaries) {
         tr.innerHTML = `<th scope="row"><a id="${row.id}" href="#${row.section}">${row.name}</a></th>`;
         tr.querySelector('a').addEventListener('click', event => { event.preventDefault(); openSection(row.section); });
         floors.forEach(floor => {
-            const summary = summaries?.find(item => item.floorCode === floor);
+            const summary = summariesByFloor.get(floor);
             const count = summary?.[row.count] ?? 0;
             const cell = document.createElement('td');
             cell.textContent = count;
@@ -330,6 +336,8 @@ function onFloorCellClick(floorCode, machines) {
     const go = document.getElementById('machineListGo');
     go.disabled = true;
     let selected = '';
+    // Construct the sidebar list off-DOM; large machine lists then repaint once.
+    const fragment = document.createDocumentFragment();
     machines.forEach(machine => {
         const li = document.createElement('li');
         const button = document.createElement('button');
@@ -344,8 +352,9 @@ function onFloorCellClick(floorCode, machines) {
         });
         button.addEventListener('dblclick', () => { button.click(); go.click(); });
         li.appendChild(button);
-        list.appendChild(li);
+        fragment.appendChild(li);
     });
+    list.appendChild(fragment);
     go.onclick = async () => {
         if (!selected) return;
         closeSidebar();

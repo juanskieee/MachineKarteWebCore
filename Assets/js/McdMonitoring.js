@@ -1,8 +1,3 @@
-Workflows.register('McdMonitoring', (root, options, context) => {
-    const byId = id => root.querySelector('[data-id="' + id + '"], [id="' + id + '"]');
-    const fetch = context.fetch;
-    const setInterval = context.setInterval;
-    const setTimeout = context.setTimeout;
 /**
  * McdMonitoring.js
  * Handles the MCD Monitoring dashboard (Form7 → McdMonitoring.cshtml).
@@ -17,7 +12,12 @@ Workflows.register('McdMonitoring', (root, options, context) => {
  *   - Read-only page, so no anti-forgery POST is needed
  */
 
-    'use strict';
+Workflows.register('McdMonitoring', (root, options, context) => {
+// Preserve request sequence guards so stale dashboard and drilldown results cannot repaint.
+    const byId = id => root.querySelector('[data-id="' + id + '"], [id="' + id + '"]');
+    const fetch = context.fetch;
+    const setInterval = context.setInterval;
+    const setTimeout = context.setTimeout;
 
     // ── State ────────────────────────────────────────────────────────────────
     let lastFilter = { dateFrom: '', dateTo: '', userRole: '' };

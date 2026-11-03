@@ -1,3 +1,4 @@
+/** TE Evidence (Form10): keep generate and download separate from dialog opening. */
 Workflows.register('TeEvidenceMaking', (root, options, context) => {
     const find = id => root.querySelector(`[data-id="${id}"]`);
     const button = find('btnGenerate');
@@ -7,7 +8,10 @@ Workflows.register('TeEvidenceMaking', (root, options, context) => {
     find('recordBmId').textContent = options.bmId || '—';
     button.addEventListener('click', async () => {
         status.hidden = false;
-        if (!options.bmId) { status.textContent = 'Select a BM record in Monitoring first.'; return; }
+        if (!options.bmId) {
+            status.textContent = 'Select a BM record in Monitoring first.';
+            return;
+        }
         button.disabled = true;
         download.hidden = true;
         status.className = '';
@@ -16,7 +20,9 @@ Workflows.register('TeEvidenceMaking', (root, options, context) => {
             const format = find('outputFormat').value;
             const response = await context.fetch(`/TeEvidenceMaking?handler=Generate&bmId=${encodeURIComponent(options.bmId)}&format=${format}`);
             const result = await response.json();
-            if (!response.ok || !result.success) throw new Error(result.message || 'Evidence generation failed.');
+            if (!response.ok || !result.success) {
+                throw new Error(result.message || 'Evidence generation failed.');
+            }
             download.href = result.url || `/TeEvidenceMaking?handler=Download&bmId=${encodeURIComponent(options.bmId)}&format=${format}`;
             download.textContent = `Download evidence (.${format})`;
             download.hidden = false;
@@ -25,6 +31,8 @@ Workflows.register('TeEvidenceMaking', (root, options, context) => {
         } catch (error) {
             status.textContent = error.message;
             status.className = 'status-error';
-        } finally { button.disabled = false; }
+        } finally {
+            button.disabled = false;
+        }
     });
 });

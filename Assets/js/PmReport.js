@@ -1,27 +1,25 @@
+/** PM Maintenance Record (Form3): preserve explicit generate and download actions. */
 Workflows.register('PmReport', (root, options, context) => {
     const byId = id => root.querySelector('[data-id="' + id + '"], [id="' + id + '"]');
     const fetch = context.fetch;
-    const setInterval = context.setInterval;
-    const setTimeout = context.setTimeout;
-    'use strict';
 
-    const config = options;
     const button = byId('pmGenerate');
     const status = byId('pmStatus');
     const download = byId('pmDownload');
 
     button?.addEventListener('click', generate);
 
+    // Request the report only when the user explicitly selects Generate.
     async function generate() {
         setStatus('Generating report...', 'busy');
         button.disabled = true;
         download.hidden = true;
 
         const query = new URLSearchParams({
-            process: config.process ?? '',
-            bmId: String(config.bmId ?? ''),
-            timeOfRequest: config.timeOfRequest ?? '',
-            machineNo: config.machineNo ?? '',
+            process: options.process ?? '',
+            bmId: String(options.bmId ?? ''),
+            timeOfRequest: options.timeOfRequest ?? '',
+            machineNo: options.machineNo ?? '',
             format: byId('outputFormat').value
         });
 
