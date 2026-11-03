@@ -3,8 +3,13 @@ Workflows.register('BmReport', (root, options, context) => {
     const status = root.querySelector('[data-id="reportStatus"]');
     const button = root.querySelector('[data-id="btnDownload"]');
     const download = root.querySelector('[data-id="reportDownload"]');
+    const previewPanel = root.querySelector('[data-id="pdfPreviewPanel"]');
+    const previewFrame = root.querySelector('[data-id="pdfPreviewFrame"]');
     let downloadUrl = null;
-    context.signal.addEventListener('abort', () => { if (downloadUrl) URL.revokeObjectURL(downloadUrl); }, { once: true });
+    context.signal.addEventListener('abort', () => {
+        previewFrame.removeAttribute('src');
+        if (downloadUrl) URL.revokeObjectURL(downloadUrl);
+    }, { once: true });
     form.addEventListener('submit', async event => {
         event.preventDefault();
         button.disabled = true;
@@ -12,6 +17,8 @@ Workflows.register('BmReport', (root, options, context) => {
         status.textContent = 'Generating report…';
         status.hidden = false;
         download.hidden = true;
+        previewFrame.removeAttribute('src');
+        previewPanel.hidden = true;
         try {
             const response = await context.fetch(form.action, { method: 'POST', body: new FormData(form) });
             const type = response.headers.get('content-type') || '';
@@ -29,7 +36,13 @@ Workflows.register('BmReport', (root, options, context) => {
             download.download = utf8 ? decodeURIComponent(utf8[1]) : (plain?.[1] || `BM_${options.bmId}.${form.elements.format.value}`);
             download.textContent = `Download ${download.download}`;
             download.hidden = false;
-            status.textContent = 'Report ready. Select Download to save it.';
+            if (type.includes('application/pdf')) {
+                previewFrame.src = downloadUrl;
+                previewPanel.hidden = false;
+                status.textContent = 'PDF ready. Preview below or select Download to save it.';
+            } else {
+                status.textContent = 'Report ready. Select Download to save it.';
+            }
         } catch (error) {
             status.textContent = error.message;
             status.classList.add('status-error');
