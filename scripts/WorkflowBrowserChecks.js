@@ -80,10 +80,10 @@
         }
         if (url.pathname === '/OcapViewer') return json({ rows:[{checkItem:'TEST: Safety interlock',checkingMethod:'Fixture check',treatmentAction:'Fixture action',judgement:'OK',remarks:'Test data only'}] });
         if (url.pathname === '/RawData') return json({ frequencyTable:[{frequency:'2x',dateLabel:'Oct 2026',total:2}],bmCaseTable:[{bmCase:'TEST: Sensor Fault',dateMonth:'October',dateYear:2026,bmCount:2}],frequencyChart:[{name:'2x',points:[{label:'Oct 2026',value:2}]}],bmCaseChart:[{name:'TEST: Sensor Fault',points:[{label:'Oct 2026',value:2}]}] });
-        if (url.pathname === '/PmReport') return json({ success:true,downloadUrl:'data:application/octet-stream;base64,VEVTVA==',fileName:`TEST.${url.searchParams.get('format')||'xlsx'}` });
+        if (url.pathname === '/PmReport') return json({ success:true,downloadUrl:'about:blank#TEST',fileName:`TEST.${url.searchParams.get('format')||'xlsx'}` });
         if (url.pathname === '/EvidenceMaking') return json({ fileName:`TEST.${JSON.parse(options.body).format||'xlsx'}`, downloadUrl:'about:blank#TEST' });
-        if (url.pathname === '/TeEvidenceMaking') return new Response(JSON.stringify({success:true}), {headers:{'content-type':'application/json'}});
-        if (url.pathname === '/BmReport') return new Response('TEST', { headers:{'content-type':options.body.get('format')==='pdf'?'application/pdf':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'} });
+        if (url.pathname === '/TeEvidenceMaking') return new Response(JSON.stringify({success:true,url:`about:blank#TE_${url.searchParams.get('format')||'xlsx'}`}), {headers:{'content-type':'application/json'}});
+        if (url.pathname === '/BmReport') return new Response('TEST', { headers:{'content-type':options.body.get('format')==='pdf'?'application/pdf':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','content-disposition':`attachment; filename="TE_123.${options.body.get('format')}"`} });
         throw new Error(`Unmocked handler ${url}`);
     };
     async function open(name, values = query) {
@@ -398,6 +398,18 @@
             const currentDownloadStyle = JSON.stringify(styleValues(link, ['backgroundColor','color','padding','minHeight','textDecorationLine']));
             if (downloadStyle===null) downloadStyle=currentDownloadStyle;
             assert(currentDownloadStyle===downloadStyle, `${flow.name} download styling differs from R/E`);
+            const status = root.querySelector('.status-area .status-msg');
+            const panel = root.querySelector('.preview-panel');
+            const toolbarFile = panel.querySelector('.preview-filename');
+            const frame = panel.querySelector('.preview-frame');
+            assert(!panel.classList.contains('is-hidden'), `${flow.name} did not open the preview toolbar`);
+            assert(status.classList.contains('status-success') && getComputedStyle(status).color==='rgb(0, 107, 0)', `${flow.name} lost the green success status`);
+            assert(status.textContent===`Evidence generated: ${link.download}`, `${flow.name} generated-file message is incorrect`);
+            assert(toolbarFile.textContent===link.download, `${flow.name} preview filename differs from the download filename`);
+            assert(toolbarFile.getBoundingClientRect().left < link.getBoundingClientRect().left,
+                `${flow.name} filename/download toolbar alignment changed`);
+            assert(frame.classList.contains('is-hidden') && !frame.getAttribute('src'),
+                `${flow.name} Excel must show only the filename and Download toolbar`);
             if (flow.name==='EvidenceMaking') {
                 const payload = JSON.parse(requests.filter(request => request.path==='/EvidenceMaking').at(-1).body);
                 assert(payload.process==='DC' && payload.bmId===123, 'Evidence generation did not use the clicked record');
@@ -410,6 +422,15 @@
             const submittedFormat = flow.name==='EvidenceMaking' ? JSON.parse(request.body).format : flow.name==='BmReport' ? request.body.get('format') : request.query.format;
             assert(submittedFormat==='pdf', `${flow.name} lost the selected PDF format`);
             assert(link.download.endsWith('.pdf') || link.textContent.includes('.pdf'), `${flow.name} download still identifies PDF as Excel`);
+            assert(status.classList.contains('status-success') && status.textContent===`Evidence generated: ${link.download}`,
+                `${flow.name} PDF success status and filename differ from PM evidence`);
+            assert(toolbarFile.textContent===link.download && !panel.classList.contains('is-hidden'),
+                `${flow.name} PDF preview toolbar did not display the generated filename`);
+            assert(!frame.classList.contains('is-hidden') && frame.getAttribute('src'),
+                `${flow.name} PDF preview iframe is not visible`);
+            if (flow.name==='PmReport' || flow.name==='TeEvidenceMaking') {
+                assert(frame.src.includes('inline=true'), `${flow.name} PDF iframe would download instead of previewing`);
+            }
             assert(downloadClicks===0, `${flow.name} PDF generation downloaded automatically`);
         }
         Workflows.close();
