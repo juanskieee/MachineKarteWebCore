@@ -14,9 +14,11 @@ public class TeEvidenceMakingService
     public TeEvidenceMakingService(TeEvidenceRepository repo, IConfiguration config, IWebHostEnvironment env)
         => (_repo, _config, _env) = (repo, config, env);
 
-    public async Task<string> GenerateAsync(string bmId, CancellationToken cancellationToken = default, string format = "xlsx")
+    public async Task<string> GenerateAsync(string bmId, string process,
+        CancellationToken cancellationToken = default, string format = "xlsx")
     {
         format = LegacyReportExport.NormalizeFormat(format);
+        process = LegacyReportExport.NormalizeProcess(process);
         if (!int.TryParse(bmId, out var id) || id <= 0) throw new ArgumentException("A valid BM ID is required.");
         var headerTask = MonitoringQueryBatch.RunAsync(() => _repo.GetHeaderAsync(bmId, cancellationToken), cancellationToken);
         var assignTask = MonitoringQueryBatch.RunAsync(() => _repo.GetTEAssignAsync(bmId, cancellationToken), cancellationToken);
@@ -29,16 +31,15 @@ public class TeEvidenceMakingService
         cancellationToken.ThrowIfCancellationRequested();
         var header = await headerTask ?? throw new InvalidDataException($"No TE machine data found for BM ID {id}.");
         header.TEAssign = await assignTask;
-        var workbook = LegacyReportExport.Load(Path.Combine(_env.ContentRootPath, "Templates", "BmReport", "CWC.xlsx"));
+        var workbook = LegacyReportExport.Load(Path.Combine(_env.ContentRootPath, "Templates", "EvidenceMaking", "CWC FILES", "CWC.xlsx"));
         PopulateWorkbook(workbook, header, await descriptionsTask, await imagesTask, await telekoTask, await qualityTask,
             LegacyReportExport.ImageRoot(_env, true),
             LegacyReportExport.LegacyEvidenceRoot(_config, true), await miscTask,
             LegacyReportExport.SharedEvidenceRoot(_config));
-        var directory = _config["EvidenceMaking:OutputRoot"] ?? Path.Combine(_env.ContentRootPath, "TempData", "GeneratedPdf");
-        Directory.CreateDirectory(directory);
         var fileName = $"TE_Evidence_{id}.{format}";
-        await File.WriteAllBytesAsync(Path.Combine(directory, fileName), LegacyReportExport.Save(workbook, format), cancellationToken);
-        return $"/TeEvidenceMaking?handler=Download&bmId={id}&format={format}";
+        await LegacyReportExport.SaveReportAsync(_config, true, process, fileName,
+            LegacyReportExport.Save(workbook, format), cancellationToken);
+        return $"/TeEvidenceMaking?handler=Download&process={process}&bmId={id}&format={format}";
     }
 
     public static void PopulateWorkbook(ExcelFile workbook, TeEvidenceHeader header,
@@ -48,12 +49,12 @@ public class TeEvidenceMakingService
     {
         // Fail explicitly when a record requires a sheet absent from the supplied template.
         // Never silently discard board connectors or quality-condition data.
-        if (workbook.Worksheets.Count < 2 && images.Any(image => image.Category == "TEST BOARD" &&
+        if (!workbook.Worksheets.Any(sheet => sheet.Name == "TESTBOARD") && images.Any(image => image.Category == "TEST BOARD" &&
             image.CN is "CN5" or "CN6" or "CN7" or "CN8"))
-            throw new InvalidDataException("CWC.xlsx has no second worksheet required by this record's CN5-CN8 test-board evidence.");
-        if (workbook.Worksheets.Count < 3 && (quality.Count > 0 ||
+            throw new InvalidDataException("CWC.xlsx has no TESTBOARD worksheet required by this record's CN5-CN8 test-board evidence.");
+        if (!workbook.Worksheets.Any(sheet => sheet.Name == "DATASHEET") && (quality.Count > 0 ||
             descriptions.Any(row => row.Category is "BEFORE QUALITY CONDITION" or "AFTER QUALITY CONDITION" or "IDEAL QUALITY CONDITION")))
-            throw new InvalidDataException("CWC.xlsx has no third worksheet required by this record's quality-condition evidence.");
+            throw new InvalidDataException("CWC.xlsx has no DATASHEET worksheet required by this record's quality-condition evidence.");
         IList<IDictionary<string, object>> Rows(IEnumerable<Dictionary<string, object>> source)
             => source.Cast<IDictionary<string, object>>().ToList();
         string Image(string path) => LegacyReportExport.ResolveEvidenceImage(path, legacySystemRoot, imageRoot,

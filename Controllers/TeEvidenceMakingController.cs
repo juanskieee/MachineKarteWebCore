@@ -18,12 +18,12 @@ namespace MachineKarte.Web.Controllers
     public class TeEvidenceMakingController : WorkflowController
     {
         private readonly TeEvidenceMakingService _svc;
-        private readonly string _outputRoot;
+        private readonly IConfiguration _config;
 
         public TeEvidenceMakingController(TeEvidenceMakingService svc, IConfiguration cfg)
         {
             _svc = svc;
-            _outputRoot = cfg["EvidenceMaking:OutputRoot"] ?? "TempData/GeneratedPdf";
+            _config = cfg;
         }
 
         [HttpGet, WorkflowHandler]
@@ -33,14 +33,14 @@ namespace MachineKarte.Web.Controllers
         // GET /TeEvidenceMaking?handler=Generate&bmId=12345
 
         [HttpGet, WorkflowHandler("Generate")]
-        public async Task<IActionResult> GenerateAsync(string bmId, string format = "xlsx")
+        public async Task<IActionResult> GenerateAsync(string bmId, string format = "xlsx", string process = "")
         {
             if (string.IsNullOrWhiteSpace(bmId))
                 return new JsonResult(new { success = false, message = "bmId is required." });
 
             try
             {
-                string fileUrl = await _svc.GenerateAsync(bmId, HttpContext.RequestAborted, format);
+                string fileUrl = await _svc.GenerateAsync(bmId, process, HttpContext.RequestAborted, format);
                 return new JsonResult(new { success = true, url = fileUrl });
             }
             catch (Exception ex) when (ex is not OperationCanceledException || !HttpContext.RequestAborted.IsCancellationRequested)
@@ -53,7 +53,7 @@ namespace MachineKarte.Web.Controllers
         // GET /TeEvidenceMaking?handler=Download&bmId=12345
 
         [HttpGet, WorkflowHandler("Download")]
-        public IActionResult Download(string bmId, string format = "xlsx", bool inline = false)
+        public IActionResult Download(string bmId, string format = "xlsx", bool inline = false, string process = "")
         {
             if (string.IsNullOrWhiteSpace(bmId))
                 return BadRequest("bmId required.");
@@ -61,7 +61,9 @@ namespace MachineKarte.Web.Controllers
             if (!int.TryParse(bmId, out var id) || id <= 0 || format is not ("xlsx" or "pdf"))
                 return BadRequest("Invalid evidence file request.");
             string fileName = $"TE_Evidence_{id}.{format}";
-            string path = Path.Combine(_outputRoot, fileName);
+            string path;
+            try { path = LegacyReportExport.ReportPath(_config, true, process, fileName); }
+            catch (ArgumentException ex) { return BadRequest(ex.Message); }
 
             if (!System.IO.File.Exists(path))
                 return NotFound($"Evidence file for BM {bmId} has not been generated yet.");

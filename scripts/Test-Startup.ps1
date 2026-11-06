@@ -26,6 +26,9 @@ $start.EnvironmentVariables['ASPNETCORE_ENVIRONMENT'] = 'Development'
 $start.EnvironmentVariables['Logging__EventLog__LogLevel__Default'] = 'None'
 $start.EnvironmentVariables['Logging__LogLevel__Microsoft.Hosting.Lifetime'] = 'Information'
 $start.EnvironmentVariables['ConnectionStrings__DBConnection'] = "Server=tcp:127.0.0.1,$sqlPort;Database=StartupChecks;Integrated Security=true;Encrypt=false;Connect Timeout=8;Connect Retry Count=0;Max Pool Size=1"
+$reportRoot = Join-Path $env:TEMP ('MachineKarte-Startup-Reports-' + [Guid]::NewGuid().ToString('N'))
+$start.EnvironmentVariables['ReportOutput__PmTempRoot'] = Join-Path $reportRoot 'PM'
+$start.EnvironmentVariables['ReportOutput__TeTempRoot'] = Join-Path $reportRoot 'TE'
 $testApp = New-Object Diagnostics.Process
 $testApp.StartInfo = $start
 $handler = New-Object Net.Http.HttpClientHandler
@@ -60,9 +63,8 @@ try {
         } else { Start-Sleep -Milliseconds 25 }
     }
     Require $ready 'Test app did not start within 45 seconds.'
-    # The first launch must work even if the Git checkout has no output directory.
-    $generatedReports = Join-Path $repo 'TempData/GeneratedPdf'
-    Require (Test-Path -LiteralPath $generatedReports -PathType Container) 'Startup did not create the generated-report directory.'
+    # Report shares are opened only on generation/download, never during startup.
+    Require (!(Test-Path -LiteralPath $reportRoot)) 'Startup touched generated-report storage.'
     $hostMs = [Math]::Round($launch.Elapsed.TotalMilliseconds, 1)
     $first = Page
     Write-Output "MEASURE: host ready=${hostMs}ms; first Monitoring HTML=$($first.Milliseconds)ms; SQL sink timeout=8000ms. No SQL server was contacted."

@@ -106,7 +106,7 @@ namespace MachineKarte.Web.Models
     {
         public bool Success { get; set; }
         public string Message { get; set; } = string.Empty;
-        public string DownloadUrl { get; set; } = string.Empty;  // e.g. /TempData/GeneratedPdf/DCEvidence_123.pdf
+        public string DownloadUrl { get; set; } = string.Empty;  // /EvidenceMaking?handler=Download&process=DC&fileName=DCEvidence_123.pdf
         public string FileName { get; set; } = string.Empty;
     }
 

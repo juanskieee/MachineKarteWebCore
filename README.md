@@ -27,6 +27,7 @@ write to the configured database; see the database guide for test isolation.
 - [Report templates, image storage, deployment, and known gaps](Documentation/REPORTS.md)
 - [JavaScript structure and conventions](Assets/js/README.md)
 
-`TempData/` contains disposable generated output and is excluded from Git.
-The application creates `TempData/GeneratedPdf/` when needed. Report audit
-inventories default to the operating system's temporary directory.
+Generated reports use the PM/TE server `TempData\Print Out\<PROCESS>` folders;
+see the reporting guide for roots, permissions, and local test overrides.
+Local `TempData/` is excluded from Git. Audit inventories and validation artifacts
+default to the operating system's temporary directory.

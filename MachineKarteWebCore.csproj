@@ -21,7 +21,6 @@
     </None>
     <Folder Include="Assets\js\" />
     <Folder Include="Repositories\" />
-    <Folder Include="TempData\GeneratedPdf\" />
   </ItemGroup>
 
   <ItemGroup>

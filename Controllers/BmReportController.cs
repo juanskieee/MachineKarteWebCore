@@ -8,13 +8,15 @@ namespace MachineKarte.Web.Controllers
     {
         private readonly BmReportService _svc;
         private readonly ILogger<BmReportController> _log;
+        private readonly IConfiguration _config;
 
         public BmReportController(
             BmReportService svc,
-            ILogger<BmReportController> log)
+            ILogger<BmReportController> log, IConfiguration config)
         {
             _svc = svc;
             _log = log;
+            _config = config;
         }
 
         [HttpGet, WorkflowHandler]
@@ -33,9 +35,13 @@ namespace MachineKarte.Web.Controllers
         {
             try
             {
+                process = LegacyReportExport.NormalizeProcess(process);
                 var (bytes, fileName) = await _svc.GenerateAsync(
                     bmId,
-                    process ?? "TE", HttpContext.RequestAborted, format);
+                    process, HttpContext.RequestAborted, format);
+
+                await LegacyReportExport.SaveReportAsync(_config, true, process,
+                    fileName, bytes, HttpContext.RequestAborted);
 
                 return File(
                     bytes,

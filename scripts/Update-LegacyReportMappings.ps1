@@ -154,8 +154,8 @@ foreach($line in ($body -split "`r?`n")) {
     $lines.Add($line)
 }
 $body=($lines -join "`n").Replace('GetTEAssign(bmID)','teAssign')
-# The checked-in one-sheet CWC has no quality sheet. Read data is validated by
-# the caller; do not enter the old unconditional placeholder block without it.
+# Keep the quality block conditional for incomplete workbooks; the service
+# validates required named sheets before applying any mappings.
 $qualityStart=$body.IndexOf('                    Try')
 $qualityEnd=$body.IndexOf('                    Dim emDC1 As New SqlCommand')
 # SQL declarations have been removed; use the first category reader instead.
@@ -164,14 +164,16 @@ if($qualityStart -lt 0 -or $qualityEnd -lt 0) { throw 'Form10 quality section mi
 $body=$body.Substring(0,$qualityStart)+"If ws_3 IsNot Nothing Then`n"+$body.Substring($qualityStart,$qualityEnd-$qualityStart)+"End If`n"+$body.Substring($qualityEnd)
 $body=$body.Replace('ws_2.Pictures.Add(', 'AddPicture(ws_2, ').Replace('ws_3.Pictures.Add(', 'AddPicture(ws_3, ')
 [void]$output.AppendLine('Public Sub PopulateTeEvidence(wb As ExcelFile, rows As IDictionary(Of String, IList(Of IDictionary(Of String, Object))), teAssign As String)')
-[void]$output.AppendLine('Dim ws = wb.Worksheets(0)')
+[void]$output.AppendLine('Dim ws = wb.Worksheets("FORMAT")')
+[void]$output.AppendLine('wb.Worksheets.ActiveWorksheet = ws')
 [void]$output.AppendLine('ws.NamedRanges.SetPrintArea(ws.Cells.GetSubrange("A1", "Q80"))')
 [void]$output.AppendLine('ws.PrintOptions.FooterMargin = 0.1')
 [void]$output.AppendLine('ws.Cells("B77").Value = "Ideas:"')
 [void]$output.AppendLine('ws.Cells.GetSubrange("B78", "Q80").Merged = True')
 [void]$output.AppendLine('ws.Cells("B78").Style.WrapText = True')
-[void]$output.AppendLine('Dim ws_2 = If(wb.Worksheets.Count > 1, wb.Worksheets(1), Nothing)')
-[void]$output.AppendLine('Dim ws_3 = If(wb.Worksheets.Count > 2, wb.Worksheets(2), Nothing)')
+[void]$output.AppendLine('Dim ws_2 = wb.Worksheets.FirstOrDefault(Function(sheet) sheet.Name = "TESTBOARD")')
+[void]$output.AppendLine('Dim ws_3 = wb.Worksheets.FirstOrDefault(Function(sheet) sheet.Name = "DATASHEET")')
+[void]$output.AppendLine('If ws_3 IsNot Nothing Then ws_3.NamedRanges.SetPrintArea(ws_3.Cells.GetSubrange("A1", "S8"))')
 [void]$output.AppendLine('Dim strFolder As String = ""')
 [void]$output.AppendLine('Dim noImage = ImagePath("noimage.png")')
 Add-Body 'Form10' 'TE_EVIDENCE' ($body -split "`r?`n")

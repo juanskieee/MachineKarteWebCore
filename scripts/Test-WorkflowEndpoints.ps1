@@ -1,5 +1,10 @@
-param([string]$BaseUrl = 'http://127.0.0.1:5098')
+param(
+    [string]$BaseUrl = 'http://127.0.0.1:5098',
+    [string]$PmTempRoot = (Join-Path $env:TEMP 'MachineKarte-WorkflowEndpoints/PM'),
+    [string]$TeTempRoot = (Join-Path $env:TEMP 'MachineKarte-WorkflowEndpoints/TE')
+)
 # Real HTTP checks: no AJAX fixtures, SQL reads, saves, or report generation.
+# Configure the test app's ReportOutput roots to these same local folders.
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Net.Http
 $repo = Split-Path $PSScriptRoot -Parent
@@ -8,6 +13,9 @@ $handler.UseProxy = $false
 $handler.AllowAutoRedirect = $false
 $client = New-Object System.Net.Http.HttpClient($handler)
 $createdFiles = @()
+foreach ($root in @($PmTempRoot,$TeTempRoot)) {
+    if (![IO.Path]::IsPathRooted($root) -or $root.StartsWith('\\')) { throw 'Endpoint fixtures require absolute local report roots, never network shares.' }
+}
 function Require($condition, [string]$message) { if (!$condition) { throw $message } }
 function Get-Response([string]$path, [int]$status = 200) {
     $response = $client.GetAsync($BaseUrl + $path).GetAwaiter().GetResult()
@@ -74,6 +82,7 @@ try {
     Expect-Failure '/McdMonitoring?handler=MachineList&cellKey=INVALID' 'Unknown cell key'
     Expect-Failure '/PmReport?handler=Generate&process=DC&bmId=0' 'valid BM ID'
     Expect-Failure '/TeEvidenceMaking?handler=Generate' 'bmId is required'
+    Expect-Failure '/TeEvidenceMaking?handler=Generate&bmId=123&process=INVALID' 'valid report process'
     $html = Get-Html '/ActionCards?dialog=1'
     $token = [Net.WebUtility]::HtmlDecode([regex]::Match($html, 'name="__RequestVerificationToken"[^>]*value="([^"]+)"').Groups[1].Value)
     Require ($token.Length -gt 0) 'Workflow did not issue an antiforgery token.'
@@ -101,54 +110,67 @@ try {
 
     $id = Get-Random -Minimum 1000000000 -Maximum 2000000000
     $bytes = [Text.Encoding]::UTF8.GetBytes('Workflow download endpoint fixture')
-    $output = Join-Path $repo 'TempData/GeneratedPdf'
+    $teBytes = [Text.Encoding]::UTF8.GetBytes('Separate TE report output fixture')
+    $pmOutput = Join-Path $PmTempRoot 'Print Out/FT'
+    $teOutput = Join-Path $TeTempRoot 'Print Out/FT'
+    [IO.Directory]::CreateDirectory($pmOutput) | Out-Null
+    [IO.Directory]::CreateDirectory($teOutput) | Out-Null
     foreach ($format in @('xlsx','pdf')) {
       $fileName = "Workflow-Endpoint-$id.$format"
       $teFileName = "TE_Evidence_$id.$format"
       $mime = if ($format -eq 'pdf') { 'application/pdf' } else { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }
-      foreach ($name in @($fileName,$teFileName)) {
-        $path = Join-Path $output $name
-        [IO.File]::WriteAllBytes($path, $bytes)
-        $createdFiles += $path
-      }
+      $pmPath = Join-Path $pmOutput $fileName
+      $tePath = Join-Path $teOutput $teFileName
+      [IO.File]::WriteAllBytes($pmPath, $bytes)
+      [IO.File]::WriteAllBytes($tePath, $teBytes)
+      $createdFiles += @($pmPath,$tePath)
       foreach ($check in @(
-        @{path="/PmReport?handler=Download&fileName=$fileName";name=$fileName},
-        @{path="/EvidenceMaking?handler=Download&fileName=$fileName";name=$fileName},
-        @{path="/TeEvidenceMaking?handler=Download&bmId=$id&format=$format";name=$teFileName}
+        @{path="/PmReport?handler=Download&process=FT&fileName=$fileName";name=$fileName;bytes=$bytes},
+        @{path="/EvidenceMaking?handler=Download&process=FT&fileName=$fileName";name=$fileName;bytes=$bytes},
+        @{path="/TeEvidenceMaking?handler=Download&process=FT&bmId=$id&format=$format";name=$teFileName;bytes=$teBytes}
     )) {
         $response = Get-Response $check.path
         try {
             $actual = $response.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult()
-            Require ([Convert]::ToBase64String($actual) -eq [Convert]::ToBase64String($bytes)) "$($check.path) changed download bytes."
+            Require ([Convert]::ToBase64String($actual) -eq [Convert]::ToBase64String($check.bytes)) "$($check.path) changed download bytes or read the wrong system/process folder."
             Require ($response.Content.Headers.ContentType.MediaType -eq $mime) 'Download content type changed.'
             Require ($response.Content.Headers.ContentDisposition.ToString().Contains($check.name)) 'Download filename changed.'
         } finally { $response.Dispose() }
       }
       if ($format -eq 'pdf') {
-        foreach ($inlinePath in @(
-            "/PmReport?handler=Download&fileName=$fileName&inline=true",
-            "/EvidenceMaking?handler=Download&fileName=$fileName&inline=true",
-            "/TeEvidenceMaking?handler=Download&bmId=$id&format=pdf&inline=true"
+        foreach ($preview in @(
+            @{path="/PmReport?handler=Download&process=FT&fileName=$fileName&inline=true";bytes=$bytes},
+            @{path="/EvidenceMaking?handler=Download&process=FT&fileName=$fileName&inline=true";bytes=$bytes},
+            @{path="/TeEvidenceMaking?handler=Download&process=FT&bmId=$id&format=pdf&inline=true";bytes=$teBytes}
         )) {
+            $inlinePath = $preview.path
             $response = Get-Response $inlinePath
             try {
                 Require ($null -eq $response.Content.Headers.ContentDisposition) "$inlinePath forces an attachment download."
                 Require ($response.Content.Headers.ContentType.MediaType -eq 'application/pdf') "$inlinePath PDF preview MIME type changed."
                 $actual = $response.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult()
-                Require ([Convert]::ToBase64String($actual) -eq [Convert]::ToBase64String($bytes)) "$inlinePath changed inline PDF bytes."
+                Require ([Convert]::ToBase64String($actual) -eq [Convert]::ToBase64String($preview.bytes)) "$inlinePath changed inline PDF bytes."
             } finally { $response.Dispose() }
         }
       }
     }
     foreach ($name in @('PmReport','EvidenceMaking')) {
-        $response = Get-Response "/${name}?handler=Download&fileName=..%2Finvalid.xlsx" 400
+        $response = Get-Response "/${name}?handler=Download&process=FT&fileName=..%2Finvalid.xlsx" 400
         $response.Dispose()
-        $response = Get-Response "/${name}?handler=Download&fileName=Missing-$id.xlsx" 404
+        $response = Get-Response "/${name}?handler=Download&process=FT&fileName=Missing-$id.xlsx" 404
+        $response.Dispose()
+        $response = Get-Response "/${name}?handler=Download&process=..%2FFT&fileName=Missing-$id.xlsx" 400
+        $response.Dispose()
+        $response = Get-Response "/${name}?handler=Download&process=DB&fileName=$fileName" 404
         $response.Dispose()
     }
     $response = Get-Response '/TeEvidenceMaking?handler=Download' 400
     $response.Dispose()
-    Write-Output 'PASS: all three download routes stream exact Excel/PDF bytes, MIME types and filenames; all three PDF preview routes stay inline and missing/invalid file validation is retained.'
+    $response = Get-Response "/TeEvidenceMaking?handler=Download&process=DB&bmId=$id&format=pdf" 404
+    $response.Dispose()
+    $response = Get-Response '/TempData/GeneratedPdf/anything.pdf' 404
+    $response.Dispose()
+    Write-Output 'PASS: separate PM/TE process folders, exact Excel/PDF streams, inline previews, path validation and no public TempData static-file route.'
 } finally {
     foreach ($path in $createdFiles) { Remove-Item -LiteralPath $path }
     $client.Dispose()

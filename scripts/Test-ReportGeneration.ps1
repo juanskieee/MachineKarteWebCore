@@ -94,6 +94,30 @@ Require(LegacyReportExport.LegacyEvidenceRoot(serverConfig,false)==@"\\test-file
     "Web server path mapping diverged from Form4/Form10");
 Console.WriteLine("PASS: PM/TE and shared archive roots, absolute/relative paths, collisions, Form10 tilde, placeholders and path boundaries.");
 
+// Verify network path construction without connecting to the file server.
+Require(LegacyReportExport.ReportPath(serverConfig,false,"DB","DB_123.pdf")==@"\\test-file-server\eMaintenanceSystem\TempData\Print Out\DB\DB_123.pdf" &&
+        LegacyReportExport.ReportPath(serverConfig,true,"WB","TE_Evidence_123.xlsx")==@"\\test-file-server\TEeMaintenanceSystem\TempData\Print Out\WB\TE_Evidence_123.xlsx",
+    "Reports do not resolve to separate PM/TE TempData/Print Out/process folders");
+var storageConfig=new Microsoft.Extensions.Configuration.ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string,string?> {
+ ["ReportOutput:PmTempRoot"]=Path.Combine(output,"report-storage","PM"),
+ ["ReportOutput:TeTempRoot"]=Path.Combine(output,"report-storage","TE") }).Build();
+foreach(var te in new[]{false,true})foreach(var process in new[]{"DC","DB","WB","MP","PL","FT","FL","TP","SING","MEMS","EDS","ATC"})foreach(var format in new[]{"pdf","xlsx"}) {
+ var name="PATH-FIXTURE."+format;
+ var payload=Encoding.UTF8.GetBytes($"{te}:{process}:{format}");
+ await LegacyReportExport.SaveReportAsync(storageConfig,te,process,name,payload);
+ var path=LegacyReportExport.ReportPath(storageConfig,te,process.ToLowerInvariant(),name);
+ Require(File.ReadAllBytes(path).SequenceEqual(payload),"Report generation and download paths disagree");
+}
+foreach(var process in new[]{"", "../DB", @"DB\WB", "UNKNOWN"}) {
+ try { LegacyReportExport.ReportPath(storageConfig,false,process,"test.pdf"); throw new Exception("Invalid report process accepted"); }
+ catch(ArgumentException){}
+}
+foreach(var file in new[]{"../file.pdf",@"..\file.xlsx",@"C:\file.pdf",@"\\server\file.pdf","test:stream.pdf","file.exe"}) {
+ try { LegacyReportExport.ReportPath(storageConfig,true,"FT",file); throw new Exception("Invalid report filename accepted"); }
+ catch(ArgumentException){}
+}
+Console.WriteLine("PASS: isolated PM/TE report writes and reads for all twelve process folders, both formats, and rejected path escapes.");
+
 var date=new DateTime(2026,10,1,10,0,0);
 Dictionary<string,object> Record(string profile){
  var record=LegacyReportWriter.RequiredFields(profile).ToDictionary(field=>field,field=>(object)"",StringComparer.OrdinalIgnoreCase);
@@ -295,7 +319,8 @@ EvidenceMakingService.PopulateWorkbook(uploadedEvidence,"DC",header,new(),groups
 Require(ContainsPhoto(uploadedEvidence,pmImage)&&ContainsPhoto(uploadedEvidence,archivedImage),
     "Form4 workbook did not embed the actual PM and historical archive photos");
 Save(uploadedEvidence,"E-UPLOADED-PHOTOS");
-var cwc=LegacyReportExport.Load(Path.Combine(root,"Templates","BmReport","CWC.xlsx"));
+var cwc=LegacyReportExport.Load(Path.Combine(root,"Templates","EvidenceMaking","CWC FILES","CWC.xlsx"));
+Require(cwc.Worksheets.Select(sheet=>sheet.Name).SequenceEqual(new[]{"FORMAT","TESTBOARD","DATASHEET"}),"The wrong CWC workbook version is selected");
 var teHeader=new TeEvidenceHeader{MCNo="FIXTURE-MC",TesterNo="FIXTURE-TE",StartOfRepair="10/01/2026 10:20:00",EndOfRepair="10/01/2026 10:50:00",TEAssign="TE1",Ideas="IDEA",TelekoCheckingData="1,2,3,4|5,6,7,8|9,10,11,12|13,14,15,16|17,18,19,20"};
 var teCategories=new[]{"PHENOMENON","MACHINE COUNTER AND VISUAL BIN","PROGRAM LOADED","TEST CABLE","OTHER EVIDENCE"};
 var tePhotos=new List<TeEvidenceImage>();
@@ -320,19 +345,33 @@ var pictures=cwc.Worksheets[0].Pictures;
 Require(pictures.Any(p=>p.Position!.From!.Row.Index==48&&p.Position!.From!.Column.Index==1)&&pictures.Any(p=>p.Position!.From!.Row.Index==44&&p.Position!.From!.Column.Index==9),"CN3-before/CN1-after was mapped by list position instead of connector code");
 foreach(var column in new[]{7,9,12,14}) Require(pictures.Any(p=>p.Position!.From!.Row.Index==69&&p.Position!.From!.Column.Index==column&&p.Position.GetWidth(LengthUnit.Inch)<=1.54+0.001&&p.Position.GetHeight(LengthUnit.Inch)<=1.4+0.001&&p.Position.Mode==PositioningMode.MoveAndSize),"Teleko anchor/containment changed");
 Save(cwc,"TE-EVIDENCE",true);
-try{TeEvidenceMakingService.PopulateWorkbook(cwc,teHeader,new(),new(){new(){Category="TEST BOARD",CN="CN5"}},new(),new(),Images(true),Images(true));throw new Exception("Missing connector sheet was ignored");}
-catch(InvalidDataException ex)when(ex.Message.Contains("second worksheet")){}
-try{TeEvidenceMakingService.PopulateWorkbook(cwc,teHeader,new(),new(),new(),new(){new(){Category="BEFORE QUALITY CONDITION"}},Images(true),Images(true));throw new Exception("Missing quality sheet was ignored");}
-catch(InvalidDataException ex)when(ex.Message.Contains("third worksheet")){}
-// Test-only sheets exercise quality-image resolution without changing CWC.xlsx.
-var qualityBook=LegacyReportExport.Load(Path.Combine(root,"Templates","BmReport","CWC.xlsx"));
-qualityBook.Worksheets.Add("Test connectors"); qualityBook.Worksheets.Add("Test quality");
-TeEvidenceMakingService.PopulateWorkbook(qualityBook,teHeader,new(),new(),new(),
-    new(){new(){Category="BEFORE QUALITY CONDITION",ImgFile=@"~\Upload\Evidence\2020\photo.png"}},
+var incomplete=new ExcelFile(); incomplete.Worksheets.AddCopy("FORMAT",cwc.Worksheets["FORMAT"]);
+try{TeEvidenceMakingService.PopulateWorkbook(incomplete,teHeader,new(),new(){new(){Category="TEST BOARD",CN="CN5"}},new(),new(),Images(true),Images(true));throw new Exception("Missing connector sheet was ignored");}
+catch(InvalidDataException ex)when(ex.Message.Contains("TESTBOARD")){}
+try{TeEvidenceMakingService.PopulateWorkbook(incomplete,teHeader,new(),new(),new(),new(){new(){Category="BEFORE QUALITY CONDITION"}},Images(true),Images(true));throw new Exception("Missing quality sheet was ignored");}
+catch(InvalidDataException ex)when(ex.Message.Contains("DATASHEET")){}
+// Exercise the supplied connector and quality sheets, deliberately reordered.
+var qualityBook=LegacyReportExport.Load(Path.Combine(root,"Templates","EvidenceMaking","CWC FILES","CWC.xlsx"));
+var reordered=new ExcelFile();
+foreach(var name in new[]{"DATASHEET","FORMAT","TESTBOARD"})reordered.Worksheets.AddCopy(name,qualityBook.Worksheets[name]);
+qualityBook=reordered;
+var connectors=new List<TeEvidenceImage>();
+foreach(var condition in new[]{"BEFORE","AFTER"})for(var number=5;number<=8;number++)
+ connectors.Add(new(){Category="TEST BOARD",Condition=condition,CN="CN"+number,ImgFile=@"~\Upload\Evidence\2020\photo.png"});
+var qualityCategories=new[]{"BEFORE QUALITY CONDITION","AFTER QUALITY CONDITION","IDEAL QUALITY CONDITION"};
+var qualityDescriptions=qualityCategories.Select((category,index)=>new TeEvidenceCategoryDesc{Category=category,Condition=index==0?"BEFORE":"AFTER",Desc="QUALITY-"+index}).ToList();
+TeEvidenceMakingService.PopulateWorkbook(qualityBook,teHeader,qualityDescriptions,connectors,new(),
+    qualityCategories.Select(category=>new QualityConditionImage{Category=category,ImgFile=@"~\Upload\Evidence\2020\photo.png"}).ToList(),
     Images(true),teLegacyShare,sharedEvidenceRoot:sharedArchive);
-var qualityPictures=new ExcelFile(); qualityPictures.Worksheets.AddCopy("Quality",qualityBook.Worksheets[2]);
+var qualityPictures=new ExcelFile(); qualityPictures.Worksheets.AddCopy("Quality",qualityBook.Worksheets["DATASHEET"]);
 Require(ContainsPhoto(qualityPictures,archivedImage),"Quality-condition sheet did not embed the shared evidence photo");
-Console.WriteLine("PASS: TE QC/time fields, connector/Teleko placement and explicit missing-sheet errors.");
+var boardPictures=new ExcelFile(); boardPictures.Worksheets.AddCopy("Board",qualityBook.Worksheets["TESTBOARD"]);
+foreach(var cell in new[]{"A3","C3","A7","C7","G3","I3","G7","I7"})PhotoAt(boardPictures,cell,archivedImage);
+foreach(var cell in new[]{"F3","K3","P3"})PhotoAt(qualityPictures,cell,archivedImage);
+foreach(var pair in new[]{("E7","QUALITY-0"),("J7","QUALITY-1"),("O7","QUALITY-2")})
+ Require(qualityBook.Worksheets["DATASHEET"].Cells[pair.Item1].StringValue==pair.Item2,"Quality description mapped to the wrong sheet/cell");
+Save(qualityBook,"TE-EVIDENCE-QUALITY");
+Console.WriteLine("PASS: actual CWC CN5-CN8/quality sheets, named routing after sheet reordering, QC/time, Teleko and explicit missing-sheet errors.");
 Console.WriteLine("Report artifacts: "+output);
 '@ | Set-Content -Encoding UTF8 (Join-Path $directory 'Program.cs')
 & $Dotnet build (Join-Path $directory 'Checks.csproj') --nologo -v minimal -r win-x64 --self-contained false --property:UseAppHost=false -m:1 --nodeReuse:false --property:NuGetAudit=false --property:UseSharedCompilation=false

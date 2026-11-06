@@ -8,11 +8,13 @@ public sealed class PmReportController : WorkflowController
 {
     private readonly PmReportService _service;
     private readonly ILogger<PmReportController> _logger;
+    private readonly IConfiguration _config;
 
-    public PmReportController(PmReportService service, ILogger<PmReportController> logger)
+    public PmReportController(PmReportService service, ILogger<PmReportController> logger, IConfiguration config)
     {
         _service = service;
         _logger = logger;
+        _config = config;
     }
 
     [HttpGet, WorkflowHandler]
@@ -44,19 +46,11 @@ public sealed class PmReportController : WorkflowController
     }
 
     [HttpGet, WorkflowHandler("Download")]
-    public IActionResult Download(string fileName, bool inline = false)
+    public IActionResult Download(string fileName, bool inline = false, string process = "")
     {
-        if (string.IsNullOrWhiteSpace(fileName) ||
-            fileName.Contains("..", StringComparison.Ordinal) ||
-            Path.IsPathRooted(fileName) ||
-            !(fileName.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase) || fileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase)))
-            return BadRequest("Invalid report file name.");
-
-        var path = Path.Combine(
-            HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>().ContentRootPath,
-            "TempData",
-            "GeneratedPdf",
-            Path.GetFileName(fileName));
+        string path;
+        try { path = LegacyReportExport.ReportPath(_config, false, process, fileName); }
+        catch (ArgumentException ex) { return BadRequest(ex.Message); }
 
         if (!System.IO.File.Exists(path))
             return NotFound("Report file not found.");

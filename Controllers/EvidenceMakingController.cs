@@ -3,6 +3,7 @@
 
 using Microsoft.AspNetCore.Mvc;
 using MachineKarte.Web.Models;
+using MachineKarte.Web.Services;
 using MachineKarte.Web.Services.Reporting;
 
 namespace MachineKarte.Web.Controllers
@@ -11,13 +12,15 @@ namespace MachineKarte.Web.Controllers
     {
         private readonly EvidenceMakingService _svc;
         private readonly ILogger<EvidenceMakingController> _logger;
+        private readonly IConfiguration _config;
 
         public EvidenceMakingController(
             EvidenceMakingService svc,
-            ILogger<EvidenceMakingController> logger)
+            ILogger<EvidenceMakingController> logger, IConfiguration config)
         {
             _svc = svc;
             _logger = logger;
+            _config = config;
         }
 
         // ── GET ──────────────────────────────────────────────────────
@@ -85,17 +88,11 @@ namespace MachineKarte.Web.Controllers
         // GET /EvidenceMaking?handler=Download&fileName=DCEvidence_123.xlsx
 
         [HttpGet, WorkflowHandler("Download")]
-        public IActionResult Download(string fileName, bool inline = false)
+        public IActionResult Download(string fileName, bool inline = false, string process = "")
         {
-            if (string.IsNullOrWhiteSpace(fileName) ||
-                fileName.Contains("..") || Path.IsPathRooted(fileName))
-                return BadRequest("Invalid file name.");
-
-            string filePath = Path.Combine(
-                HttpContext.RequestServices
-                    .GetRequiredService<IWebHostEnvironment>().ContentRootPath,
-                "TempData", "GeneratedPdf",
-                Path.GetFileName(fileName));   // GetFileName strips path traversal
+            string filePath;
+            try { filePath = LegacyReportExport.ReportPath(_config, false, process, fileName); }
+            catch (ArgumentException ex) { return BadRequest(ex.Message); }
 
             if (!System.IO.File.Exists(filePath))
                 return NotFound("File not found. Please generate it first.");

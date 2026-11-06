@@ -19,7 +19,7 @@ Workflows.register("TeEvidenceMaking", (root, options, context) => {
         }
         view.setBusy(true);
         const format = byId("outputFormat").value;
-        const query = new URLSearchParams({ bmId: options.bmId, format });
+        const query = new URLSearchParams({ bmId: options.bmId, process: options.process || "", format });
 
         try {
             const result = await context.getJson(

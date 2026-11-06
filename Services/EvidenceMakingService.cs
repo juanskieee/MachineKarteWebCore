@@ -39,13 +39,13 @@ public class EvidenceMakingService
                 LegacyReportExport.ImageRoot(_env, false), LegacyReportExport.LegacyEvidenceRoot(_config, false),
                 LegacyReportExport.SharedEvidenceRoot(_config));
             var fileName = $"{request.Process}Evidence_{request.BmId}.{format}";
-            var directory = Path.Combine(_env.ContentRootPath, "TempData", "GeneratedPdf");
-            Directory.CreateDirectory(directory);
-            await File.WriteAllBytesAsync(Path.Combine(directory, fileName), LegacyReportExport.Save(workbook, format), cancellationToken);
+            var process = LegacyReportExport.NormalizeProcess(request.Process);
+            await LegacyReportExport.SaveReportAsync(_config, false, process, fileName,
+                LegacyReportExport.Save(workbook, format), cancellationToken);
             return new EvidenceGenerateResult
             {
                 Success = true, FileName = fileName,
-                DownloadUrl = $"/EvidenceMaking?handler=Download&fileName={Uri.EscapeDataString(fileName)}"
+                DownloadUrl = $"/EvidenceMaking?handler=Download&process={process}&fileName={Uri.EscapeDataString(fileName)}"
             };
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)

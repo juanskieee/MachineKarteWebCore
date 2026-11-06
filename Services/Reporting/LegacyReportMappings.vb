@@ -6350,14 +6350,16 @@ Dim ws = wb.Worksheets("TE Template")
                             ws.PrintOptions.Portrait = True
 End Sub
 Public Sub PopulateTeEvidence(wb As ExcelFile, rows As IDictionary(Of String, IList(Of IDictionary(Of String, Object))), teAssign As String)
-Dim ws = wb.Worksheets(0)
+Dim ws = wb.Worksheets("FORMAT")
+wb.Worksheets.ActiveWorksheet = ws
 ws.NamedRanges.SetPrintArea(ws.Cells.GetSubrange("A1", "Q80"))
 ws.PrintOptions.FooterMargin = 0.1
 ws.Cells("B77").Value = "Ideas:"
 ws.Cells.GetSubrange("B78", "Q80").Merged = True
 ws.Cells("B78").Style.WrapText = True
-Dim ws_2 = If(wb.Worksheets.Count > 1, wb.Worksheets(1), Nothing)
-Dim ws_3 = If(wb.Worksheets.Count > 2, wb.Worksheets(2), Nothing)
+Dim ws_2 = wb.Worksheets.FirstOrDefault(Function(sheet) sheet.Name = "TESTBOARD")
+Dim ws_3 = wb.Worksheets.FirstOrDefault(Function(sheet) sheet.Name = "DATASHEET")
+If ws_3 IsNot Nothing Then ws_3.NamedRanges.SetPrintArea(ws_3.Cells.GetSubrange("A1", "S8"))
 Dim strFolder As String = ""
 Dim noImage = ImagePath("noimage.png")
 Dim emDRCat As New LegacyRows(rows("emDRCat"))

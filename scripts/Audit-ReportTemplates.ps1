@@ -46,7 +46,7 @@ foreach ($process in $pmFiles.Keys) {
 }
 $activeTemplates['Templates/BmReport/TETemplate.xlsx'] = 'TE'
 $activeTemplates['Templates/BmReport/EDS-CSPTemplate.xlsx'] = 'TE_EDS'
-$activeTemplates['Templates/BmReport/CWC.xlsx'] = 'PopulateTeEvidence'
+$activeTemplates['Templates/EvidenceMaking/CWC FILES/CWC.xlsx'] = 'PopulateTeEvidence'
 foreach ($file in (Get-ChildItem -LiteralPath (Join-Path $repo 'Templates') -Recurse -Filter '*.xlsx' | Sort-Object FullName)) {
     $template = $file.FullName.Substring($repo.Length + 1).Replace('\','/')
     try {$zip = [IO.Compression.ZipFile]::OpenRead($file.FullName)} catch [IO.InvalidDataException] {
@@ -148,6 +148,7 @@ for ($lineIndex=0; $lineIndex -lt $source.Length; $lineIndex++) {
     if ($line -eq 'End Sub') {$profile=''; continue}
     if (!$profile) {continue}
     if ($line -match '^(?:Dim )?(ws(?:_\d)?)\s*=.*wb.Worksheets\((\d)\)') {$sheetAlias[$Matches[1]]=$Matches[2]}
+    if ($line -match '^(?:Dim )?(ws(?:_\d)?)\s*=.*(?:wb.Worksheets\("|sheet.Name = ")([^\"]+)"') {$sheetAlias[$Matches[1]]=$Matches[2]}
     if ($line -match '^If (.*) Then(?:\s*\x27.*)?$') {$conditions.Add($Matches[1])}
     elseif ($line -match '^ElseIf (.*) Then(?:\s*\x27.*)?$') {if($conditions.Count){$conditions[$conditions.Count-1]=$Matches[1]}}
     elseif ($line -eq 'Else') {if($conditions.Count){$conditions[$conditions.Count-1]='NOT ('+$conditions[$conditions.Count-1]+')'}}
@@ -158,7 +159,7 @@ for ($lineIndex=0; $lineIndex -lt $source.Length; $lineIndex++) {
     $kind=''; $cell=''; $alias=''; $expression=''
     if($line -match 'AddEvidencePicture.*arrTeleko\(intTeleko\)') {
         foreach($telekoCell in @('H70','J70','M70','O70')) {
-            $bindings.Add([pscustomobject]@{Template='Templates/BmReport/CWC.xlsx';Profile=$profile;Sheet='FORMAT';Cell=$telekoCell;MergedRegion='';TemplateText='';Kind='Image';SourceFields='emDR_DataTeleko.TelekoEvidence';Dataset='TEBMEvidenceMaking: TOP 4 TELEKO EVIDENCE with nonempty TelekoEvidence';Expression=$line;Conditions='Reader order, four Teleko slots';GeneratedLine=$lineIndex+1;Status=''})
+            $bindings.Add([pscustomobject]@{Template='Templates/EvidenceMaking/CWC FILES/CWC.xlsx';Profile=$profile;Sheet='FORMAT';Cell=$telekoCell;MergedRegion='';TemplateText='';Kind='Image';SourceFields='emDR_DataTeleko.TelekoEvidence';Dataset='TEBMEvidenceMaking: TOP 4 TELEKO EVIDENCE with nonempty TelekoEvidence';Expression=$line;Conditions='Reader order, four Teleko slots';GeneratedLine=$lineIndex+1;Status=''})
         }
         continue
     }
@@ -181,7 +182,8 @@ for ($lineIndex=0; $lineIndex -lt $source.Length; $lineIndex++) {
             if (($conditions -contains 'ProcessGroup = "SING"' -and !$isSing) -or ($conditions -contains 'NOT (ProcessGroup = "SING")' -and $isSing)) {continue}
         }
         $templateSheets=$sheetsByTemplate[$template]
-        $index=if($sheetAlias[$alias] -eq 'Active') {(@($templateSheets | Where-Object {$_.Active}))[0]} elseif ([int]$sheetAlias[$alias] -lt $templateSheets.Count) {$templateSheets[[int]$sheetAlias[$alias]]} else {$null}
+        $sheetName=$sheetAlias[$alias]
+        $index=if($sheetName -eq 'Active') {(@($templateSheets | Where-Object {$_.Active}))[0]} elseif ($sheetName -match '^\d+$' -and [int]$sheetName -lt $templateSheets.Count) {$templateSheets[[int]$sheetName]} else {(@($templateSheets | Where-Object {$_.Name -eq $sheetName}))[0]}
         $merge=''; $label=''; $status=''
         if ($null -eq $index) {$status='Required worksheet absent'} else {
             $label=$index.Cells[$cell]; $position=Cell-Position $cell

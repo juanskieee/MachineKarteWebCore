@@ -6,6 +6,36 @@ public static class LegacyReportExport
 {
     static LegacyReportExport() => SpreadsheetInfo.SetLicense("FREE-LIMITED-KEY");
 
+    public static string NormalizeProcess(string process)
+    {
+        var value = process?.Trim().ToUpperInvariant();
+        return value is "DC" or "DB" or "WB" or "MP" or "PL" or "FT" or "FL" or "TP" or "SING" or "MEMS" or "EDS" or "ATC"
+            ? value : throw new ArgumentException("A valid report process is required.");
+    }
+
+    public static string ReportPath(IConfiguration config, bool te, string process, string fileName)
+    {
+        process = NormalizeProcess(process);
+        if (string.IsNullOrWhiteSpace(fileName) || fileName.Contains("..", StringComparison.Ordinal) ||
+            fileName.IndexOfAny(new[] { '\\', '/', ':' }) >= 0 ||
+            !(fileName.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase) || fileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase)))
+            throw new ArgumentException("Invalid report file name.");
+
+        var key = te ? "ReportOutput:TeTempRoot" : "ReportOutput:PmTempRoot";
+        var root = config[key] ?? Path.Combine(LegacyEvidenceRoot(config, te), "TempData");
+        if (!Path.IsPathFullyQualified(root)) throw new InvalidOperationException($"{key} must be an absolute path.");
+        return Path.Combine(root, "Print Out", process, fileName);
+    }
+
+    public static async Task SaveReportAsync(IConfiguration config, bool te, string process,
+        string fileName, byte[] bytes, CancellationToken cancellationToken = default)
+    {
+        var path = ReportPath(config, te, process, fileName);
+        cancellationToken.ThrowIfCancellationRequested();
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        await File.WriteAllBytesAsync(path, bytes, cancellationToken);
+    }
+
     public static string NormalizeFormat(string format) => format?.ToLowerInvariant() switch
     {
         "xlsx" => "xlsx",

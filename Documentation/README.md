@@ -161,10 +161,12 @@ recorded in the related guides.
 
 ## Temporary output
 
-`TempData/GeneratedPdf/` is created at startup and stores disposable generated
-reports. Removing its files also removes those downloads until regenerated.
-Keep source workbooks in `Templates/` and static images in `Assets/images/`.
-There is no application dependency on a `TempData/ReportAudit/` archive.
+Generated reports are stored in the separate PM/TE server
+`TempData\Print Out\<PROCESS>` folders described in [report storage](REPORTS.md#generated-report-storage).
+The application does not create a local report folder or contact those shares
+at startup. Removing generated files removes the corresponding downloads until
+regenerated. Keep source workbooks in `Templates/` and static images in
+`Assets/images/`. No `TempData/ReportAudit/` archive is required.
 
 Audit inventories, rendered review pages, browser captures, and validation logs
 belong in OS temporary storage or an explicitly chosen external output folder.

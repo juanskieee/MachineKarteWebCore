@@ -8,10 +8,12 @@ public sealed class PmReportService
 {
     private readonly PmReportRepository _repository;
     private readonly IWebHostEnvironment _environment;
+    private readonly IConfiguration _config;
     private readonly ILogger<PmReportService> _logger;
 
-    public PmReportService(PmReportRepository repository, IWebHostEnvironment environment, ILogger<PmReportService> logger)
-        => (_repository, _environment, _logger) = (repository, environment, logger);
+    public PmReportService(PmReportRepository repository, IWebHostEnvironment environment,
+        ILogger<PmReportService> logger, IConfiguration config)
+        => (_repository, _environment, _logger, _config) = (repository, environment, logger, config);
 
     public async Task<PmReportResult> GenerateAsync(PmReportRequest request, CancellationToken cancellationToken = default)
     {
@@ -34,14 +36,12 @@ public sealed class PmReportService
             writer.PopulatePm(workbook, process, data.Current.Values,
                 data.History.Select(record => (IDictionary<string, object>)record.Values).ToList());
             var bytes = LegacyReportExport.Save(workbook, format);
-            var directory = Path.Combine(_environment.ContentRootPath, "TempData", "GeneratedPdf");
-            Directory.CreateDirectory(directory);
             var fileName = $"{process}_{request.BmId}.{format}";
-            await File.WriteAllBytesAsync(Path.Combine(directory, fileName), bytes, cancellationToken);
+            await LegacyReportExport.SaveReportAsync(_config, false, process, fileName, bytes, cancellationToken);
             return new PmReportResult
             {
                 Success = true, Message = "PM report generated.", FileName = fileName,
-                DownloadUrl = $"/PmReport?handler=Download&fileName={Uri.EscapeDataString(fileName)}"
+                DownloadUrl = $"/PmReport?handler=Download&process={process}&fileName={Uri.EscapeDataString(fileName)}"
             };
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)

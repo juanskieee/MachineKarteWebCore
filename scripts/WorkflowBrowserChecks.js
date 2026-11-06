@@ -421,6 +421,7 @@
             const request = requests.filter(request=>request.path===`/${flow.name}`).at(-1);
             const submittedFormat = flow.name==='EvidenceMaking' ? JSON.parse(request.body).format : flow.name==='BmReport' ? request.body.get('format') : request.query.format;
             assert(submittedFormat==='pdf', `${flow.name} lost the selected PDF format`);
+            if (flow.name==='TeEvidenceMaking') assert(request.query.process==='FT', 'TE evidence lost the clicked process needed for its output folder');
             assert(link.download.endsWith('.pdf') || link.textContent.includes('.pdf'), `${flow.name} download still identifies PDF as Excel`);
             assert(status.classList.contains('status-success') && status.textContent===`Evidence generated: ${link.download}`,
                 `${flow.name} PDF success status and filename differ from PM evidence`);
