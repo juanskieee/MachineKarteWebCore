@@ -34,18 +34,23 @@ public class EvidenceMakingService
             var header = await headerTask;
             if (header is null) return Fail($"No machine data found for BM ID {request.BmId}");
             cancellationToken.ThrowIfCancellationRequested();
+            var images = await imagesTask;
+            var groups = new[] { images.ProblemPoint, images.ActionTaken, images.PartsReplaced, images.DisAssembly, images.QualityConfirm };
+            using var photos = await EvidenceImageCache.LoadAsync(groups.SelectMany(group => group).Select(row => row.ImageFile),
+                LegacyReportExport.LegacyEvidenceRoot(_config, false), LegacyReportExport.ImageRoot(_env, false),
+                false, LegacyReportExport.SharedEvidenceRoot(_config), cancellationToken);
             var workbook = LegacyReportExport.Load(Path.Combine(_env.ContentRootPath, "Templates", "EvidenceMaking", cfg.TemplateFile));
-            PopulateWorkbook(workbook, request.Process, header, await tscTask, await imagesTask,
+            PopulateWorkbook(workbook, request.Process, header, await tscTask, images,
                 LegacyReportExport.ImageRoot(_env, false), LegacyReportExport.LegacyEvidenceRoot(_config, false),
-                LegacyReportExport.SharedEvidenceRoot(_config));
+                LegacyReportExport.SharedEvidenceRoot(_config), photos.Paths);
             var fileName = $"{request.Process}Evidence_{request.BmId}.{format}";
             var process = LegacyReportExport.NormalizeProcess(request.Process);
-            await LegacyReportExport.SaveReportAsync(_config, false, process, fileName,
+            var storedFile = await LegacyReportExport.SaveReportAsync(_config, false, process, fileName,
                 LegacyReportExport.Save(workbook, format), cancellationToken);
             return new EvidenceGenerateResult
             {
                 Success = true, FileName = fileName,
-                DownloadUrl = $"/EvidenceMaking?handler=Download&process={process}&fileName={Uri.EscapeDataString(fileName)}"
+                DownloadUrl = $"/EvidenceMaking?handler=Download&process={process}&fileName={Uri.EscapeDataString(storedFile)}"
             };
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
@@ -57,7 +62,7 @@ public class EvidenceMakingService
 
     public static void PopulateWorkbook(ExcelFile workbook, string process, EvidenceMachineHeader h,
         TscConfirmation t, EvidenceImageGroups images, string imageRoot, string legacySystemRoot,
-        string? sharedEvidenceRoot = null)
+        string? sharedEvidenceRoot = null, IReadOnlyDictionary<string, string>? imagePaths = null)
     {
         var header = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
         {
@@ -74,7 +79,7 @@ public class EvidenceMakingService
         var flags = new[] {t.Tsc1,t.Tsc2,t.Tsc3,t.Tsc4,t.Tsc5,t.Tsc6,t.Tsc7,t.Tsc8,t.Tsc9};
         for (var i=0; i<flags.Length; i++) confirmation[$"BMEvidence_TCConfirm{i+1}"]=flags[i];
         var groups = new[] {images.ProblemPoint,images.ActionTaken,images.PartsReplaced,images.DisAssembly,images.QualityConfirm};
-        var paths = groups.Select(group => group.Select(row =>
+        var paths = groups.Select(group => group.Select(row => imagePaths is not null ? imagePaths[row.ImageFile] :
             LegacyReportExport.ResolveEvidenceImage(row.ImageFile, legacySystemRoot, imageRoot,
                 sharedEvidenceRoot: sharedEvidenceRoot)).ToArray()).ToArray();
         var descriptions = groups.Select(group => group.Select(row => row.Description).ToArray()).ToArray();

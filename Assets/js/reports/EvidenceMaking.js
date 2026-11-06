@@ -8,6 +8,7 @@ Workflows.register("EvidenceMaking", (root, options, context) => {
         statusId: "statusMsg",
         downloadId: "downloadLink",
     });
+    const history = Karte.createReportHistory(context, 'EvidenceMaking', options, view);
     const process = options.process || "";
     const bmId = Number(options.bmId);
     byId("recordProcess").textContent = process || "—";
@@ -33,6 +34,7 @@ Workflows.register("EvidenceMaking", (root, options, context) => {
             if (!result.success)
                 throw new Error(result.message || "Generation failed.");
             view.showPreview(result.data.downloadUrl, result.data.fileName);
+            history.refresh();
         } catch (error) {
             if (!context.signal.aborted)
                 view.showStatus(error.message || "Generation failed.", "error");

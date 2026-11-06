@@ -59,6 +59,10 @@ public sealed class PmReportController : WorkflowController
         // A PDF iframe must not receive Content-Disposition: attachment.
         return inline && contentType == "application/pdf"
             ? PhysicalFile(path, contentType)
-            : PhysicalFile(path, contentType, Path.GetFileName(fileName));
+            : PhysicalFile(path, contentType, LegacyReportExport.DownloadName(fileName));
     }
+
+    [HttpGet, WorkflowHandler("History")]
+    public IActionResult History(int bmId, string process = "")
+        => ReportHistory(_config, false, process, bmId, $"{process.Trim().ToUpperInvariant()}_{bmId}");
 }

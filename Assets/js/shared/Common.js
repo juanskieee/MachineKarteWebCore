@@ -121,12 +121,62 @@ window.Karte = (() => {
                 frame.classList.remove("is-hidden");
             }
             panel.classList.remove("is-hidden");
-            showStatus(`Evidence generated: ${fileName}`, "success");
+            showStatus(`File ready: ${fileName}`, "success");
         }
 
         clearPreview();
         signal.addEventListener("abort", clearPreview, { once: true });
         return { setBusy, showStatus, showPreview };
+    }
+
+    function createReportHistory(context, workflow, options, view) {
+        const status = context.byId('historyStatus');
+        const table = context.byId('historyTable');
+        const body = context.byId('historyFiles');
+        const button = context.byId('historyRefresh');
+        const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'medium' });
+        let files = [];
+        let requestId = 0;
+
+        button.addEventListener('click', refresh);
+        body.addEventListener('click', (event) => {
+            const preview = event.target.closest('[data-preview]');
+            if (!preview) return;
+            const file = files[Number(preview.dataset.preview)];
+            if (file) view.showPreview(file.downloadUrl, file.fileName);
+        });
+
+        async function refresh() {
+            const current = ++requestId;
+            button.disabled = true;
+            status.textContent = 'Loading saved files…';
+            status.className = 'status-msg';
+            try {
+                const query = new URLSearchParams({ handler: 'History', bmId: options.bmId || '', process: options.process || '' });
+                const result = await context.getJson(`/${workflow}?${query}`, { cache: 'no-store' });
+                if (context.signal.aborted || current !== requestId) return;
+                if (!result.success) throw new Error(result.message || 'Saved files could not be loaded. Try Refresh.');
+                files = result.data || [];
+                body.innerHTML = files.map((file, index) => {
+                    const date = new Date(file.generatedAtUtc);
+                    return `<tr><td>${escapeHtml(file.fileName)}</td><td><time datetime="${date.toISOString()}">${escapeHtml(dateFormat.format(date))}</time></td>` +
+                        `<td><div class="report-history-actions"><a href="${escapeHtml(file.downloadUrl)}" download="${escapeHtml(file.fileName)}" aria-label="Download ${escapeHtml(file.fileName)} from ${escapeHtml(dateFormat.format(date))}">Download</a>` +
+                        (file.fileName.toLowerCase().endsWith('.pdf') ? `<button type="button" data-preview="${index}" aria-label="Preview ${escapeHtml(file.fileName)} from ${escapeHtml(dateFormat.format(date))}">Preview</button>` : '') +
+                        '</div></td></tr>';
+                }).join('');
+                table.classList.toggle('is-hidden', files.length === 0);
+                status.textContent = files.length ? `${files.length} saved file${files.length === 1 ? '' : 's'}, newest first.` : 'No saved files for this BM card yet. Generate Excel or PDF to add one.';
+            } catch (error) {
+                if (context.signal.aborted || current !== requestId) return;
+                status.textContent = error.message || 'Saved files could not be loaded. Try Refresh.';
+                status.className = 'status-msg status-error';
+            } finally {
+                if (!context.signal.aborted && current === requestId) button.disabled = false;
+            }
+        }
+
+        refresh();
+        return { refresh };
     }
 
     return {
@@ -136,5 +186,6 @@ window.Karte = (() => {
         requestJson,
         postJson,
         createReportView,
+        createReportHistory,
     };
 })();

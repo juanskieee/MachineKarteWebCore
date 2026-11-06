@@ -60,6 +60,7 @@ function Add-Body([string]$form, [string]$profile, [string[]]$body) {
     }
     if ($profile -in @('PM_EVIDENCE','TE_EVIDENCE')) {
         $text = $text.Replace('AddPicture(', 'AddEvidencePicture(')
+        $text = $text.Replace('File.Exists(', 'PictureExists(')
     }
     if ($profile -eq 'PM_EVIDENCE') {
         # Both layouts already render the third Safety photo but omit its caption.
@@ -67,6 +68,9 @@ function Add-Body([string]$form, [string]$profile, [string[]]$body) {
         $text=$text.Replace('ws.Cells("Y10").Value = remarksData(1)', 'ws.Cells("Y10").Value = remarksData(1)'+"`n"+'ws.Cells("AD21").Value = remarksData(2)')
     }
     if ($profile -eq 'TE_EVIDENCE') {
+        # The service already resolves Form10 paths. Do not strip a literal tilde
+        # from an absolute local staging directory or a resolved upload filename.
+        $text=$text.Replace('.Replace("~", "")', '')
         $text=$text.Replace('ws.PrintOptions.BottomMargin = (0)', 'ws.PrintOptions.BottomMargin = 0.3')
     }
     [void]$output.AppendLine($text)

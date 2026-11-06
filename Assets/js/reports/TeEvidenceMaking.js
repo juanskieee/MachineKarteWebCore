@@ -8,6 +8,7 @@ Workflows.register("TeEvidenceMaking", (root, options, context) => {
         statusId: "status",
         downloadId: "download",
     });
+    const history = Karte.createReportHistory(context, 'TeEvidenceMaking', options, view);
     byId("recordProcess").textContent = options.process || "—";
     byId("recordBmId").textContent = options.bmId || "—";
     byId("btnGenerate").addEventListener("click", generate);
@@ -36,6 +37,7 @@ Workflows.register("TeEvidenceMaking", (root, options, context) => {
                 downloadUrl,
                 `TE_Evidence_${options.bmId}.${format}`,
             );
+            history.refresh();
         } catch (error) {
             if (!context.signal.aborted)
                 view.showStatus(

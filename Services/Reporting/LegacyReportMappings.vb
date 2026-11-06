@@ -4705,52 +4705,52 @@ Dim remarksData5 As String() = remarks(4)
                         ws.Cells("AA4").Value = DR("StartOfRepair").ToString 'Start Time
                         ws.Cells("AA5").Value = DR("EndOfRepair").ToString 'End Time
                         If ProcessGroup = "SING" Then
-                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData(0))), strFolder & (imagesData(0)), (noImage)), "C11", 350, 200, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(PictureExists(strFolder & (imagesData(0))), strFolder & (imagesData(0)), (noImage)), "C11", 350, 200, LengthUnit.Pixel)
                             ws.Cells("Z19").Value = remarksData(2)
 ws.Cells("B20").Value = remarksData(0)
-                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData(1))), strFolder & (imagesData(1)), (noImage)), "O11", 270, 200, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(PictureExists(strFolder & (imagesData(1))), strFolder & (imagesData(1)), (noImage)), "O11", 270, 200, LengthUnit.Pixel)
                             ws.Cells("N20").Value = remarksData(1)
-                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData(2))), strFolder & (imagesData(2)), (noImage)), "Z11", 310, 200, LengthUnit.Pixel)
-                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData2(0))), strFolder & (imagesData2(0)), (noImage)), "C27", 280, 200, LengthUnit.Pixel)
-                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData2(1))), strFolder & (imagesData2(1)), (noImage)), "L27", 285, 200, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(PictureExists(strFolder & (imagesData(2))), strFolder & (imagesData(2)), (noImage)), "Z11", 310, 200, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(PictureExists(strFolder & (imagesData2(0))), strFolder & (imagesData2(0)), (noImage)), "C27", 280, 200, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(PictureExists(strFolder & (imagesData2(1))), strFolder & (imagesData2(1)), (noImage)), "L27", 285, 200, LengthUnit.Pixel)
                             ws.Cells("B37").Value = remarksData2(0)
                             ws.Cells("K37").Value = remarksData2(1)
-                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData3(0))), strFolder & (imagesData3(0)), (noImage)), "V27", 215, 200, LengthUnit.Pixel)
-                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData3(1))), strFolder & (imagesData3(1)), (noImage)), "AD27", 225, 200, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(PictureExists(strFolder & (imagesData3(0))), strFolder & (imagesData3(0)), (noImage)), "V27", 215, 200, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(PictureExists(strFolder & (imagesData3(1))), strFolder & (imagesData3(1)), (noImage)), "AD27", 225, 200, LengthUnit.Pixel)
                             ws.Cells("U37").Value = remarksData3(0)
                             ws.Cells("AC37").Value = remarksData3(1)
-                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData4(0))), strFolder & (imagesData4(0)), (noImage)), "C47", 420, 210, LengthUnit.Pixel)
-                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData4(1))), strFolder & (imagesData4(1)), (noImage)), "T47", 350, 210, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(PictureExists(strFolder & (imagesData4(0))), strFolder & (imagesData4(0)), (noImage)), "C47", 420, 210, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(PictureExists(strFolder & (imagesData4(1))), strFolder & (imagesData4(1)), (noImage)), "T47", 350, 210, LengthUnit.Pixel)
                             ws.Cells("P46").Value = remarksData4(0)
                             ws.Cells("AH46").Value = remarksData4(1)
-                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData5(0))), strFolder & (imagesData5(0)), (noImage)), "C69", 365, 220, LengthUnit.Pixel)
-                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData5(1))), strFolder & (imagesData5(1)), (noImage)), "O69", 310, 220, LengthUnit.Pixel)
-                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData5(2))), strFolder & (imagesData5(2)), (noImage)), "AA69", 275, 220, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(PictureExists(strFolder & (imagesData5(0))), strFolder & (imagesData5(0)), (noImage)), "C69", 365, 220, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(PictureExists(strFolder & (imagesData5(1))), strFolder & (imagesData5(1)), (noImage)), "O69", 310, 220, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(PictureExists(strFolder & (imagesData5(2))), strFolder & (imagesData5(2)), (noImage)), "AA69", 275, 220, LengthUnit.Pixel)
                             ws.Cells("D82").Value = remarksData5(0)
                             ws.Cells("P82").Value = remarksData5(1)
                             ws.Cells("AB82").Value = remarksData5(2)
                         Else
-                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData(0))), strFolder & (imagesData(0)), (noImage)), "C11", 280, 240, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(PictureExists(strFolder & (imagesData(0))), strFolder & (imagesData(0)), (noImage)), "C11", 280, 240, LengthUnit.Pixel)
                             ws.Cells("K10").Value = remarksData(0)
-                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData(1))), strFolder & (imagesData(1)), (noImage)), "P11", 270, 240, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(PictureExists(strFolder & (imagesData(1))), strFolder & (imagesData(1)), (noImage)), "P11", 270, 240, LengthUnit.Pixel)
                             ws.Cells("Y10").Value = remarksData(1)
 ws.Cells("AD21").Value = remarksData(2)
-                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData(2))), strFolder & (imagesData(2)), (noImage)), "AC11", 240, 240, LengthUnit.Pixel)
-                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData2(0))), strFolder & (imagesData2(0)), (noImage)), "C26", 280, 220, LengthUnit.Pixel)
-                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData2(1))), strFolder & (imagesData2(1)), (noImage)), "L26", 285, 220, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(PictureExists(strFolder & (imagesData(2))), strFolder & (imagesData(2)), (noImage)), "AC11", 240, 240, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(PictureExists(strFolder & (imagesData2(0))), strFolder & (imagesData2(0)), (noImage)), "C26", 280, 220, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(PictureExists(strFolder & (imagesData2(1))), strFolder & (imagesData2(1)), (noImage)), "L26", 285, 220, LengthUnit.Pixel)
                             ws.Cells("B24").Value = remarksData2(0)
                             ws.Cells("K24").Value = remarksData2(1)
-                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData3(0))), strFolder & (imagesData3(0)), (noImage)), "V26", 215, 220, LengthUnit.Pixel)
-                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData3(1))), strFolder & (imagesData3(1)), (noImage)), "AD26", 225, 220, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(PictureExists(strFolder & (imagesData3(0))), strFolder & (imagesData3(0)), (noImage)), "V26", 215, 220, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(PictureExists(strFolder & (imagesData3(1))), strFolder & (imagesData3(1)), (noImage)), "AD26", 225, 220, LengthUnit.Pixel)
                             ws.Cells("U24").Value = remarksData3(0)
                             ws.Cells("AC24").Value = remarksData3(1)
-                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData4(0))), strFolder & (imagesData4(0)), (noImage)), "C46", 420, 220, LengthUnit.Pixel)
-                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData4(1))), strFolder & (imagesData4(1)), (noImage)), "T46", 350, 215, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(PictureExists(strFolder & (imagesData4(0))), strFolder & (imagesData4(0)), (noImage)), "C46", 420, 220, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(PictureExists(strFolder & (imagesData4(1))), strFolder & (imagesData4(1)), (noImage)), "T46", 350, 215, LengthUnit.Pixel)
                             ws.Cells("P45").Value = remarksData4(0)
                             ws.Cells("AH45").Value = remarksData4(1)
-                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData5(0))), strFolder & (imagesData5(0)), (noImage)), "C68", 365, 250, LengthUnit.Pixel)
-                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData5(1))), strFolder & (imagesData5(1)), (noImage)), "O68", 310, 250, LengthUnit.Pixel)
-                            AddEvidencePicture(ws, If(File.Exists(strFolder & (imagesData5(2))), strFolder & (imagesData5(2)), (noImage)), "AA68", 275, 250, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(PictureExists(strFolder & (imagesData5(0))), strFolder & (imagesData5(0)), (noImage)), "C68", 365, 250, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(PictureExists(strFolder & (imagesData5(1))), strFolder & (imagesData5(1)), (noImage)), "O68", 310, 250, LengthUnit.Pixel)
+                            AddEvidencePicture(ws, If(PictureExists(strFolder & (imagesData5(2))), strFolder & (imagesData5(2)), (noImage)), "AA68", 275, 250, LengthUnit.Pixel)
                             ws.Cells("B81").Value = remarksData5(0)
                             ws.Cells("N81").Value = remarksData5(1)
                             ws.Cells("Z81").Value = remarksData5(2)
@@ -6407,7 +6407,7 @@ Dim emDR1_QD As New LegacyRows(rows("emDR1_QD"))
                             imagesDat1_A_QD(0) = emDR1_QD("BMEvidence_ImgFile").ToString
                         Loop
                         emDR1_QD.Close()
-                        AddEvidencePicture(ws_3, If(File.Exists(strFolder & imagesDat1_A_QD(0).ToString().Replace("~", "")), strFolder & imagesDat1_A_QD(0).ToString().Replace("~", ""), (noImage)), "F3", 2.1, 1.7, LengthUnit.Inch)
+                        AddEvidencePicture(ws_3, If(PictureExists(strFolder & imagesDat1_A_QD(0).ToString()), strFolder & imagesDat1_A_QD(0).ToString(), (noImage)), "F3", 2.1, 1.7, LengthUnit.Inch)
 Dim emDR2_QD As New LegacyRows(rows("emDR2_QD"))
                         Dim imagesDat2_A_QD(5) As String
                         imagesDat2_A_QD(0) = ""
@@ -6415,7 +6415,7 @@ Dim emDR2_QD As New LegacyRows(rows("emDR2_QD"))
                             imagesDat2_A_QD(0) = emDR2_QD("BMEvidence_ImgFile").ToString
                         Loop
                         emDR2_QD.Close()
-                        AddEvidencePicture(ws_3, If(File.Exists(strFolder & imagesDat2_A_QD(0).ToString().Replace("~", "")), strFolder & imagesDat2_A_QD(0).ToString().Replace("~", ""), (noImage)), "K3", 2.1, 1.7, LengthUnit.Inch)
+                        AddEvidencePicture(ws_3, If(PictureExists(strFolder & imagesDat2_A_QD(0).ToString()), strFolder & imagesDat2_A_QD(0).ToString(), (noImage)), "K3", 2.1, 1.7, LengthUnit.Inch)
 Dim emDR3_QD As New LegacyRows(rows("emDR3_QD"))
                         Dim imagesDat3_A_QD(5) As String
                         imagesDat3_A_QD(0) = ""
@@ -6423,7 +6423,7 @@ Dim emDR3_QD As New LegacyRows(rows("emDR3_QD"))
                             imagesDat3_A_QD(0) = emDR3_QD("BMEvidence_ImgFile").ToString
                         Loop
                         emDR3_QD.Close()
-                        AddEvidencePicture(ws_3, If(File.Exists(strFolder & imagesDat3_A_QD(0).ToString().Replace("~", "")), strFolder & imagesDat3_A_QD(0).ToString().Replace("~", ""), (noImage)), "P3", 2.1, 1.7, LengthUnit.Inch)
+                        AddEvidencePicture(ws_3, If(PictureExists(strFolder & imagesDat3_A_QD(0).ToString()), strFolder & imagesDat3_A_QD(0).ToString(), (noImage)), "P3", 2.1, 1.7, LengthUnit.Inch)
                     Catch ex As Exception
                     End Try
 End If
@@ -6450,12 +6450,12 @@ Dim emDR1 As New LegacyRows(rows("emDR1"))
                         End If
                     Loop
                     emDR1.Close()
-                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat1_A(0).ToString().Replace("~", "")), strFolder & imagesDat1_A(0).ToString().Replace("~", ""), (noImage)), "B20", 1.3, 1.61, LengthUnit.Inch)
-                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat1_A(1).ToString().Replace("~", "")), strFolder & imagesDat1_A(1).ToString().Replace("~", ""), (noImage)), "D20", 1.46, 1.61, LengthUnit.Inch)
-                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat1_A(2).ToString().Replace("~", "")), strFolder & imagesDat1_A(2).ToString().Replace("~", ""), (noImage)), "F20", 1.52, 1.61, LengthUnit.Inch)
-                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat1_B(0).ToString().Replace("~", "")), strFolder & imagesDat1_B(0).Replace("~", ""), (noImage)), "J20", 1.3, 1.61, LengthUnit.Inch)
-                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat1_B(1).ToString().Replace("~", "")), strFolder & imagesDat1_B(1).Replace("~", ""), (noImage)), "L20", 1.46, 1.61, LengthUnit.Inch)
-                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat1_B(2).ToString().Replace("~", "")), strFolder & imagesDat1_B(2).Replace("~", ""), (noImage)), "N20", 1.52, 1.61, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(PictureExists(strFolder & imagesDat1_A(0).ToString()), strFolder & imagesDat1_A(0).ToString(), (noImage)), "B20", 1.3, 1.61, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(PictureExists(strFolder & imagesDat1_A(1).ToString()), strFolder & imagesDat1_A(1).ToString(), (noImage)), "D20", 1.46, 1.61, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(PictureExists(strFolder & imagesDat1_A(2).ToString()), strFolder & imagesDat1_A(2).ToString(), (noImage)), "F20", 1.52, 1.61, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(PictureExists(strFolder & imagesDat1_B(0).ToString()), strFolder & imagesDat1_B(0), (noImage)), "J20", 1.3, 1.61, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(PictureExists(strFolder & imagesDat1_B(1).ToString()), strFolder & imagesDat1_B(1), (noImage)), "L20", 1.46, 1.61, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(PictureExists(strFolder & imagesDat1_B(2).ToString()), strFolder & imagesDat1_B(2), (noImage)), "N20", 1.52, 1.61, LengthUnit.Inch)
 Dim emDR2 As New LegacyRows(rows("emDR2"))
                     Dim imagesDat2_A(4) As String
                     Dim imagesDat2_B(4) As String
@@ -6479,12 +6479,12 @@ Dim emDR2 As New LegacyRows(rows("emDR2"))
                         End If
                     Loop
                     emDR2.Close()
-                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat2_A(0).ToString().Replace("~", "")), strFolder & imagesDat2_A(0).ToString().Replace("~", ""), (noImage)), "B31", 1.29, 1.44, LengthUnit.Inch)
-                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat2_A(1).ToString().Replace("~", "")), strFolder & imagesDat2_A(1).ToString().Replace("~", ""), (noImage)), "D31", 1.44, 1.44, LengthUnit.Inch)
-                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat2_A(2).ToString().Replace("~", "")), strFolder & imagesDat2_A(2).ToString().Replace("~", ""), (noImage)), "F31", 1.48, 1.44, LengthUnit.Inch)
-                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat2_B(0).ToString().Replace("~", "")), strFolder & imagesDat2_B(0).ToString().Replace("~", ""), (noImage)), "J31", 1.27, 1.44, LengthUnit.Inch)
-                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat2_B(1).ToString().Replace("~", "")), strFolder & imagesDat2_B(1).ToString().Replace("~", ""), (noImage)), "L31", 1.48, 1.44, LengthUnit.Inch)
-                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat2_B(2).ToString().Replace("~", "")), strFolder & imagesDat2_B(2).ToString().Replace("~", ""), (noImage)), "N31", 1.52, 1.44, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(PictureExists(strFolder & imagesDat2_A(0).ToString()), strFolder & imagesDat2_A(0).ToString(), (noImage)), "B31", 1.29, 1.44, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(PictureExists(strFolder & imagesDat2_A(1).ToString()), strFolder & imagesDat2_A(1).ToString(), (noImage)), "D31", 1.44, 1.44, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(PictureExists(strFolder & imagesDat2_A(2).ToString()), strFolder & imagesDat2_A(2).ToString(), (noImage)), "F31", 1.48, 1.44, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(PictureExists(strFolder & imagesDat2_B(0).ToString()), strFolder & imagesDat2_B(0).ToString(), (noImage)), "J31", 1.27, 1.44, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(PictureExists(strFolder & imagesDat2_B(1).ToString()), strFolder & imagesDat2_B(1).ToString(), (noImage)), "L31", 1.48, 1.44, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(PictureExists(strFolder & imagesDat2_B(2).ToString()), strFolder & imagesDat2_B(2).ToString(), (noImage)), "N31", 1.52, 1.44, LengthUnit.Inch)
 Dim emDR3 As New LegacyRows(rows("emDR3"))
                     Dim imagesDat3_A(4) As String
                     Dim imagesDat3_B(4) As String
@@ -6508,53 +6508,53 @@ Dim emDR3 As New LegacyRows(rows("emDR3"))
                         End If
                     Loop
                     emDR3.Close()
-                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat3_A(0).ToString().Replace("~", "")), strFolder & imagesDat3_A(0).ToString().Replace("~", ""), (noImage)), "B36", 1.27, 1.66, LengthUnit.Inch)
-                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat3_A(1).ToString().Replace("~", "")), strFolder & imagesDat3_A(1).ToString().Replace("~", ""), (noImage)), "D36", 1.46, 1.66, LengthUnit.Inch)
-                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat3_A(2).ToString().Replace("~", "")), strFolder & imagesDat3_A(2).ToString().Replace("~", ""), (noImage)), "F36", 1.46, 1.66, LengthUnit.Inch)
-                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat3_B(0).ToString().Replace("~", "")), strFolder & imagesDat3_B(0).ToString().Replace("~", ""), (noImage)), "J36", 1.26, 1.66, LengthUnit.Inch)
-                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat3_B(1).ToString().Replace("~", "")), strFolder & imagesDat3_B(1).ToString().Replace("~", ""), (noImage)), "L36", 1.46, 1.66, LengthUnit.Inch)
-                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat3_B(2).ToString().Replace("~", "")), strFolder & imagesDat3_B(2).ToString().Replace("~", ""), (noImage)), "N36", 1.52, 1.66, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(PictureExists(strFolder & imagesDat3_A(0).ToString()), strFolder & imagesDat3_A(0).ToString(), (noImage)), "B36", 1.27, 1.66, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(PictureExists(strFolder & imagesDat3_A(1).ToString()), strFolder & imagesDat3_A(1).ToString(), (noImage)), "D36", 1.46, 1.66, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(PictureExists(strFolder & imagesDat3_A(2).ToString()), strFolder & imagesDat3_A(2).ToString(), (noImage)), "F36", 1.46, 1.66, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(PictureExists(strFolder & imagesDat3_B(0).ToString()), strFolder & imagesDat3_B(0).ToString(), (noImage)), "J36", 1.26, 1.66, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(PictureExists(strFolder & imagesDat3_B(1).ToString()), strFolder & imagesDat3_B(1).ToString(), (noImage)), "L36", 1.46, 1.66, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(PictureExists(strFolder & imagesDat3_B(2).ToString()), strFolder & imagesDat3_B(2).ToString(), (noImage)), "N36", 1.52, 1.66, LengthUnit.Inch)
 Dim emDR4 As New LegacyRows(rows("emDR4"))
                     Do While emDR4.Read
                         If (emDR4("Condition").ToString) = "BEFORE" Then
                             If (emDR4("CN").ToString) = "CN1" Then
-                                AddEvidencePicture(ws, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "B45", 1.27, 0.8, LengthUnit.Inch)
+                                AddEvidencePicture(ws, If(PictureExists(strFolder & emDR4("BMEvidence_ImgFile").ToString()), strFolder & emDR4("BMEvidence_ImgFile").ToString(), (noImage)), "B45", 1.27, 0.8, LengthUnit.Inch)
                             ElseIf (emDR4("CN").ToString) = "CN2" Then
-                                AddEvidencePicture(ws, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "D45", 1.27, 0.8, LengthUnit.Inch)
+                                AddEvidencePicture(ws, If(PictureExists(strFolder & emDR4("BMEvidence_ImgFile").ToString()), strFolder & emDR4("BMEvidence_ImgFile").ToString(), (noImage)), "D45", 1.27, 0.8, LengthUnit.Inch)
                             ElseIf (emDR4("CN").ToString) = "CN3" Then
-                                AddEvidencePicture(ws, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "B49", 1.27, 0.8, LengthUnit.Inch)
+                                AddEvidencePicture(ws, If(PictureExists(strFolder & emDR4("BMEvidence_ImgFile").ToString()), strFolder & emDR4("BMEvidence_ImgFile").ToString(), (noImage)), "B49", 1.27, 0.8, LengthUnit.Inch)
                             ElseIf (emDR4("CN").ToString) = "CN4" Then
-                                AddEvidencePicture(ws, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "D49", 1.27, 0.8, LengthUnit.Inch)
+                                AddEvidencePicture(ws, If(PictureExists(strFolder & emDR4("BMEvidence_ImgFile").ToString()), strFolder & emDR4("BMEvidence_ImgFile").ToString(), (noImage)), "D49", 1.27, 0.8, LengthUnit.Inch)
                             ElseIf (emDR4("CN").ToString) = "CN5" Then
-                                AddEvidencePicture(ws_2, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "A3", 1.26, 0.88, LengthUnit.Inch)
+                                AddEvidencePicture(ws_2, If(PictureExists(strFolder & emDR4("BMEvidence_ImgFile").ToString()), strFolder & emDR4("BMEvidence_ImgFile").ToString(), (noImage)), "A3", 1.26, 0.88, LengthUnit.Inch)
                             ElseIf (emDR4("CN").ToString) = "CN6" Then
-                                AddEvidencePicture(ws_2, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "C3", 1.26, 0.88, LengthUnit.Inch)
+                                AddEvidencePicture(ws_2, If(PictureExists(strFolder & emDR4("BMEvidence_ImgFile").ToString()), strFolder & emDR4("BMEvidence_ImgFile").ToString(), (noImage)), "C3", 1.26, 0.88, LengthUnit.Inch)
                             ElseIf (emDR4("CN").ToString) = "CN7" Then
-                                AddEvidencePicture(ws_2, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "A7", 1.26, 0.88, LengthUnit.Inch)
+                                AddEvidencePicture(ws_2, If(PictureExists(strFolder & emDR4("BMEvidence_ImgFile").ToString()), strFolder & emDR4("BMEvidence_ImgFile").ToString(), (noImage)), "A7", 1.26, 0.88, LengthUnit.Inch)
                             ElseIf (emDR4("CN").ToString) = "CN8" Then
-                                AddEvidencePicture(ws_2, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "C7", 1.26, 0.88, LengthUnit.Inch)
+                                AddEvidencePicture(ws_2, If(PictureExists(strFolder & emDR4("BMEvidence_ImgFile").ToString()), strFolder & emDR4("BMEvidence_ImgFile").ToString(), (noImage)), "C7", 1.26, 0.88, LengthUnit.Inch)
                             Else
-                                AddEvidencePicture(ws, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "F45", 1.46, 1.66, LengthUnit.Inch)
+                                AddEvidencePicture(ws, If(PictureExists(strFolder & emDR4("BMEvidence_ImgFile").ToString()), strFolder & emDR4("BMEvidence_ImgFile").ToString(), (noImage)), "F45", 1.46, 1.66, LengthUnit.Inch)
                             End If
                         Else
                             If (emDR4("CN").ToString) = "CN1" Then
-                                AddEvidencePicture(ws, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "J45", 1.27, 0.8, LengthUnit.Inch)
+                                AddEvidencePicture(ws, If(PictureExists(strFolder & emDR4("BMEvidence_ImgFile").ToString()), strFolder & emDR4("BMEvidence_ImgFile").ToString(), (noImage)), "J45", 1.27, 0.8, LengthUnit.Inch)
                             ElseIf (emDR4("CN").ToString) = "CN2" Then
-                                AddEvidencePicture(ws, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "L45", 1.27, 0.8, LengthUnit.Inch)
+                                AddEvidencePicture(ws, If(PictureExists(strFolder & emDR4("BMEvidence_ImgFile").ToString()), strFolder & emDR4("BMEvidence_ImgFile").ToString(), (noImage)), "L45", 1.27, 0.8, LengthUnit.Inch)
                             ElseIf (emDR4("CN").ToString) = "CN3" Then
-                                AddEvidencePicture(ws, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "J49", 1.27, 0.8, LengthUnit.Inch)
+                                AddEvidencePicture(ws, If(PictureExists(strFolder & emDR4("BMEvidence_ImgFile").ToString()), strFolder & emDR4("BMEvidence_ImgFile").ToString(), (noImage)), "J49", 1.27, 0.8, LengthUnit.Inch)
                             ElseIf (emDR4("CN").ToString) = "CN4" Then
-                                AddEvidencePicture(ws, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "L49", 1.27, 0.8, LengthUnit.Inch)
+                                AddEvidencePicture(ws, If(PictureExists(strFolder & emDR4("BMEvidence_ImgFile").ToString()), strFolder & emDR4("BMEvidence_ImgFile").ToString(), (noImage)), "L49", 1.27, 0.8, LengthUnit.Inch)
                             ElseIf (emDR4("CN").ToString) = "CN5" Then
-                                AddEvidencePicture(ws_2, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "G3", 1.26, 0.88, LengthUnit.Inch)
+                                AddEvidencePicture(ws_2, If(PictureExists(strFolder & emDR4("BMEvidence_ImgFile").ToString()), strFolder & emDR4("BMEvidence_ImgFile").ToString(), (noImage)), "G3", 1.26, 0.88, LengthUnit.Inch)
                             ElseIf (emDR4("CN").ToString) = "CN6" Then
-                                AddEvidencePicture(ws_2, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "I3", 1.26, 0.88, LengthUnit.Inch)
+                                AddEvidencePicture(ws_2, If(PictureExists(strFolder & emDR4("BMEvidence_ImgFile").ToString()), strFolder & emDR4("BMEvidence_ImgFile").ToString(), (noImage)), "I3", 1.26, 0.88, LengthUnit.Inch)
                             ElseIf (emDR4("CN").ToString) = "CN7" Then
-                                AddEvidencePicture(ws_2, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "G7", 1.26, 0.88, LengthUnit.Inch)
+                                AddEvidencePicture(ws_2, If(PictureExists(strFolder & emDR4("BMEvidence_ImgFile").ToString()), strFolder & emDR4("BMEvidence_ImgFile").ToString(), (noImage)), "G7", 1.26, 0.88, LengthUnit.Inch)
                             ElseIf (emDR4("CN").ToString) = "CN8" Then
-                                AddEvidencePicture(ws_2, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "I7", 1.26, 0.88, LengthUnit.Inch)
+                                AddEvidencePicture(ws_2, If(PictureExists(strFolder & emDR4("BMEvidence_ImgFile").ToString()), strFolder & emDR4("BMEvidence_ImgFile").ToString(), (noImage)), "I7", 1.26, 0.88, LengthUnit.Inch)
                             Else
-                                AddEvidencePicture(ws, If(File.Exists(strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", "")), strFolder & emDR4("BMEvidence_ImgFile").ToString().Replace("~", ""), (noImage)), "N45", 1.46, 1.66, LengthUnit.Inch)
+                                AddEvidencePicture(ws, If(PictureExists(strFolder & emDR4("BMEvidence_ImgFile").ToString()), strFolder & emDR4("BMEvidence_ImgFile").ToString(), (noImage)), "N45", 1.46, 1.66, LengthUnit.Inch)
                             End If
                         End If
                     Loop
@@ -6582,12 +6582,12 @@ Dim emDR5 As New LegacyRows(rows("emDR5"))
                         End If
                     Loop
                     emDR5.Close()
-                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat5_A(0).ToString().Replace("~", "")), strFolder & imagesDat5_A(0).ToString().Replace("~", ""), (noImage)), "B54", 1.27, 1.42, LengthUnit.Inch)
-                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat5_A(1).ToString().Replace("~", "")), strFolder & imagesDat5_A(1).ToString().Replace("~", ""), (noImage)), "D54", 1.46, 1.42, LengthUnit.Inch)
-                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat5_A(2).ToString().Replace("~", "")), strFolder & imagesDat5_A(2).ToString().Replace("~", ""), (noImage)), "F54", 1.46, 1.42, LengthUnit.Inch)
-                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat5_B(0).ToString().Replace("~", "")), strFolder & imagesDat5_B(0).ToString().Replace("~", ""), (noImage)), "J54", 1.27, 1.42, LengthUnit.Inch)
-                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat5_B(1).ToString().Replace("~", "")), strFolder & imagesDat5_B(1).ToString().Replace("~", ""), (noImage)), "L54", 1.46, 1.42, LengthUnit.Inch)
-                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat5_B(2).ToString().Replace("~", "")), strFolder & imagesDat5_B(2).ToString().Replace("~", ""), (noImage)), "N54", 1.53, 1.42, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(PictureExists(strFolder & imagesDat5_A(0).ToString()), strFolder & imagesDat5_A(0).ToString(), (noImage)), "B54", 1.27, 1.42, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(PictureExists(strFolder & imagesDat5_A(1).ToString()), strFolder & imagesDat5_A(1).ToString(), (noImage)), "D54", 1.46, 1.42, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(PictureExists(strFolder & imagesDat5_A(2).ToString()), strFolder & imagesDat5_A(2).ToString(), (noImage)), "F54", 1.46, 1.42, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(PictureExists(strFolder & imagesDat5_B(0).ToString()), strFolder & imagesDat5_B(0).ToString(), (noImage)), "J54", 1.27, 1.42, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(PictureExists(strFolder & imagesDat5_B(1).ToString()), strFolder & imagesDat5_B(1).ToString(), (noImage)), "L54", 1.46, 1.42, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(PictureExists(strFolder & imagesDat5_B(2).ToString()), strFolder & imagesDat5_B(2).ToString(), (noImage)), "N54", 1.53, 1.42, LengthUnit.Inch)
 Dim emDR6 As New LegacyRows(rows("emDR6"))
                     Dim imagesDat6_A(10) As String
                     Dim imagesDat6_B(10) As String
@@ -6611,12 +6611,12 @@ Dim emDR6 As New LegacyRows(rows("emDR6"))
                         End If
                     Loop
                     emDR6.Close()
-                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat6_A(0).ToString().Replace("~", "")), strFolder & imagesDat6_A(0).ToString().Replace("~", ""), (noImage)), "B62", 1.27, 1.42, LengthUnit.Inch)
-                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat6_A(1).ToString().Replace("~", "")), strFolder & imagesDat6_A(1).ToString().Replace("~", ""), (noImage)), "D62", 1.46, 1.42, LengthUnit.Inch)
-                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat6_A(2).ToString().Replace("~", "")), strFolder & imagesDat6_A(2).ToString().Replace("~", ""), (noImage)), "F62", 1.46, 1.42, LengthUnit.Inch)
-                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat6_B(0).ToString().Replace("~", "")), strFolder & imagesDat6_B(0).ToString().Replace("~", ""), (noImage)), "J62", 1.26, 1.42, LengthUnit.Inch)
-                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat6_B(1).ToString().Replace("~", "")), strFolder & imagesDat6_B(1).ToString().Replace("~", ""), (noImage)), "L62", 1.46, 1.42, LengthUnit.Inch)
-                    AddEvidencePicture(ws, If(File.Exists(strFolder & imagesDat6_B(2).ToString().Replace("~", "")), strFolder & imagesDat6_B(2).ToString().Replace("~", ""), (noImage)), "N62", 1.52, 1.42, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(PictureExists(strFolder & imagesDat6_A(0).ToString()), strFolder & imagesDat6_A(0).ToString(), (noImage)), "B62", 1.27, 1.42, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(PictureExists(strFolder & imagesDat6_A(1).ToString()), strFolder & imagesDat6_A(1).ToString(), (noImage)), "D62", 1.46, 1.42, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(PictureExists(strFolder & imagesDat6_A(2).ToString()), strFolder & imagesDat6_A(2).ToString(), (noImage)), "F62", 1.46, 1.42, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(PictureExists(strFolder & imagesDat6_B(0).ToString()), strFolder & imagesDat6_B(0).ToString(), (noImage)), "J62", 1.26, 1.42, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(PictureExists(strFolder & imagesDat6_B(1).ToString()), strFolder & imagesDat6_B(1).ToString(), (noImage)), "L62", 1.46, 1.42, LengthUnit.Inch)
+                    AddEvidencePicture(ws, If(PictureExists(strFolder & imagesDat6_B(2).ToString()), strFolder & imagesDat6_B(2).ToString(), (noImage)), "N62", 1.52, 1.42, LengthUnit.Inch)
                     Dim tsc1 As String = ""
                     Dim tsc2 As String = ""
                     Dim tsc3 As String = ""
@@ -6624,7 +6624,7 @@ Dim emDR6 As New LegacyRows(rows("emDR6"))
                     Dim intTeleko As Int32 = 0
 Dim emDR_DataTeleko As New LegacyRows(rows("emDR_DataTeleko"))
                     Do While emDR_DataTeleko.Read
-                        AddEvidencePicture(ws, If(File.Exists(strFolder & emDR_DataTeleko("TelekoEvidence").ToString().Replace("~", "")), strFolder & emDR_DataTeleko("TelekoEvidence").ToString().Replace("~", ""), (noImage)), arrTeleko(intTeleko) + "70", 1.54, 1.4, LengthUnit.Inch)
+                        AddEvidencePicture(ws, If(PictureExists(strFolder & emDR_DataTeleko("TelekoEvidence").ToString()), strFolder & emDR_DataTeleko("TelekoEvidence").ToString(), (noImage)), arrTeleko(intTeleko) + "70", 1.54, 1.4, LengthUnit.Inch)
                         intTeleko += 1
                     Loop
                     emDR_DataTeleko.Close()

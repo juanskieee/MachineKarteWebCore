@@ -27,6 +27,9 @@ mode. Keep record-specific state inside that initializer.
   request failures locally; suppress error messages after cancellation.
 - Use `Karte.createReportView` for generation status, previews, downloads, and
   object URL cleanup. Generation and download remain separate user actions.
+- Use `Karte.createReportHistory` for selected-card server history, refresh,
+  local generation dates, and saved PDF preview/download actions. Keep history
+  status separate from generation status and use persistent version URLs.
 - Prefer `textContent` for values. Use `Karte.escapeHtml` for dynamic values in
   HTML templates, and `URLSearchParams` for query strings.
 - Build large tables and lists off the DOM, then insert them together. Delegate

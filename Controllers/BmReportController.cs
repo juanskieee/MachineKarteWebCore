@@ -31,7 +31,7 @@ namespace MachineKarte.Web.Controllers
         [HttpPost, WorkflowHandler("DownloadReport")]
         public async Task<IActionResult> DownloadReportAsync(
             [FromForm] int bmId,
-            [FromForm] string process, [FromForm] string format = "xlsx")
+            [FromForm] string process, [FromForm] string format = "xlsx", bool metadata = false)
         {
             try
             {
@@ -40,8 +40,12 @@ namespace MachineKarte.Web.Controllers
                     bmId,
                     process, HttpContext.RequestAborted, format);
 
-                await LegacyReportExport.SaveReportAsync(_config, true, process,
+                var storedFile = await LegacyReportExport.SaveReportAsync(_config, true, process,
                     fileName, bytes, HttpContext.RequestAborted);
+
+                if (metadata)
+                    return Json(new { success = true, data = new { fileName,
+                        downloadUrl = $"/BmReport?handler=Download&process={process}&fileName={Uri.EscapeDataString(storedFile)}" } });
 
                 return File(
                     bytes,
@@ -97,6 +101,22 @@ namespace MachineKarte.Web.Controllers
                     Message = ex.Message
                 });
             }
+        }
+
+        [HttpGet, WorkflowHandler("History")]
+        public IActionResult History(int bmId, string process = "")
+            => ReportHistory(_config, true, process, bmId, $"TE_{bmId}");
+
+        [HttpGet, WorkflowHandler("Download")]
+        public IActionResult Download(string fileName, string process = "", bool inline = false)
+        {
+            string path;
+            try { path = LegacyReportExport.ReportPath(_config, true, process, fileName); }
+            catch (ArgumentException ex) { return BadRequest(ex.Message); }
+            if (!System.IO.File.Exists(path)) return NotFound("Report file not found.");
+            var type = LegacyReportExport.ContentType(Path.GetExtension(fileName).TrimStart('.'));
+            return inline && type == "application/pdf" ? PhysicalFile(path, type)
+                : PhysicalFile(path, type, LegacyReportExport.DownloadName(fileName));
         }
     }
 }

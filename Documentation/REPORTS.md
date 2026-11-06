@@ -14,7 +14,7 @@ Related guides: [application and validation](README.md),
 | --- | --- | --- |
 | PM R / Form3 | `PmReportRepository`: current/history records, typed values, parameterized lookup batch | `PmReportService`, `LegacyReportWriter.PopulatePm`, `LegacyReportExport.Save` |
 | PM E / Form4 | `EvidenceRepository`: five ordered `gridEvidenceMaking_Ver3` categories, process header, TSC confirmations | `EvidenceMakingService`, `PopulateEvidence`, file/download handler |
-| TE R / Form9 | `BmReportRepository`: `ViewTEData_Test`, VR numbers, supplemental lookups | `BmReportService`, `PopulateTe`, controller saves the generated copy and returns the binary HTTP response |
+| TE R / Form9 | `BmReportRepository`: `ViewTEData_Test`, VR numbers, supplemental lookups | `BmReportService`, `PopulateTe`, controller saves the generated copy and returns a persistent download URL to the dialog; the original binary POST response remains available |
 | TE E / Form10 | `TeEvidenceRepository`: `ViewTEData`, ordered evidence categories, connector/condition, Teleko, quality and distinct misc rows | `TeEvidenceMakingService`, `PopulateTeEvidence`, file/download handler |
 
 [LegacyReportMappings.vb](../Services/Reporting/LegacyReportMappings.vb) contains
@@ -46,7 +46,7 @@ directory and a subfolder for the selected process:
 
 For example, a PM DB report is `Print Out\DB\DB_<BMID>.pdf`; TE FT evidence is
 `Print Out\FT\TE_Evidence_<BMID>.xlsx` under the TE root. File names and explicit
-Generate/Download behavior remain unchanged. The process now travels in
+Generate/Download behavior remain unchanged. The process travels in
 generation/download URLs so the same folder is used for both operations.
 
 `ReportOutput:PmTempRoot` and `ReportOutput:TeTempRoot` configure the two
@@ -59,13 +59,56 @@ All four Generate actions save their output to the appropriate share. There
 is no local `TempData/GeneratedPdf` fallback or public static-file mapping for
 reports. Downloads and inline previews go through the validated controller
 handlers. Startup does not open or create remote output folders; storage is
-accessed only when generating or downloading a report.
+accessed only when listing, generating, or downloading a report.
+
+Every report/evidence dialog loads **Generated files** for its selected BM ID,
+process, PM/TE system, and report/evidence type. The newest files appear first,
+with their generation date/time in the browser's local timezone, Download, and
+PDF Preview actions. Opening or refreshing history does not generate a file or
+read SQL. History reloads after generation and whenever the dialog reopens.
+
+Each successful generation retains an immutable sibling named
+`<legacy-stem>__<32-character GUID>.xlsx` or `.pdf`; its download URL selects that
+exact version. The original filename remains the latest-file alias for existing
+callers, and downloaded attachments keep that original name. History excludes
+the duplicate alias when versions exist. Pre-existing unversioned files are
+listed using their last-write date and copied into history on first regeneration,
+preserving that date. Files already overwritten before this change cannot be
+recovered. Writes to the same latest-file alias are coordinated within the app
+process, and temporary files are renamed only when complete. Multi-worker hosts
+would also need coordination across processes for those compatibility aliases;
+the version filenames are unique. No database migration or browser storage is needed; history survives
+dialog closure and app restarts while its files remain on the configured share.
 
 The application's Windows identity needs share and NTFS read/write access to
 the process output folders. Generation creates a missing process directory
 under its configured root and reports a failure when that storage is unavailable;
 it does not silently save elsewhere. These files are generated output, not
 source templates. Audit/test artifacts still belong in OS temporary storage.
+
+### Generation performance
+
+`LegacyReportExport.Load` caches parsed source templates and gives each export an
+independent deep clone. The cache reloads a template when its last-write time or
+length changes; BM values and populated workbooks are never cached. Shared
+template cloning is locked, while all population and serialization happen on
+the private workbook outside that lock.
+
+PM/TE evidence resolves distinct photo paths and copies distinct source photos
+to a per-export OS temporary directory, with at most four concurrent filesystem
+operations. The same validated PM/TE/archive roots, precedence, missing-image
+marks, category ordering, TOP limits, connector routing, and worksheet mappings
+still apply. The compiled writer reads these local copies and memoizes its
+picture existence checks; it never mutates a workbook concurrently. Form10's
+tilde normalization applies to stored paths before resolution, preserving literal
+tildes in resolved local staging directories. Temporary
+photos are removed on success, failure, or cancellation. Fresh generations read
+current database rows and photos rather than reusing a previous report.
+
+The offline regression runner measures fresh-template loading versus cached
+cloning and checks both formats with actual templates and photo bytes. Its
+measurements cover local fixtures; total generation time on the production SQL
+server and file shares still needs a representative deployment measurement.
 
 ## Template selection
 

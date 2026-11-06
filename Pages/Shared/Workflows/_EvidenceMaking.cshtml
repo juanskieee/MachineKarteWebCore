@@ -14,6 +14,7 @@
         </div>
         <p id="EvidenceMaking-statusMsg" data-id="statusMsg" class="status-msg" role="status" aria-live="polite"></p>
     </div>
+    @await Html.PartialAsync("/Pages/Shared/Workflows/_ReportHistory.cshtml")
     <div id="EvidenceMaking-previewPanel" data-id="previewPanel" class="preview-panel is-hidden">
         <div class="preview-toolbar">
             <span id="EvidenceMaking-previewFileName" data-id="previewFileName" class="preview-filename"></span>

@@ -31,21 +31,29 @@ public class TeEvidenceMakingService
         cancellationToken.ThrowIfCancellationRequested();
         var header = await headerTask ?? throw new InvalidDataException($"No TE machine data found for BM ID {id}.");
         header.TEAssign = await assignTask;
+        var images = await imagesTask;
+        var teleko = await telekoTask;
+        var quality = await qualityTask;
+        using var photos = await EvidenceImageCache.LoadAsync(images.Select(row => row.ImgFile)
+                .Concat(teleko.Select(row => row.TelekoEvidence)).Concat(quality.Select(row => row.ImgFile)),
+            LegacyReportExport.LegacyEvidenceRoot(_config, true), LegacyReportExport.ImageRoot(_env, true),
+            true, LegacyReportExport.SharedEvidenceRoot(_config), cancellationToken);
         var workbook = LegacyReportExport.Load(Path.Combine(_env.ContentRootPath, "Templates", "EvidenceMaking", "CWC.xlsx"));
-        PopulateWorkbook(workbook, header, await descriptionsTask, await imagesTask, await telekoTask, await qualityTask,
+        PopulateWorkbook(workbook, header, await descriptionsTask, images, teleko, quality,
             LegacyReportExport.ImageRoot(_env, true),
             LegacyReportExport.LegacyEvidenceRoot(_config, true), await miscTask,
-            LegacyReportExport.SharedEvidenceRoot(_config));
+            LegacyReportExport.SharedEvidenceRoot(_config), photos.Paths);
         var fileName = $"TE_Evidence_{id}.{format}";
-        await LegacyReportExport.SaveReportAsync(_config, true, process, fileName,
+        var storedFile = await LegacyReportExport.SaveReportAsync(_config, true, process, fileName,
             LegacyReportExport.Save(workbook, format), cancellationToken);
-        return $"/TeEvidenceMaking?handler=Download&process={process}&bmId={id}&format={format}";
+        return $"/TeEvidenceMaking?handler=Download&process={process}&bmId={id}&format={format}&fileName={Uri.EscapeDataString(storedFile)}";
     }
 
     public static void PopulateWorkbook(ExcelFile workbook, TeEvidenceHeader header,
         List<TeEvidenceCategoryDesc> descriptions, List<TeEvidenceImage> images,
         List<TelekoEvidenceImage> teleko, List<QualityConditionImage> quality, string imageRoot, string legacySystemRoot,
-        IList<IDictionary<string, object>>? miscRows = null, string? sharedEvidenceRoot = null)
+        IList<IDictionary<string, object>>? miscRows = null, string? sharedEvidenceRoot = null,
+        IReadOnlyDictionary<string, string>? imagePaths = null)
     {
         // Fail explicitly when a record requires a sheet absent from the supplied template.
         // Never silently discard board connectors or quality-condition data.
@@ -57,7 +65,7 @@ public class TeEvidenceMakingService
             throw new InvalidDataException("CWC.xlsx has no DATASHEET worksheet required by this record's quality-condition evidence.");
         IList<IDictionary<string, object>> Rows(IEnumerable<Dictionary<string, object>> source)
             => source.Cast<IDictionary<string, object>>().ToList();
-        string Image(string path) => LegacyReportExport.ResolveEvidenceImage(path, legacySystemRoot, imageRoot,
+        string Image(string path) => imagePaths is not null ? imagePaths[path] : LegacyReportExport.ResolveEvidenceImage(path, legacySystemRoot, imageRoot,
             te: true, sharedEvidenceRoot: sharedEvidenceRoot);
         var rows = new Dictionary<string, IList<IDictionary<string, object>>>(StringComparer.OrdinalIgnoreCase)
         {

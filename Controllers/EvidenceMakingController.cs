@@ -31,6 +31,10 @@ namespace MachineKarte.Web.Controllers
         [HttpGet, WorkflowHandler]
         public IActionResult Index() => WorkflowView();
 
+        [HttpGet, WorkflowHandler("History")]
+        public IActionResult History(int bmId, string process = "")
+            => ReportHistory(_config, false, process, bmId, $"{process.Trim().ToUpperInvariant()}Evidence_{bmId}");
+
         // ── POST: Generate ───────────────────────────────────────────
         // Mirrors EMakingPrint(ProcessCase, bmid)
         // POST /EvidenceMaking?handler=Generate
@@ -103,7 +107,7 @@ namespace MachineKarte.Web.Controllers
 
             return inline && contentType == "application/pdf"
                 ? PhysicalFile(filePath, contentType)
-                : PhysicalFile(filePath, contentType, fileName);
+                : PhysicalFile(filePath, contentType, LegacyReportExport.DownloadName(fileName));
         }
     }
 }

@@ -118,6 +118,65 @@ foreach(var file in new[]{"../file.pdf",@"..\file.xlsx",@"C:\file.pdf",@"\\serve
 }
 Console.WriteLine("PASS: isolated PM/TE report writes and reads for all twelve process folders, both formats, and rejected path escapes.");
 
+// Persistent history: exact card/process/system/type matching and immutable versions.
+var oldPath=LegacyReportExport.ReportPath(storageConfig,false,"DC","DC_123.pdf");
+File.WriteAllText(oldPath,"legacy");
+var oldDate=new DateTime(2026,10,1,1,2,3,DateTimeKind.Utc); File.SetLastWriteTimeUtc(oldPath,oldDate);
+var version1=await LegacyReportExport.SaveReportAsync(storageConfig,false,"DC","DC_123.pdf",Encoding.UTF8.GetBytes("first"));
+var version2=await LegacyReportExport.SaveReportAsync(storageConfig,false,"DC","DC_123.pdf",Encoding.UTF8.GetBytes("second"));
+await LegacyReportExport.SaveReportAsync(storageConfig,false,"DC","DC_123.xlsx",Encoding.UTF8.GetBytes("excel"));
+foreach(var name in new[]{"DC_1234.pdf","DC_12.pdf","DCEvidence_123.pdf","DC_123__invalid.pdf"})
+ File.WriteAllText(LegacyReportExport.ReportPath(storageConfig,false,"DC",name),"other");
+await LegacyReportExport.SaveReportAsync(storageConfig,true,"DC","DC_123.pdf",Encoding.UTF8.GetBytes("TE"));
+await LegacyReportExport.SaveReportAsync(storageConfig,false,"DB","DC_123.pdf",Encoding.UTF8.GetBytes("DB"));
+var history=LegacyReportExport.ListReports(storageConfig,false,"DC","DC_123");
+Require(history.Count==4 && history.Count(file=>Path.GetExtension(file.FileName)==".xlsx")==1,
+ "History mixed cards, workflows, systems, processes, invalid names or duplicate latest aliases");
+Require(history.Any(file=>file.GeneratedAtUtc==oldDate) && history.SequenceEqual(history.OrderByDescending(file=>file.GeneratedAtUtc)),
+ "History lost a legacy generation date or newest-first ordering");
+Require(File.ReadAllText(LegacyReportExport.ReportPath(storageConfig,false,"DC",version1))=="first" &&
+ File.ReadAllText(LegacyReportExport.ReportPath(storageConfig,false,"DC",version2))=="second" && File.ReadAllText(oldPath)=="second",
+ "Regeneration overwrote an earlier download or failed to update the legacy alias");
+Require(LegacyReportExport.DownloadName(version1)=="DC_123.pdf" && LegacyReportExport.IsReportFile(version1,"DC_123","pdf") &&
+ !LegacyReportExport.IsReportFile(version1,"DC_12","pdf"),"Version download names or exact BM matching changed");
+var concurrent=await Task.WhenAll(Enumerable.Range(0,4).Select(i=>LegacyReportExport.SaveReportAsync(storageConfig,false,"DC","DC_999.pdf",Encoding.UTF8.GetBytes("version-"+i))));
+Require(concurrent.Distinct().Count()==4 && LegacyReportExport.ListReports(storageConfig,false,"DC","DC_999").Count==4,
+ "Concurrent generations lost or duplicated history entries");
+using(var cancelled=new CancellationTokenSource()) {
+ cancelled.Cancel();
+ try { await LegacyReportExport.SaveReportAsync(storageConfig,false,"DC","DC_123.pdf",new byte[]{0},cancelled.Token); throw new Exception("Cancelled save accepted"); }
+ catch(OperationCanceledException){}
+ Require(File.ReadAllText(oldPath)=="second","Cancelled generation damaged the previous download");
+}
+Require(LegacyReportExport.ListReports(storageConfig,false,"DC","DC_888").Count==0 &&
+ LegacyReportExport.ListReports(storageConfig,false,"SING","SING_888").Count==0,"Missing history must be empty");
+Console.WriteLine("PASS: persistent generation dates, legacy import, immutable/concurrent versions, exact card isolation, cancellation and empty history.");
+
+var cacheTemplate=Path.Combine(output,"cache-template.xlsx");
+var cacheSource=new ExcelFile();cacheSource.Worksheets.Add("Cache").Cells["A1"].Value="original";cacheSource.Save(cacheTemplate);
+var firstClone=LegacyReportExport.Load(cacheTemplate);firstClone.Worksheets[0].Cells["A1"].Value="private";
+Require(LegacyReportExport.Load(cacheTemplate).Worksheets[0].Cells["A1"].StringValue=="original","Template cache leaked another export's values");
+cacheSource.Worksheets[0].Cells["A1"].Value="updated";cacheSource.Save(cacheTemplate);File.SetLastWriteTimeUtc(cacheTemplate,DateTime.UtcNow.AddSeconds(2));
+Require(LegacyReportExport.Load(cacheTemplate).Worksheets[0].Cells["A1"].StringValue=="updated","Template cache ignored an updated template");
+var timings=new List<double[]>();
+var benchmarkTemplate=Path.Combine(root,"Templates","EvidenceMaking","CWC.xlsx");
+LegacyReportExport.Load(benchmarkTemplate);
+for(var i=0;i<5;i++) {
+ var clock=System.Diagnostics.Stopwatch.StartNew();ExcelFile.Load(benchmarkTemplate);var uncached=clock.Elapsed.TotalMilliseconds;
+ clock.Restart();LegacyReportExport.Load(benchmarkTemplate);timings.Add(new[]{uncached,clock.Elapsed.TotalMilliseconds});
+}
+Console.WriteLine($"MEASURE: CWC template median load={timings.Select(t=>t[0]).Order().ElementAt(2):F1}ms; cached clone={timings.Select(t=>t[1]).Order().ElementAt(2):F1}ms (local fixture, not production network timing).");
+
+// Staging deduplicates paths while preserving root precedence, bytes, placeholders and cleanup.
+string stagedPath;
+using(var photos=await EvidenceImageCache.LoadAsync(new[]{@"\Upload\2026\photo.png",pmImage,@"\Upload\2026\missing.png",@"\Upload\Evidence\2020\photo.png"},pmLegacyShare,Images(false),false,sharedArchive)) {
+ stagedPath=photos.Paths[pmImage];
+ Require(stagedPath==photos.Paths[@"\Upload\2026\photo.png"] && File.ReadAllBytes(stagedPath).SequenceEqual(File.ReadAllBytes(pmImage)),"Staging duplicated a source or changed photo bytes");
+ Require(photos.Paths[@"\Upload\2026\missing.png"]==pmPlaceholder && File.ReadAllBytes(photos.Paths[@"\Upload\Evidence\2020\photo.png"]).SequenceEqual(File.ReadAllBytes(collision)),"Staging changed placeholder or root precedence");
+}
+Require(!File.Exists(stagedPath),"Export photo staging was not cleaned up");
+Console.WriteLine("PASS: independent template clones, invalidation, staged photo bytes, deduplication, root precedence and cleanup.");
+
 var date=new DateTime(2026,10,1,10,0,0);
 Dictionary<string,object> Record(string profile){
  var record=LegacyReportWriter.RequiredFields(profile).ToDictionary(field=>field,field=>(object)"",StringComparer.OrdinalIgnoreCase);
@@ -296,10 +355,11 @@ EvidenceImageRow[] Group(int count)=>Enumerable.Range(0,count).Select(i=>{
  return new EvidenceImageRow{Description="Evidence slot "+number+": alignment and inspection",ImageFile=@"\Upload\2026\"+file};
 }).ToArray();
 var groups=new EvidenceImageGroups{ProblemPoint=Group(3),ActionTaken=Group(2),PartsReplaced=Group(2),DisAssembly=Group(2),QualityConfirm=Group(3)};
+using var pmPhotos=await EvidenceImageCache.LoadAsync(new[]{groups.ProblemPoint,groups.ActionTaken,groups.PartsReplaced,groups.DisAssembly,groups.QualityConfirm}.SelectMany(group=>group).Select(row=>row.ImageFile),pmLegacyShare,Images(false),false,sharedArchive);
 var header=new EvidenceMachineHeader{McNo="FIXTURE-MC",OccurrenceDate="10/01/2026",PmConfirmBy="FIXTURE"};
 foreach(var process in processes){
  var config=ProcessTemplateMap.Get(process)!;var book=LegacyReportExport.Load(Path.Combine(root,"Templates","EvidenceMaking",config.TemplateFile));
- EvidenceMakingService.PopulateWorkbook(book,process,header,new TscConfirmation{Tsc1="No",Tsc6="N/A",RouteNo="SHOULD-NOT-PRINT",VersionNo="SHOULD-NOT-PRINT"},groups,Images(false),pmLegacyShare,sharedArchive);
+ EvidenceMakingService.PopulateWorkbook(book,process,header,new TscConfirmation{Tsc1="No",Tsc6="N/A",RouteNo="SHOULD-NOT-PRINT",VersionNo="SHOULD-NOT-PRINT"},groups,Images(false),pmLegacyShare,sharedArchive,pmPhotos.Paths);
  var anchors=process=="SING"?new[]{"C11","O11","Z11","C27","L27","V27","AD27","C47","T47","C69","O69","AA69"}:new[]{"C11","P11","AC11","C26","L26","V26","AD26","C46","T46","C68","O68","AA68"};
  var rowImages=new[]{groups.ProblemPoint,groups.ActionTaken,groups.PartsReplaced,groups.DisAssembly,groups.QualityConfirm}
   .SelectMany(group=>group).ToArray();
@@ -331,7 +391,9 @@ for(var category=0;category<teCategories.Length;category++)for(var condition=0;c
 }
 tePhotos.AddRange(new[]{new TeEvidenceImage{Category="TEST BOARD",Condition="BEFORE",CN="CN3",ImgFile=@"~\Upload\2026\photo.png"},new TeEvidenceImage{Category="TEST BOARD",Condition="AFTER",CN="CN1",ImgFile=@"~\Upload\2026\photo.png"}});
 tePhotos.Add(new TeEvidenceImage{Category="TEST BOARD",Condition="BEFORE",CN="CN3",ImgFile=@"~\Upload\Evidence\2020\photo.png"});
-TeEvidenceMakingService.PopulateWorkbook(cwc,teHeader,new(),tePhotos,Enumerable.Range(0,4).Select(_=>new TelekoEvidenceImage{TelekoEvidence=@"~/Upload/Evidence/2020/photo.png"}).ToList(),new(),Images(true),teLegacyShare,sharedEvidenceRoot:sharedArchive);
+var telekoPhotos=Enumerable.Range(0,4).Select(_=>new TelekoEvidenceImage{TelekoEvidence=@"~/Upload/Evidence/2020/photo.png"}).ToList();
+using var tePhotosCache=await EvidenceImageCache.LoadAsync(tePhotos.Select(row=>row.ImgFile).Concat(telekoPhotos.Select(row=>row.TelekoEvidence)),teLegacyShare,Images(true),true,sharedArchive);
+TeEvidenceMakingService.PopulateWorkbook(cwc,teHeader,new(),tePhotos,telekoPhotos,new(),Images(true),teLegacyShare,sharedEvidenceRoot:sharedArchive,imagePaths:tePhotosCache.Paths);
 var teRows=new[]{20,31,36,54,62};
 for(var category=0;category<teRows.Length;category++)for(var condition=0;condition<2;condition++)
  foreach(var column in condition==0?new[]{"B","D","F"}:new[]{"J","L","N"})PhotoAt(cwc,column+teRows[category],Path.Combine(teUpload,$"category-{category}-{condition}.png"));
@@ -360,9 +422,14 @@ foreach(var condition in new[]{"BEFORE","AFTER"})for(var number=5;number<=8;numb
  connectors.Add(new(){Category="TEST BOARD",Condition=condition,CN="CN"+number,ImgFile=@"~\Upload\Evidence\2020\photo.png"});
 var qualityCategories=new[]{"BEFORE QUALITY CONDITION","AFTER QUALITY CONDITION","IDEAL QUALITY CONDITION"};
 var qualityDescriptions=qualityCategories.Select((category,index)=>new TeEvidenceCategoryDesc{Category=category,Condition=index==0?"BEFORE":"AFTER",Desc="QUALITY-"+index}).ToList();
+// A Windows temporary directory may contain a literal ~ (including short user paths).
+// Only stored Form10 paths are normalized; resolved staging paths must stay intact.
+var tildeDirectory=Path.Combine(output,"photo~staging");Directory.CreateDirectory(tildeDirectory);
+var tildePhoto=Path.Combine(tildeDirectory,"quality.png");File.Copy(archivedImage,tildePhoto);
+var tildePaths=new Dictionary<string,string>{[@"~\Upload\Evidence\2020\photo.png"]=tildePhoto};
 TeEvidenceMakingService.PopulateWorkbook(qualityBook,teHeader,qualityDescriptions,connectors,new(),
     qualityCategories.Select(category=>new QualityConditionImage{Category=category,ImgFile=@"~\Upload\Evidence\2020\photo.png"}).ToList(),
-    Images(true),teLegacyShare,sharedEvidenceRoot:sharedArchive);
+    Images(true),teLegacyShare,sharedEvidenceRoot:sharedArchive,imagePaths:tildePaths);
 var qualityPictures=new ExcelFile(); qualityPictures.Worksheets.AddCopy("Quality",qualityBook.Worksheets["DATASHEET"]);
 Require(ContainsPhoto(qualityPictures,archivedImage),"Quality-condition sheet did not embed the shared evidence photo");
 var boardPictures=new ExcelFile(); boardPictures.Worksheets.AddCopy("Board",qualityBook.Worksheets["TESTBOARD"]);

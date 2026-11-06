@@ -154,7 +154,50 @@ try {
         }
       }
     }
-    foreach ($name in @('PmReport','EvidenceMaking')) {
+    foreach ($flow in @(
+        @{name='PmReport';root=$pmOutput;stem="FT_$id"},
+        @{name='EvidenceMaking';root=$pmOutput;stem="FTEvidence_$id"},
+        @{name='BmReport';root=$teOutput;stem="TE_$id"},
+        @{name='TeEvidenceMaking';root=$teOutput;stem="TE_Evidence_$id"}
+    )) {
+        $version = [guid]::NewGuid().ToString('N')
+        $historyNames = @("$($flow.stem).xlsx", "$($flow.stem)__$version.pdf")
+        foreach ($historyName in $historyNames) {
+            $historyPath = Join-Path $flow.root $historyName
+            if (!(Test-Path -LiteralPath $historyPath)) {
+                [IO.File]::WriteAllBytes($historyPath,$bytes)
+                $createdFiles += $historyPath
+            }
+        }
+        $historyResponse=Get-Response "/$($flow.name)?handler=History&process=FT&bmId=$id"
+        try {
+            $history=$historyResponse.Content.ReadAsStringAsync().GetAwaiter().GetResult() | ConvertFrom-Json
+            Require ($history.success -and @($history.data).Count -eq 2) "$($flow.name) did not list both saved formats."
+            foreach ($entry in $history.data) {
+                Require ($entry.generatedAtUtc -and $entry.sizeBytes -gt 0) "$($flow.name) omitted file metadata."
+                $downloadResponse=Get-Response $entry.downloadUrl
+                try {
+                    Require ($downloadResponse.Content.Headers.ContentDisposition.ToString().Contains($entry.fileName)) 'Version download changed the legacy filename.'
+                } finally { $downloadResponse.Dispose() }
+                if ($entry.fileName.EndsWith('.pdf')) {
+                    $previewResponse=Get-Response ($entry.downloadUrl+'&inline=true')
+                    try { Require ($null -eq $previewResponse.Content.Headers.ContentDisposition) 'Saved PDF preview forces attachment download.' }
+                    finally { $previewResponse.Dispose() }
+                }
+            }
+        } finally { $historyResponse.Dispose() }
+        foreach ($other in @("process=FT&bmId=$($id+1)","process=DB&bmId=$id")) {
+            $empty=Get-Response "/$($flow.name)?handler=History&$other"
+            try { Require (@(($empty.Content.ReadAsStringAsync().GetAwaiter().GetResult() | ConvertFrom-Json).data).Count -eq 0) 'History mixed another card or process.' }
+            finally { $empty.Dispose() }
+        }
+        foreach ($invalid in @('process=FT&bmId=0','process=INVALID&bmId=123')) {
+            $bad=Get-Response "/$($flow.name)?handler=History&$invalid" 400
+            $bad.Dispose()
+        }
+    }
+    Write-Output 'PASS: all four persistent history handlers, dated Excel/PDF downloads, version previews, and exact BM/process isolation.'
+    foreach ($name in @('PmReport','BmReport','EvidenceMaking')) {
         $response = Get-Response "/${name}?handler=Download&process=FT&fileName=..%2Finvalid.xlsx" 400
         $response.Dispose()
         $response = Get-Response "/${name}?handler=Download&process=FT&fileName=Missing-$id.xlsx" 404

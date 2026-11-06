@@ -8,6 +8,7 @@ Workflows.register("PmReport", (root, options, context) => {
         statusId: "pmStatus",
         downloadId: "pmDownload",
     });
+    const history = Karte.createReportHistory(context, 'PmReport', options, view);
     byId("pmGenerate").addEventListener("click", generate);
 
     async function generate() {
@@ -32,6 +33,7 @@ Workflows.register("PmReport", (root, options, context) => {
                 );
             }
             view.showPreview(result.data.downloadUrl, result.data.fileName);
+            history.refresh();
         } catch (error) {
             if (!context.signal.aborted)
                 view.showStatus(

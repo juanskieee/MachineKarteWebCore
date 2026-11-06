@@ -10,6 +10,7 @@ Namespace MachineKarte.Reporting
         Private ReadOnly imageRoot As String
         Private ReadOnly lookups As IDictionary(Of String, String)
         Private ReadOnly vrNumbers As String()
+        Private ReadOnly pictureFiles As New Dictionary(Of String, Boolean)(StringComparer.OrdinalIgnoreCase)
 
         Public Sub New(imageRoot As String, lookups As IDictionary(Of String, String), Optional vrNumbers As String() = Nothing)
             Me.imageRoot = Path.GetFullPath(imageRoot)
@@ -20,8 +21,17 @@ Namespace MachineKarte.Reporting
         Private Function ImagePath(relative As String) As String
             Dim target = Path.GetFullPath(Path.Combine(imageRoot, relative.Replace("\", Path.DirectorySeparatorChar)))
             If Not target.StartsWith(imageRoot & Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) Then Throw New ArgumentException("Invalid report image path.")
-            If Not File.Exists(target) Then Throw New FileNotFoundException("Original report image is missing.", target)
+            If Not PictureExists(target) Then Throw New FileNotFoundException("Original report image is missing.", target)
             Return target
+        End Function
+
+        Private Function PictureExists(file As String) As Boolean
+            Dim exists As Boolean
+            If Not pictureFiles.TryGetValue(file, exists) Then
+                exists = IO.File.Exists(file)
+                pictureFiles(file) = exists
+            End If
+            Return exists
         End Function
 
         Private Function AddPicture(sheet As ExcelWorksheet, file As String, cell As String, width As Double, height As Double, unit As LengthUnit) As ExcelPicture

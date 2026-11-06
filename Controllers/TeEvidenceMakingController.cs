@@ -29,6 +29,10 @@ namespace MachineKarte.Web.Controllers
         [HttpGet, WorkflowHandler]
         public IActionResult Index() => WorkflowView();
 
+        [HttpGet, WorkflowHandler("History")]
+        public IActionResult History(int bmId, string process = "")
+            => ReportHistory(_config, true, process, bmId, $"TE_Evidence_{bmId}");
+
         // ─── AJAX: generate TE evidence workbook ──────────────────────────────
         // GET /TeEvidenceMaking?handler=Generate&bmId=12345
 
@@ -53,14 +57,16 @@ namespace MachineKarte.Web.Controllers
         // GET /TeEvidenceMaking?handler=Download&bmId=12345
 
         [HttpGet, WorkflowHandler("Download")]
-        public IActionResult Download(string bmId, string format = "xlsx", bool inline = false, string process = "")
+        public IActionResult Download(string bmId, string format = "xlsx", bool inline = false, string process = "", string? fileName = null)
         {
             if (string.IsNullOrWhiteSpace(bmId))
                 return BadRequest("bmId required.");
 
             if (!int.TryParse(bmId, out var id) || id <= 0 || format is not ("xlsx" or "pdf"))
                 return BadRequest("Invalid evidence file request.");
-            string fileName = $"TE_Evidence_{id}.{format}";
+            fileName ??= $"TE_Evidence_{id}.{format}";
+            if (!LegacyReportExport.IsReportFile(fileName, $"TE_Evidence_{id}", format))
+                return BadRequest("Invalid evidence file request.");
             string path;
             try { path = LegacyReportExport.ReportPath(_config, true, process, fileName); }
             catch (ArgumentException ex) { return BadRequest(ex.Message); }
@@ -73,7 +79,7 @@ namespace MachineKarte.Web.Controllers
             // Preserve attachment downloads; only inline PDF previews omit the filename.
             return inline && format == "pdf"
                 ? File(stream, contentType)
-                : File(stream, contentType, fileName);
+                : File(stream, contentType, LegacyReportExport.DownloadName(fileName));
         }
     }
 }

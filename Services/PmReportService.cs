@@ -37,11 +37,11 @@ public sealed class PmReportService
                 data.History.Select(record => (IDictionary<string, object>)record.Values).ToList());
             var bytes = LegacyReportExport.Save(workbook, format);
             var fileName = $"{process}_{request.BmId}.{format}";
-            await LegacyReportExport.SaveReportAsync(_config, false, process, fileName, bytes, cancellationToken);
+            var storedFile = await LegacyReportExport.SaveReportAsync(_config, false, process, fileName, bytes, cancellationToken);
             return new PmReportResult
             {
                 Success = true, Message = "PM report generated.", FileName = fileName,
-                DownloadUrl = $"/PmReport?handler=Download&process={process}&fileName={Uri.EscapeDataString(fileName)}"
+                DownloadUrl = $"/PmReport?handler=Download&process={process}&fileName={Uri.EscapeDataString(storedFile)}"
             };
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)

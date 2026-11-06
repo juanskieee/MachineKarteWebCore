@@ -24,6 +24,20 @@
         throw new Error('Timed out waiting for UI state');
     }
     const json = data => new Response(JSON.stringify({ success:true, data }), { headers:{'content-type':'application/json'} });
+    const savedReports = new Map();
+    function reportFiles(url, bmId = url.searchParams.get('bmId'), process = url.searchParams.get('process')) {
+        const key = `${url.pathname}:${process}:${bmId}`;
+        const stem = url.pathname === '/PmReport' ? `${process}_${bmId}` : url.pathname === '/EvidenceMaking' ? `${process}Evidence_${bmId}` : url.pathname === '/BmReport' ? `TE_${bmId}` : `TE_Evidence_${bmId}`;
+        if (!savedReports.has(key)) savedReports.set(key, bmId === '123' ? ['pdf','xlsx'].map((format,index) => ({fileName:`${stem}.${format}`,generatedAtUtc:`2026-11-06T01:02:0${2-index}Z`,downloadUrl:`about:blank#saved-${stem}-${format}`})) : []);
+        return { files:savedReports.get(key), stem };
+    }
+    let generatedVersion = 3;
+    function generatedReport(url, format, bmId, process) {
+        const {files,stem} = reportFiles(url,bmId,process);
+        const file = {fileName:`${stem}.${format}`,generatedAtUtc:new Date(Date.UTC(2026,10,6,1,2,generatedVersion++)).toISOString(),downloadUrl:`about:blank#version-${generatedVersion}-${stem}-${format}`};
+        files.unshift(file);
+        return {success:true,...file};
+    }
     window.fetch = async (input, options = {}) => {
         const url = new URL(input, location.href);
         const handler = url.searchParams.get('handler');
@@ -80,10 +94,14 @@
         }
         if (url.pathname === '/OcapViewer') return json({ rows:[{checkItem:'TEST: Safety interlock',checkingMethod:'Fixture check',treatmentAction:'Fixture action',judgement:'OK',remarks:'Test data only'}] });
         if (url.pathname === '/RawData') return json({ frequencyTable:[{frequency:'2x',dateLabel:'Oct 2026',total:2}],bmCaseTable:[{bmCase:'TEST: Sensor Fault',dateMonth:'October',dateYear:2026,bmCount:2}],frequencyChart:[{name:'2x',points:[{label:'Oct 2026',value:2}]}],bmCaseChart:[{name:'TEST: Sensor Fault',points:[{label:'Oct 2026',value:2}]}] });
-        if (url.pathname === '/PmReport') return json({ success:true,downloadUrl:'about:blank#TEST',fileName:`TEST.${url.searchParams.get('format')||'xlsx'}` });
-        if (url.pathname === '/EvidenceMaking') return json({ fileName:`TEST.${JSON.parse(options.body).format||'xlsx'}`, downloadUrl:'about:blank#TEST' });
-        if (url.pathname === '/TeEvidenceMaking') return new Response(JSON.stringify({success:true,url:`about:blank#TE_${url.searchParams.get('format')||'xlsx'}`}), {headers:{'content-type':'application/json'}});
-        if (url.pathname === '/BmReport') return new Response('TEST', { headers:{'content-type':options.body.get('format')==='pdf'?'application/pdf':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','content-disposition':`attachment; filename="TE_123.${options.body.get('format')}"`} });
+        if (handler === 'History' && ['/PmReport','/EvidenceMaking','/BmReport','/TeEvidenceMaking'].includes(url.pathname)) return json(reportFiles(url).files);
+        if (url.pathname === '/PmReport') return json(generatedReport(url,url.searchParams.get('format')||'xlsx'));
+        if (url.pathname === '/EvidenceMaking') {
+            const body=JSON.parse(options.body);
+            return json(generatedReport(url,body.format||'xlsx',String(body.bmId),body.process));
+        }
+        if (url.pathname === '/TeEvidenceMaking') return new Response(JSON.stringify({success:true,url:generatedReport(url,url.searchParams.get('format')||'xlsx').downloadUrl}), {headers:{'content-type':'application/json'}});
+        if (url.pathname === '/BmReport') return json(generatedReport(url,options.body.get('format'),options.body.get('bmId'),options.body.get('process')));
         throw new Error(`Unmocked handler ${url}`);
     };
     async function open(name, values = query) {
@@ -371,14 +389,18 @@
         ];
         for (const flow of flows) {
             Workflows.close();
-            const before = requests.filter(request=>request.path===`/${flow.name}`).length;
+            const generationRequests = () => requests.filter(request=>request.path===`/${flow.name}` && request.handler!=='History');
+            const before = generationRequests().length;
             openBMCommand(flow.command, {...card, process:flow.user==='TE'?'FT':'DC'}, flow.user);
             await waitFor(()=>document.querySelector(`#workflowBody [data-workflow="${flow.name}"]`));
             await tick();
             const root = document.querySelector(`#workflowBody [data-workflow="${flow.name}"]`);
-            assert(requests.filter(request=>request.path===`/${flow.name}`).length===before, `${flow.name} generated on opening`);
+            assert(generationRequests().length===before, `${flow.name} generated on opening`);
+            await waitFor(()=>root.querySelectorAll('[data-id="historyFiles"] tr').length>=2);
+            const previousFiles=root.querySelectorAll('[data-id="historyFiles"] tr').length;
+            assert(root.querySelector('[data-id="historyFiles"] time[datetime]'), `${flow.name} omitted generation dates`);
             assert(downloadClicks===0, `${flow.name} downloaded on opening`);
-            assert(root.getBoundingClientRect().height<260, `${flow.name} has unused document space`);
+            assert(root.getBoundingClientRect().height<520, `${flow.name} has unused document space`);
             const toolbar = root.querySelector('.pm-report-header, .document-toolbar');
             const toolbarStyle = JSON.stringify(styleValues(toolbar, ['display','padding','backgroundColor','height']));
             if (recordToolbarStyle===null) recordToolbarStyle = toolbarStyle;
@@ -394,7 +416,8 @@
             const link = root.querySelector(flow.download);
             await waitFor(()=>!link.hidden && !link.closest('.is-hidden'));
             assert(downloadClicks===0, `${flow.name} downloaded automatically after generation`);
-            assert(requests.filter(request=>request.path===`/${flow.name}`).length===before+1, `${flow.name} generation was not explicit`);
+            assert(generationRequests().length===before+1, `${flow.name} generation was not explicit`);
+            await waitFor(()=>root.querySelectorAll('[data-id="historyFiles"] tr').length===previousFiles+1);
             const currentDownloadStyle = JSON.stringify(styleValues(link, ['backgroundColor','color','padding','minHeight','textDecorationLine']));
             if (downloadStyle===null) downloadStyle=currentDownloadStyle;
             assert(currentDownloadStyle===downloadStyle, `${flow.name} download styling differs from R/E`);
@@ -404,26 +427,26 @@
             const frame = panel.querySelector('.preview-frame');
             assert(!panel.classList.contains('is-hidden'), `${flow.name} did not open the preview toolbar`);
             assert(status.classList.contains('status-success') && getComputedStyle(status).color==='rgb(0, 107, 0)', `${flow.name} lost the green success status`);
-            assert(status.textContent===`Evidence generated: ${link.download}`, `${flow.name} generated-file message is incorrect`);
+            assert(status.textContent===`File ready: ${link.download}`, `${flow.name} generated-file message is incorrect`);
             assert(toolbarFile.textContent===link.download, `${flow.name} preview filename differs from the download filename`);
             assert(toolbarFile.getBoundingClientRect().left < link.getBoundingClientRect().left,
                 `${flow.name} filename/download toolbar alignment changed`);
             assert(frame.classList.contains('is-hidden') && !frame.getAttribute('src'),
                 `${flow.name} Excel must show only the filename and Download toolbar`);
             if (flow.name==='EvidenceMaking') {
-                const payload = JSON.parse(requests.filter(request => request.path==='/EvidenceMaking').at(-1).body);
+                const payload = JSON.parse(generationRequests().at(-1).body);
                 assert(payload.process==='DC' && payload.bmId===123, 'Evidence generation did not use the clicked record');
             }
             const format = root.querySelector('[data-id="outputFormat"]');
             assert(format.value==='xlsx', `${flow.name} changed the default output format`);
             format.value='pdf'; root.querySelector(flow.trigger).click();
             await waitFor(()=>!root.querySelector(flow.trigger).disabled && !link.hidden && !link.closest('.is-hidden'));
-            const request = requests.filter(request=>request.path===`/${flow.name}`).at(-1);
+            const request = generationRequests().at(-1);
             const submittedFormat = flow.name==='EvidenceMaking' ? JSON.parse(request.body).format : flow.name==='BmReport' ? request.body.get('format') : request.query.format;
             assert(submittedFormat==='pdf', `${flow.name} lost the selected PDF format`);
             if (flow.name==='TeEvidenceMaking') assert(request.query.process==='FT', 'TE evidence lost the clicked process needed for its output folder');
             assert(link.download.endsWith('.pdf') || link.textContent.includes('.pdf'), `${flow.name} download still identifies PDF as Excel`);
-            assert(status.classList.contains('status-success') && status.textContent===`Evidence generated: ${link.download}`,
+            assert(status.classList.contains('status-success') && status.textContent===`File ready: ${link.download}`,
                 `${flow.name} PDF success status and filename differ from PM evidence`);
             assert(toolbarFile.textContent===link.download && !panel.classList.contains('is-hidden'),
                 `${flow.name} PDF preview toolbar did not display the generated filename`);
@@ -433,6 +456,26 @@
                 assert(frame.src.includes('inline=true'), `${flow.name} PDF iframe would download instead of previewing`);
             }
             assert(downloadClicks===0, `${flow.name} PDF generation downloaded automatically`);
+            await waitFor(()=>root.querySelectorAll('[data-id="historyFiles"] tr').length===previousFiles+2);
+            const persistentDownload = link.href;
+            Workflows.close();
+            await open(flow.name, {...query, process:flow.user==='TE'?'FT':'DC'});
+            const reopened = document.querySelector(`#workflowBody [data-workflow="${flow.name}"]`);
+            await waitFor(()=>reopened.querySelectorAll('[data-id="historyFiles"] tr').length===previousFiles+2);
+            assert(reopened.querySelector('[data-id="historyFiles"] a').href===persistentDownload, `${flow.name} lost its saved version after reopening`);
+            reopened.querySelector('[data-preview]').click();
+            assert(reopened.querySelector(flow.download).href===persistentDownload, `${flow.name} saved PDF preview selected another version`);
+            window.__failWorkflowData=true;
+            reopened.querySelector('[data-id="historyRefresh"]').click();
+            await waitFor(()=>!reopened.querySelector('[data-id="historyRefresh"]').disabled);
+            assert(reopened.querySelector('[data-id="historyStatus"]').classList.contains('status-error'), `${flow.name} hid its history error`);
+            window.__failWorkflowData=false;
+            reopened.querySelector('[data-id="historyRefresh"]').click();
+            await waitFor(()=>!reopened.querySelector('[data-id="historyRefresh"]').disabled);
+            assert(!reopened.querySelector('[data-id="historyStatus"]').classList.contains('status-error'), `${flow.name} history failed to recover`);
+            Workflows.close();
+            await open(flow.name, {...query,bmId:'999'});
+            assert(document.querySelector('[data-id="historyStatus"]').textContent.includes('No saved files'), `${flow.name} mixed another BM card's history`);
         }
         Workflows.close();
         await Workflows.open('TeEvidenceMaking', {...query, autoGenerate:'1'});
@@ -512,14 +555,14 @@
             button.click();
             await waitFor(() => !button.disabled && download.hasAttribute('href'));
             const firstUrl = download.href;
-            assert(objectUrls.has(firstUrl), 'The generated binary report has no download URL');
+            assert(firstUrl && objectUrls.size===0, 'The report still depends on a temporary object URL');
             button.click();
             await waitFor(() => !button.disabled && download.hasAttribute('href'));
-            assert(!objectUrls.has(firstUrl) && objectUrls.size === 1, 'Regenerating a report retained its old object URL');
+            assert(download.href!==firstUrl && objectUrls.size===0, 'Regenerating a report reused its previous version URL');
             Workflows.close();
             assert(objectUrls.size === 0, 'Closing a report retained its object URL');
             assert(errors.length === 0, errors.join('; '));
-            return 'PASS: HTTP errors, cancellation during JSON decoding, late saves, and report object URL cleanup';
+            return 'PASS: HTTP errors, cancellation during JSON decoding, late saves, and persistent report URLs without object URL allocation';
         } finally {
             releaseSave?.();
             Workflows.close();
