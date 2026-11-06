@@ -89,6 +89,7 @@ try {
     Write-Output (Invoke-JavaScript 'window.runMonitoringChecks()')
     Write-Output (Invoke-JavaScript 'window.runRetrievalChecks()')
     Write-Output (Invoke-JavaScript 'window.runDocumentChecks()')
+    Write-Output (Invoke-JavaScript 'window.runCleanupChecks()')
     foreach ($name in @('AlertBoard','MachineSummary','McdMonitoring','BmAnalytics','RawData','OcapViewer','PmReport','BmReport','EvidenceMaking','TeEvidenceMaking','ActionCards','MachineList')) {
         Invoke-JavaScript ("window.prepareWorkflowCapture('" + $name + "')") | Out-Null
         Invoke-Cdp 'Input.dispatchMouseEvent' @{ type='mousePressed'; x=1; y=1; button='left'; clickCount=1 } | Out-Null

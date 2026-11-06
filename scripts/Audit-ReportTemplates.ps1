@@ -1,4 +1,4 @@
-param([string]$OutputDirectory = (Join-Path $PSScriptRoot '../TempData/ReportAudit/Inventory'))
+param([string]$OutputDirectory = (Join-Path ([IO.Path]::GetTempPath()) 'MachineKarte-ReportAudit/Inventory'))
 # Offline inventory only. Never loads application settings or contacts SQL/shares.
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.IO.Compression.FileSystem

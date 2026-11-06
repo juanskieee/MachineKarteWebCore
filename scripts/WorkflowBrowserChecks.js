@@ -448,6 +448,86 @@
         assert(errors.length===0, errors.join('; '));
         return 'PASS: R/E map to Forms 3/9 and 4/10, all four require explicit generation and separate download, compact document dialogs';
     };
+    window.runCleanupChecks = async () => {
+        const fixtureFetch = window.fetch;
+        const nativeCreateUrl = URL.createObjectURL;
+        const nativeRevokeUrl = URL.revokeObjectURL;
+        const objectUrls = new Set();
+        let releaseSave;
+        try {
+            window.fetch = async () => new Response(JSON.stringify({ success: true }), {
+                status: 503, headers: { 'content-type': 'application/json' }
+            });
+            let httpError = null;
+            try { await Karte.requestJson('/test-http-error'); } catch (error) { httpError = error; }
+            assert(httpError?.message.includes('503'), 'A failed HTTP response was accepted as a successful result');
+
+            const controller = new AbortController();
+            window.fetch = async () => ({
+                ok: true,
+                async json() { controller.abort(); return { success: true }; }
+            });
+            let abortError = null;
+            try { await Karte.requestJson('/test-cancelled-json', { signal: controller.signal }); }
+            catch (error) { abortError = error; }
+            assert(abortError?.name === 'AbortError', 'Cancellation during JSON decoding accepted a stale result');
+
+            const saveGate = new Promise(resolve => { releaseSave = resolve; });
+            let savePending = false;
+            window.fetch = async (input, options) => {
+                const url = new URL(input, location.href);
+                if (url.pathname === '/ActionCards' && url.searchParams.get('handler') === 'Save') {
+                    savePending = true;
+                    await saveGate;
+                }
+                return fixtureFetch(input, options);
+            };
+            await open('ActionCards');
+            const saveButton = document.querySelector('[data-id="btnSave"]');
+            saveButton.click();
+            await waitFor(() => savePending);
+            await open('OcapViewer');
+            const searches = requests.filter(request => request.handler === 'Search').length;
+            releaseSave();
+            await waitFor(() => !saveButton.disabled);
+            assert(document.getElementById('workflowDialog').open && document.querySelector('[data-workflow="OcapViewer"]'),
+                'A late save closed the replacement workflow');
+            assert(requests.filter(request => request.handler === 'Search').length === searches,
+                'A cancelled save refreshed Monitoring');
+            window.fetch = fixtureFetch;
+
+            URL.createObjectURL = blob => {
+                const url = nativeCreateUrl.call(URL, blob);
+                objectUrls.add(url);
+                return url;
+            };
+            URL.revokeObjectURL = url => {
+                objectUrls.delete(url);
+                nativeRevokeUrl.call(URL, url);
+            };
+            await open('BmReport');
+            const button = document.querySelector('[data-id="btnDownload"]');
+            const download = document.querySelector('[data-id="reportDownload"]');
+            button.click();
+            await waitFor(() => !button.disabled && download.hasAttribute('href'));
+            const firstUrl = download.href;
+            assert(objectUrls.has(firstUrl), 'The generated binary report has no download URL');
+            button.click();
+            await waitFor(() => !button.disabled && download.hasAttribute('href'));
+            assert(!objectUrls.has(firstUrl) && objectUrls.size === 1, 'Regenerating a report retained its old object URL');
+            Workflows.close();
+            assert(objectUrls.size === 0, 'Closing a report retained its object URL');
+            assert(errors.length === 0, errors.join('; '));
+            return 'PASS: HTTP errors, cancellation during JSON decoding, late saves, and report object URL cleanup';
+        } finally {
+            releaseSave?.();
+            Workflows.close();
+            window.fetch = fixtureFetch;
+            URL.createObjectURL = nativeCreateUrl;
+            URL.revokeObjectURL = nativeRevokeUrl;
+            objectUrls.forEach(url => nativeRevokeUrl.call(URL, url));
+        }
+    };
     function holdSummaryData() {
         releaseSummaryGate?.();
         summaryGate = new Promise(resolve => { releaseSummaryGate = resolve; });

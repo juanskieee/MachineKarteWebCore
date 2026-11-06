@@ -1,0 +1,386 @@
+/** Render the server-defined MCD dashboard and its machine drilldowns. */
+
+Workflows.register("McdMonitoring", (root, options, context) => {
+    "use strict";
+
+    // Preserve request sequence guards so stale dashboard and drilldown results cannot repaint.
+    const { byId } = context;
+    const { escapeHtml, formatDate } = Karte;
+
+    let lastFilter = { dateFrom: "", dateTo: "", userRole: "" };
+    let currentCell = null;
+    let loadSeq = 0;
+    let cellSeq = 0;
+    let progressTimer = null;
+    let progressReset = null;
+    let summarySnapshot = null;
+    const cellRequests = new Map();
+    context.signal.addEventListener(
+        "abort",
+        () => {
+            summarySnapshot = null;
+            cellRequests.clear();
+            loadSeq++;
+            cellSeq++;
+        },
+        { once: true },
+    );
+
+    const dtFrom = byId("dtFrom");
+    const dtTo = byId("dtTo");
+    const selUser = byId("selUser");
+    const btnSearch = byId("btnSearch");
+    const gridContainer = byId("gridContainer");
+    const lblStatus = byId("lblStatus");
+    const progressBar = byId("progressBar");
+    const progressInner = byId("progressInner");
+    const machinePanel = byId("machinePanel");
+    const panelOverlay = byId("panelOverlay");
+    const machineList = byId("machineList");
+    const panelTitle = byId("panelTitle");
+    gridContainer.addEventListener("click", onCellClick);
+    machineList.addEventListener("click", (event) => {
+        const item = event.target.closest(".mcd-list-item");
+        if (!item) return;
+        const previous = machineList.querySelector(".selected");
+        previous?.classList.remove("selected");
+        previous?.setAttribute("aria-pressed", "false");
+        item.classList.add("selected");
+        item.setAttribute("aria-pressed", "true");
+    });
+    machineList.addEventListener("dblclick", (event) => {
+        if (event.target.closest(".mcd-list-item")) goToMonitoring();
+    });
+
+    (function initialize() {
+        const now = new Date();
+        const past = new Date(now);
+        past.setDate(past.getDate() - 30);
+        dtFrom.value = options.dateFrom
+            ? options.dateFrom.slice(0, 10) + "T00:00"
+            : toLocalIso(past);
+        dtTo.value = options.dateTo
+            ? options.dateTo.slice(0, 10) + "T00:00"
+            : toLocalIso(new Date(now.getTime() + 86400000));
+        selUser.value = options.userType === "TE" ? "TE" : "";
+
+        btnSearch.addEventListener("click", () => loadDashboard(false));
+        selUser.addEventListener("change", () => loadDashboard(false));
+
+        byId("btnPanelClose").addEventListener("click", closePanel);
+        byId("btnPanelCancel").addEventListener("click", closePanel);
+        byId("btnGoToMonitoring").addEventListener("click", goToMonitoring);
+        panelOverlay.addEventListener("click", closePanel);
+        context.dismissOnOutside(machinePanel, closePanel);
+
+        root.addEventListener("keydown", (e) => {
+            if (
+                e.key === "Escape" &&
+                !machinePanel.classList.contains("is-hidden")
+            )
+                closePanel();
+            if (e.key === "Enter" && document.activeElement === dtFrom)
+                loadDashboard();
+            if (e.key === "Enter" && document.activeElement === dtTo)
+                loadDashboard();
+        });
+
+        loadDashboard();
+
+        context.onRefresh(() => loadDashboard(true));
+    })();
+
+    async function loadDashboard(background) {
+        const from = dtFrom.value;
+        const to = dtTo.value;
+        const userRole = selUser.value;
+
+        if (!from || !to) {
+            if (!background) setStatus("Please select a date range.", true);
+            return;
+        }
+
+        const seq = ++loadSeq;
+        summarySnapshot = null;
+        cellRequests.clear();
+        closePanel();
+        lastFilter = { dateFrom: from, dateTo: to, userRole };
+
+        showProgress(true);
+        btnSearch.disabled = true;
+
+        try {
+            const params = new URLSearchParams({
+                handler: "Dashboard",
+                dateFrom: from,
+                dateTo: to,
+                userRole,
+            });
+
+            const json = await context.getJson(`/McdMonitoring?${params}`);
+
+            if (seq !== loadSeq || context.signal.aborted) return;
+            if (!json.success) {
+                setStatus(json.message, true);
+                return;
+            }
+
+            const snapshot = {
+                cells: new Map(
+                    json.data.rows.flatMap((row) =>
+                        Object.values(row.cells).map((cell) => [
+                            cell.key,
+                            cell,
+                        ]),
+                    ),
+                ),
+                expiresAt: Date.now() + 30000,
+            };
+            summarySnapshot = snapshot;
+            context.setTimeout(() => {
+                if (summarySnapshot === snapshot) summarySnapshot = null;
+            }, 30000);
+            renderGrid(json.data);
+        } catch (err) {
+            if (seq === loadSeq) setStatus(err.message, true);
+        } finally {
+            if (seq === loadSeq) {
+                showProgress(false);
+                btnSearch.disabled = false;
+            }
+        }
+    }
+
+    function renderGrid(data) {
+        const columns = data.columns || [];
+        const rows = data.rows || [];
+        const locationTotals = data.locationTotals || {};
+
+        let html =
+            '<div class="mcd-header-row">' +
+            '<div class="mcd-process-col mcd-header">Process</div>';
+
+        columns.forEach((col) => {
+            html += `<div class="mcd-loc-col mcd-header">${escapeHtml(col)}</div>`;
+        });
+        html += '<div class="mcd-total-col mcd-header">Total</div></div>';
+
+        if (rows.length === 0) {
+            html +=
+                '<div class="mcd-grid-empty">No processes found for this mode.</div>';
+            gridContainer.innerHTML = html;
+            setStatus("No data.", false);
+            return;
+        }
+
+        rows.forEach((row) => {
+            const cells = row.cells || {};
+            html += `<div class="mcd-grid-row" data-process="${escapeHtml(row.process)}">`;
+            html += `<div class="mcd-process-col mcd-proc-label">${escapeHtml(row.process)}</div>`;
+
+            columns.forEach((loc) => {
+                const cell = cells[loc];
+
+                if (!cell || cell.notApplicable) {
+                    html +=
+                        '<div class="mcd-loc-col mcd-cell mcd-cell-na">–</div>';
+                    return;
+                }
+
+                const count = cell.count || 0;
+                const cls =
+                    count > 0
+                        ? "mcd-cell mcd-cell-hot mcd-cell-clickable"
+                        : "mcd-cell mcd-cell-zero";
+                const title = `${escapeHtml(row.process)} @ ${escapeHtml(loc)}: ${count} machine(s)`;
+
+                html += `<div class="${cls}" role="button" tabindex="${count > 0 ? 0 : -1}" data-key="${escapeHtml(cell.key)}" data-loc="${escapeHtml(loc)}" title="${title}">${count}</div>`;
+            });
+
+            const rowTotal = row.rowTotal || 0;
+            const totalCls =
+                rowTotal > 0
+                    ? "mcd-proc-total mcd-total-hot"
+                    : "mcd-proc-total";
+            html += `<div class="mcd-total-col ${totalCls}">${rowTotal}</div>`;
+            html += "</div>";
+        });
+
+        // Column totals row
+        html +=
+            '<div class="mcd-total-row">' +
+            '<div class="mcd-process-col mcd-total-label">TOTAL</div>';
+
+        columns.forEach((col) => {
+            const value = locationTotals[col] || 0;
+            const cls =
+                value > 0 ? "mcd-total-cell mcd-total-hot" : "mcd-total-cell";
+            html += `<div class="mcd-loc-col ${cls}">${value}</div>`;
+        });
+
+        const grand = data.grandTotal || 0;
+        const grandCls =
+            grand > 0 ? "mcd-total-cell mcd-total-hot" : "mcd-total-cell";
+        html += `<div class="mcd-total-col ${grandCls}">${grand}</div></div>`;
+
+        gridContainer.innerHTML = html;
+
+        const mode = data.mode === "TE" ? "TE" : "Standard";
+        setStatus(
+            `Updated ${new Date().toLocaleTimeString()} · ${mode}`,
+            false,
+        );
+    }
+
+    async function onCellClick(e) {
+        if (btnSearch.disabled) return;
+        const el = e.target.closest(".mcd-cell[data-key]");
+        if (!el) return;
+        const count = parseInt(el.textContent, 10) || 0;
+        if (count === 0) return;
+
+        const row = el.closest(".mcd-grid-row");
+        const cell = {
+            key: el.dataset.key,
+            location: el.dataset.loc,
+            process: row ? row.dataset.process : "",
+            userRole: lastFilter.userRole,
+        };
+        currentCell = cell;
+        const seq = ++cellSeq;
+
+        panelTitle.textContent = `${cell.process} ( ${cell.location} ) — loading…`;
+        machineList.replaceChildren();
+        openPanel();
+
+        try {
+            const params = new URLSearchParams({
+                handler: "MachineList",
+                cellKey: cell.key,
+                dateFrom: lastFilter.dateFrom,
+                dateTo: lastFilter.dateTo,
+                userRole: cell.userRole,
+            });
+
+            const cached =
+                summarySnapshot?.expiresAt > Date.now()
+                    ? summarySnapshot.cells.get(cell.key)
+                    : null;
+            const json = Array.isArray(cached?.machines)
+                ? { success: true, data: cached }
+                : await requestCell(`/McdMonitoring?${params}`);
+
+            if (seq !== cellSeq) return;
+
+            if (!json.success) {
+                machineList.innerHTML = `<li class="mcd-list-error">${escapeHtml(json.message)}</li>`;
+                return;
+            }
+
+            const d = json.data;
+            cell.process = d.process || cell.process;
+            cell.location = d.location || cell.location;
+            panelTitle.textContent = `${cell.process} ( ${cell.location} )`;
+
+            if (!d.machines || d.machines.length === 0) {
+                machineList.innerHTML =
+                    '<li class="mcd-list-empty">No machines.</li>';
+                return;
+            }
+
+            machineList.innerHTML = d.machines
+                .map(
+                    (m) =>
+                        `<li class="mcd-list-item" role="button" tabindex="0" aria-pressed="false" data-mcno="${escapeHtml(m)}">${escapeHtml(m)}</li>`,
+                )
+                .join("");
+        } catch (err) {
+            if (seq === cellSeq) {
+                machineList.innerHTML = `<li class="mcd-list-error">${escapeHtml(err.message)}</li>`;
+            }
+        }
+    }
+
+    function requestCell(url) {
+        if (!cellRequests.has(url)) {
+            const request = context
+                .getJson(url, { cache: "no-store" })
+                .finally(() => {
+                    if (cellRequests.get(url) === request)
+                        cellRequests.delete(url);
+                });
+            cellRequests.set(url, request);
+        }
+        return cellRequests.get(url);
+    }
+
+    function goToMonitoring() {
+        const selected = machineList.querySelector(".mcd-list-item.selected");
+        if (!selected) {
+            setStatus("Please select a machine first.", true);
+            return;
+        }
+        if (!currentCell) return;
+
+        const params = new URLSearchParams({
+            machine: selected.dataset.mcno,
+            process: currentCell.process,
+            floor: currentCell.location,
+            userType:
+                currentCell.userRole === "TE"
+                    ? "TE"
+                    : options.userType && options.userType !== "TE"
+                      ? options.userType
+                      : "PM",
+        });
+
+        params.set("dateFrom", lastFilter.dateFrom);
+        params.set("dateTo", lastFilter.dateTo);
+        Workflows.selectMachine(params);
+    }
+
+    function openPanel() {
+        machinePanel.classList.remove("is-hidden");
+        panelOverlay.classList.remove("is-hidden");
+    }
+
+    function closePanel() {
+        machinePanel.classList.add("is-hidden");
+        panelOverlay.classList.add("is-hidden");
+        cellSeq++;
+        currentCell = null;
+    }
+
+    function showProgress(on) {
+        progressBar.classList.toggle("is-hidden", !on);
+        root.setAttribute("aria-busy", String(on));
+        context.clearInterval(progressTimer);
+        context.clearTimeout(progressReset);
+
+        if (on) {
+            let w = 0;
+            progressInner.style.width = "0";
+            progressTimer = context.setInterval(() => {
+                w = Math.min(w + 5, 90);
+                progressInner.style.width = w + "%";
+            }, 200);
+        } else {
+            progressInner.style.width = "100%";
+            progressReset = context.setTimeout(() => {
+                progressInner.style.width = "0";
+            }, 400);
+        }
+    }
+
+    function setStatus(message, isError) {
+        const el = lblStatus;
+        if (!el) return;
+        el.textContent = message || "";
+        el.classList.toggle("mcd-status-error", !!isError);
+    }
+
+    function toLocalIso(d) {
+        const pad = (n) => String(n).padStart(2, "0");
+        return `${formatDate(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+});

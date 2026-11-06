@@ -87,9 +87,14 @@
     <link rel="stylesheet" href="@Url.VersionedAsset("Assets/css/OcapViewer.css")" />
 }
 @section Scripts {
-    <script src="@Url.VersionedAsset("Assets/js/Monitoring.js")"></script>
-    <script src="@Url.VersionedAsset("Assets/js/Workflows.js")"></script>
-    @foreach (var script in new[] { "AlertBoard", "MachineSummary", "McdMonitoring", "BmAnalytics", "ActionCard", "RawData", "OcapViewer", "PmReport", "BmReport", "EvidenceMaking", "TeEvidenceMaking" })
+    <script src="@Url.VersionedAsset("Assets/js/shared/Common.js")"></script>
+    <script src="@Url.VersionedAsset("Assets/js/monitoring/Monitoring.js")"></script>
+    <script src="@Url.VersionedAsset("Assets/js/shared/Workflows.js")"></script>
+    @foreach (var script in new[] {
+        "summaries/AlertBoard", "summaries/MachineSummary", "summaries/McdMonitoring", "summaries/BmAnalytics",
+        "records/ActionCard", "records/RawData", "records/OcapViewer",
+        "reports/PmReport", "reports/BmReport", "reports/EvidenceMaking", "reports/TeEvidenceMaking"
+    })
     {
         <script src="@Url.VersionedAsset($"Assets/js/{script}.js")"></script>
     }
