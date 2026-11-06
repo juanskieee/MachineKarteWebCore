@@ -93,63 +93,207 @@ public class AlertBoardRepository
     private static string BuildQueryNormal(string process, string addQuery, string actionTable)
     {
         return $@"
-SELECT a.process, a.location, a.Mcno AS Mcno,
-       CONVERT(char(10),a.Timeofrequest,101) + ' ' + CONVERT(char(8),a.Timeofrequest,108) AS Timeofrequest,
-   b.BMCase AS BMCase, a.bmid,
-   CASE WHEN EXISTS (SELECT 1 FROM {actionTable}
-           WHERE bmid = a.bmID AND machineno = a.mcno) THEN 'Yes' ELSE 'No' END AS HaveAction,
-   COALESCE(CASE
-       WHEN a.AcredBMContentID <> a.BMContentID THEN
-           CASE WHEN a.AcredBMContentID = ''   THEN a.BMContentID
-                WHEN a.AcredBMContentID = '0'  THEN a.BMContentID
-                WHEN a.AcredBMContentID IS NULL THEN a.BMContentID
-                ELSE a.AcredBMContentID END
-       ELSE a.BMContentID END, 0) AS BMContentID,
-   (SELECT BMContent FROM BMContent
-    WHERE BMContentID = a.BMContentID AND process = '{process}') AS BMContent,
-   c.mcstatus AS MCStatus,
-   'None' AS FontColor
-FROM   [eMaintenanceSystemDB].[dbo].[{process}BMMaintenance] a
-INNER JOIN [eMaintenanceSystemDB].[dbo].[BMCase] b ON a.BMCaseID = b.BMCaseID
-OUTER APPLY (SELECT TOP (1) ac.mcstatus FROM [eMaintenanceSystemDB].[dbo].[{actionTable}] ac
-         WHERE ac.bmID = a.bmID AND ac.machineno = a.mcno ORDER BY ac.Seqno DESC) c
-WHERE  (a.timeofrequest BETWEEN @Range1 AND @Range2)
-  AND  (a.Pmcategoryid = '1')
-  AND  {addQuery}
-  AND  (a.bmcaseid <> 0)
-  AND  (@Location = 'All' OR a.Location = @Location)
-ORDER BY a.mcno DESC, a.Timeofrequest DESC, b.BMCase";
+        ;WITH LatestAction AS
+        (
+            SELECT
+                ac.bmID,
+                ac.machineno,
+                ac.mcstatus,
+                ROW_NUMBER() OVER
+                (
+                    PARTITION BY ac.bmID, ac.machineno
+                    ORDER BY ac.Seqno DESC
+                ) AS rn
+            FROM dbo.{actionTable} ac
+        ),
+        ActionExists AS
+        (
+            SELECT DISTINCT
+                bmid,
+                machineno
+            FROM dbo.{actionTable}
+        ),
+        BMData AS
+        (
+            SELECT
+                a.process,
+                a.location,
+                a.Mcno,
+                a.Timeofrequest,
+                a.BMCaseID,
+                a.bmid,
+                a.AcredBMContentID,
+                a.BMContentID,
+                a.Pmcategoryid
+            FROM dbo.{process}BMMaintenance a
+            WHERE
+                a.timeofrequest >= @Range1
+                AND a.timeofrequest < DATEADD(DAY,1,@Range2)
+                AND a.Pmcategoryid = '1'
+                AND a.bmcaseid <> 0
+                AND (@Location = 'All' OR a.Location = @Location)
+                AND {addQuery}
+        )
+        SELECT
+            a.process,
+            a.location,
+            a.Mcno,
+
+            CONVERT(char(10),a.Timeofrequest,101)
+            + ' '
+            + CONVERT(char(8),a.Timeofrequest,108) AS Timeofrequest,
+
+            b.BMCase,
+            a.bmid,
+
+            CASE
+                WHEN ae.bmid IS NOT NULL THEN 'Yes'
+                ELSE 'No'
+            END AS HaveAction,
+
+            COALESCE(
+                CASE
+                    WHEN a.AcredBMContentID <> a.BMContentID THEN
+                        CASE
+                            WHEN a.AcredBMContentID IS NULL THEN a.BMContentID
+                            WHEN a.AcredBMContentID IN ('','0') THEN a.BMContentID
+                            ELSE a.AcredBMContentID
+                        END
+                    ELSE a.BMContentID
+                END,
+                0
+            ) AS BMContentID,
+
+            bc.BMContent,
+
+            la.mcstatus AS MCStatus,
+
+            'None' AS FontColor
+
+        FROM BMData a
+
+        INNER JOIN BMCase b
+            ON a.BMCaseID = b.BMCaseID
+
+        LEFT JOIN ActionExists ae
+            ON ae.bmid = a.bmid
+           AND ae.machineno = a.Mcno
+
+        LEFT JOIN LatestAction la
+            ON la.bmid = a.bmid
+           AND la.machineno = a.Mcno
+           AND la.rn = 1
+
+        LEFT JOIN BMContent bc
+            ON bc.BMContentID = a.BMContentID
+           AND bc.process = '{process}'
+
+        ORDER BY
+            a.Mcno DESC,
+            a.Timeofrequest DESC,
+            b.BMCase";
     }
 
     private static string BuildQueryTE(string process)
     {
         return $@"
-SELECT a.process, a.location, a.testerNo AS Mcno,
-       CONVERT(char(10),a.Timeofrequest,101) + ' ' + CONVERT(char(8),a.Timeofrequest,108) AS Timeofrequest,
-   b.bmteunit AS BMCase, a.bmid,
-   CASE WHEN EXISTS (SELECT 1 FROM MachineKarte_ActionCard_TE WHERE bmid = a.bmID) THEN 'Yes' ELSE 'No' END AS HaveAction,
-   COALESCE(CASE
-       WHEN a.AcredBMContentID <> a.BMContentID THEN
-           CASE WHEN a.AcredBMContentID = ''   THEN a.BMContentID
-                WHEN a.AcredBMContentID = '0'  THEN a.BMContentID
-                WHEN a.AcredBMContentID IS NULL THEN a.BMContentID
-                ELSE a.AcredBMContentID END
-       ELSE a.BMContentID END, 0) AS BMContentID,
-   NULL AS BMContent,
-   c.mcstatus AS MCStatus,
-   'None' AS FontColor,
-   a.Priority
-FROM   [eMaintenanceSystemDB].[dbo].[TEBMMaintenance] a
-INNER JOIN [eMaintenanceSystemDB].[dbo].[BMTEUnit] b ON a.bmunitid = b.bmteunitid
-OUTER APPLY (SELECT TOP (1) ac.mcstatus FROM [eMaintenanceSystemDB].[dbo].[MachineKarte_ActionCard_TE] ac
-         WHERE ac.bmID = a.bmID ORDER BY ac.Seqno DESC) c
-WHERE  (a.timeofrequest BETWEEN @Range1 AND @Range2)
-  AND  a.process = '{process}'
-  AND  (a.Pmcategoryid = '1' OR a.Pmcategoryid = '4')
-  AND  (a.BMStatusID NOT IN ('30','31','1','2','3','7','17'))
-  AND  (a.bmunitid <> 0)
-  AND  (@Location = 'All' OR a.Location = @Location)
-ORDER BY a.testerNo DESC, a.MCType DESC, a.Timeofrequest DESC, b.bmteunit";
+        ;WITH LatestAction AS
+        (
+            SELECT
+                ac.bmID,
+                ac.mcstatus,
+                ROW_NUMBER() OVER
+                (
+                    PARTITION BY ac.bmID
+                    ORDER BY ac.Seqno DESC
+                ) AS rn
+            FROM dbo.MachineKarte_ActionCard_TE ac
+        ),
+        ActionExists AS
+        (
+            SELECT DISTINCT
+                bmID
+            FROM dbo.MachineKarte_ActionCard_TE
+        ),
+        TEData AS
+        (
+            SELECT
+                a.process,
+                a.location,
+                a.testerNo,
+                a.Timeofrequest,
+                a.bmunitid,
+                a.bmid,
+                a.AcredBMContentID,
+                a.BMContentID,
+                a.Priority,
+                a.MCType
+            FROM dbo.TEBMMaintenance a
+            WHERE
+                a.Timeofrequest >= @Range1
+                AND a.Timeofrequest < DATEADD(DAY, 1, @Range2)
+                AND a.process = '{process}'
+                AND a.Pmcategoryid IN ('1','4')
+                AND a.BMStatusID NOT IN ('30','31','1','2','3','7','17')
+                AND a.bmunitid <> 0
+                AND (@Location = 'All' OR a.Location = @Location)
+        )
+        SELECT
+            a.process,
+            a.location,
+            a.testerNo AS Mcno,
+
+            CONVERT(char(10), a.Timeofrequest, 101)
+            + ' '
+            + CONVERT(char(8), a.Timeofrequest, 108) AS Timeofrequest,
+
+            b.bmteunit AS BMCase,
+
+            a.bmid,
+
+            CASE
+                WHEN ae.bmID IS NOT NULL THEN 'Yes'
+                ELSE 'No'
+            END AS HaveAction,
+
+            COALESCE(
+                CASE
+                    WHEN a.AcredBMContentID <> a.BMContentID THEN
+                        CASE
+                            WHEN a.AcredBMContentID IS NULL THEN a.BMContentID
+                            WHEN a.AcredBMContentID IN ('','0') THEN a.BMContentID
+                            ELSE a.AcredBMContentID
+                        END
+                    ELSE a.BMContentID
+                END,
+                0
+            ) AS BMContentID,
+
+            NULL AS BMContent,
+
+            la.mcstatus AS MCStatus,
+
+            'None' AS FontColor,
+
+            a.Priority
+
+        FROM TEData a
+
+        INNER JOIN dbo.BMTEUnit b
+            ON a.bmunitid = b.bmteunitid
+
+        LEFT JOIN ActionExists ae
+            ON ae.bmID = a.bmID
+
+        LEFT JOIN LatestAction la
+            ON la.bmID = a.bmID
+           AND la.rn = 1
+
+        ORDER BY
+            a.testerNo DESC,
+            a.MCType DESC,
+            a.Timeofrequest DESC,
+            b.bmteunit;";
     }
 
     // Data fetch

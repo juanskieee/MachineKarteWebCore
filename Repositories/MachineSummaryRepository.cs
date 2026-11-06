@@ -18,4 +18,14 @@ public class MachineSummaryRepository
         return await ImportantDeviceQuery.GetMachinesAsync(_connectionString, process, location,
             from, to, isTe, distinct: false, cancellationToken);
     }
+
+    public Task<Dictionary<string, List<string>>> GetMachinesByLocationAsync(
+        string process, DateTime from, DateTime to, bool isTe, CancellationToken cancellationToken = default)
+    {
+        if (!MachineSummaryConfig.IsValidProcess(process, isTe))
+            throw new ArgumentException($"Unknown process '{process}'.", nameof(process));
+
+        return ImportantDeviceQuery.GetMachinesByLocationAsync(_connectionString, process,
+            MachineSummaryConfig.GetLocations(process, isTe), from, to, isTe, distinct: false, cancellationToken);
+    }
 }

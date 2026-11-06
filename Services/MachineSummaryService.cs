@@ -45,28 +45,26 @@ namespace MachineKarte.Web.Services
                 result.Rows.Add(row);
             }
 
-            var cells = result.Rows.SelectMany(row =>
-                MachineSummaryConfig.GetLocations(row.Process, isTe)
-                    .Select(location => (Row: row, Location: location)));
-
-            await foreach (var (cell, machines) in MonitoringQueryBatch.ReadAsync(cells,
-                cell => _repo.GetMachinesAsync(cell.Row.Process, cell.Location, from, to, isTe, cancellationToken), cancellationToken))
+            // Read each process table once for all its floors.
+            await foreach (var (row, locations) in MonitoringQueryBatch.ReadAsync(result.Rows,
+                row => _repo.GetMachinesByLocationAsync(row.Process, from, to, isTe, cancellationToken), cancellationToken))
             {
-                var row = cell.Row;
-                var location = cell.Location;
-                row.Cells[location] = new SummaryCellData
+                foreach (var (location, machines) in locations)
                 {
-                    Process = row.Process,
-                    Location = location,
-                    Count = machines.Count,
-                    Machines = machines
-                        .Distinct(StringComparer.OrdinalIgnoreCase)
-                        .ToList(),
-                    NotApplicable = false
-                };
+                    row.Cells[location] = new SummaryCellData
+                    {
+                        Process = row.Process,
+                        Location = location,
+                        Count = machines.Count,
+                        Machines = machines
+                            .Distinct(StringComparer.OrdinalIgnoreCase)
+                            .ToList(),
+                        NotApplicable = false
+                    };
 
-                row.RowTotal += machines.Count;
-                result.LocationTotals[location] += machines.Count;
+                    row.RowTotal += machines.Count;
+                    result.LocationTotals[location] += machines.Count;
+                }
             }
 
             foreach (var row in result.Rows)

@@ -16,13 +16,16 @@ public class OcapViewerRepository
         string bmCaseId, string bmProcess, CancellationToken cancellationToken = default)
     {
         const string sql = @"
-            SELECT  [BMOCAPName],
-                    [BMOCAPCheckingMethod],
-                    [BMOCAPTreatmentAction]
-            FROM    gridBMOCAP
-            WHERE   BMCaseID = @BMCaseID
-            AND     Process  = @Process
-            ORDER BY BMOCAPID";
+            SELECT
+                BMOCAPName,
+                BMOCAPCheckingMethod,
+                BMOCAPTreatmentAction
+            FROM dbo.gridBMOCAP
+            WHERE
+                BMCaseID = @BMCaseID
+                AND Process = @Process
+            ORDER BY
+                BMOCAPID;";
 
         var rows = new List<OcapRow>();
         await using var conn = new SqlConnection(_connectionString);

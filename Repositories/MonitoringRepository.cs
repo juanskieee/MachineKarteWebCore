@@ -447,57 +447,105 @@ public class MonitoringRepository
     };
 
     private static string BuildMachineSummarySQL(
-        string process, string addQuery, int top1, int top2, bool allMachines)
+        string process,
+        string addQuery,
+        int top1,
+        int top2,
+        bool allMachines)
     {
-        string machineFilter = allMachines ? string.Empty : "AND (Mcno = @Mcno)";
-        string tbl = $"[eMaintenanceSystemDB].[dbo].[{process}BMMaintenance]";
+        string machineFilter = allMachines
+            ? string.Empty
+            : "AND a.Mcno = @Mcno";
+
         string counts = $@"
-                SELECT COUNT(mcno) AS MACHINENAME, MCNO,
-                    COALESCE(c.actionline,4) AS actionline, a.MCType
-                FROM {tbl} a
-                INNER JOIN [eMaintenanceSystemDB].[dbo].[Process] D ON a.Process = d.ProcessName
-                INNER JOIN [eMaintenanceSystemDB].[dbo].[MCType]  c ON a.MCType = c.MCType AND c.ProcessID = d.ProcessID
-                INNER JOIN [eMaintenanceSystemDB].[dbo].[BMCase]  b ON a.BMCaseID = b.BMCaseID
-                WHERE (TimeOfRequest BETWEEN @Range1 AND @Range2)
-                  AND PMCategoryID = 1 AND d.ProcessName = @Process
-                  AND (@Location = 'All' OR a.Location = @Location)
-                  {machineFilter}
-                  AND {addQuery}
-                  AND a.BMCaseID <> 0
-                GROUP BY MCNO, actionline, a.MCType";
-        return BuildPagedSummarySQL(counts, "MACHINENAME DESC, MCNO ASC, MCType ASC, actionline ASC", top1, top2);
+            SELECT
+                COUNT_BIG(*) AS MACHINENAME,
+                a.MCNO,
+                COALESCE(c.actionline,4) AS actionline,
+                a.MCType
+            FROM dbo.{process}BMMaintenance a
+
+            INNER JOIN dbo.Process d
+                ON a.Process = d.ProcessName
+
+            INNER JOIN dbo.MCType c
+                ON a.MCType = c.MCType
+               AND c.ProcessID = d.ProcessID
+
+            WHERE
+                a.TimeOfRequest >= @Range1
+                AND a.TimeOfRequest < DATEADD(DAY,1,@Range2)
+                AND a.PMCategoryID = 1
+                AND d.ProcessName = @Process
+                AND (@Location = 'All' OR a.Location = @Location)
+                {machineFilter}
+                AND {addQuery}
+                AND a.BMCaseID <> 0
+            GROUP BY
+                a.MCNO,
+                COALESCE(c.actionline,4),
+                a.MCType";
+
+        return BuildPagedSummarySQL(
+            counts,
+            "MACHINENAME DESC, MCNO ASC, MCType ASC, actionline ASC",
+            top1,
+            top2);
     }
 
     private static string BuildTEMachineSummarySQL(
-        string addQuery, int top1, int top2, bool allMachines)
+        string addQuery,
+        int top1,
+        int top2,
+        bool allMachines)
     {
-        string machineFilter = allMachines ? string.Empty : "AND (testerno = @Mcno)";
+        string machineFilter = allMachines
+            ? string.Empty
+            : "AND a.TesterNo = @Mcno";
 
-        string counts = $@"
-                SELECT COUNT(MCType) AS MACHINENAME, MCType, testerno,
-                    COALESCE(c.actionline,4) AS actionline
-                FROM [eMaintenanceSystemDB].[dbo].[TEBMMaintenance] a
-                INNER JOIN [eMaintenanceSystemDB].[dbo].[Process] D ON a.Process = d.ProcessName
-                INNER JOIN [eMaintenanceSystemDB].[dbo].[testertype] c
-                    ON a.MCType = c.testertype AND c.ProcessID = d.ProcessID AND c.Location = a.Location
-                WHERE (TimeOfRequest BETWEEN @Range1 AND @Range2)
-                  AND (PMCategoryID = 1 OR PMCategoryID = 4)
-                  AND d.ProcessName = @Process
-                  AND (@Location = 'All' OR a.Location = @Location)
-                  {machineFilter}
-                  AND a.BMStatusID NOT IN ('30','31','1','2','3','7','17')
-                  AND BMUnitID <> 0
-                GROUP BY MCType, testerno, actionline";
-        return BuildPagedSummarySQL(counts, "MACHINENAME DESC, MCType ASC, testerno ASC, actionline ASC", top1, top2);
+        string counts = @"
+            SELECT
+                COUNT_BIG(*) AS MACHINENAME,
+                a.MCType,
+                a.TesterNo,
+                COALESCE(c.actionline,4) AS actionline
+            FROM dbo.TEBMMaintenance a
+
+            INNER JOIN dbo.Process d
+                ON a.Process = d.ProcessName
+
+            INNER JOIN dbo.TesterType c
+                ON a.MCType = c.TesterType
+               AND c.ProcessID = d.ProcessID
+               AND c.Location = a.Location
+
+            WHERE
+                a.TimeOfRequest >= @Range1
+                AND a.TimeOfRequest < DATEADD(DAY,1,@Range2)
+                AND a.PMCategoryID IN (1,4)
+                AND d.ProcessName = @Process
+                AND (@Location = 'All' OR a.Location = @Location)
+                " + machineFilter + @"
+                AND a.BMStatusID NOT IN (30,31,1,2,3,7,17)
+                AND a.BMUnitID <> 0
+            GROUP BY
+                a.MCType,
+                a.TesterNo,
+                COALESCE(c.actionline,4)";
+
+        return BuildPagedSummarySQL(
+            counts,
+            "MACHINENAME DESC, MCType ASC, TesterNo ASC, actionline ASC",
+            top1,
+            top2);
     }
 
-    // Retain EXCEPT's distinct projected rows, then reuse one stored aggregation for page and total.
+    // Grouped rows are already unique; reuse the aggregation for page and total.
     private static string BuildPagedSummarySQL(string counts, string order, int top1, int top2) => $@"
         SET NOCOUNT ON;
-        ;WITH MachineCounts AS ({counts}),
-        DistinctCounts AS (SELECT DISTINCT * FROM MachineCounts)
+        ;WITH MachineCounts AS ({counts})
         SELECT *, ROW_NUMBER() OVER (ORDER BY {order}) AS PageRow
-        INTO #MonitoringMachineCounts FROM DistinctCounts;
+        INTO #MonitoringMachineCounts FROM MachineCounts;
         SELECT * FROM #MonitoringMachineCounts
         WHERE PageRow > {top1} AND PageRow <= {top2} ORDER BY PageRow;
         SELECT COUNT(*) FROM #MonitoringMachineCounts;

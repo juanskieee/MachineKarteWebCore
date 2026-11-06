@@ -82,31 +82,45 @@ public class ActionCardRepository
             ? "BMID = @BmId"
             : "BMID = @BmId AND Machineno = @McNo";
 
-        string sql = $@"INSERT INTO [dbo].[{table}]
-            (BMID, Machineno, ProblemContent, Incharge, DateCard,
-             InvestigationDone, Action,
-             Comment,  Date1, Incharge1,
-             Comment2, Date2, Incharge2,
-             Comment3, Date3, Incharge3,
-             MCStatus,
-             PMReply1, PMReply2, PMReply3,
-             PMIncharge1, PMIncharge2, PMIncharge3,
-             PMDate1, PMDate2, PMDate3)
-        SELECT
-             @BmId, @McNo, @ProblemContent, @Incharge, @DateCard,
-             @Investigation, @Action,
-             @Comment,  @Date1, @Incharge1,
-             @Comment2, @Date2, @Incharge2,
-             @Comment3, @Date3, @Incharge3,
-             @MCStatus,
-             @PMReply1, @PMReply2, @PMReply3,
-             @PMIncharge1, @PMIncharge2, @PMIncharge3,
-             @PMDate1, @PMDate2, @PMDate3
-        WHERE NOT EXISTS (
-            SELECT 1 FROM [dbo].[{table}] WITH (UPDLOCK, HOLDLOCK)
+        string sql = $@"
+        IF NOT EXISTS
+        (
+            SELECT 1
+            FROM dbo.[{table}] WITH (UPDLOCK, SERIALIZABLE)
             WHERE {match}
-        );
-        SELECT @@ROWCOUNT;";
+        )
+        BEGIN
+            INSERT INTO dbo.[{table}]
+            (
+                BMID, Machineno, ProblemContent,
+                Incharge, DateCard, InvestigationDone,
+                Action, Comment, Date1,
+                Incharge1, Comment2, Date2,
+                Incharge2, Comment3, Date3,
+                Incharge3, MCStatus, PMReply1,
+                PMReply2, PMReply3, PMIncharge1,
+                PMIncharge2, PMIncharge3, PMDate1,
+                PMDate2, PMDate3
+            )
+            VALUES
+            (
+                @BmId, @McNo, @ProblemContent,
+                @Incharge, @DateCard, @Investigation,
+                @Action, @Comment, @Date1,
+                @Incharge1, @Comment2, @Date2,
+                @Incharge2, @Comment3, @Date3,
+                @Incharge3, @MCStatus, @PMReply1,
+                @PMReply2, @PMReply3, @PMIncharge1,
+                @PMIncharge2, @PMIncharge3, @PMDate1,
+                @PMDate2, @PMDate3
+            );
+
+            SELECT 1;
+        END
+        ELSE
+        BEGIN
+            SELECT 0;
+        END;";
 
         await using var conn = Open();
         await conn.OpenAsync();
