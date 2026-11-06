@@ -1,4 +1,4 @@
-param([string]$Dotnet = 'dotnet', [string]$LocalDbInstance = 'MSSQLLocalDB')
+param([string]$Dotnet = 'dotnet', [string]$LocalDbInstance = 'MSSQLLocalDB', [switch]$Benchmark)
 # Real read paths, isolated in a uniquely named disposable LocalDB database.
 # No appsettings, application hosting, or production connection is used.
 $ErrorActionPreference = 'Stop'
@@ -15,7 +15,7 @@ $projectPath = [Security.SecurityElement]::Escape((Join-Path $repo 'MachineKarte
 "@ | Set-Content -Encoding UTF8 (Join-Path $checkDirectory 'Checks.csproj')
 # Test copies keep the real repository bodies, redirecting fully qualified reads
 # into the disposable catalog. Reject any surviving production database name.
-foreach ($name in @('RawDataRepository','EvidenceRepository','TeEvidenceRepository','BmReportRepository','McdMonitoringRepository','PmReportRepository')) {
+foreach ($name in @('RepositorySql','ImportantDeviceQuery','MonitoringQueryBatch','RawDataRepository','EvidenceRepository','TeEvidenceRepository','BmReportRepository','McdMonitoringRepository','PmReportRepository','AlertBoardRepository','BmAnalyticsRepository','MachineSummaryRepository','OcapViewerRepository')) {
     $source = [IO.File]::ReadAllText((Join-Path $repo "Repositories/$name.cs"))
     $source = $source.Replace('MachineKarte.Web.Repositories', 'RetrievalChecks.Repositories').Replace('[eMaintenanceSystemDB].[dbo].', '[dbo].')
     if ($source -match 'eMaintenanceSystemDB') { throw "Unredirected database reference in $name" }
@@ -30,7 +30,7 @@ using Microsoft.Extensions.Configuration;
 using RetrievalChecks.Repositories;
 
 void Require(bool condition, string message) { if (!condition) throw new Exception(message); }
-Require(args.Length == 1 && System.Text.RegularExpressions.Regex.IsMatch(args[0], @"^[A-Za-z0-9_-]+$"), "LocalDB instance required");
+Require(args.Length >= 2 && System.Text.RegularExpressions.Regex.IsMatch(args[0], @"^[A-Za-z0-9_-]+$"), "LocalDB instance and repository required");
 var database = "MachineKarte_RetrievalTest_" + Guid.NewGuid().ToString("N");
 var connection = new SqlConnectionStringBuilder {
     DataSource = @"(localdb)\" + args[0], InitialCatalog = "master", IntegratedSecurity = true,
@@ -98,6 +98,9 @@ INSERT ViewDCData_Ver4 VALUES (5,'MC-Z','10/05/2026 00:00:00','CURRENT'),
     var from = new DateTime(2026,10,1); var to = new DateTime(2026,10,31);
     Require((await mcd.GetMachinesAsync("DC","LSI1-1F",from,to,false)).SequenceEqual(new[] {"MC-Z"}), "MCD DISTINCT/order/filter failed");
     Require((await mcd.GetMachinesAsync("FL","LSI1-1F",from,to,true)).SequenceEqual(new[] {"TE-Z"}), "TE MCD DISTINCT/order/filter failed");
+    var machineSummary=new MachineSummaryRepository(config);
+    Require((await machineSummary.GetMachinesAsync("DC","LSI1-1F",from.AddMilliseconds(900),to,false)).SequenceEqual(new[]{"MC-Z","MC-Z","MC-Z"}),"Machine Summary lost row-count semantics or whole-second date boundaries");
+    Require((await machineSummary.GetMachinesAsync("FL","LSI1-1F",from,to,true)).SequenceEqual(new[]{"TE-Z","TE-Z"}),"TE Machine Summary deduplicated BM rows");
     var pm = await new PmReportRepository(config).GetReportDataAsync("DC", 5, "10/05/2026 00:00:00", "MC-Z");
     Require(pm!.Current.Fields["Marker"] == "CURRENT" && pm.History.Count == 2 &&
         pm.History[0].Fields["Marker"] == "PREVIOUS" && pm.History[1].Fields["Marker"] == "", "PM history limit/order/null mapping changed");
@@ -186,6 +189,137 @@ CREATE TABLE BMWhy (BMWhyID int, BM4M nvarchar(100), BMWhy nvarchar(100)); INSER
     Require((await te.GetMiscRowsAsync("999")).Count==0,"Empty TE misc results changed");
     Console.WriteLine("PASS: original TE distinct-data iteration, optional columns, connector identifiers and raw report SQL types.");
 
+    // Execute Form5's original SQL as a separate oracle for the shared recurrence CTE.
+    await Sql(@"
+INSERT BMCase VALUES (3,'Corrective maintenance'),(4,'Preventive maintenance'),(5,NULL);
+INSERT DCBMMaintenance VALUES
+(10,'BOUNDARY','DC','LSI1-1F','2026-09-30','2026-09-30',1,'DEVICE',1,6),
+(11,'BOUNDARY','DC','LSI1-1F','2026-10-01','2026-10-01',1,'DEVICE',1,6),
+(12,'MIX','DC','LSI1-1F','2026-10-01','2026-10-01',1,'DEVICE',1,6),
+(13,'MIX','DC','LSI1-1F','2026-10-02','2026-10-02',2,'DEVICE',1,6),
+(14,'MIX','DC','LSI1-1F','2026-10-03','2026-10-03',1,'DEVICE',1,6),
+(15,'NULL-DATE','DC','LSI1-1F',NULL,'2026-10-01',1,'DEVICE',1,6),
+(16,'CORRECTIVE','DC','LSI1-1F','2026-10-01','2026-10-01',3,'DEVICE',1,6),
+(17,'CORRECTIVE','DC','LSI1-1F','2026-10-02','2026-10-02',3,'DEVICE',1,6),
+(18,'PREVENTIVE','DC','LSI1-1F','2026-10-01','2026-10-01',4,'DEVICE',1,6),
+(19,'PREVENTIVE','DC','LSI1-1F','2026-10-02','2026-10-02',4,'DEVICE',1,6),
+(20,'NULL-CASE','DC','LSI1-1F','2026-10-01','2026-10-01',5,'DEVICE',1,6);
+");
+    var legacyRaw=System.IO.File.ReadAllText(System.IO.Path.Combine(args[1],"Legacy","Form5.vb.txt"));
+    string OriginalRaw(string variable) {
+        var sql=System.Text.RegularExpressions.Regex.Match(legacyRaw,variable+" = \"(SELECT.*?Drop Table #temptable)\"",
+            System.Text.RegularExpressions.RegexOptions.Singleline|System.Text.RegularExpressions.RegexOptions.IgnoreCase).Groups[1].Value;
+        Require(sql.Length>100,"Original Form5 query missing");
+        sql=sql.Replace("\" & GetTablename(Process) & \"","[dbo].[DCBMMaintenance]")
+            .Replace("'\" & Location & \"'","@Location").Replace("'\" & DateFrom & \"'","@DateFrom").Replace("'\" & DateTo & \"'","@DateTo")
+            .Replace("[eMaintenanceSystemDB].[dbo].","[dbo].");
+        Require(!sql.Contains("eMaintenanceSystemDB",StringComparison.OrdinalIgnoreCase)&&!sql.Contains(" & "),"Original raw query was not redirected");
+        return sql;
+    }
+    async Task<DataTable> ReadOriginalRaw(string sql) {
+        await using var command=new SqlCommand(sql,fixture);
+        command.Parameters.AddWithValue("@Location","LSI1-1F");
+        command.Parameters.AddWithValue("@DateFrom",new DateTime(2026,10,1)); command.Parameters.AddWithValue("@DateTo",new DateTime(2026,10,31));
+        await using var reader=await command.ExecuteReaderAsync(); var table=new DataTable(); table.Load(reader); return table;
+    }
+    void SameTable(DataTable original,DataTable current,string label) {
+        Require(original.Columns.Cast<DataColumn>().Select(c=>(c.ColumnName,c.DataType)).SequenceEqual(current.Columns.Cast<DataColumn>().Select(c=>(c.ColumnName,c.DataType))),label+" column names/types changed");
+        string[] Rows(DataTable table)=>table.Rows.Cast<DataRow>().Select(row=>string.Join("|",row.ItemArray.Select(value=>value?.ToString()))).ToArray();
+        Require(Rows(original).SequenceEqual(Rows(current)),label+" rows/order/values changed");
+    }
+    var originalFrequency=OriginalRaw("strQuery"); var originalMonthly=OriginalRaw("strQuery2");
+    var newFrequency=await raw.GetFrequencyRawRowsAsync("DCBMMaintenance","LSI1-1F","2026-10-01","2026-10-31");
+    SameTable(await ReadOriginalRaw(originalFrequency),newFrequency,"Frequency CTE");
+    SameTable(await ReadOriginalRaw(originalMonthly),await raw.GetBmCaseMonthlyRowsAsync("DCBMMaintenance","LSI1-1F","2026-10-01","2026-10-31"),"Monthly CTE");
+    Require(!newFrequency.Rows.Cast<DataRow>().Any(row=>row["mcno"].ToString()=="BOUNDARY"),"Frequency included a neighbor outside its date window");
+    Console.WriteLine("PASS: both recurrence CTEs match original Form5 SQL, including date-filter placement, alternating cases, machine boundaries, NULLs, excluded maintenance and SQL types/order.");
+
+    await Sql(@"
+CREATE TABLE ViewTEData_Test (bmID int, TesterNo varchar(50), MCNo varchar(50), OccurrenceDate datetime);
+INSERT ViewTEData_Test VALUES (1,'TE-A',NULL,'2026-10-01');
+CREATE TABLE ViewTEData (bmID int, TesterNo varchar(50), MCNo varchar(50), PMConfirmGLOPReqBy varchar(50), RepairedByEnd varchar(50));
+INSERT ViewTEData VALUES (1,'TE-A',NULL,'REQUESTER','REPAIRER');
+");
+    var sparse=await bm.GetReportDataAsync(1);
+    Require(sparse!.TesterNo=="TE-A" && sparse.MCNo=="" && sparse.DeviceName=="" && sparse.Values["OccurrenceDate"] is DateTime,"Sparse BM view lost optional/raw fields");
+    Require((await te.GetHeaderAsync("1"))!.TesterNo=="TE-A" && (await te.GetHeaderAsync("1"))!.WaferNo=="" && await te.GetTEAssignAsync("1")=="REQUESTER, REPAIRER","Sparse TE header/assignment changed");
+    foreach(var invalid in new Func<Task>[] {
+        async()=>{await new OcapViewerRepository(config).GetOcapDataAsync(1,"DCBMMaintenance];--");},
+        async()=>{await evidence.GetTscConfirmationAsync(1,"DC","viewDCEMaking_Ver3;--");},
+        async()=>{await evidence.GetMachineHeaderAsync(1,"ViewDCData_Ver4;--");}
+    }) { try { await invalid(); throw new Exception("Untrusted identifier accepted"); } catch(ArgumentException) { } }
+    Console.WriteLine("PASS: sparse BM/TE view metadata, raw report dates/DBNull, and repository-boundary OCAP/evidence identifier validation.");
+
+    // Exercise complete AlertBoard reads against the same old per-floor processing order.
+    await Sql("ALTER TABLE DCBMMaintenance ADD MCType varchar(50), BMContentID int, AcredBMContentID int, Turnover varchar(10);");
+    await Sql("ALTER TABLE TEBMMaintenance ADD BMCaseID int, MCType varchar(50), MCNo varchar(50), BMContentID int, AcredBMContentID int, Priority varchar(30);");
+    await Sql("ALTER TABLE BMContent ADD Process varchar(20);");
+    await Sql("ALTER TABLE MachineKarte_ActionCard ADD Seqno int, MCStatus varchar(100);");
+    await Sql("ALTER TABLE MachineKarte_ActionCard_TE ADD Seqno int, MCStatus varchar(100);");
+    await Sql(@"
+UPDATE DCBMMaintenance SET MCType='TYPE',BMContentID=48,AcredBMContentID=0,Turnover=CASE BMID%3 WHEN 0 THEN 'VIS' WHEN 1 THEN 'CC' ELSE 'PE' END;
+INSERT DCBMMaintenance VALUES (100,'MC-R','DC','LSI3-1F','2026-10-30','2026-10-30',1,'DEVICE',1,6,'TYPE',48,0,'CC'),
+ (101,'MC-R','DC','LSI3-1F','2026-10-31','2026-10-31',1,'DEVICE',1,6,'TYPE',48,0,'CC');
+UPDATE TEBMMaintenance SET BMCaseID=1,MCType='TYPE',MCNo='MC-TE',BMContentID=48,AcredBMContentID=0,Priority='QUALITY BM';
+INSERT TEBMMaintenance VALUES (100,'TE-R','FT','LSI2-3F','2026-10-30',1,'DEVICE',1,6,1,'TYPE','MC-TE',48,0,'QUALITY BM'),
+ (101,'TE-R','FT','LSI2-3F','2026-10-31',1,'DEVICE',4,6,1,'TYPE','MC-TE',48,0,'QUALITY BM');
+INSERT BMContent VALUES (48,'CONTENT','DC');
+UPDATE MachineKarte_ActionCard SET Seqno=1,MCStatus='NO RE-OCCURRENCE AFTER 7 DAYS';
+UPDATE MachineKarte_ActionCard_TE SET Seqno=1,MCStatus='NO RE-OCCURRENCE AFTER 7 DAYS';
+");
+    foreach(var user in new[]{"CC","EEE","VIS"}) await Sql($"SELECT * INTO MachineKarte_ActionCard_{user} FROM MachineKarte_ActionCard;");
+    foreach(var process in new[]{"DB","WB","MP","PL","FL","ATC","SING","FT","TP","EDS","MEMS"})
+        await Sql($"SELECT * INTO {process}BMMaintenance FROM DCBMMaintenance; UPDATE {process}BMMaintenance SET Process='{process}';");
+    var alert=new AlertBoardRepository(config);
+    var flags=BindingFlags.Static|BindingFlags.NonPublic;
+    object Call(string name,params object[] parameters)=>typeof(AlertBoardRepository).GetMethod(name,flags)!.Invoke(null,parameters)!;
+    var fetch=typeof(AlertBoardRepository).GetMethod("FetchRowsAsync",BindingFlags.Instance|BindingFlags.NonPublic)!;
+    async Task<AlertBoardData> PerFloorBoard(AlertBoardRequest request,bool bounded=false) {
+        var board=new AlertBoardData();
+        var processes=(string[])typeof(AlertBoardRepository).GetField(request.User=="TE"?"ProcessesTE":"ProcessesNormal",flags)!.GetValue(null)!;
+        var locations=(string[])typeof(AlertBoardRepository).GetField("Locations",flags)!.GetValue(null)!;
+        var queries=processes.SelectMany(process=>locations.Select(location=>(Process:process,Location:location)));
+        foreach(var batch in queries.Chunk(bounded?4:1)) {
+            var results=await Task.WhenAll(batch.Select(query=> {
+                var sql=(string)(request.User=="TE"?Call("BuildQueryTE",query.Process):Call("BuildQueryNormal",query.Process,Call("BuildAddQuery",request.User),Call("BuildActionTable",request.User)));
+                return (Task<List<AlertBoardRow>>)fetch.Invoke(alert,new object[]{sql,request.DateFrom,request.DateTo,query.Location,CancellationToken.None})!;
+            }));
+            foreach(var rows in results) {
+                if(rows.Count==0) continue;
+                var solved=(List<AlertBoardRow>)Call("ApplySolveLogic",rows);
+                Call(request.User=="TE"?"ApplyColorTE":"ApplyColorNormal",solved,board);
+            }
+        }
+        Call("BuildTotals",board); return board;
+    }
+    string BoardState(AlertBoardData board)=>System.Text.Json.JsonSerializer.Serialize(new {
+        Cells=board.Cells.OrderBy(cell=>cell.Key).Select(cell=>new{cell.Key,cell.Value.Count,cell.Value.Machines}),
+        Totals=board.LocationTotals.OrderBy(total=>total.Key),board.GrandTotal });
+    foreach(var user in new[]{"","CC","EEE","VIS","TE"}) {
+        var request=new AlertBoardRequest{User=user,DateFrom="10/01/2026",DateTo="11/02/2026"};
+        var batched=await alert.LoadBoardAsync(request);
+        Require(BoardState(batched)==BoardState(await PerFloorBoard(request)),"AlertBoard process batching changed "+user+" counts, list order, solved colors or floor isolation");
+        Require(BoardState(batched)==BoardState(await PerFloorBoard(request,true)),"AlertBoard differs from prior bounded per-floor reads in "+user);
+        if(user=="") Require(batched.Cells["ATC_65"].Count==2,"Repeated LSI3-1F pass was lost");
+    }
+    Console.WriteLine("PASS: complete AlertBoard results in all five modes match 120/50 per-floor reads, including repeated floors, independent color state, totals and machine-list order; batching uses 12/5 process reads.");
+    var analyticsRows=await new BmAnalyticsRepository(config).GetRowsAsync("DC","LSI1-1F","EEE",from.AddMilliseconds(900),new DateTime(2026,11,2));
+    Require(analyticsRows.Any(row=>row.BmId==1 && row.Timeofrequest=="10/01/2026 00:00:00"),"Analytics native date conversion or whole-second range differs");
+
+    if(args.Contains("benchmark")) {
+        var request=new AlertBoardRequest{User="",DateFrom="10/01/2026",DateTo="11/02/2026"};
+        var previous=new List<double>(); var boundedPrevious=new List<double>(); var improved=new List<double>();
+        for(var run=0;run<7;run++) foreach(var version in Enumerable.Range(0,3).Select(index=>(index+run)%3)) {
+            var watch=System.Diagnostics.Stopwatch.StartNew();
+            var board=version==0?await PerFloorBoard(request):version==1?await PerFloorBoard(request,true):await alert.LoadBoardAsync(request);
+            watch.Stop();
+            Require(board.GrandTotal>0,"Benchmark fixture is empty");
+            (version==0?previous:version==1?boundedPrevious:improved).Add(watch.Elapsed.TotalMilliseconds);
+        }
+        var before=previous.Order().ElementAt(3); var boundedBefore=boundedPrevious.Order().ElementAt(3); var after=improved.Order().ElementAt(3);
+        Console.WriteLine($"SYNTHETIC LocalDB AlertBoard median (7 rotating runs, same SQL/data, real reads/colors): 120 sequential reads {before:F1} ms; 120 bounded reads {boundedBefore:F1} ms; 12 bounded process reads {after:F1} ms. {before/after:F2}x vs sequential; {boundedBefore/after:F2}x vs previous web scheduling. Not production timings.");
+    }
+
     using var cancelled = new CancellationTokenSource(); cancelled.Cancel();
     foreach (var read in new Func<Task>[] {
         async () => { await raw.GetFrequencyRawRowsAsync("DCBMMaintenance","LSI1-1F","2026-10-01","2026-10-31",cancelled.Token); },
@@ -208,5 +342,7 @@ CREATE TABLE BMWhy (BMWhyID int, BM4M nvarchar(100), BMWhy nvarchar(100)); INSER
 '@ | Set-Content -Encoding UTF8 (Join-Path $checkDirectory 'Program.cs')
 & $Dotnet build (Join-Path $checkDirectory 'Checks.csproj') --nologo -v minimal -r win-x64 --self-contained false --property:UseAppHost=false -m:1 --nodeReuse:false --property:NuGetAudit=false --property:UseSharedCompilation=false
 if ($LASTEXITCODE -ne 0) { throw 'Data retrieval fixture build failed.' }
-& $Dotnet (Join-Path $checkDirectory 'bin/Debug/net8.0/win-x64/Checks.dll') $LocalDbInstance
+$runArguments = @((Join-Path $checkDirectory 'bin/Debug/net8.0/win-x64/Checks.dll'), $LocalDbInstance, $repo)
+if ($Benchmark) { $runArguments += 'benchmark' }
+& $Dotnet @runArguments
 if ($LASTEXITCODE -ne 0) { throw 'Data retrieval regression checks failed.' }

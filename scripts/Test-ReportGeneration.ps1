@@ -319,7 +319,7 @@ EvidenceMakingService.PopulateWorkbook(uploadedEvidence,"DC",header,new(),groups
 Require(ContainsPhoto(uploadedEvidence,pmImage)&&ContainsPhoto(uploadedEvidence,archivedImage),
     "Form4 workbook did not embed the actual PM and historical archive photos");
 Save(uploadedEvidence,"E-UPLOADED-PHOTOS");
-var cwc=LegacyReportExport.Load(Path.Combine(root,"Templates","EvidenceMaking","CWC FILES","CWC.xlsx"));
+var cwc=LegacyReportExport.Load(Path.Combine(root,"Templates","EvidenceMaking","CWC.xlsx"));
 Require(cwc.Worksheets.Select(sheet=>sheet.Name).SequenceEqual(new[]{"FORMAT","TESTBOARD","DATASHEET"}),"The wrong CWC workbook version is selected");
 var teHeader=new TeEvidenceHeader{MCNo="FIXTURE-MC",TesterNo="FIXTURE-TE",StartOfRepair="10/01/2026 10:20:00",EndOfRepair="10/01/2026 10:50:00",TEAssign="TE1",Ideas="IDEA",TelekoCheckingData="1,2,3,4|5,6,7,8|9,10,11,12|13,14,15,16|17,18,19,20"};
 var teCategories=new[]{"PHENOMENON","MACHINE COUNTER AND VISUAL BIN","PROGRAM LOADED","TEST CABLE","OTHER EVIDENCE"};
@@ -351,7 +351,7 @@ catch(InvalidDataException ex)when(ex.Message.Contains("TESTBOARD")){}
 try{TeEvidenceMakingService.PopulateWorkbook(incomplete,teHeader,new(),new(),new(),new(){new(){Category="BEFORE QUALITY CONDITION"}},Images(true),Images(true));throw new Exception("Missing quality sheet was ignored");}
 catch(InvalidDataException ex)when(ex.Message.Contains("DATASHEET")){}
 // Exercise the supplied connector and quality sheets, deliberately reordered.
-var qualityBook=LegacyReportExport.Load(Path.Combine(root,"Templates","EvidenceMaking","CWC FILES","CWC.xlsx"));
+var qualityBook=LegacyReportExport.Load(Path.Combine(root,"Templates","EvidenceMaking","CWC.xlsx"));
 var reordered=new ExcelFile();
 foreach(var name in new[]{"DATASHEET","FORMAT","TESTBOARD"})reordered.Worksheets.AddCopy(name,qualityBook.Worksheets[name]);
 qualityBook=reordered;

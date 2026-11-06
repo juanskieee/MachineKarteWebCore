@@ -31,7 +31,7 @@ public class TeEvidenceMakingService
         cancellationToken.ThrowIfCancellationRequested();
         var header = await headerTask ?? throw new InvalidDataException($"No TE machine data found for BM ID {id}.");
         header.TEAssign = await assignTask;
-        var workbook = LegacyReportExport.Load(Path.Combine(_env.ContentRootPath, "Templates", "EvidenceMaking", "CWC FILES", "CWC.xlsx"));
+        var workbook = LegacyReportExport.Load(Path.Combine(_env.ContentRootPath, "Templates", "EvidenceMaking", "CWC.xlsx"));
         PopulateWorkbook(workbook, header, await descriptionsTask, await imagesTask, await telekoTask, await qualityTask,
             LegacyReportExport.ImageRoot(_env, true),
             LegacyReportExport.LegacyEvidenceRoot(_config, true), await miscTask,

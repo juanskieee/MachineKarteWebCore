@@ -46,7 +46,7 @@ foreach ($process in $pmFiles.Keys) {
 }
 $activeTemplates['Templates/BmReport/TETemplate.xlsx'] = 'TE'
 $activeTemplates['Templates/BmReport/EDS-CSPTemplate.xlsx'] = 'TE_EDS'
-$activeTemplates['Templates/EvidenceMaking/CWC FILES/CWC.xlsx'] = 'PopulateTeEvidence'
+$activeTemplates['Templates/EvidenceMaking/CWC.xlsx'] = 'PopulateTeEvidence'
 foreach ($file in (Get-ChildItem -LiteralPath (Join-Path $repo 'Templates') -Recurse -Filter '*.xlsx' | Sort-Object FullName)) {
     $template = $file.FullName.Substring($repo.Length + 1).Replace('\','/')
     try {$zip = [IO.Compression.ZipFile]::OpenRead($file.FullName)} catch [IO.InvalidDataException] {
@@ -159,7 +159,7 @@ for ($lineIndex=0; $lineIndex -lt $source.Length; $lineIndex++) {
     $kind=''; $cell=''; $alias=''; $expression=''
     if($line -match 'AddEvidencePicture.*arrTeleko\(intTeleko\)') {
         foreach($telekoCell in @('H70','J70','M70','O70')) {
-            $bindings.Add([pscustomobject]@{Template='Templates/EvidenceMaking/CWC FILES/CWC.xlsx';Profile=$profile;Sheet='FORMAT';Cell=$telekoCell;MergedRegion='';TemplateText='';Kind='Image';SourceFields='emDR_DataTeleko.TelekoEvidence';Dataset='TEBMEvidenceMaking: TOP 4 TELEKO EVIDENCE with nonempty TelekoEvidence';Expression=$line;Conditions='Reader order, four Teleko slots';GeneratedLine=$lineIndex+1;Status=''})
+            $bindings.Add([pscustomobject]@{Template='Templates/EvidenceMaking/CWC.xlsx';Profile=$profile;Sheet='FORMAT';Cell=$telekoCell;MergedRegion='';TemplateText='';Kind='Image';SourceFields='emDR_DataTeleko.TelekoEvidence';Dataset='TEBMEvidenceMaking: TOP 4 TELEKO EVIDENCE with nonempty TelekoEvidence';Expression=$line;Conditions='Reader order, four Teleko slots';GeneratedLine=$lineIndex+1;Status=''})
         }
         continue
     }

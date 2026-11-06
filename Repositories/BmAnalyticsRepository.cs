@@ -1,7 +1,6 @@
 using System.Data;
-using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Configuration;
 using MachineKarte.Web.Models;
+using Microsoft.Data.SqlClient;
 
 namespace MachineKarte.Web.Repositories;
 
@@ -11,14 +10,11 @@ namespace MachineKarte.Web.Repositories;
 /// </summary>
 public class BmAnalyticsRepository
 {
-    private readonly string _connStr;
+    private readonly string _connectionString;
 
-    public BmAnalyticsRepository(IConfiguration cfg) =>
-        _connStr = cfg.GetConnectionString("DBConnection")!;
-
-    // ------------------------------------------------------------------
+    public BmAnalyticsRepository(IConfiguration configuration) =>
+        _connectionString = RepositorySql.GetConnectionString(configuration);
     // EEE query  (per-process table e.g. DCBMMaintenance + BMCase)
-    // ------------------------------------------------------------------
     private const string EeeSql = @"
         SELECT
             a.Devicename,
@@ -29,7 +25,7 @@ public class BmAnalyticsRepository
             a.process,
             a.location,
             a.Mcno                                      AS Mcno,
-            FORMAT(a.Timeofrequest,'MM/dd/yyyy HH:mm:ss') AS Timeofrequest,
+            CONVERT(char(10),a.Timeofrequest,101) + ' ' + CONVERT(char(8),a.Timeofrequest,108) AS Timeofrequest,
             b.BMCase                                    AS BMCase,
             a.bmid,
             CASE WHEN EXISTS (SELECT 1
@@ -61,10 +57,7 @@ public class BmAnalyticsRepository
           AND  a.bmcaseid <> 0
           AND  a.Location = @Location
         ORDER BY a.mcno DESC, a.Timeofrequest DESC, b.BMCase";
-
-    // ------------------------------------------------------------------
     // TE query  (teBMMaintenance + BMTEUnit + MachineKarte_ActionCard_TE)
-    // ------------------------------------------------------------------
     private const string TeSql = @"
         SELECT
             a.Devicename,
@@ -75,7 +68,7 @@ public class BmAnalyticsRepository
             a.process,
             a.location,
             a.testerNo                                  AS Mcno,
-            FORMAT(a.Timeofrequest,'MM/dd/yyyy HH:mm:ss') AS Timeofrequest,
+            CONVERT(char(10),a.Timeofrequest,101) + ' ' + CONVERT(char(8),a.Timeofrequest,108) AS Timeofrequest,
             b.bmteunit                                  AS BMCase,
             a.bmid,
             CASE WHEN EXISTS (SELECT 1
@@ -108,9 +101,6 @@ public class BmAnalyticsRepository
           AND  a.Location = @Location
           AND  a.process  = @Process
         ORDER BY a.mcno DESC, a.Timeofrequest DESC, b.bmteunitid";
-
-    // ------------------------------------------------------------------
-
     public async Task<List<BmAnalyticsRow>> GetRowsAsync(
         string process, string location, string mode,
         DateTime dateFrom, DateTime dateTo, CancellationToken cancellationToken = default)
@@ -123,7 +113,7 @@ public class BmAnalyticsRepository
             ? TeSql
             : string.Format(EeeSql, process);
 
-        await using var conn = new SqlConnection(_connStr);
+        await using var conn = new SqlConnection(_connectionString);
         await conn.OpenAsync(cancellationToken);
 
         await using var cmd = new SqlCommand(sql, conn)
@@ -131,10 +121,9 @@ public class BmAnalyticsRepository
             CommandType = CommandType.Text,
             CommandTimeout = 60
         };
-        cmd.Parameters.AddWithValue("@Range1", dateFrom.ToString("MM/dd/yyyy HH:mm:ss"));
-        cmd.Parameters.AddWithValue("@Range2", dateTo.ToString("MM/dd/yyyy HH:mm:ss"));
-        cmd.Parameters.AddWithValue("@Location", location);
-        cmd.Parameters.AddWithValue("@Process", process);
+        RepositorySql.AddDateRange(cmd, dateFrom, dateTo);
+        RepositorySql.AddVarChar(cmd, "@Location", location, 20);
+        RepositorySql.AddVarChar(cmd, "@Process", process, 20);
 
         await using var rdr = await cmd.ExecuteReaderAsync(cancellationToken);
         while (await rdr.ReadAsync(cancellationToken))

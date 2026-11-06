@@ -28,6 +28,12 @@ The application targets .NET 8, uses Razor Pages for Monitoring and MVC controll
 for child workflows, and exports workbooks with GemBox.Spreadsheet. It has no
 permanent test project; the validation scripts create their own runners.
 
+Repositories retain workflow-specific SQL and mappings. `RepositorySql` holds
+shared parameter/metadata handling, `ImportantDeviceQuery` shares MCD/Machine
+Summary eligibility while retaining their count differences, and
+`MonitoringQueryBatch` bounds participating reads. Repository conventions,
+legacy exceptions, and measured changes are documented in [DATABASE.md](DATABASE.md).
+
 ## Navigation and lifecycle
 
 Monitoring is the only primary application screen. Child controllers inherit
@@ -143,7 +149,7 @@ for the affected behavior:
 | `Audit-ReportTemplates.ps1` | Reproducible template/binding inventories; offline, output defaults to OS temporary storage |
 | `Test-SummaryDuplicates.ps1` | Real summary SQL against session-local tables in LocalDB |
 | `Test-ActionCardSaves.ps1` | Concurrent inserts, duplicate guards, loaded identities, and edits; disposable LocalDB database |
-| `Test-DataRetrieval.ps1` | Actual repository reads, raw types, report lookups, evidence limits, and cancellation; disposable LocalDB database |
+| `Test-DataRetrieval.ps1` | Actual repository reads, original Form5 SQL parity, complete AlertBoard batching parity, count/distinct differences, sparse views, report lookups, evidence limits, and cancellation; disposable LocalDB database; optional `-Benchmark` |
 | `Test-Startup.ps1` | Starts its own app with a loopback non-SQL sink; HTML responsiveness and bounded tracking |
 | `Test-WorkflowEndpoints.ps1` | Existing local app: redirects/partials, rejected requests, download streams and inline headers |
 | `Test-Workflows.ps1` | Existing local app and Chromium debugging port: real partials/assets with AJAX fixtures, all eleven workflows, desktop/mobile geometry, cancellation, and resource cleanup |

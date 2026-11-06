@@ -1,8 +1,8 @@
 using System.Data;
 using System.Globalization;
+using MachineKarte.Reporting;
 using MachineKarte.Web.Models;
 using Microsoft.Data.SqlClient;
-using MachineKarte.Reporting;
 
 namespace MachineKarte.Web.Repositories;
 
@@ -26,11 +26,8 @@ public sealed class PmReportRepository
 
     private readonly string _connectionString;
 
-    public PmReportRepository(IConfiguration configuration)
-    {
-        _connectionString = configuration.GetConnectionString("DBConnection")
-            ?? throw new InvalidOperationException("DBConnection is not configured.");
-    }
+    public PmReportRepository(IConfiguration configuration) =>
+        _connectionString = RepositorySql.GetConnectionString(configuration);
 
     public static bool TryGetDefinition(string process, out PmReportTemplateDefinition definition)
         => Definitions.TryGetValue(process.Trim(), out definition!);

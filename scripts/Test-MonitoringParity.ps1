@@ -13,7 +13,7 @@ $projectPath = [Security.SecurityElement]::Escape((Join-Path $repo 'MachineKarte
   <ItemGroup><ProjectReference Include="$projectPath" /></ItemGroup>
 </Project>
 "@ | Set-Content -Encoding UTF8 (Join-Path $checkDirectory 'Checks.csproj')
-foreach ($name in @('MonitoringRepository', 'MonitoringService', 'MonitoringQueryBatch')) {
+foreach ($name in @('RepositorySql', 'MonitoringRepository', 'MonitoringService', 'MonitoringQueryBatch')) {
     $folder = if ($name -eq 'MonitoringService') { 'Services' } else { 'Repositories' }
     $source = [IO.File]::ReadAllText((Join-Path $repo "$folder/$name.cs"))
     $source = $source.Replace('MachineKarte.Web.Repositories', 'MonitoringChecks.Repositories').Replace('MachineKarte.Web.Services', 'MonitoringChecks.Services').Replace('[eMaintenanceSystemDB].[dbo].', '[dbo].')

@@ -105,14 +105,14 @@ twelve photo slots, SING/common-layout differences, and TSC confirmations.
 TE R uses `BmReport/EDS-CSPTemplate.xlsx` for EDS and `BmReport/TETemplate.xlsx`
 otherwise. Both select the named `TE Template` main sheet; work details use
 worksheet index 1 and accessories index 3. TE E uses
-`EvidenceMaking/CWC FILES/CWC.xlsx` and
+`EvidenceMaking/CWC.xlsx` and
 retains its six category limits `6/6/6/20/6/6`, four Teleko images, five-row QC
 table, connector routing, and iteration of all distinct misc rows.
 
 ### Retained CWC version
 
 The supplied `CWC - Copy (3).xlsx` is retained byte-for-byte as
-[CWC FILES/CWC.xlsx](<../Templates/EvidenceMaking/CWC FILES/CWC.xlsx>).
+[CWC.xlsx](<../Templates/EvidenceMaking/CWC.xlsx>).
 Its SHA-256 is
 `D56FAB6C34BC6EF6A831EDB26D11253FE485CD5B9897AFFB5BFE1D9432C3AB7C`.
 
@@ -120,7 +120,7 @@ Its SHA-256 is
 | --- | --- |
 | `CWC - Copy (3).xlsx` | `FORMAT`, `TESTBOARD`, `DATASHEET`; main-sheet contents match the previous template and the additional sheets match connector/quality destinations. Retained as canonical `CWC.xlsx`. |
 | `CWC - Copy.xlsx`, `CWC - Copy (2).xlsx` | Identical files with `FORMAT`, an unrelated hidden `Sheet1`, and `TESTBOARD`; no quality datasheet. Removed. |
-| Supplied single-sheet `CWC.xlsx` and old `EvidenceMaking/CWC.xlsx` / `BmReport/CWC.xlsx` | Identical `FORMAT`-only workbooks, missing connector/quality sheets. Superseded and removed. |
+| Supplied single-sheet `CWC.xlsx` and former `EvidenceMaking/CWC.xlsx` / `BmReport/CWC.xlsx` copies | Identical `FORMAT`-only workbooks, missing connector/quality sheets. Superseded by the retained three-sheet workbook, now at `EvidenceMaking/CWC.xlsx`. |
 
 The writer selects `FORMAT`, `TESTBOARD`, and `DATASHEET` by name so saved tab
 order cannot route evidence into the wrong sheet. CN5-CN8 images use the actual

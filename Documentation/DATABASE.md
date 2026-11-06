@@ -16,7 +16,7 @@ isolated fixture runners for database testing.
 | `POST /Monitoring?handler=TrackSession` after browser load | May insert/update `MachineKarte_PCStatus`, keyed by the web host's machine name |
 | Action Card Save | May insert/update the PM/TE/CC/EEE/VIS `MachineKarte_ActionCard*` table selected by user mode |
 | Summaries, dashboards, OCAP, and report/evidence retrieval | Reads; Monitoring paging materializes grouped counts in a session-local temporary table; report generation also writes output files to the separate PM/TE network shares |
-| RawData | Existing session-local `#freq_raw` / `#bmcase_raw` tables in SQL Server `tempdb`, then result reads and cleanup |
+| RawData | Shared recurrence CTEs; reads only, with no temporary-table writes |
 | `MonitoringQueryBatch` | Schedules supplied reads; contains no SQL or connection logic |
 
 The application has no enforced read-only connection mode. It does not execute
@@ -84,7 +84,65 @@ logs do not establish that no other write occurred.
 
 ## Read scheduling and query behavior
 
-### Monitoring parity audit (2026-11-06)
+### Repository cleanup and measured changes (2026-11-06)
+
+All twelve repositories use file-scoped namespaces, ordered imports, a consistent
+connection field/constructor, and the same missing-configuration error.
+`RepositorySql` contains shared connection lookup, typed varchar/date parameters,
+and result-set metadata helpers. SQL filters and output mappings remain owned
+by the repositories; there is no generic repository layer or new dependency.
+User-entered Action Card text retains its Unicode parameter binding and atomic
+insert/exact-row edit behavior.
+
+`ImportantDeviceQuery` removes duplicated MCD/Machine Summary SQL and execution.
+Form7 still selects DISTINCT machines; Form11 keeps repeated BM rows for counts.
+Their TE action exclusion matches BMID plus tester number. Monitoring/AlertBoard
+TE action existence uses BMID alone, while Analytics also matches the tester.
+These screen-specific legacy differences are intentional.
+
+AlertBoard reads all floors once per process: 12 commands instead of 120 for
+normal modes, or 5 instead of 50 for TE. Each process result is partitioned by
+floor and processed in the original sequence, including LSI3-1F twice. Color
+state resets before each pass, and each floor keeps its own solved-date
+reference, repeat grouping, counts, and machine-list order. The shared scheduler
+buffers at most four process results; this trades larger per-query results for
+fewer round trips. It does not cache data between requests.
+
+AlertBoard and Analytics replace SQL FORMAT with native CONVERT expressions
+that return the same `MM/dd/yyyy HH:mm:ss` strings. Typed DateTime inputs retain
+the previous whole-second truncation; string date ranges preserve supplied
+fractions. PM history's existing text/date comparison is retained.
+
+RawData shares one adjacent-row CTE for both Form5 queries. Frequency filters
+dates before LEAD/LAG; monthly totals filter dates afterward. Moving the monthly
+filter into the CTE would lose valid boundary repeats. Both results retain the
+original columns, SQL types, NULL handling, excluded maintenance cases, and
+ordering, while removing duplicate SQL and temporary-table writes.
+
+BM report mapping reuses its captured raw-field dictionary for optional fields;
+TE evidence inspects available columns once per result. Missing optional fields
+no longer require repeated exceptions. OCAP tables and evidence views are also
+allowlisted at the repository boundary, alongside existing service validation.
+
+`Test-DataRetrieval.ps1 -Benchmark` compares actual isolated reads. Original Form5
+SQL matches both CTE results. Full AlertBoard results in five modes match the
+former per-floor processing, including duplicated floors. A synthetic LocalDB
+warm median over seven rotating runs uses the same SQL, data and date range to
+isolate scheduling and batching:
+
+| Schedule | Commands | Median |
+| --- | --- | --- |
+| Sequential legacy floor order | 120 | 65.5 ms |
+| Previous web schedule, four floor reads at a time | 120 | 30.8 ms |
+| Current schedule, four process reads at a time | 12 | 6.1 ms |
+
+That fixture measures 5.03x against the previous web schedule and 10.71x against
+sequential reads. It includes reads and color processing; it is not a production
+or all-repository speedup. No 100x claim or new production index is implied.
+Live plans, I/O, network waits,
+view costs, and concurrent-user behavior still need representative measurement.
+
+### Monitoring parity audit
 
 The missing `TE / FT / LSI2-3F / All` cards came from the TE card query's
 `a.Process = '{process}'` predicate: doubled C# interpolation braces sent the
@@ -151,13 +209,14 @@ connections without a new cross-query snapshot transaction.
 | Path | Current implementation |
 | --- | --- |
 | Monitoring | Parameterized filtered card CTEs, scoped action/OCAP lookups, one stored paging aggregation, typed dates; cancel superseded searches; cache reader metadata and group floor rows once |
-| AlertBoard / MachineSummary / BmAnalytics | Ordered, bounded process/location reads; retain mode-specific filters, row counts, distinct-list order, and Form8/Form12 differences |
-| McdMonitoring | Shared read slots; valid DISTINCT ordering on projected machine/tester numbers |
+| AlertBoard | Ordered, bounded process reads, then original per-floor processing; 120/50 commands reduced to 12/5 |
+| MachineSummary / BmAnalytics | Ordered, bounded process/location reads; retain mode-specific filters, row counts, distinct-list order, and Form8/Form12 differences |
+| McdMonitoring | Shared important-device query and read slots; valid DISTINCT ordering on projected machine/tester numbers |
 | BM report | Main row plus one batch for VR numbers and nine fixed lookups: at most two commands instead of eleven |
 | PM evidence | Five category reads in one batch, plus confirmation/header: three commands instead of seven |
 | TE evidence | Batched category and quality reads: eight commands including metadata inspection instead of fifteen |
 | PM report | Typed current/history records, one allowlisted parameterized lookup batch, and cancellation before workbook construction |
-| RawData | Async result-set reads, retained temp-table cleanup, table allowlist, and the correct `MEMSBMMaintenance` name |
+| RawData | Shared recurrence CTE, retained date-filter placement, async typed result-set reads, table allowlist, and the correct `MEMSBMMaintenance` name |
 | Action Cards / OCAP | Cancellable loads; Action Card writes retain their completion and identity protections |
 
 Command counts describe source/fixture behavior, not measured production speed.
