@@ -8,7 +8,6 @@ Workflows.register("EvidenceMaking", (root, options, context) => {
         statusId: "statusMsg",
         downloadId: "downloadLink",
     });
-    const history = Karte.createReportHistory(context, 'EvidenceMaking', options, view);
     const process = options.process || "";
     const bmId = Number(options.bmId);
     byId("recordProcess").textContent = process || "—";
@@ -23,18 +22,20 @@ Workflows.register("EvidenceMaking", (root, options, context) => {
         view.setBusy(true);
 
         try {
-            const result = await context.postJson(
-                "/EvidenceMaking?handler=Generate",
-                {
+            const response = await context.fetch('/EvidenceMaking?handler=Generate', {
+                method: 'POST',
+                cache: 'no-store',
+                headers: {
+                    'Content-Type': 'application/json',
+                    RequestVerificationToken: root.querySelector('input[name="__RequestVerificationToken"]').value,
+                },
+                body: JSON.stringify({
                     process,
                     bmId,
                     format: byId("outputFormat").value,
-                },
-            );
-            if (!result.success)
-                throw new Error(result.message || "Generation failed.");
-            view.showPreview(result.data.downloadUrl, result.data.fileName);
-            history.refresh();
+                }),
+            });
+            await view.showResponse(response);
         } catch (error) {
             if (!context.signal.aborted)
                 view.showStatus(error.message || "Generation failed.", "error");

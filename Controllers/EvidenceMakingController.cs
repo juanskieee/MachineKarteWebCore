@@ -12,15 +12,13 @@ namespace MachineKarte.Web.Controllers
     {
         private readonly EvidenceMakingService _svc;
         private readonly ILogger<EvidenceMakingController> _logger;
-        private readonly IConfiguration _config;
 
         public EvidenceMakingController(
             EvidenceMakingService svc,
-            ILogger<EvidenceMakingController> logger, IConfiguration config)
+            ILogger<EvidenceMakingController> logger)
         {
             _svc = svc;
             _logger = logger;
-            _config = config;
         }
 
         // ── GET ──────────────────────────────────────────────────────
@@ -30,10 +28,6 @@ namespace MachineKarte.Web.Controllers
 
         [HttpGet, WorkflowHandler]
         public IActionResult Index() => WorkflowView();
-
-        [HttpGet, WorkflowHandler("History")]
-        public IActionResult History(int bmId, string process = "")
-            => ReportHistory(_config, false, process, bmId, $"{process.Trim().ToUpperInvariant()}Evidence_{bmId}");
 
         // ── POST: Generate ───────────────────────────────────────────
         // Mirrors EMakingPrint(ProcessCase, bmid)
@@ -68,11 +62,11 @@ namespace MachineKarte.Web.Controllers
             try
             {
                 var result = await _svc.GenerateEvidenceAsync(request, HttpContext.RequestAborted);
-                return new JsonResult(new AjaxResult<EvidenceGenerateResult>
+                if (result.Success) return ReportFile(result.Bytes, result.FileName);
+                return new JsonResult(new AjaxResult<object>
                 {
                     Success = result.Success,
                     Message = result.Message,
-                    Data = result
                 });
             }
             catch (Exception ex) when (ex is not OperationCanceledException || !HttpContext.RequestAborted.IsCancellationRequested)
@@ -86,28 +80,6 @@ namespace MachineKarte.Web.Controllers
             }
         }
 
-        // ── GET: Download generated file ─────────────────────────────
-        // Streams the generated xlsx/pdf back to the browser.
-        // Mirrors: wb.Save(localFilePath) + Process.Start("iexplore.exe", path)
-        // GET /EvidenceMaking?handler=Download&fileName=DCEvidence_123.xlsx
 
-        [HttpGet, WorkflowHandler("Download")]
-        public IActionResult Download(string fileName, bool inline = false, string process = "")
-        {
-            string filePath;
-            try { filePath = LegacyReportExport.ReportPath(_config, false, process, fileName); }
-            catch (ArgumentException ex) { return BadRequest(ex.Message); }
-
-            if (!System.IO.File.Exists(filePath))
-                return NotFound("File not found. Please generate it first.");
-
-            string contentType = fileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase)
-                ? "application/pdf"
-                : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-
-            return inline && contentType == "application/pdf"
-                ? PhysicalFile(filePath, contentType)
-                : PhysicalFile(filePath, contentType, LegacyReportExport.DownloadName(fileName));
-        }
     }
 }

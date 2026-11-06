@@ -71,8 +71,6 @@ Monitoring's `monitoring:refresh` event on the 600-second cycle.
 Report/evidence dialogs require explicit Generate and Download actions. Excel is
 the default; PDF generation enables an inline preview. Opening a dialog does not
 generate or download a report. Do not add standalone pages for these child flows.
-Each dialog also lists dated, server-stored Excel/PDF versions for the selected
-BM card, with downloads and PDF previews that remain available after reopening.
 
 ## Behavior to preserve
 
@@ -128,6 +126,9 @@ aligned for sparse results, and share one scrolling board. Unequal histories
 form a bottom-aligned staircase; scroll to the bottom after requests and layout
 finish. Blink animations share the document clock, and reduced-motion settings
 keep static alert colors. RawData uses native SVG charts without a chart CDN.
+The status legend reuses the cards' Action, AC/SM/DM/DV, and MCD badges with concise
+descriptions. OCAP alternates white and near-white (`#f8f8f8`) rows beneath its
+slightly darker column header.
 
 Static presentation belongs in `Assets/css`. Shared workflow/document styles
 are in `Workflows.css`; OCAP, RawData, ActionCard, and Monitoring retain their
@@ -159,6 +160,11 @@ for the affected behavior:
 
 Invoke PowerShell tools from the repository root, for example
 `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-MonitoringQueries.ps1`.
+For local-download changes, use `Test-ReportGeneration.ps1 -DownloadOnly`,
+`Test-WorkflowEndpoints.ps1 -ReportsOnly`, and `Test-Workflows.ps1 -ReportsOnly`.
+These modes check direct in-memory responses, removed storage routes, local
+browser downloads, PDF previews, and Blob URL cleanup without running unrelated
+workflow or full mapping suites.
 HTTP/browser tools accept `-BaseUrl`; the browser runner also accepts
 `-DevToolsPort` and `-ArtifactDirectory`. Use a separately hosted test app with
 an unreachable loopback SQL override for fixture UI checks. Browser mocking
@@ -170,15 +176,13 @@ recorded in the related guides.
 
 ## Temporary output
 
-Generated reports are stored in the separate PM/TE server
-`TempData\Print Out\<PROCESS>` folders described in [report storage](REPORTS.md#generated-report-storage).
-The application does not create a local report folder or contact those shares
-at startup. Individual generations are retained as versioned files alongside
-the latest-file aliases. Removing a version removes its history entry and
-download. Evidence photos are staged briefly in OS temporary storage and cleaned
-up after each export. Keep source workbooks in `Templates/` and static images in
-`Assets/images/`. No `TempData/ReportAudit/` archive is required.
-
+Generated reports are returned directly from memory to the browser for local
+Downloads/Save As. The app retains no generated-report files or history on a
+server or network share. The dialog's temporary Blob URL is released when the
+report is replaced or the dialog closes. See [local downloads](REPORTS.md#local-downloads).
+Evidence photos are staged briefly in OS temporary storage and cleaned up after
+each export. Keep source workbooks in `Templates/` and static images in
+`Assets/images/`.
 Audit inventories, rendered review pages, browser captures, and validation logs
 belong in OS temporary storage or an explicitly chosen external output folder.
 They are reproducible artifacts, not checked-in documentation.

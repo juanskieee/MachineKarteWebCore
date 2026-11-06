@@ -100,13 +100,13 @@ namespace MachineKarte.Web.Models
     }
 
     /// <summary>
-    /// Result returned to the browser after PDF generation.
+    /// In-memory evidence result returned to the generation handler.
     /// </summary>
     public class EvidenceGenerateResult
     {
         public bool Success { get; set; }
         public string Message { get; set; } = string.Empty;
-        public string DownloadUrl { get; set; } = string.Empty;  // /EvidenceMaking?handler=Download&process=DC&fileName=DCEvidence_123.pdf
+        public byte[] Bytes { get; set; } = Array.Empty<byte>();
         public string FileName { get; set; } = string.Empty;
     }
 

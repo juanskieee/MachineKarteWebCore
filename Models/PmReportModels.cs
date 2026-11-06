@@ -31,7 +31,7 @@ public sealed class PmReportResult
     public bool Success { get; init; }
     public string Message { get; init; } = string.Empty;
     public string FileName { get; init; } = string.Empty;
-    public string DownloadUrl { get; init; } = string.Empty;
+    public byte[] Bytes { get; init; } = Array.Empty<byte>();
 
     public static PmReportResult Failed(string message) => new()
     {

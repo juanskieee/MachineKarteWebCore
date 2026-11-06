@@ -8,7 +8,6 @@ Workflows.register("PmReport", (root, options, context) => {
         statusId: "pmStatus",
         downloadId: "pmDownload",
     });
-    const history = Karte.createReportHistory(context, 'PmReport', options, view);
     byId("pmGenerate").addEventListener("click", generate);
 
     async function generate() {
@@ -22,18 +21,11 @@ Workflows.register("PmReport", (root, options, context) => {
         });
 
         try {
-            const result = await context.getJson(
+            const response = await context.fetch(
                 `/PmReport?handler=Generate&${query}`,
+                { cache: 'no-store' },
             );
-            if (!result.success || !result.data?.success) {
-                throw new Error(
-                    result.message ||
-                        result.data?.message ||
-                        "Report generation failed.",
-                );
-            }
-            view.showPreview(result.data.downloadUrl, result.data.fileName);
-            history.refresh();
+            await view.showResponse(response);
         } catch (error) {
             if (!context.signal.aborted)
                 view.showStatus(

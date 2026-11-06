@@ -8,12 +8,11 @@ public sealed class PmReportService
 {
     private readonly PmReportRepository _repository;
     private readonly IWebHostEnvironment _environment;
-    private readonly IConfiguration _config;
     private readonly ILogger<PmReportService> _logger;
 
     public PmReportService(PmReportRepository repository, IWebHostEnvironment environment,
-        ILogger<PmReportService> logger, IConfiguration config)
-        => (_repository, _environment, _logger, _config) = (repository, environment, logger, config);
+        ILogger<PmReportService> logger)
+        => (_repository, _environment, _logger) = (repository, environment, logger);
 
     public async Task<PmReportResult> GenerateAsync(PmReportRequest request, CancellationToken cancellationToken = default)
     {
@@ -37,11 +36,10 @@ public sealed class PmReportService
                 data.History.Select(record => (IDictionary<string, object>)record.Values).ToList());
             var bytes = LegacyReportExport.Save(workbook, format);
             var fileName = $"{process}_{request.BmId}.{format}";
-            var storedFile = await LegacyReportExport.SaveReportAsync(_config, false, process, fileName, bytes, cancellationToken);
             return new PmReportResult
             {
                 Success = true, Message = "PM report generated.", FileName = fileName,
-                DownloadUrl = $"/PmReport?handler=Download&process={process}&fileName={Uri.EscapeDataString(storedFile)}"
+                Bytes = bytes
             };
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)

@@ -103,21 +103,15 @@ window.Karte = (() => {
             }
         }
 
-        function showPreview(
-            url,
-            fileName,
-            isPdf = fileName.toLowerCase().endsWith(".pdf"),
-        ) {
+        function showPreview(url, fileName, isPdf) {
             clearPreview();
-            if (url.startsWith("blob:")) objectUrl = url;
+            objectUrl = url;
             download.href = url;
             download.download = fileName;
             download.textContent = "Download";
             fileNameLabel.textContent = fileName;
             if (isPdf) {
-                const inlineUrl = new URL(url, window.location.href);
-                if (!objectUrl) inlineUrl.searchParams.set("inline", "true");
-                frame.src = inlineUrl.href;
+                frame.src = url;
                 frame.classList.remove("is-hidden");
             }
             panel.classList.remove("is-hidden");
@@ -126,57 +120,26 @@ window.Karte = (() => {
 
         clearPreview();
         signal.addEventListener("abort", clearPreview, { once: true });
-        return { setBusy, showStatus, showPreview };
-    }
-
-    function createReportHistory(context, workflow, options, view) {
-        const status = context.byId('historyStatus');
-        const table = context.byId('historyTable');
-        const body = context.byId('historyFiles');
-        const button = context.byId('historyRefresh');
-        const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'medium' });
-        let files = [];
-        let requestId = 0;
-
-        button.addEventListener('click', refresh);
-        body.addEventListener('click', (event) => {
-            const preview = event.target.closest('[data-preview]');
-            if (!preview) return;
-            const file = files[Number(preview.dataset.preview)];
-            if (file) view.showPreview(file.downloadUrl, file.fileName);
-        });
-
-        async function refresh() {
-            const current = ++requestId;
-            button.disabled = true;
-            status.textContent = 'Loading saved files…';
-            status.className = 'status-msg';
-            try {
-                const query = new URLSearchParams({ handler: 'History', bmId: options.bmId || '', process: options.process || '' });
-                const result = await context.getJson(`/${workflow}?${query}`, { cache: 'no-store' });
-                if (context.signal.aborted || current !== requestId) return;
-                if (!result.success) throw new Error(result.message || 'Saved files could not be loaded. Try Refresh.');
-                files = result.data || [];
-                body.innerHTML = files.map((file, index) => {
-                    const date = new Date(file.generatedAtUtc);
-                    return `<tr><td>${escapeHtml(file.fileName)}</td><td><time datetime="${date.toISOString()}">${escapeHtml(dateFormat.format(date))}</time></td>` +
-                        `<td><div class="report-history-actions"><a href="${escapeHtml(file.downloadUrl)}" download="${escapeHtml(file.fileName)}" aria-label="Download ${escapeHtml(file.fileName)} from ${escapeHtml(dateFormat.format(date))}">Download</a>` +
-                        (file.fileName.toLowerCase().endsWith('.pdf') ? `<button type="button" data-preview="${index}" aria-label="Preview ${escapeHtml(file.fileName)} from ${escapeHtml(dateFormat.format(date))}">Preview</button>` : '') +
-                        '</div></td></tr>';
-                }).join('');
-                table.classList.toggle('is-hidden', files.length === 0);
-                status.textContent = files.length ? `${files.length} saved file${files.length === 1 ? '' : 's'}, newest first.` : 'No saved files for this BM card yet. Generate Excel or PDF to add one.';
-            } catch (error) {
-                if (context.signal.aborted || current !== requestId) return;
-                status.textContent = error.message || 'Saved files could not be loaded. Try Refresh.';
-                status.className = 'status-msg status-error';
-            } finally {
-                if (!context.signal.aborted && current === requestId) button.disabled = false;
+        async function showResponse(response) {
+            const type = response.headers.get('content-type') || '';
+            const isPdf = type.includes('application/pdf');
+            const isExcel = type.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            if (!response.ok || !(isPdf || isExcel)) {
+                const result = type.includes('application/json') ? await response.json() : null;
+                throw new Error(result?.message || 'Generation failed. Try again.');
             }
+            // Chromium's streamed Blob can fail after HTTP 200 when temporary disk space is low.
+            // ponytail: hold report bytes in memory; use native streaming if reports outgrow browser memory.
+            const bytes = await response.arrayBuffer();
+            if (signal.aborted) return;
+            const blob = new Blob([bytes], { type });
+            const disposition = response.headers.get('content-disposition') || '';
+            const utf8 = /filename\*=UTF-8''([^;]+)/i.exec(disposition);
+            const plain = /filename="?([^";]+)"?/i.exec(disposition);
+            const fileName = utf8 ? decodeURIComponent(utf8[1]) : plain?.[1] || `report.${isPdf ? 'pdf' : 'xlsx'}`;
+            showPreview(URL.createObjectURL(blob), fileName, isPdf);
         }
-
-        refresh();
-        return { refresh };
+        return { setBusy, showStatus, showResponse };
     }
 
     return {
@@ -186,6 +149,5 @@ window.Karte = (() => {
         requestJson,
         postJson,
         createReportView,
-        createReportHistory,
     };
 })();

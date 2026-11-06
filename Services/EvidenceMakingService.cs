@@ -44,13 +44,10 @@ public class EvidenceMakingService
                 LegacyReportExport.ImageRoot(_env, false), LegacyReportExport.LegacyEvidenceRoot(_config, false),
                 LegacyReportExport.SharedEvidenceRoot(_config), photos.Paths);
             var fileName = $"{request.Process}Evidence_{request.BmId}.{format}";
-            var process = LegacyReportExport.NormalizeProcess(request.Process);
-            var storedFile = await LegacyReportExport.SaveReportAsync(_config, false, process, fileName,
-                LegacyReportExport.Save(workbook, format), cancellationToken);
             return new EvidenceGenerateResult
             {
                 Success = true, FileName = fileName,
-                DownloadUrl = $"/EvidenceMaking?handler=Download&process={process}&fileName={Uri.EscapeDataString(storedFile)}"
+                Bytes = LegacyReportExport.Save(workbook, format)
             };
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)

@@ -20,22 +20,23 @@
                     <summary>Status &amp; action legend</summary>
                     <div class="legend-content">
                         <strong>Action badge: machine status</strong>
-                        <span class="legend-green">Green: no re-occurrence after 7 days</span>
-                        <span class="legend-lightgreen">Light green: running, lot evaluation</span>
-                        <span class="legend-red">Red: stopped, ongoing investigation</span>
-                        <span class="legend-orange">Orange: running, under 100% inspection</span>
-                        <span class="legend-gray">Gray: running, investigation / monitoring</span>
-                        <span class="legend-violet">Violet: waiting for inspection results</span>
-                        <span class="legend-aqua">Aqua: waiting for QC instruction</span>
-                        <p>Existing actions turn green when the legacy seven-day check marks a repeated case solved, measured against the machine's newest BM record.</p>
+                        <dl class="legend-list">
+                            <div><dt><span class="badge-action status-green">Action</span></dt><dd>Green: no re-occurrence after 7 days</dd></div>
+                            <div><dt><span class="badge-action status-lightgreen">Action</span></dt><dd>Light green: running, lot evaluation</dd></div>
+                            <div><dt><span class="badge-action status-red">Action</span></dt><dd>Red: stopped, ongoing investigation</dd></div>
+                            <div><dt><span class="badge-action status-darkorange">Action</span></dt><dd>Orange: running, under 100% inspection</dd></div>
+                            <div><dt><span class="badge-action status-darkgray">Action</span></dt><dd>Gray: running, investigation / monitoring</dd></div>
+                            <div><dt><span class="badge-action status-violet">Action</span></dt><dd>Violet: waiting for inspection results</dd></div>
+                            <div><dt><span class="badge-action status-aqua">Action</span></dt><dd>Aqua: waiting for QC instruction</dd></div>
+                        </dl>
                         <strong>Action-card entries</strong>
-                        <span class="legend-ac">AC: action entered</span>
-                        <span class="legend-sky">SM: Section Manager comment entered</span>
-                        <span class="legend-purple">DM: Department Manager comment entered</span>
-                        <span class="legend-lime">DV: Division Manager comment entered</span>
-                        <p>Need Action counts repeat BM groups within seven days that have no action card. A blinking red/white header and date identify a group needing action. Individual BM records are not counted separately.</p>
-                        <p>Blinking blue/red case text follows the process-specific repeat category; TE requires QUALITY BM. Three stars mark a Major Customer Device (MCD); blinking stars identify a record without an action card, following the legacy group rules.</p>
-                        <p>Salmon, blue, purple, and green card bands follow the machine's ActionLine thresholds. These bands are separate from the Action badge's machine status.</p>
+                        <dl class="legend-list">
+                            <div><dt><span class="bm-marker bm-marker-ac">AC</span></dt><dd>Action entered</dd></div>
+                            <div><dt><span class="bm-marker bm-marker-sm">SM</span></dt><dd>Section Manager comment entered</dd></div>
+                            <div><dt><span class="bm-marker bm-marker-dm">DM</span></dt><dd>Department Manager comment entered</dd></div>
+                            <div><dt><span class="bm-marker bm-marker-dv">DV</span></dt><dd>Division Manager comment entered</dd></div>
+                            <div><dt><span class="badge-mcd" role="img" aria-label="Three stars">&#9733;&#9733;&#9733;</span></dt><dd>Major Customer Device; blinking means no action card</dd></div>
+                        </dl>
                     </div>
                 </details>
                 <div class="refresh-clock"><span>Refresh</span><span id="lblTimer" class="lbl-timer">600</span><span>s</span></div>

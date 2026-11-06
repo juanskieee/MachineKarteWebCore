@@ -14,7 +14,7 @@ public class TeEvidenceMakingService
     public TeEvidenceMakingService(TeEvidenceRepository repo, IConfiguration config, IWebHostEnvironment env)
         => (_repo, _config, _env) = (repo, config, env);
 
-    public async Task<string> GenerateAsync(string bmId, string process,
+    public async Task<(byte[] Bytes, string FileName)> GenerateAsync(string bmId, string process,
         CancellationToken cancellationToken = default, string format = "xlsx")
     {
         format = LegacyReportExport.NormalizeFormat(format);
@@ -44,9 +44,7 @@ public class TeEvidenceMakingService
             LegacyReportExport.LegacyEvidenceRoot(_config, true), await miscTask,
             LegacyReportExport.SharedEvidenceRoot(_config), photos.Paths);
         var fileName = $"TE_Evidence_{id}.{format}";
-        var storedFile = await LegacyReportExport.SaveReportAsync(_config, true, process, fileName,
-            LegacyReportExport.Save(workbook, format), cancellationToken);
-        return $"/TeEvidenceMaking?handler=Download&process={process}&bmId={id}&format={format}&fileName={Uri.EscapeDataString(storedFile)}";
+        return (LegacyReportExport.Save(workbook, format), fileName);
     }
 
     public static void PopulateWorkbook(ExcelFile workbook, TeEvidenceHeader header,

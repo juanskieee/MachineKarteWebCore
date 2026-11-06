@@ -3,7 +3,7 @@
 <div class="workflow workflow--BmReport" data-workflow="BmReport">
     <div class="document-toolbar">
         <p>Process: <strong>@Model.Process</strong> | BM ID: <strong>@Model.BmId</strong></p>
-        <form id="BmReport-frmDownload" data-id="frmDownload" method="post" action="/BmReport?handler=DownloadReport&amp;metadata=true">
+        <form id="BmReport-frmDownload" data-id="frmDownload" method="post" action="/BmReport?handler=DownloadReport">
             @Html.AntiForgeryToken()
             <input type="hidden" name="bmId" value="@Model.BmId" />
             <input type="hidden" name="process" value="@(string.IsNullOrEmpty(Model.Process) ? "TE" : Model.Process)" />
@@ -18,7 +18,6 @@
         </div>
         <p id="BmReport-reportStatus" data-id="reportStatus" class="status-msg" role="status" aria-live="polite"></p>
     </div>
-    @await Html.PartialAsync("/Pages/Shared/Workflows/_ReportHistory.cshtml")
     <div data-id="previewPanel" class="preview-panel is-hidden">
         <div class="preview-toolbar">
             <span data-id="previewFileName" class="preview-filename"></span>

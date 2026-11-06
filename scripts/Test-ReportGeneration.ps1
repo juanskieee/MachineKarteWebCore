@@ -1,6 +1,6 @@
-param([string]$Dotnet = 'dotnet')
-# Offline: real templates/images and compiled legacy mappings. Never hosts the app
-# or loads appsettings, opens SQL, or writes into the source templates.
+param([string]$Dotnet = 'dotnet', [switch]$DownloadOnly)
+# Offline: real templates/images and compiled legacy mappings. DownloadOnly hosts
+# a loopback file-response fixture; no appsettings, SQL, or source-template writes.
 $ErrorActionPreference='Stop'
 $repo=Split-Path $PSScriptRoot -Parent
 & powershell -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'Update-LegacyReportMappings.ps1') -Check
@@ -30,6 +30,52 @@ CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en-US");
 var root=args[0]; var output=Path.GetFullPath(Path.Combine(AppContext.BaseDirectory,"artifacts")); Directory.CreateDirectory(output);
 void Require(bool condition,string message){if(!condition)throw new Exception(message);}
 string Images(bool te)=>Path.Combine(root,"Assets","images",te?"TEeMaintenanceSystems_images":"eMaintenanceSystems_images");
+
+if(args.Contains("download-only")) {
+ LegacyReportExport.NormalizeFormat("xlsx"); // Initialize the production export license.
+ var book=new ExcelFile();book.Worksheets.Add("Report").Cells["A1"].Value="Local download fixture";
+ var controller=new ReportResponseProbe { ControllerContext=new Microsoft.AspNetCore.Mvc.ControllerContext {
+  HttpContext=new Microsoft.AspNetCore.Http.DefaultHttpContext() } };
+ foreach(var format in new[]{"xlsx","pdf"}) {
+  var bytes=LegacyReportExport.Save(book,format);
+  Require(format=="pdf" ? Encoding.ASCII.GetString(bytes,0,5)=="%PDF-" : bytes[0]=='P' && bytes[1]=='K',"Invalid exported file bytes");
+  foreach(var stem in new[]{"DC_123","DCEvidence_123","TE_123","TE_Evidence_123"}) {
+   var response=controller.Generate(bytes,stem+"."+format);
+   Require(response.FileContents.SequenceEqual(bytes) && response.FileDownloadName==stem+"."+format &&
+    response.ContentType==LegacyReportExport.ContentType(format),"Direct download changed bytes, filename or MIME type");
+   Require(controller.Response.Headers.CacheControl=="no-store","Generated downloads may be cached");
+  }
+ }
+ // Exercise the real MVC file executor and HTTP body, not just FileContentResult properties.
+ var expectedBodies=new[]{"xlsx","pdf"}.ToDictionary(format=>format,format=>LegacyReportExport.Save(book,format));
+ var builder=WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName="Development", ContentRootPath=output });
+ builder.Logging.ClearProviders();
+ builder.WebHost.UseUrls("http://127.0.0.1:0");
+ builder.Services.AddControllers();
+ await using var app=builder.Build();
+ app.MapMethods("/report",new[]{"GET","POST"},async (Microsoft.AspNetCore.Http.HttpContext context)=>{
+  var format=context.Request.Query["format"].ToString();
+  var name=context.Request.Query["name"].ToString()+"."+format;
+  var probe=new ReportResponseProbe { ControllerContext=new Microsoft.AspNetCore.Mvc.ControllerContext { HttpContext=context } };
+  var result=probe.Generate(expectedBodies[format],name);
+  await result.ExecuteResultAsync(new Microsoft.AspNetCore.Mvc.ActionContext(context,new(),new()));
+ });
+ await app.StartAsync();
+ using var http=new HttpClient(new HttpClientHandler { UseProxy=false });
+ foreach(var format in new[]{"xlsx","pdf"}) foreach(var stem in new[]{"DC_123","DCEvidence_123","TE_123","TE_Evidence_123"}) {
+  using var response=await http.PostAsync(app.Urls.Single()+"/report?format="+format+"&name="+stem,null);
+  var body=await response.Content.ReadAsByteArrayAsync();
+  Require(response.IsSuccessStatusCode && body.SequenceEqual(expectedBodies[format]),"HTTP transfer changed report bytes");
+  Require(response.Content.Headers.ContentLength==body.Length && response.Content.Headers.ContentType?.MediaType==LegacyReportExport.ContentType(format),"HTTP length or MIME type changed");
+  var disposition=response.Content.Headers.ContentDisposition;
+  Require(disposition?.FileNameStar==stem+"."+format && response.Headers.CacheControl?.NoStore==true,"HTTP filename or no-store header changed");
+ }
+ await app.StopAsync();
+ Require(typeof(LegacyReportExport).GetMethod("SaveReportAsync") is null && typeof(LegacyReportExport).GetMethod("ReportPath") is null,
+  "Server output persistence was not removed");
+ Console.WriteLine("PASS: real in-memory XLSX/PDF bytes, all eight HTTP response bodies/lengths/filenames/types, no-store responses, and removed server output persistence.");
+ return;
+}
 
 // Form4 and Form10 resolve the SQL image path under distinct legacy shares.
 // Exercise this offline against temporary share-shaped directories, never a server.
@@ -93,64 +139,6 @@ Require(LegacyReportExport.LegacyEvidenceRoot(serverConfig,false)==@"\\test-file
         LegacyReportExport.SharedEvidenceRoot(serverConfig)==@"\\test-file-server\Upload\Evidence",
     "Web server path mapping diverged from Form4/Form10");
 Console.WriteLine("PASS: PM/TE and shared archive roots, absolute/relative paths, collisions, Form10 tilde, placeholders and path boundaries.");
-
-// Verify network path construction without connecting to the file server.
-Require(LegacyReportExport.ReportPath(serverConfig,false,"DB","DB_123.pdf")==@"\\test-file-server\eMaintenanceSystem\TempData\Print Out\DB\DB_123.pdf" &&
-        LegacyReportExport.ReportPath(serverConfig,true,"WB","TE_Evidence_123.xlsx")==@"\\test-file-server\TEeMaintenanceSystem\TempData\Print Out\WB\TE_Evidence_123.xlsx",
-    "Reports do not resolve to separate PM/TE TempData/Print Out/process folders");
-var storageConfig=new Microsoft.Extensions.Configuration.ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string,string?> {
- ["ReportOutput:PmTempRoot"]=Path.Combine(output,"report-storage","PM"),
- ["ReportOutput:TeTempRoot"]=Path.Combine(output,"report-storage","TE") }).Build();
-foreach(var te in new[]{false,true})foreach(var process in new[]{"DC","DB","WB","MP","PL","FT","FL","TP","SING","MEMS","EDS","ATC"})foreach(var format in new[]{"pdf","xlsx"}) {
- var name="PATH-FIXTURE."+format;
- var payload=Encoding.UTF8.GetBytes($"{te}:{process}:{format}");
- await LegacyReportExport.SaveReportAsync(storageConfig,te,process,name,payload);
- var path=LegacyReportExport.ReportPath(storageConfig,te,process.ToLowerInvariant(),name);
- Require(File.ReadAllBytes(path).SequenceEqual(payload),"Report generation and download paths disagree");
-}
-foreach(var process in new[]{"", "../DB", @"DB\WB", "UNKNOWN"}) {
- try { LegacyReportExport.ReportPath(storageConfig,false,process,"test.pdf"); throw new Exception("Invalid report process accepted"); }
- catch(ArgumentException){}
-}
-foreach(var file in new[]{"../file.pdf",@"..\file.xlsx",@"C:\file.pdf",@"\\server\file.pdf","test:stream.pdf","file.exe"}) {
- try { LegacyReportExport.ReportPath(storageConfig,true,"FT",file); throw new Exception("Invalid report filename accepted"); }
- catch(ArgumentException){}
-}
-Console.WriteLine("PASS: isolated PM/TE report writes and reads for all twelve process folders, both formats, and rejected path escapes.");
-
-// Persistent history: exact card/process/system/type matching and immutable versions.
-var oldPath=LegacyReportExport.ReportPath(storageConfig,false,"DC","DC_123.pdf");
-File.WriteAllText(oldPath,"legacy");
-var oldDate=new DateTime(2026,10,1,1,2,3,DateTimeKind.Utc); File.SetLastWriteTimeUtc(oldPath,oldDate);
-var version1=await LegacyReportExport.SaveReportAsync(storageConfig,false,"DC","DC_123.pdf",Encoding.UTF8.GetBytes("first"));
-var version2=await LegacyReportExport.SaveReportAsync(storageConfig,false,"DC","DC_123.pdf",Encoding.UTF8.GetBytes("second"));
-await LegacyReportExport.SaveReportAsync(storageConfig,false,"DC","DC_123.xlsx",Encoding.UTF8.GetBytes("excel"));
-foreach(var name in new[]{"DC_1234.pdf","DC_12.pdf","DCEvidence_123.pdf","DC_123__invalid.pdf"})
- File.WriteAllText(LegacyReportExport.ReportPath(storageConfig,false,"DC",name),"other");
-await LegacyReportExport.SaveReportAsync(storageConfig,true,"DC","DC_123.pdf",Encoding.UTF8.GetBytes("TE"));
-await LegacyReportExport.SaveReportAsync(storageConfig,false,"DB","DC_123.pdf",Encoding.UTF8.GetBytes("DB"));
-var history=LegacyReportExport.ListReports(storageConfig,false,"DC","DC_123");
-Require(history.Count==4 && history.Count(file=>Path.GetExtension(file.FileName)==".xlsx")==1,
- "History mixed cards, workflows, systems, processes, invalid names or duplicate latest aliases");
-Require(history.Any(file=>file.GeneratedAtUtc==oldDate) && history.SequenceEqual(history.OrderByDescending(file=>file.GeneratedAtUtc)),
- "History lost a legacy generation date or newest-first ordering");
-Require(File.ReadAllText(LegacyReportExport.ReportPath(storageConfig,false,"DC",version1))=="first" &&
- File.ReadAllText(LegacyReportExport.ReportPath(storageConfig,false,"DC",version2))=="second" && File.ReadAllText(oldPath)=="second",
- "Regeneration overwrote an earlier download or failed to update the legacy alias");
-Require(LegacyReportExport.DownloadName(version1)=="DC_123.pdf" && LegacyReportExport.IsReportFile(version1,"DC_123","pdf") &&
- !LegacyReportExport.IsReportFile(version1,"DC_12","pdf"),"Version download names or exact BM matching changed");
-var concurrent=await Task.WhenAll(Enumerable.Range(0,4).Select(i=>LegacyReportExport.SaveReportAsync(storageConfig,false,"DC","DC_999.pdf",Encoding.UTF8.GetBytes("version-"+i))));
-Require(concurrent.Distinct().Count()==4 && LegacyReportExport.ListReports(storageConfig,false,"DC","DC_999").Count==4,
- "Concurrent generations lost or duplicated history entries");
-using(var cancelled=new CancellationTokenSource()) {
- cancelled.Cancel();
- try { await LegacyReportExport.SaveReportAsync(storageConfig,false,"DC","DC_123.pdf",new byte[]{0},cancelled.Token); throw new Exception("Cancelled save accepted"); }
- catch(OperationCanceledException){}
- Require(File.ReadAllText(oldPath)=="second","Cancelled generation damaged the previous download");
-}
-Require(LegacyReportExport.ListReports(storageConfig,false,"DC","DC_888").Count==0 &&
- LegacyReportExport.ListReports(storageConfig,false,"SING","SING_888").Count==0,"Missing history must be empty");
-Console.WriteLine("PASS: persistent generation dates, legacy import, immutable/concurrent versions, exact card isolation, cancellation and empty history.");
 
 var cacheTemplate=Path.Combine(output,"cache-template.xlsx");
 var cacheSource=new ExcelFile();cacheSource.Worksheets.Add("Cache").Cells["A1"].Value="original";cacheSource.Save(cacheTemplate);
@@ -394,6 +382,14 @@ tePhotos.Add(new TeEvidenceImage{Category="TEST BOARD",Condition="BEFORE",CN="CN
 var telekoPhotos=Enumerable.Range(0,4).Select(_=>new TelekoEvidenceImage{TelekoEvidence=@"~/Upload/Evidence/2020/photo.png"}).ToList();
 using var tePhotosCache=await EvidenceImageCache.LoadAsync(tePhotos.Select(row=>row.ImgFile).Concat(telekoPhotos.Select(row=>row.TelekoEvidence)),teLegacyShare,Images(true),true,sharedArchive);
 TeEvidenceMakingService.PopulateWorkbook(cwc,teHeader,new(),tePhotos,telekoPhotos,new(),Images(true),teLegacyShare,sharedEvidenceRoot:sharedArchive,imagePaths:tePhotosCache.Paths);
+var blankRule=cwc.Worksheets["FORMAT"].ConditionalFormatting.Single();
+Require(blankRule.AppliesTo.Contains("M6:Q6") && blankRule.AppliesTo.Contains("M8:Q8") &&
+ !blankRule.AppliesTo.Contains("M14:Q15") && !blankRule.AppliesTo.Contains("M6:Q8"),"Optional CWC Wafer No./Remarks still inherit pink blank-field formatting");
+Require(cwc.Worksheets["FORMAT"].Cells["M7"].StringValue=="" && cwc.Worksheets["FORMAT"].Cells["M14"].StringValue=="","Empty optional CWC fields changed");
+using(var serialized=new MemoryStream(LegacyReportExport.Save(cwc,"xlsx"))) {
+ var reloaded=ExcelFile.Load(serialized);
+ Require(reloaded.Worksheets["FORMAT"].ConditionalFormatting.Single().AppliesTo==blankRule.AppliesTo,"CWC optional-field formatting did not survive XLSX serialization");
+}
 var teRows=new[]{20,31,36,54,62};
 for(var category=0;category<teRows.Length;category++)for(var condition=0;condition<2;condition++)
  foreach(var column in condition==0?new[]{"B","D","F"}:new[]{"J","L","N"})PhotoAt(cwc,column+teRows[category],Path.Combine(teUpload,$"category-{category}-{condition}.png"));
@@ -440,8 +436,12 @@ foreach(var pair in new[]{("E7","QUALITY-0"),("J7","QUALITY-1"),("O7","QUALITY-2
 Save(qualityBook,"TE-EVIDENCE-QUALITY");
 Console.WriteLine("PASS: actual CWC CN5-CN8/quality sheets, named routing after sheet reordering, QC/time, Teleko and explicit missing-sheet errors.");
 Console.WriteLine("Report artifacts: "+output);
+sealed class ReportResponseProbe : MachineKarte.Web.Controllers.WorkflowController {
+ public Microsoft.AspNetCore.Mvc.FileContentResult Generate(byte[] bytes,string name)=>ReportFile(bytes,name);
+}
 '@ | Set-Content -Encoding UTF8 (Join-Path $directory 'Program.cs')
 & $Dotnet build (Join-Path $directory 'Checks.csproj') --nologo -v minimal -r win-x64 --self-contained false --property:UseAppHost=false -m:1 --nodeReuse:false --property:NuGetAudit=false --property:UseSharedCompilation=false
 if($LASTEXITCODE -ne 0){throw 'Report fixture build failed.'}
-& $Dotnet (Join-Path $directory 'bin/Debug/net8.0/win-x64/Checks.dll') $repo
+$downloadMode=if($DownloadOnly){'download-only'}else{'all'}
+& $Dotnet (Join-Path $directory 'bin/Debug/net8.0/win-x64/Checks.dll') $repo $downloadMode
 if($LASTEXITCODE -ne 0){throw 'Report generation checks failed.'}

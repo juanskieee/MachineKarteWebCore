@@ -95,6 +95,7 @@
 .workflow :is(.pm-report-header h1, .bmreport-header h2, .ev-title) { font-size: 18px; font-weight: 700; margin: 0; }
 .workflow :is(.pm-report-header p, .document-toolbar p, .bmreport-subtitle) { margin: 4px 0; }
 .workflow :is(.pm-report-button, .btn-download, .btn-generate, .document-toolbar button) { background: green; color: #fff; padding: 8px 16px; border: 0; border-radius: 2px; min-height: 36px; display: inline-block; text-decoration: none; }
+.workflow :is(.btn-download, .btn-generate):hover { background: #006b00; }
 .workflow :is(.document-workspace, .pm-report-status, .bmreport-info, .status-area) { padding: 8px; background: #fff; border: 1px solid #aaa; margin-top: 6px; }
 .workflow .document-workspace { min-height: 0; }
 .workflow .document-note { margin: 8px 0; color: #484848; font-size: 12px; }
@@ -116,28 +117,6 @@
 .workflow .preview-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 8px; background: #ddd; }
 .workflow .preview-frame { width: 100%; min-height: 50dvh; border: 0; }
 .workflow .preview-filename { overflow-wrap: anywhere; flex: 1; }
-.workflow .report-history { margin-top: 16px; padding: 12px; background: #fff; }
-.workflow .report-history-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.workflow .report-history-heading h3 { margin: 0; font-size: 16px; }
-.workflow .report-history-heading button { min-height: 36px; padding: 6px 12px; }
-.workflow .report-history-scroll { max-height: 280px; overflow: auto; }
-.workflow .report-history-table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
-.workflow .report-history-table :is(th, td) { padding: 10px 8px; border-bottom: 1px solid #ddd; vertical-align: top; }
-.workflow .report-history-table th { background: #eee; color: #333; }
-.workflow .report-history-table td:first-child { overflow-wrap: anywhere; }
-.workflow .report-history-table time { font-variant-numeric: tabular-nums; }
-.workflow .report-history-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.workflow .report-history-actions :is(a, button) { min-height: 36px; padding: 6px 8px; color: #005599; background: #fff; border: 1px solid #aaa; border-radius: 2px; text-decoration: none; }
-.workflow .report-history :is(a, button):focus-visible { outline: 2px solid #111; outline-offset: 2px; }
-@media (max-width: 600px) {
-    .workflow .report-history { padding: 8px; }
-    .workflow .report-history-table :is(th, td) { padding: 8px 4px; }
-    .workflow .report-history-table { font-size: 12px; }
-    .workflow .report-history-table { table-layout: fixed; }
-    .workflow .report-history-table th:nth-child(1) { width: 35%; }
-    .workflow .report-history-table th:nth-child(2) { width: 38%; }
-    .workflow .report-history-table th:nth-child(3) { width: 27%; }
-}
 .workflow .status-spinner { display: flex; gap: 8px; align-items: center; }
 @media (max-width: 600px) { .workflow-dialog, .workflow-dialog[data-workflow] { width: calc(100% - 12px); max-height: calc(100dvh - 12px); } .workflow-titlebar { padding-left: 8px; } .workflow-titlebar h2 { font-size: 14px; } .workflow :is(.ms-panel, .ab-drilldown, .mcd-machine-panel, .bma-flyout) { left: 3%; width: 94%; } .workflow :is(.ab-toolbar, .ms-toolbar, .mcd-filter-bar, .bma-toolbar) { align-items: stretch; } .workflow input[type="datetime-local"] { max-width: 100%; } }
 .workflow :is(.ab-drilldown, .ms-panel, .bma-flyout, .mcd-machine-panel) { top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(546px, calc(100% - 16px)); max-height: calc(100% - 64px); }

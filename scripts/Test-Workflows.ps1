@@ -1,7 +1,8 @@
 param(
     [string]$BaseUrl = 'http://127.0.0.1:5098',
     [int]$DevToolsPort = 9227,
-    [string]$ArtifactDirectory = (Join-Path $env:TEMP 'MachineKarte-Workflow-QA')
+    [string]$ArtifactDirectory = (Join-Path $env:TEMP 'MachineKarte-Workflow-QA'),
+    [switch]$ReportsOnly
 )
 # Run the application and an installed Chromium browser with --remote-debugging-port=9227.
 # Browser fixtures replace only AJAX data; HTML partials and assets come from the real app.
@@ -42,6 +43,7 @@ function Invoke-JavaScript([string]$expression) {
     return $result.result.value
 }
 try {
+    if (!$ReportsOnly) {
     $monitoringHtml = $client.GetStringAsync("$BaseUrl/Monitoring").GetAwaiter().GetResult()
     $assetPaths = @([regex]::Matches($monitoringHtml, '<(?:link|script)\b[^>]*(?:href|src)="(/[^"]+)"') |
         ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
@@ -72,6 +74,7 @@ try {
     $rejected.Dispose()
     $payload.Dispose()
     Write-Output 'PASS: real handler validation and antiforgery rejection'
+    }
     $targets = $client.GetStringAsync("http://127.0.0.1:$DevToolsPort/json/list").GetAwaiter().GetResult() | ConvertFrom-Json
     $target = $targets | Where-Object { $_.type -eq 'page' -and ($_.url.StartsWith($BaseUrl) -or $_.url -eq 'about:blank') } | Select-Object -First 1
     if (!$target) { throw 'Open about:blank in the browser debugging session before running this check.' }
@@ -84,6 +87,32 @@ try {
     Invoke-Cdp 'Emulation.setDeviceMetricsOverride' @{ width = 1440; height = 1000; deviceScaleFactor = 1; mobile = $false } | Out-Null
     Invoke-Cdp 'Page.navigate' @{ url = "$BaseUrl/Monitoring" } | Out-Null
     $ready = Invoke-JavaScript "new Promise((resolve, reject) => { let attempts = 0; const timer = setInterval(() => { if (window.Workflows && document.readyState === 'complete') { clearInterval(timer); resolve(true); } else if (++attempts > 150) { clearInterval(timer); reject(new Error('Monitoring failed to load')); } }, 100); })"
+    if ($ReportsOnly) {
+        $localDownloads=Join-Path $ArtifactDirectory ('Downloads-'+[guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $localDownloads -Force | Out-Null
+        Invoke-Cdp 'Browser.setDownloadBehavior' @{ behavior='allow';downloadPath=$localDownloads } | Out-Null
+        Invoke-JavaScript 'window.__allowFixtureDownloads=true' | Out-Null
+        Write-Output (Invoke-JavaScript 'window.runDocumentChecks()')
+        foreach($stem in @('DC_123','DCEvidence_123','TE_123','TE_Evidence_123')) {
+            foreach($format in @('xlsx','pdf')) {
+                $file=Join-Path $localDownloads "$stem.$format"
+                $timer=[Diagnostics.Stopwatch]::StartNew()
+                while(!(Test-Path -LiteralPath $file) -and $timer.Elapsed.TotalSeconds -lt 5) { Start-Sleep -Milliseconds 30 }
+                if(!(Test-Path -LiteralPath $file) -or [IO.File]::ReadAllText($file) -ne "TEST:$stem.$format") { throw "Local browser download failed: $stem.$format" }
+            }
+        }
+        Write-Output 'PASS: all eight files were saved by the browser to the isolated local download folder with exact expected bytes'
+        New-Item -ItemType Directory -Path $ArtifactDirectory -Force | Out-Null
+        foreach ($viewport in @(@{name='desktop';width=1440;height=1000}, @{name='mobile';width=390;height=844})) {
+            Invoke-Cdp 'Emulation.setDeviceMetricsOverride' @{ width=$viewport.width; height=$viewport.height; deviceScaleFactor=1; mobile=($viewport.name -eq 'mobile') } | Out-Null
+            foreach ($surface in @('PmReport','BmReport','EvidenceMaking','TeEvidenceMaking')) {
+                Write-Output (Invoke-JavaScript ("window.prepareWorkflowCapture('" + $surface + "')"))
+                $capture=Invoke-Cdp 'Page.captureScreenshot' @{ format='png'; captureBeyondViewport=$false }
+                [IO.File]::WriteAllBytes((Join-Path $ArtifactDirectory ($viewport.name+'-'+$surface+'.png')), [Convert]::FromBase64String($capture.data))
+            }
+        }
+        return
+    }
     Write-Output (Invoke-JavaScript 'window.runWorkflowChecks()')
     Write-Output (Invoke-JavaScript 'window.runSummaryChecks()')
     Write-Output (Invoke-JavaScript 'window.runMonitoringChecks()')

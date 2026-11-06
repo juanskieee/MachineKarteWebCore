@@ -26,10 +26,12 @@ mode. Keep record-specific state inside that initializer.
   and `context.onRefresh` so closing a dialog releases its resources. Handle
   request failures locally; suppress error messages after cancellation.
 - Use `Karte.createReportView` for generation status, previews, downloads, and
-  object URL cleanup. Generation and download remain separate user actions.
-- Use `Karte.createReportHistory` for selected-card server history, refresh,
-  local generation dates, and saved PDF preview/download actions. Keep history
-  status separate from generation status and use persistent version URLs.
+  object URL cleanup. Pass binary generation responses to `view.showResponse`.
+  Generation and local download remain separate user actions; do not add server
+  report storage or history.
+  Read report bytes with `arrayBuffer()` before constructing the Blob: direct
+  `response.blob()` can fail after HTTP 200 when Edge/Chrome temporary disk space
+  is low. This path holds the report in browser memory.
 - Prefer `textContent` for values. Use `Karte.escapeHtml` for dynamic values in
   HTML templates, and `URLSearchParams` for query strings.
 - Build large tables and lists off the DOM, then insert them together. Delegate

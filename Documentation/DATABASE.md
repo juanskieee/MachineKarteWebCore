@@ -15,7 +15,7 @@ isolated fixture runners for database testing.
 | Monitoring initial HTML | No database work |
 | `POST /Monitoring?handler=TrackSession` after browser load | May insert/update `MachineKarte_PCStatus`, keyed by the web host's machine name |
 | Action Card Save | May insert/update the PM/TE/CC/EEE/VIS `MachineKarte_ActionCard*` table selected by user mode |
-| Summaries, dashboards, OCAP, and report/evidence retrieval | Reads; Monitoring paging materializes grouped counts in a session-local temporary table; report generation also writes output files to the separate PM/TE network shares |
+| Summaries, dashboards, OCAP, and report/evidence retrieval | Reads; Monitoring paging materializes grouped counts in a session-local temporary table; generated reports are returned directly to the browser without output-share writes |
 | RawData | Shared recurrence CTEs; reads only, with no temporary-table writes |
 | `MonitoringQueryBatch` | Schedules supplied reads; contains no SQL or connection logic |
 

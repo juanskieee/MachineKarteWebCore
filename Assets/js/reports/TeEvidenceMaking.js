@@ -8,7 +8,6 @@ Workflows.register("TeEvidenceMaking", (root, options, context) => {
         statusId: "status",
         downloadId: "download",
     });
-    const history = Karte.createReportHistory(context, 'TeEvidenceMaking', options, view);
     byId("recordProcess").textContent = options.process || "—";
     byId("recordBmId").textContent = options.bmId || "—";
     byId("btnGenerate").addEventListener("click", generate);
@@ -23,21 +22,11 @@ Workflows.register("TeEvidenceMaking", (root, options, context) => {
         const query = new URLSearchParams({ bmId: options.bmId, process: options.process || "", format });
 
         try {
-            const result = await context.getJson(
+            const response = await context.fetch(
                 `/TeEvidenceMaking?handler=Generate&${query}`,
+                { cache: 'no-store' },
             );
-            if (!result.success)
-                throw new Error(
-                    result.message || "Evidence generation failed.",
-                );
-            const downloadUrl =
-                result.url || `/TeEvidenceMaking?handler=Download&${query}`;
-            // Form10 writes this exact filename in TeEvidenceMakingService.
-            view.showPreview(
-                downloadUrl,
-                `TE_Evidence_${options.bmId}.${format}`,
-            );
-            history.refresh();
+            await view.showResponse(response);
         } catch (error) {
             if (!context.signal.aborted)
                 view.showStatus(

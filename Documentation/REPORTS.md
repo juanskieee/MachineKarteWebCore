@@ -13,9 +13,9 @@ Related guides: [application and validation](README.md),
 | Workflow | Retrieval | Writer and output |
 | --- | --- | --- |
 | PM R / Form3 | `PmReportRepository`: current/history records, typed values, parameterized lookup batch | `PmReportService`, `LegacyReportWriter.PopulatePm`, `LegacyReportExport.Save` |
-| PM E / Form4 | `EvidenceRepository`: five ordered `gridEvidenceMaking_Ver3` categories, process header, TSC confirmations | `EvidenceMakingService`, `PopulateEvidence`, file/download handler |
-| TE R / Form9 | `BmReportRepository`: `ViewTEData_Test`, VR numbers, supplemental lookups | `BmReportService`, `PopulateTe`, controller saves the generated copy and returns a persistent download URL to the dialog; the original binary POST response remains available |
-| TE E / Form10 | `TeEvidenceRepository`: `ViewTEData`, ordered evidence categories, connector/condition, Teleko, quality and distinct misc rows | `TeEvidenceMakingService`, `PopulateTeEvidence`, file/download handler |
+| PM E / Form4 | `EvidenceRepository`: five ordered `gridEvidenceMaking_Ver3` categories, process header, TSC confirmations | `EvidenceMakingService`, `PopulateEvidence`, binary generation response |
+| TE R / Form9 | `BmReportRepository`: `ViewTEData_Test`, VR numbers, supplemental lookups | `BmReportService`, `PopulateTe`, controller returns the binary HTTP attachment response directly |
+| TE E / Form10 | `TeEvidenceRepository`: `ViewTEData`, ordered evidence categories, connector/condition, Teleko, quality and distinct misc rows | `TeEvidenceMakingService`, `PopulateTeEvidence`, binary generation response |
 
 [LegacyReportMappings.vb](../Services/Reporting/LegacyReportMappings.vb) contains
 extracted active Form3/4/9/10 mapping bodies. The
@@ -29,62 +29,40 @@ than editing generated VB alone. The preserved forms are the source reference;
 the former flattened cell matrix is not a runtime dependency.
 
 [LegacyReportExport.cs](../Services/LegacyReportExport.cs) owns format validation,
-MIME types, serialization, static-image roots, and uploaded-photo resolution.
+MIME types, in-memory serialization, static-image roots, and uploaded-photo resolution.
 The project pins GemBox.Spreadsheet and currently initializes it with
 `FREE-LIMITED-KEY`. Exports use that library directly without Office or an
 external converter.
 
-## Generated-report storage
+## Local downloads
 
-PM and TE outputs use separate existing server roots, each with a `Print Out`
-directory and a subfolder for the selected process:
+All four generation handlers return the generated XLSX/PDF bytes directly in
+an HTTP attachment response with the original filename and `Cache-Control:
+no-store`. Workbooks are serialized in memory. Generated reports are never
+written to a server folder, network share, database, or server-side cache.
+There is no generated-file history, version archive, or saved-file download API.
+The former output-root settings have been removed.
 
-| Workflow | Output location |
-| --- | --- |
-| PM maintenance records and evidence | `\\172.26.220.161\eMaintenanceSystem\TempData\Print Out\<PROCESS>\` |
-| TE maintenance records and evidence | `\\172.26.220.161\TEeMaintenanceSystem\TempData\Print Out\<PROCESS>\` |
+The dialog holds the response in a browser Blob URL for its separate Download
+action and, for PDFs, its inline preview. The browser saves the file in the
+user's Downloads folder or the location chosen in its Save As settings. No
+report is downloaded merely by opening a dialog. Generating again releases the
+previous Blob URL; closing the dialog cancels pending requests and releases its
+current report bytes. Reopening starts with no generated report. Files already
+saved on the user's computer remain there.
 
-For example, a PM DB report is `Print Out\DB\DB_<BMID>.pdf`; TE FT evidence is
-`Print Out\FT\TE_Evidence_<BMID>.xlsx` under the TE root. File names and explicit
-Generate/Download behavior remain unchanged. The process travels in
-generation/download URLs so the same folder is used for both operations.
+The shared browser helper reads generation responses with `arrayBuffer()` before
+creating the preview/download Blob. Reading directly with `response.blob()` can
+fail in Edge/Chrome after `200 OK` when Chromium cannot allocate temporary Blob
+storage on a low-disk machine. This was reproduced locally with 12 MiB and 32 MiB
+responses; both sizes succeeded through the memory-buffered path. The same helper
+covers all four dialogs and both formats. Reports must fit browser memory; very
+large exports would require a native streaming download flow. Chromium documents
+its [Blob storage and disk limits](https://chromium.googlesource.com/chromium/src/+/main/storage/browser/blob/README.md).
 
-`ReportOutput:PmTempRoot` and `ReportOutput:TeTempRoot` configure the two
-`TempData` roots in `appsettings.json`. The common resolver appends `Print Out`,
-an allowlisted uppercase process, and a validated XLSX/PDF file name. If a root
-override is absent, it derives the corresponding system share from
-`NetworkShare:Server`. `EvidenceMaking:OutputRoot` is no longer used.
-
-All four Generate actions save their output to the appropriate share. There
-is no local `TempData/GeneratedPdf` fallback or public static-file mapping for
-reports. Downloads and inline previews go through the validated controller
-handlers. Startup does not open or create remote output folders; storage is
-accessed only when listing, generating, or downloading a report.
-
-Every report/evidence dialog loads **Generated files** for its selected BM ID,
-process, PM/TE system, and report/evidence type. The newest files appear first,
-with their generation date/time in the browser's local timezone, Download, and
-PDF Preview actions. Opening or refreshing history does not generate a file or
-read SQL. History reloads after generation and whenever the dialog reopens.
-
-Each successful generation retains an immutable sibling named
-`<legacy-stem>__<32-character GUID>.xlsx` or `.pdf`; its download URL selects that
-exact version. The original filename remains the latest-file alias for existing
-callers, and downloaded attachments keep that original name. History excludes
-the duplicate alias when versions exist. Pre-existing unversioned files are
-listed using their last-write date and copied into history on first regeneration,
-preserving that date. Files already overwritten before this change cannot be
-recovered. Writes to the same latest-file alias are coordinated within the app
-process, and temporary files are renamed only when complete. Multi-worker hosts
-would also need coordination across processes for those compatibility aliases;
-the version filenames are unique. No database migration or browser storage is needed; history survives
-dialog closure and app restarts while its files remain on the configured share.
-
-The application's Windows identity needs share and NTFS read/write access to
-the process output folders. Generation creates a missing process directory
-under its configured root and reports a failure when that storage is unavailable;
-it does not silently save elsewhere. These files are generated output, not
-source templates. Audit/test artifacts still belong in OS temporary storage.
+The application still reads source templates and uploaded evidence photos from
+their existing locations. Per-export photo staging uses OS temporary storage
+and is cleaned up after the export; it does not archive generated reports.
 
 ### Generation performance
 
@@ -187,6 +165,7 @@ templates and preserved forms.
 | Evidence photos | Fit natural aspect ratio inside both the legacy maximum and merged placeholder, retaining the anchor and MoveAndSize behavior; do not resize static marks this way |
 | Third-photo captions | SING's third problem description uses Z19; the common layout uses AD21 |
 | CWC Ideas | Keep B78 visible through print area Q80, with separate body/footer space |
+| CWC optional fields | Exclude Wafer No. (M7:Q7) and Remarks (M14:Q15) from the supplied template's pink blank-cell rule in generated reports; retain other required-field rules and source-template bytes |
 | Repeated connector images | Render one image per condition/CN using the last ordered row, matching the legacy visible result |
 | MEMS fallback fields | AG14, AD33, AH33, AN33 prefer nonblank current values, then their occurrence/production-treatment historical equivalents; retain current zero values |
 | Main worksheets | Select the configured PM worksheet and named TE main sheet explicitly |
@@ -228,7 +207,7 @@ Deploy with network reachability and share/NTFS Read access for the account
 running the app. `NetworkShare:UserName` and `NetworkShare:Password` do not
 authenticate the current implementation, and `EvidenceMaking:ImagesRoot` does
 not control uploaded-photo lookup. Keep local templates/static images readable
-and output storage writable. Uploaded photos are embedded during generation;
+and uploaded photos readable. Uploaded photos are embedded during generation;
 they need no public static-file mapping or mapped drive.
 
 Validate actual photographs under the deployed app identity. A developer's file
@@ -262,10 +241,10 @@ The mapping check is offline. Report fixtures use real templates/images, typed
 values, empty/zero/history cases, photo bytes/anchors, workbook geometry, genuine
 file signatures, supplemental PDF sheets, and explicit capacity errors. Connector
 and quality checks use the retained CWC's real sheets, including a reordered copy
-to check named routing; incomplete copies exercise missing-sheet rejection. Tests
-write/read every process folder under separate local PM/TE root overrides and
-verify UNC path construction without connecting to the file server. The
-runner prints its unique OS temporary output directory.
+to check named routing; incomplete copies exercise missing-sheet rejection. The
+runner prints its unique OS temporary artifact directory. Its focused
+`-DownloadOnly` mode checks real in-memory XLSX/PDF responses without running the
+full mapping suite.
 
 The audit defaults to `MachineKarte-ReportAudit/Inventory` under OS temporary
 storage and accepts `-OutputDirectory`. It regenerates `Templates.csv`,
@@ -276,10 +255,10 @@ output files.
 
 `Test-DataRetrieval.ps1` adds isolated LocalDB validation of repository reads;
 HTTP/browser tools verify stream types, filenames, preview headers, and explicit
-generation/download behavior. For endpoint checks, configure the test app's
-`ReportOutput__PmTempRoot` / `ReportOutput__TeTempRoot` to local absolute paths
-and pass those same paths as `-PmTempRoot` / `-TeTempRoot` to
-`Test-WorkflowEndpoints.ps1`. The endpoint fixtures reject network output roots.
+generation/download behavior. Use `Test-WorkflowEndpoints.ps1 -ReportsOnly` for
+report-route checks and `Test-Workflows.ps1 -ReportsOnly` for browser-local
+downloads, previews, and Blob URL cleanup. These checks require no output-share
+configuration.
 For independent PDF appearance checks, use
 `Render-ReportPdf.ps1 -Pdf <file> -OutputDirectory <directory>`. Fixture success
 does not close the acceptance gaps above.

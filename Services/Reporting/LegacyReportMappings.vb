@@ -6352,6 +6352,10 @@ End Sub
 Public Sub PopulateTeEvidence(wb As ExcelFile, rows As IDictionary(Of String, IList(Of IDictionary(Of String, Object))), teAssign As String)
 Dim ws = wb.Worksheets("FORMAT")
 wb.Worksheets.ActiveWorksheet = ws
+' Optional Wafer No. and Remarks must not inherit the template's pink blank-field rule.
+For Each rule In ws.ConditionalFormatting
+rule.AppliesTo = rule.AppliesTo.Replace("M14:Q15", "").Replace("M6:Q8", "M6:Q6 M8:Q8").Trim()
+Next
 ws.NamedRanges.SetPrintArea(ws.Cells.GetSubrange("A1", "Q80"))
 ws.PrintOptions.FooterMargin = 0.1
 ws.Cells("B77").Value = "Ideas:"

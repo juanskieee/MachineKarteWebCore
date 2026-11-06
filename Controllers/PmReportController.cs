@@ -7,15 +7,7 @@ namespace MachineKarte.Web.Controllers;
 public sealed class PmReportController : WorkflowController
 {
     private readonly PmReportService _service;
-    private readonly ILogger<PmReportController> _logger;
-    private readonly IConfiguration _config;
-
-    public PmReportController(PmReportService service, ILogger<PmReportController> logger, IConfiguration config)
-    {
-        _service = service;
-        _logger = logger;
-        _config = config;
-    }
+    public PmReportController(PmReportService service) => _service = service;
 
     [HttpGet, WorkflowHandler]
     public IActionResult Index(int bmId = 0, string process = "")
@@ -37,32 +29,13 @@ public sealed class PmReportController : WorkflowController
             Format = format
         }, HttpContext.RequestAborted);
 
-        return new JsonResult(new AjaxResult<PmReportResult>
+        if (result.Success) return ReportFile(result.Bytes, result.FileName);
+        return new JsonResult(new AjaxResult<object>
         {
             Success = result.Success,
             Message = result.Message,
-            Data = result
         });
     }
 
-    [HttpGet, WorkflowHandler("Download")]
-    public IActionResult Download(string fileName, bool inline = false, string process = "")
-    {
-        string path;
-        try { path = LegacyReportExport.ReportPath(_config, false, process, fileName); }
-        catch (ArgumentException ex) { return BadRequest(ex.Message); }
 
-        if (!System.IO.File.Exists(path))
-            return NotFound("Report file not found.");
-
-        var contentType = LegacyReportExport.ContentType(Path.GetExtension(fileName).TrimStart('.'));
-        // A PDF iframe must not receive Content-Disposition: attachment.
-        return inline && contentType == "application/pdf"
-            ? PhysicalFile(path, contentType)
-            : PhysicalFile(path, contentType, LegacyReportExport.DownloadName(fileName));
-    }
-
-    [HttpGet, WorkflowHandler("History")]
-    public IActionResult History(int bmId, string process = "")
-        => ReportHistory(_config, false, process, bmId, $"{process.Trim().ToUpperInvariant()}_{bmId}");
 }

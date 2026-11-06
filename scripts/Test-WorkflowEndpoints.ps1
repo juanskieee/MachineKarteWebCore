@@ -1,10 +1,8 @@
 param(
     [string]$BaseUrl = 'http://127.0.0.1:5098',
-    [string]$PmTempRoot = (Join-Path $env:TEMP 'MachineKarte-WorkflowEndpoints/PM'),
-    [string]$TeTempRoot = (Join-Path $env:TEMP 'MachineKarte-WorkflowEndpoints/TE')
+    [switch]$ReportsOnly
 )
 # Real HTTP checks: no AJAX fixtures, SQL reads, saves, or report generation.
-# Configure the test app's ReportOutput roots to these same local folders.
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Net.Http
 $repo = Split-Path $PSScriptRoot -Parent
@@ -12,10 +10,6 @@ $handler = New-Object System.Net.Http.HttpClientHandler
 $handler.UseProxy = $false
 $handler.AllowAutoRedirect = $false
 $client = New-Object System.Net.Http.HttpClient($handler)
-$createdFiles = @()
-foreach ($root in @($PmTempRoot,$TeTempRoot)) {
-    if (![IO.Path]::IsPathRooted($root) -or $root.StartsWith('\\')) { throw 'Endpoint fixtures require absolute local report roots, never network shares.' }
-}
 function Require($condition, [string]$message) { if (!$condition) { throw $message } }
 function Get-Response([string]$path, [int]$status = 200) {
     $response = $client.GetAsync($BaseUrl + $path).GetAwaiter().GetResult()
@@ -43,6 +37,7 @@ function Post-Json([string]$path, [string]$body, [string]$token = '') {
     finally { $request.Dispose() }
 }
 try {
+    if (!$ReportsOnly) {
     $names = @('AlertBoard','MachineSummary','McdMonitoring','BmAnalytics','RawData','OcapViewer','PmReport','BmReport','EvidenceMaking','TeEvidenceMaking','ActionCards')
     foreach ($name in $names) {
         Require (!(Test-Path -LiteralPath (Join-Path $repo "Pages/$name.cshtml"))) "$name still has a standalone route page."
@@ -107,114 +102,25 @@ try {
     try { Require ([int]$response.StatusCode -in @(404,405)) 'GET can invoke the POST Save action.' }
     finally { $response.Dispose() }
     Write-Output 'PASS: real GET/JSON binding, case-insensitive handler selection, HTTP method restrictions, validation and all five POST antiforgery guards.'
+    }
 
-    $id = Get-Random -Minimum 1000000000 -Maximum 2000000000
-    $bytes = [Text.Encoding]::UTF8.GetBytes('Workflow download endpoint fixture')
-    $teBytes = [Text.Encoding]::UTF8.GetBytes('Separate TE report output fixture')
-    $pmOutput = Join-Path $PmTempRoot 'Print Out/FT'
-    $teOutput = Join-Path $TeTempRoot 'Print Out/FT'
-    [IO.Directory]::CreateDirectory($pmOutput) | Out-Null
-    [IO.Directory]::CreateDirectory($teOutput) | Out-Null
-    foreach ($format in @('xlsx','pdf')) {
-      $fileName = "Workflow-Endpoint-$id.$format"
-      $teFileName = "TE_Evidence_$id.$format"
-      $mime = if ($format -eq 'pdf') { 'application/pdf' } else { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }
-      $pmPath = Join-Path $pmOutput $fileName
-      $tePath = Join-Path $teOutput $teFileName
-      [IO.File]::WriteAllBytes($pmPath, $bytes)
-      [IO.File]::WriteAllBytes($tePath, $teBytes)
-      $createdFiles += @($pmPath,$tePath)
-      foreach ($check in @(
-        @{path="/PmReport?handler=Download&process=FT&fileName=$fileName";name=$fileName;bytes=$bytes},
-        @{path="/EvidenceMaking?handler=Download&process=FT&fileName=$fileName";name=$fileName;bytes=$bytes},
-        @{path="/TeEvidenceMaking?handler=Download&process=FT&bmId=$id&format=$format";name=$teFileName;bytes=$teBytes}
-    )) {
-        $response = Get-Response $check.path
-        try {
-            $actual = $response.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult()
-            Require ([Convert]::ToBase64String($actual) -eq [Convert]::ToBase64String($check.bytes)) "$($check.path) changed download bytes or read the wrong system/process folder."
-            Require ($response.Content.Headers.ContentType.MediaType -eq $mime) 'Download content type changed.'
-            Require ($response.Content.Headers.ContentDisposition.ToString().Contains($check.name)) 'Download filename changed.'
-        } finally { $response.Dispose() }
-      }
-      if ($format -eq 'pdf') {
-        foreach ($preview in @(
-            @{path="/PmReport?handler=Download&process=FT&fileName=$fileName&inline=true";bytes=$bytes},
-            @{path="/EvidenceMaking?handler=Download&process=FT&fileName=$fileName&inline=true";bytes=$bytes},
-            @{path="/TeEvidenceMaking?handler=Download&process=FT&bmId=$id&format=pdf&inline=true";bytes=$teBytes}
-        )) {
-            $inlinePath = $preview.path
-            $response = Get-Response $inlinePath
-            try {
-                Require ($null -eq $response.Content.Headers.ContentDisposition) "$inlinePath forces an attachment download."
-                Require ($response.Content.Headers.ContentType.MediaType -eq 'application/pdf') "$inlinePath PDF preview MIME type changed."
-                $actual = $response.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult()
-                Require ([Convert]::ToBase64String($actual) -eq [Convert]::ToBase64String($preview.bytes)) "$inlinePath changed inline PDF bytes."
-            } finally { $response.Dispose() }
-        }
-      }
-    }
-    foreach ($flow in @(
-        @{name='PmReport';root=$pmOutput;stem="FT_$id"},
-        @{name='EvidenceMaking';root=$pmOutput;stem="FTEvidence_$id"},
-        @{name='BmReport';root=$teOutput;stem="TE_$id"},
-        @{name='TeEvidenceMaking';root=$teOutput;stem="TE_Evidence_$id"}
-    )) {
-        $version = [guid]::NewGuid().ToString('N')
-        $historyNames = @("$($flow.stem).xlsx", "$($flow.stem)__$version.pdf")
-        foreach ($historyName in $historyNames) {
-            $historyPath = Join-Path $flow.root $historyName
-            if (!(Test-Path -LiteralPath $historyPath)) {
-                [IO.File]::WriteAllBytes($historyPath,$bytes)
-                $createdFiles += $historyPath
-            }
-        }
-        $historyResponse=Get-Response "/$($flow.name)?handler=History&process=FT&bmId=$id"
-        try {
-            $history=$historyResponse.Content.ReadAsStringAsync().GetAwaiter().GetResult() | ConvertFrom-Json
-            Require ($history.success -and @($history.data).Count -eq 2) "$($flow.name) did not list both saved formats."
-            foreach ($entry in $history.data) {
-                Require ($entry.generatedAtUtc -and $entry.sizeBytes -gt 0) "$($flow.name) omitted file metadata."
-                $downloadResponse=Get-Response $entry.downloadUrl
-                try {
-                    Require ($downloadResponse.Content.Headers.ContentDisposition.ToString().Contains($entry.fileName)) 'Version download changed the legacy filename.'
-                } finally { $downloadResponse.Dispose() }
-                if ($entry.fileName.EndsWith('.pdf')) {
-                    $previewResponse=Get-Response ($entry.downloadUrl+'&inline=true')
-                    try { Require ($null -eq $previewResponse.Content.Headers.ContentDisposition) 'Saved PDF preview forces attachment download.' }
-                    finally { $previewResponse.Dispose() }
-                }
-            }
-        } finally { $historyResponse.Dispose() }
-        foreach ($other in @("process=FT&bmId=$($id+1)","process=DB&bmId=$id")) {
-            $empty=Get-Response "/$($flow.name)?handler=History&$other"
-            try { Require (@(($empty.Content.ReadAsStringAsync().GetAwaiter().GetResult() | ConvertFrom-Json).data).Count -eq 0) 'History mixed another card or process.' }
-            finally { $empty.Dispose() }
-        }
-        foreach ($invalid in @('process=FT&bmId=0','process=INVALID&bmId=123')) {
-            $bad=Get-Response "/$($flow.name)?handler=History&$invalid" 400
-            $bad.Dispose()
+    foreach ($name in @('PmReport','BmReport','EvidenceMaking','TeEvidenceMaking')) {
+        $html=Get-Html "/${name}?dialog=1&bmId=123&process=DC"
+        Require (!$html.Contains('report-history')) "$name still renders server history."
+        foreach ($removed in @('History','Download')) {
+            $response=Get-Response "/${name}?handler=$removed&bmId=123&process=DC&fileName=DC_123.pdf" 404
+            $response.Dispose()
         }
     }
-    Write-Output 'PASS: all four persistent history handlers, dated Excel/PDF downloads, version previews, and exact BM/process isolation.'
-    foreach ($name in @('PmReport','BmReport','EvidenceMaking')) {
-        $response = Get-Response "/${name}?handler=Download&process=FT&fileName=..%2Finvalid.xlsx" 400
-        $response.Dispose()
-        $response = Get-Response "/${name}?handler=Download&process=FT&fileName=Missing-$id.xlsx" 404
-        $response.Dispose()
-        $response = Get-Response "/${name}?handler=Download&process=..%2FFT&fileName=Missing-$id.xlsx" 400
-        $response.Dispose()
-        $response = Get-Response "/${name}?handler=Download&process=DB&fileName=$fileName" 404
-        $response.Dispose()
-    }
-    $response = Get-Response '/TeEvidenceMaking?handler=Download' 400
-    $response.Dispose()
-    $response = Get-Response "/TeEvidenceMaking?handler=Download&process=DB&bmId=$id&format=pdf" 404
-    $response.Dispose()
-    $response = Get-Response '/TempData/GeneratedPdf/anything.pdf' 404
-    $response.Dispose()
-    Write-Output 'PASS: separate PM/TE process folders, exact Excel/PDF streams, inline previews, path validation and no public TempData static-file route.'
-} finally {
-    foreach ($path in $createdFiles) { Remove-Item -LiteralPath $path }
-    $client.Dispose()
-}
+    Expect-Failure '/PmReport?handler=Generate&process=DC&bmId=0' 'valid BM ID'
+    Expect-Failure '/TeEvidenceMaking?handler=Generate' 'bmId is required'
+    $html=Get-Html '/EvidenceMaking?dialog=1'
+    $token=[Net.WebUtility]::HtmlDecode([regex]::Match($html,'name="__RequestVerificationToken"[^>]*value="([^"]+)"').Groups[1].Value)
+    $response=Post-Json '/EvidenceMaking?handler=Generate' '{"process":"DC","bmId":0}' $token
+    try {
+        Require ([int]$response.StatusCode -eq 200) 'Evidence generation rejected the antiforgery token.'
+        $failure=$response.Content.ReadAsStringAsync().GetAwaiter().GetResult() | ConvertFrom-Json
+        Require (!$failure.success -and $failure.message.Contains('valid BM ID')) 'Evidence validation changed.'
+    } finally { $response.Dispose() }
+    Write-Output 'PASS: four report partials without history, removed storage routes, and generation validation/antiforgery; no database or output files used.'
+} finally { $client.Dispose() }

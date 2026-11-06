@@ -12,7 +12,7 @@
 .ocap-table th, .ocap-table td { border: 1px solid #888; padding: 9px; overflow-wrap: anywhere; white-space: pre-line; vertical-align: top; }
 .ocap-table th { position: sticky; top: 0; background: #f0f0f0; font-weight: 700; }
 .ocap-row-even { background: #fff; }
-.ocap-row-odd { background: #e0e0e0; }
+.ocap-row-odd { background: #f8f8f8; }
 .col-check { width: 32%; }
 .col-method { width: 19%; }
 .col-action { width: 18%; }
