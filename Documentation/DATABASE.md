@@ -29,6 +29,11 @@ cancellation budget through connection acquisition and command execution. It
 does not block initial HTML. OCAP and other read paths propagate request
 cancellation through connection opens, commands, and row reads.
 
+Monitoring's Location filter requires a specific floor. The page handlers reject
+blank, All, and unknown locations before calling the machine-list, dashboard, or
+machine-card service. The floor-overview aggregation retains its internal
+cross-location query; it is not an unrestricted machine-search option.
+
 ## Action Card identity and duplicate handling
 
 [ActionCardRepository](../Repositories/ActionCardRepository.cs) loads the highest

@@ -1,6 +1,5 @@
-﻿using MachineKarte.Web.Repositories;
+using MachineKarte.Web.Repositories;
 using MachineKarte.Web.Services;
-using MachineKarte.Web.Services.Reporting;
 
 using Microsoft.Extensions.FileProviders;
 

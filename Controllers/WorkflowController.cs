@@ -22,7 +22,7 @@ public abstract class WorkflowController : Controller
     }
 
     protected IActionResult WorkflowView(object? model = null)
-        => PartialView($"/Pages/Shared/Workflows/_{RouteData.Values["controller"]}.cshtml", model);
+        => PartialView($"/Views/Workflows/_{RouteData.Values["controller"]}.cshtml", model);
 
     protected FileContentResult ReportFile(byte[] bytes, string fileName)
     {

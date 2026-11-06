@@ -1,0 +1,10 @@
+<div class="workflow workflow--TeEvidenceMaking" data-workflow="TeEvidenceMaking">
+    <div class="document-toolbar">
+        <p>Process: <strong data-id="recordProcess"></strong> | BM ID: <strong data-id="recordBmId"></strong></p>
+        <div class="document-actions">
+            <label>Format <select data-id="outputFormat"><option value="xlsx">Excel (.xlsx)</option><option value="pdf">PDF</option></select></label>
+            <button type="button" data-id="btnGenerate" class="btn-generate">Generate evidence</button>
+        </div>
+    </div>
+    @await Html.PartialAsync("_ReportOutput", new ReportOutputViewModel("TeEvidenceMaking", "status", "download", "evidence", "TE maintenance evidence PDF preview"))
+</div>

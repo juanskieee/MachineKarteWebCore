@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
-using MachineKarte.Web.Services.Reporting;
+using MachineKarte.Web.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MachineKarte.Web.Controllers

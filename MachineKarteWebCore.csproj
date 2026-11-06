@@ -4,6 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <DefaultItemExcludes>$(DefaultItemExcludes);Reporting\**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,17 +15,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="Services\Reporting\LegacyReports.vbproj" />
+    <ProjectReference Include="Reporting\LegacyReports.vbproj" />
     <None Update="Templates/**/*;Assets/images/**/*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </None>
-    <Folder Include="Assets\js\" />
-    <Folder Include="Repositories\" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include="Services\Reporting\LegacyReports.vbproj" />
   </ItemGroup>
 
   <ItemGroup>

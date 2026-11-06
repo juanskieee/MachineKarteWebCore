@@ -1,0 +1,15 @@
+@model ReportOutputViewModel
+<p class="document-note">Generate the @Model.DocumentKind in Excel or PDF, then choose Download to save it.</p>
+<div id="@(Model.Workflow)-statusArea" data-id="statusArea" class="status-area is-hidden">
+    <div id="@(Model.Workflow)-statusSpinner" data-id="statusSpinner" class="status-spinner is-hidden">
+        <span class="spinner" aria-hidden="true"></span><span>Generating @(Model.DocumentKind)…</span>
+    </div>
+    <p id="@(Model.Workflow)-@Model.StatusId" data-id="@Model.StatusId" class="status-msg" role="status" aria-live="polite"></p>
+</div>
+<div id="@(Model.Workflow)-previewPanel" data-id="previewPanel" class="preview-panel is-hidden">
+    <div class="preview-toolbar">
+        <span id="@(Model.Workflow)-previewFileName" data-id="previewFileName" class="preview-filename"></span>
+        <a id="@(Model.Workflow)-@Model.DownloadId" data-id="@Model.DownloadId" class="btn-download" download>Download</a>
+    </div>
+    <iframe id="@(Model.Workflow)-previewFrame" data-id="previewFrame" class="preview-frame is-hidden" title="@Model.PreviewTitle" loading="lazy"></iframe>
+</div>

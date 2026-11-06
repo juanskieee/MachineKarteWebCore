@@ -121,7 +121,7 @@ $regions | Export-Csv -NoTypeInformation -Encoding UTF8 (Join-Path $OutputDirect
 $pictures | Export-Csv -NoTypeInformation -Encoding UTF8 (Join-Path $OutputDirectory 'Drawings.csv')
 $worksheetCount=@($catalog | Where-Object {$_.Sheet}).Count
 Write-Output ('Inventory complete: {0} template files, {1} OOXML worksheets, {2} non-OOXML format records.' -f $sheetsByTemplate.Count,$worksheetCount,($catalog.Count-$worksheetCount))
-$source = [IO.File]::ReadAllLines((Join-Path $repo 'Services/Reporting/LegacyReportMappings.vb'))
+$source = [IO.File]::ReadAllLines((Join-Path $repo 'Reporting/LegacyReportMappings.vb'))
 $profile = ''; $sheetAlias = @{}; $conditions = New-Object Collections.Generic.List[string]; $variables = @{}
 function Find-Fields([string]$expression, $seen) {
     foreach ($match in [regex]::Matches($expression,'\b(DR\w*|emDR\w*)\("([^\"]+)"\)')) {$match.Groups[1].Value + '.' + $match.Groups[2].Value}

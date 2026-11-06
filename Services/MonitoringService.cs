@@ -10,6 +10,11 @@ namespace MachineKarte.Web.Services
     public class MonitoringService
     {
         private readonly MonitoringRepository _repo;
+        private static readonly string[] FloorCodes =
+        {
+            "LSI1-1F", "LSI1-2F", "LSI2-1F", "LSI2-2F", "LSI2-3F",
+            "LSI3-1F", "LSI3-2F", "LSI3-3F", "LSI3-4F"
+        };
 
         public MonitoringService(MonitoringRepository repo)
         {
@@ -37,17 +42,12 @@ namespace MachineKarte.Web.Services
         }
 
         /// <summary>
-        /// All floor options (shown in cbFloor after process is selected).
-        /// Mirrors cbProcess_SelectedIndexChanged in Form1.vb.
+        /// Specific locations available after selecting a process.
         /// </summary>
-        public List<string> GetFloorList() =>
-            new()
-            {
-                "-Select-", "All",
-                "LSI1-1F", "LSI1-2F",
-                "LSI2-1F", "LSI2-2F", "LSI2-3F",
-                "LSI3-1F", "LSI3-2F", "LSI3-3F", "LSI3-4F"
-            };
+        public List<string> GetFloorList() => new[] { "-Select-" }.Concat(FloorCodes).ToList();
+
+        public static bool IsSpecificFloor(string? floor) =>
+            floor is not null && FloorCodes.Contains(floor, StringComparer.Ordinal);
 
         /// <summary>
         /// Machine list for a given process+floor — DB-driven.
@@ -56,8 +56,8 @@ namespace MachineKarte.Web.Services
         public async Task<List<string>> GetMachineListAsync(
             string userType, string process, string floor, CancellationToken cancellationToken = default)
         {
-            if (floor == "All")
-                return new List<string> { "All" };
+            if (!IsSpecificFloor(floor))
+                throw new ArgumentException("Please select a specific location.");
 
             var machines = await _repo.GetMachinesAsync(userType, process, floor, cancellationToken);
             machines.Insert(0, "All");

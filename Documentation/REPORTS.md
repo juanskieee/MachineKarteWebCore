@@ -17,7 +17,7 @@ Related guides: [application and validation](README.md),
 | TE R / Form9 | `BmReportRepository`: `ViewTEData_Test`, VR numbers, supplemental lookups | `BmReportService`, `PopulateTe`, controller returns the binary HTTP attachment response directly |
 | TE E / Form10 | `TeEvidenceRepository`: `ViewTEData`, ordered evidence categories, connector/condition, Teleko, quality and distinct misc rows | `TeEvidenceMakingService`, `PopulateTeEvidence`, binary generation response |
 
-[LegacyReportMappings.vb](../Services/Reporting/LegacyReportMappings.vb) contains
+[LegacyReportMappings.vb](../Reporting/LegacyReportMappings.vb) contains
 extracted active Form3/4/9/10 mapping bodies. The
 [mapping generator](../scripts/Update-LegacyReportMappings.ps1) preserves statement
 order, conditions, typed VB values, array loops, dates/numbers, pictures, styles,
@@ -27,6 +27,11 @@ impersonation, desktop UI, and shell/file launches are excluded.
 Make mapping changes in the generator, then regenerate and run `-Check` rather
 than editing generated VB alone. The preserved forms are the source reference;
 the former flattened cell matrix is not a runtime dependency.
+
+The compiled writer is owned by the top-level `Reporting/LegacyReports.vbproj`
+class library. The web project references that project once; C# services perform
+data retrieval and orchestration, and the VB library receives loaded records.
+The solution, mapping generator, and template audit use this same project path.
 
 [LegacyReportExport.cs](../Services/LegacyReportExport.cs) owns format validation,
 MIME types, in-memory serialization, static-image roots, and uploaded-photo resolution.
@@ -165,7 +170,8 @@ templates and preserved forms.
 | Evidence photos | Fit natural aspect ratio inside both the legacy maximum and merged placeholder, retaining the anchor and MoveAndSize behavior; do not resize static marks this way |
 | Third-photo captions | SING's third problem description uses Z19; the common layout uses AD21 |
 | CWC Ideas | Keep B78 visible through print area Q80, with separate body/footer space |
-| CWC optional fields | Exclude Wafer No. (M7:Q7) and Remarks (M14:Q15) from the supplied template's pink blank-cell rule in generated reports; retain other required-field rules and source-template bytes |
+| CWC optional fields | Exclude Wafer No. (M7:Q7), Remarks (M14:Q15), and TTL Stoppage (Q10:Q11) from the supplied template's pink blank-cell rule in generated reports; retain other required-field rules and source-template bytes |
+| CWC heading and request | Remove the floating T.E EVIDENCE CONFIRMATION (CWC) text box; B5 uses the record's RequestContent (for example TESTERPROBLEM), rather than its failed-test number |
 | Repeated connector images | Render one image per condition/CN using the last ordered row, matching the legacy visible result |
 | MEMS fallback fields | AG14, AD33, AH33, AN33 prefer nonblank current values, then their occurrence/production-treatment historical equivalents; retain current zero values |
 | Main worksheets | Select the configured PM worksheet and named TE main sheet explicitly |

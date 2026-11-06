@@ -1,4 +1,4 @@
-param([string]$Dotnet = 'dotnet', [switch]$DownloadOnly)
+param([string]$Dotnet = 'dotnet', [switch]$DownloadOnly, [switch]$CwcOnly)
 # Offline: real templates/images and compiled legacy mappings. DownloadOnly hosts
 # a loopback file-response fixture; no appsettings, SQL, or source-template writes.
 $ErrorActionPreference='Stop'
@@ -24,12 +24,35 @@ using MachineKarte.Reporting;
 using MachineKarte.Web.Models;
 using MachineKarte.Web.Repositories;
 using MachineKarte.Web.Services;
-using MachineKarte.Web.Services.Reporting;
 
 CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en-US");
 var root=args[0]; var output=Path.GetFullPath(Path.Combine(AppContext.BaseDirectory,"artifacts")); Directory.CreateDirectory(output);
 void Require(bool condition,string message){if(!condition)throw new Exception(message);}
 string Images(bool te)=>Path.Combine(root,"Assets","images",te?"TEeMaintenanceSystems_images":"eMaintenanceSystems_images");
+
+if(args.Contains("cwc-only")) {
+ var source=Path.Combine(root,"Templates","EvidenceMaking","CWC.xlsx");
+ var book=LegacyReportExport.Load(source);
+ TeEvidenceMakingService.PopulateWorkbook(book,new TeEvidenceHeader { RequestContent="TESTERPROBLEM" },new(),new(),new(),new(),Images(true),Images(true));
+ void CheckCwc(ExcelFile report) {
+  var sheet=report.Worksheets["FORMAT"];
+  Require(!sheet.Shapes.Any(shape=>shape.Text.ToString().Contains("T.E EVIDENCE CONFIRMATION",StringComparison.OrdinalIgnoreCase)),"CWC title text box remains");
+  Require(sheet.Cells["B5"].StringValue=="TESTERPROBLEM","CWC Request Content uses the wrong source field");
+  Require(sheet.Cells["Q10"].Value is null,"Empty TTL Stoppage was populated");
+  var rule=sheet.ConditionalFormatting.Single();
+  Require(rule.AppliesTo.Contains("M10:P11") && !rule.AppliesTo.Contains("M10:Q11") &&
+   !rule.AppliesTo.Contains("M14:Q15") && !rule.AppliesTo.Contains("M6:Q8"),"Optional CWC fields still inherit pink blank formatting");
+ }
+ CheckCwc(book);
+ using(var stream=new MemoryStream(LegacyReportExport.Save(book,"xlsx"))) CheckCwc(ExcelFile.Load(stream));
+ var pdf=LegacyReportExport.Save(book,"pdf");
+ Require(Encoding.ASCII.GetString(pdf,0,5)=="%PDF-","CWC PDF export failed");
+ var empty=LegacyReportExport.Load(source);
+ TeEvidenceMakingService.PopulateWorkbook(empty,new(),new(),new(),new(),new(),Images(true),Images(true));
+ Require(empty.Worksheets["FORMAT"].Cells["B5"].StringValue=="","Empty Request Content gained fabricated text");
+ Console.WriteLine("PASS: CWC title removal, actual RequestContent, empty optional fields, retained required formatting, XLSX round-trip and PDF export.");
+ return;
+}
 
 if(args.Contains("download-only")) {
  LegacyReportExport.NormalizeFormat("xlsx"); // Initialize the production export license.
@@ -369,7 +392,7 @@ Require(ContainsPhoto(uploadedEvidence,pmImage)&&ContainsPhoto(uploadedEvidence,
 Save(uploadedEvidence,"E-UPLOADED-PHOTOS");
 var cwc=LegacyReportExport.Load(Path.Combine(root,"Templates","EvidenceMaking","CWC.xlsx"));
 Require(cwc.Worksheets.Select(sheet=>sheet.Name).SequenceEqual(new[]{"FORMAT","TESTBOARD","DATASHEET"}),"The wrong CWC workbook version is selected");
-var teHeader=new TeEvidenceHeader{MCNo="FIXTURE-MC",TesterNo="FIXTURE-TE",StartOfRepair="10/01/2026 10:20:00",EndOfRepair="10/01/2026 10:50:00",TEAssign="TE1",Ideas="IDEA",TelekoCheckingData="1,2,3,4|5,6,7,8|9,10,11,12|13,14,15,16|17,18,19,20"};
+var teHeader=new TeEvidenceHeader{MCNo="FIXTURE-MC",TesterNo="FIXTURE-TE",RequestContent="TESTERPROBLEM",StartOfRepair="10/01/2026 10:20:00",EndOfRepair="10/01/2026 10:50:00",TEAssign="TE1",Ideas="IDEA",TelekoCheckingData="1,2,3,4|5,6,7,8|9,10,11,12|13,14,15,16|17,18,19,20"};
 var teCategories=new[]{"PHENOMENON","MACHINE COUNTER AND VISUAL BIN","PROGRAM LOADED","TEST CABLE","OTHER EVIDENCE"};
 var tePhotos=new List<TeEvidenceImage>();
 for(var category=0;category<teCategories.Length;category++)for(var condition=0;condition<2;condition++) {
@@ -384,7 +407,8 @@ using var tePhotosCache=await EvidenceImageCache.LoadAsync(tePhotos.Select(row=>
 TeEvidenceMakingService.PopulateWorkbook(cwc,teHeader,new(),tePhotos,telekoPhotos,new(),Images(true),teLegacyShare,sharedEvidenceRoot:sharedArchive,imagePaths:tePhotosCache.Paths);
 var blankRule=cwc.Worksheets["FORMAT"].ConditionalFormatting.Single();
 Require(blankRule.AppliesTo.Contains("M6:Q6") && blankRule.AppliesTo.Contains("M8:Q8") &&
- !blankRule.AppliesTo.Contains("M14:Q15") && !blankRule.AppliesTo.Contains("M6:Q8"),"Optional CWC Wafer No./Remarks still inherit pink blank-field formatting");
+ blankRule.AppliesTo.Contains("M10:P11") && !blankRule.AppliesTo.Contains("M10:Q11") &&
+ !blankRule.AppliesTo.Contains("M14:Q15") && !blankRule.AppliesTo.Contains("M6:Q8"),"Optional CWC fields still inherit pink blank-field formatting");
 Require(cwc.Worksheets["FORMAT"].Cells["M7"].StringValue=="" && cwc.Worksheets["FORMAT"].Cells["M14"].StringValue=="","Empty optional CWC fields changed");
 using(var serialized=new MemoryStream(LegacyReportExport.Save(cwc,"xlsx"))) {
  var reloaded=ExcelFile.Load(serialized);
@@ -442,6 +466,6 @@ sealed class ReportResponseProbe : MachineKarte.Web.Controllers.WorkflowControll
 '@ | Set-Content -Encoding UTF8 (Join-Path $directory 'Program.cs')
 & $Dotnet build (Join-Path $directory 'Checks.csproj') --nologo -v minimal -r win-x64 --self-contained false --property:UseAppHost=false -m:1 --nodeReuse:false --property:NuGetAudit=false --property:UseSharedCompilation=false
 if($LASTEXITCODE -ne 0){throw 'Report fixture build failed.'}
-$downloadMode=if($DownloadOnly){'download-only'}else{'all'}
+$downloadMode=if($CwcOnly){'cwc-only'}elseif($DownloadOnly){'download-only'}else{'all'}
 & $Dotnet (Join-Path $directory 'bin/Debug/net8.0/win-x64/Checks.dll') $repo $downloadMode
 if($LASTEXITCODE -ne 0){throw 'Report generation checks failed.'}

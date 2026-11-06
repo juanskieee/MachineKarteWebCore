@@ -32,6 +32,7 @@
 .workflow :is(.ms-grid, .bma-table, .ab-table) thead th { position: sticky; top: 0; z-index: 1; font-size: 13px; font-weight: 700; background: lightgray; color: #111; white-space: nowrap; }
 .workflow :is(.ms-th-process, .bma-hdr-process, .ms-th-total, .bma-hdr-total) { background: var(--summary-accent) !important; color: var(--summary-heading) !important; }
 .workflow :is(.ms-td-process, .bma-proc-label) { background: var(--summary-label); font-weight: 700; font-size: 15px; }
+.workflow :is(.ms-grid .ms-th-loc, .bma-table .bma-hdr-loc, .mcd-header-row .mcd-loc-col) { background: var(--summary-label); }
 .workflow :is(.ms-cell, .bma-cell, .ab-cell) { background: #fff; color: #111; }
 .workflow :is(.ms-na, .bma-cell-na) { background: lightgray; color: #444; }
 .workflow :is(.ms-active, .bma-cell-active) { cursor: pointer; color: #a00000; font-weight: 700; }

@@ -4,7 +4,6 @@
 using Microsoft.AspNetCore.Mvc;
 using MachineKarte.Web.Models;
 using MachineKarte.Web.Services;
-using MachineKarte.Web.Services.Reporting;
 
 namespace MachineKarte.Web.Controllers
 {

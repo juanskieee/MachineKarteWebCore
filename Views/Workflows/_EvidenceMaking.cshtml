@@ -1,0 +1,11 @@
+<div class="workflow workflow--EvidenceMaking" data-workflow="EvidenceMaking">
+    <div class="document-toolbar">
+        <p>Process: <strong data-id="recordProcess"></strong> | BM ID: <strong data-id="recordBmId"></strong></p>
+        <div class="document-actions">
+            <label>Format <select data-id="outputFormat"><option value="xlsx">Excel (.xlsx)</option><option value="pdf">PDF</option></select></label>
+            <button type="button" id="EvidenceMaking-btnGenerate" data-id="btnGenerate" class="btn-generate" data-action="generate">Generate evidence</button>
+        </div>
+    </div>
+    @await Html.PartialAsync("_ReportOutput", new ReportOutputViewModel("EvidenceMaking", "statusMsg", "downloadLink", "evidence", "PM maintenance evidence PDF preview"))
+    @Html.AntiForgeryToken()
+</div>

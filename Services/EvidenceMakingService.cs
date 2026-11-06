@@ -3,7 +3,7 @@ using MachineKarte.Reporting;
 using MachineKarte.Web.Models;
 using MachineKarte.Web.Repositories;
 
-namespace MachineKarte.Web.Services.Reporting;
+namespace MachineKarte.Web.Services;
 
 public class EvidenceMakingService
 {

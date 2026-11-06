@@ -46,7 +46,7 @@ public class TeEvidenceRepository
             header.TesterNo = RepositorySql.ReadOptional(rdr, columns, "TesterNo");
             header.DeviceName = RepositorySql.ReadOptional(rdr, columns, "DeviceName");
             header.LotNo = RepositorySql.ReadOptional(rdr, columns, "LOTNo");
-            header.TestNoNG = RepositorySql.ReadOptional(rdr, columns, "TestNoNG");
+            header.RequestContent = RepositorySql.ReadOptional(rdr, columns, "RequestContent");
             header.WaferNo = RepositorySql.ReadOptional(rdr, columns, "WaferNo");
             header.StartOfRepair = RepositorySql.ReadOptional(rdr, columns, "StartOfRepair");
             header.EndOfRepair = RepositorySql.ReadOptional(rdr, columns, "EndOfRepair");

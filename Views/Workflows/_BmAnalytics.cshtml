@@ -1,0 +1,27 @@
+@model BmAnalyticsViewModel
+<div class="workflow workflow--BmAnalytics" data-workflow="BmAnalytics">
+    <div class="bma-page">
+        <input type="hidden" id="BmAnalytics-legacyForm" data-id="legacyForm" value="@Model.LegacyForm" />
+        <div class="bma-toolbar summary-toolbar">
+            <div class="summary-search">
+                <span data-id="summaryLoading" class="summary-loading" role="status" hidden><span class="spinner" aria-hidden="true"></span>Loading…</span>
+                <button id="BmAnalytics-btnSearch" data-id="btnSearch" class="btn-primary" type="button">Search</button>
+            </div>
+            <p data-id="summaryError" class="summary-error" role="alert" hidden></p>
+        </div>
+        <div class="bma-grid-wrapper summary-grid" id="BmAnalytics-gridWrapper" data-id="gridWrapper"
+             data-layout="@BmAnalyticsMappings.GetDesignerLayoutJson(Model.LegacyForm)"></div>
+        <div class="bma-flyout summary-machine-panel is-hidden" id="BmAnalytics-flyoutPanel" data-id="flyoutPanel">
+            <div class="summary-panel-header">
+                <span id="BmAnalytics-flyoutTitle" data-id="flyoutTitle"></span>
+                <button type="button" class="summary-panel-close" id="BmAnalytics-btnCloseFlyout" data-id="btnCloseFlyout" aria-label="Close machine list">&times;</button>
+            </div>
+            <p class="summary-panel-hint">Select a machine below:</p>
+            <ul class="bma-machine-list summary-machine-list" id="BmAnalytics-flyoutList" data-id="flyoutList"></ul>
+            <div class="summary-panel-footer">
+                <button class="summary-panel-go" id="BmAnalytics-btnViewMonitoring" data-id="btnViewMonitoring" type="button" disabled>View in Monitoring</button>
+            </div>
+        </div>
+    </div>
+    @Html.AntiForgeryToken()
+</div>

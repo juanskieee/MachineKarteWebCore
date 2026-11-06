@@ -81,6 +81,20 @@ try {
     $html = Get-Html '/ActionCards?dialog=1'
     $token = [Net.WebUtility]::HtmlDecode([regex]::Match($html, 'name="__RequestVerificationToken"[^>]*value="([^"]+)"').Groups[1].Value)
     Require ($token.Length -gt 0) 'Workflow did not issue an antiforgery token.'
+    $floors = (Get-Html '/Monitoring?handler=FloorList' | ConvertFrom-Json).data
+    Require ($floors.Count -eq 10 -and $floors -contains 'LSI2-3F' -and $floors -notcontains 'All') 'Location options still include an unrestricted selection.'
+    foreach ($floor in @('All','ALL','all','','-Select-','UNKNOWN')) {
+        $encoded = [Uri]::EscapeDataString($floor)
+        Expect-Failure "/Monitoring?handler=MachineList&userType=PM&process=DC&floor=$encoded" 'specific location'
+        Expect-Failure "/Monitoring?handler=MachineCard&userType=PM&process=DC&floor=$encoded&machineNo=TEST" 'specific location'
+        $body = @{userType='PM';process='DC';floor=$floor;machine='All';dateFrom='2026-10-01';dateTo='2026-11-01'} | ConvertTo-Json -Compress
+        $response = Post-Json '/Monitoring?handler=Search' $body $token
+        try {
+            $result = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult() | ConvertFrom-Json
+            Require (!$result.success -and $result.message.Contains('specific location')) 'Monitoring search accepted an unrestricted location.'
+        } finally { $response.Dispose() }
+    }
+    Write-Output 'PASS: specific Location options and pre-database guards on machine lists, searches, and cards.'
     foreach ($path in @('/ActionCards?handler=Save','/AlertBoard?handler=LoadBoard','/BmAnalytics?handler=LoadGrid','/EvidenceMaking?handler=Generate','/BmReport?handler=DownloadReport')) {
         $response = Post-Json $path '{}'
         try { Require ([int]$response.StatusCode -eq 400) "$path lost antiforgery protection." }

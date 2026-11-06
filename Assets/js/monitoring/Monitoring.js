@@ -29,6 +29,10 @@ document.addEventListener("DOMContentLoaded", () => {
     document
         .getElementById("btnClearFilters")
         .addEventListener("click", clearFilters);
+    const legend = document.querySelector('.monitoring-legend');
+    document.addEventListener('click', (event) => {
+        if (!legend.contains(event.target)) legend.open = false;
+    }, { capture: true });
 
     // Set default dates (mirrors Form1_Load dt1/dt2 init)
     resetDates();
@@ -162,7 +166,7 @@ async function onFloorChanged() {
         showToast("Please select a process.");
         return;
     }
-    if (floor === "-Select-") return;
+    if (!floor || floor === "-Select-" || floor.toLowerCase() === "all") return;
 
     const userType = val("cbUser");
     const query = new URLSearchParams({ userType, process, floor });
@@ -224,6 +228,11 @@ async function doSearch(page = 1) {
     }
     if (!val("cbUser")) {
         showToast("Please select a User first.");
+        return;
+    }
+    const floor = val("cbFloor");
+    if (!floor || floor === "-Select-" || floor.toLowerCase() === "all") {
+        showToast("Please select a specific location.");
         return;
     }
 

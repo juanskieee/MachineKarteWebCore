@@ -71,6 +71,7 @@ function Add-Body([string]$form, [string]$profile, [string[]]$body) {
         # The service already resolves Form10 paths. Do not strip a literal tilde
         # from an absolute local staging directory or a resolved upload filename.
         $text=$text.Replace('.Replace("~", "")', '')
+        $text=$text.Replace('ws.Cells("B5").Value = DR("TestNoNG").ToString', 'ws.Cells("B5").Value = DR("RequestContent").ToString')
         $text=$text.Replace('ws.PrintOptions.BottomMargin = (0)', 'ws.PrintOptions.BottomMargin = 0.3')
     }
     [void]$output.AppendLine($text)
@@ -170,9 +171,12 @@ $body=$body.Replace('ws_2.Pictures.Add(', 'AddPicture(ws_2, ').Replace('ws_3.Pic
 [void]$output.AppendLine('Public Sub PopulateTeEvidence(wb As ExcelFile, rows As IDictionary(Of String, IList(Of IDictionary(Of String, Object))), teAssign As String)')
 [void]$output.AppendLine('Dim ws = wb.Worksheets("FORMAT")')
 [void]$output.AppendLine('wb.Worksheets.ActiveWorksheet = ws')
-[void]$output.AppendLine("' Optional Wafer No. and Remarks must not inherit the template's pink blank-field rule.")
+[void]$output.AppendLine('For Each shape In ws.Shapes.Where(Function(item) item.Text.ToString().Contains("T.E EVIDENCE CONFIRMATION", StringComparison.OrdinalIgnoreCase)).ToArray()')
+[void]$output.AppendLine('ws.Shapes.Remove(shape)')
+[void]$output.AppendLine('Next')
+[void]$output.AppendLine("' Optional Wafer No., Remarks and TTL Stoppage must not inherit the pink blank-field rule.")
 [void]$output.AppendLine('For Each rule In ws.ConditionalFormatting')
-[void]$output.AppendLine('rule.AppliesTo = rule.AppliesTo.Replace("M14:Q15", "").Replace("M6:Q8", "M6:Q6 M8:Q8").Trim()')
+[void]$output.AppendLine('rule.AppliesTo = rule.AppliesTo.Replace("M14:Q15", "").Replace("M6:Q8", "M6:Q6 M8:Q8").Replace("M10:Q11", "M10:P11").Trim()')
 [void]$output.AppendLine('Next')
 [void]$output.AppendLine('ws.NamedRanges.SetPrintArea(ws.Cells.GetSubrange("A1", "Q80"))')
 [void]$output.AppendLine('ws.PrintOptions.FooterMargin = 0.1')
@@ -213,7 +217,7 @@ foreach($profile in @($profiles)+@('TE','TE_EDS','PM_EVIDENCE','TE_EVIDENCE')) {
 }
 [void]$output.AppendLine('End Class')
 [void]$output.AppendLine('End Namespace')
-$target=Join-Path $repo 'Services/Reporting/LegacyReportMappings.vb'
+$target=Join-Path $repo 'Reporting/LegacyReportMappings.vb'
 $text=$output.ToString().Replace("`r`n","`n").Replace("`n","`r`n")
 if($Check) {
     if(!(Test-Path -LiteralPath $target) -or [IO.File]::ReadAllText($target) -cne $text) { throw 'Generated mappings differ; regenerate and review.' }

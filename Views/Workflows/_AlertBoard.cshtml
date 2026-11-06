@@ -1,0 +1,62 @@
+@{
+    var processes = AlertBoardConfig.ProcessOrder;
+    var locations = AlertBoardConfig.DisplayColumns;
+}
+<div class="workflow workflow--AlertBoard" data-workflow="AlertBoard">
+    <div class="ab-container">
+        <div class="ab-toolbar summary-toolbar">
+            <div class="summary-search">
+                <span data-id="summaryLoading" class="summary-loading" role="status" hidden><span class="spinner" aria-hidden="true"></span>Loading…</span>
+                <button id="AlertBoard-btnSearch" data-id="btnSearch" class="ab-btn-search" type="button">Search</button>
+            </div>
+            <p data-id="summaryError" class="summary-error" role="alert" hidden></p>
+        </div>
+        <div class="ab-panel summary-grid">
+            <table class="ab-table" aria-label="Need Action per process summary">
+            <thead><tr>
+                <th class="ab-hdr-process" scope="col">Process</th>
+                @foreach (var location in locations) { <th class="ab-hdr-loc" scope="col">@location</th> }
+                <th class="ab-hdr-total" scope="col">Total</th>
+            </tr></thead>
+            <tbody>
+            @foreach (var process in processes)
+            {
+                <tr data-process="@process">
+                    <th class="ab-cell-label" scope="row">@process</th>
+                    @for (var index = 0; index < locations.Length; index++)
+                    {
+                        var cell = AlertBoardConfig.Cells.FirstOrDefault(cell => cell.Value.Process == process && cell.Value.Column == locations[index]);
+                        if (cell.Key != null)
+                        {
+                            <td id="AlertBoard-cell_@cell.Key" data-id="cell_@cell.Key" data-cell="@cell.Key" data-process="@process" data-location="@cell.Value.Location" class="ab-cell ab-cell-active">—</td>
+                        }
+                        else
+                        {
+                            <td class="ab-cell ab-cell-na" aria-label="Not applicable"></td>
+                        }
+                    }
+                    <td id="AlertBoard-ptotal_@process" data-id="ptotal_@process" class="ab-cell ab-cell-total">—</td>
+                </tr>
+            }
+            </tbody>
+            <tfoot><tr class="ab-totals-row">
+                <th class="ab-cell-label" scope="row">Total</th>
+                @foreach (var location in locations) { <td id="AlertBoard-ltotal_@location" data-id="ltotal_@location" class="ab-cell ab-cell-total">—</td> }
+                <td id="AlertBoard-grandTotal" data-id="grandTotal" class="ab-cell ab-cell-grand">—</td>
+            </tr></tfoot>
+            </table>
+        </div>
+        <div id="AlertBoard-panelDrilldown" data-id="panelDrilldown" class="ab-drilldown summary-machine-panel is-hidden">
+            <div class="summary-panel-header">
+                <span id="AlertBoard-drilldownTitle" data-id="drilldownTitle"></span>
+                <button id="AlertBoard-btnDrillClose" data-id="btnDrillClose" class="summary-panel-close" type="button" aria-label="Close machine list">&times;</button>
+            </div>
+            <p class="summary-panel-hint">Select a machine below:</p>
+            <ul id="AlertBoard-drilldownList" data-id="drilldownList" class="ab-machine-list summary-machine-list"></ul>
+            <div class="summary-panel-footer">
+                <button id="AlertBoard-btnDrillGo" data-id="btnDrillGo" class="summary-panel-go" type="button" disabled>View in Monitoring</button>
+            </div>
+        </div>
+    </div>
+    @Html.AntiForgeryToken()
+</div>

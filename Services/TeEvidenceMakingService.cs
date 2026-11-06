@@ -3,7 +3,7 @@ using MachineKarte.Reporting;
 using MachineKarte.Web.Models;
 using MachineKarte.Web.Repositories;
 
-namespace MachineKarte.Web.Services.Reporting;
+namespace MachineKarte.Web.Services;
 
 public class TeEvidenceMakingService
 {
@@ -69,7 +69,7 @@ public class TeEvidenceMakingService
         {
             ["DR"] = Rows(new[] { new Dictionary<string, object> {
                 ["MCNo"]=header.MCNo, ["TesterNo"]=header.TesterNo, ["DeviceName"]=header.DeviceName,
-                ["LOTNo"]=header.LotNo, ["TestNoNG"]=header.TestNoNG, ["StartOfRepair"]=header.StartOfRepair,
+                ["LOTNo"]=header.LotNo, ["RequestContent"]=header.RequestContent, ["StartOfRepair"]=header.StartOfRepair,
                 ["EndOfRepair"]=header.EndOfRepair } }),
             ["emDRCat"] = Rows(descriptions.Select(row => new Dictionary<string, object> {
                 ["BMEvidence_Category"]=row.Category, ["Condition"]=row.Condition, ["BMEvidence_Desc"]=row.Desc })),

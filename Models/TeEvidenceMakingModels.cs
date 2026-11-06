@@ -9,7 +9,7 @@ namespace MachineKarte.Web.Models
         public string TesterNo { get; set; } = "";
         public string DeviceName { get; set; } = "";
         public string LotNo { get; set; } = "";
-        public string TestNoNG { get; set; } = "";
+        public string RequestContent { get; set; } = "";
         public string WaferNo { get; set; } = "";
         public string StartOfRepair { get; set; } = "";
         public string EndOfRepair { get; set; } = "";

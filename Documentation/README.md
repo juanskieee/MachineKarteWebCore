@@ -14,11 +14,12 @@ and [JavaScript conventions](../Assets/js/README.md).
 | --- | --- |
 | [Pages/Monitoring.cshtml](../Pages/Monitoring.cshtml) and its page model | Main Razor screen and Monitoring AJAX handlers |
 | [Controllers](../Controllers/) | Child workflow routes, JSON handlers, and report downloads |
-| [Pages/Shared/Workflows](../Pages/Shared/Workflows/) | Eleven modal partials |
+| [Views/Workflows](../Views/Workflows/) | Eleven MVC modal views |
+| [Views/Shared](../Views/Shared/) | Shared report status, download, and preview markup |
 | [Repositories](../Repositories/) | SqlClient queries and bounded read scheduling |
 | [Services](../Services/) | Business rules and workbook generation |
 | [Models](../Models/) | Requests, responses, designer layouts, and process mappings |
-| [Services/Reporting](../Services/Reporting/) | Compiled VB report writers and generated mappings |
+| [Reporting](../Reporting/) | Compiled VB report writers and generated mappings |
 | [Assets](../Assets/) | Application JavaScript, CSS, and static report images |
 | [Templates](../Templates/) | Original supplied workbooks |
 | [scripts](../scripts/) | Offline, LocalDB, HTTP, and browser validation tools |
@@ -27,6 +28,18 @@ and [JavaScript conventions](../Assets/js/README.md).
 The application targets .NET 8, uses Razor Pages for Monitoring and MVC controllers
 for child workflows, and exports workbooks with GemBox.Spreadsheet. It has no
 permanent test project; the validation scripts create their own runners.
+
+`Pages/` contains the Monitoring Razor Page and its shared shell. MVC modal views
+live in `Views/Workflows/`, use the model imports in `Views/_ViewImports.cshtml`,
+and share `Views/Shared/_ReportOutput.cshtml` for generation status, downloads, and previews.
+Modal titles come from `Workflows.js`; partials do not set page titles or layouts.
+All eleven modal views are active; they are not standalone Razor Pages.
+
+`Reporting/LegacyReports.vbproj` is a separate class library referenced by the
+web project and listed directly in the solution. Its `MachineKarte.Reporting`
+namespace remains stable. C# orchestration stays in `Services/` under
+`MachineKarte.Web.Services`. The web project's default file globs exclude
+`Reporting/`, so its source/build artifacts do not become web content.
 
 Repositories retain workflow-specific SQL and mappings. `RepositorySql` holds
 shared parameter/metadata handling, `ImportantDeviceQuery` shares MCD/Machine
@@ -78,6 +91,10 @@ generate or download a report. Do not add standalone pages for these child flows
   uses today as the end date. PM/CC/EEE/VIS use machine processes; TE uses
   FL/FT/TP/EDS/MEMS tester processes. Clear Filters cancels pending requests and
   resets dates, filters, results, counters, paging, and refresh state.
+- Monitoring requires one of the nine specific locations. Location has no All
+  option; machine-list, search, and machine-card requests reject blank, All, and
+  unknown locations before database access. Machine All remains available within
+  a selected location.
 - BM histories use the active `uc_Test` flow. Need Action counts qualifying
   repeat-group heads, excluding black, action-present, and solved/green groups;
   it does not count every BM row. Preserve case/content or TE priority matching,
@@ -127,7 +144,9 @@ form a bottom-aligned staircase; scroll to the bottom after requests and layout
 finish. Blink animations share the document clock, and reduced-motion settings
 keep static alert colors. RawData uses native SVG charts without a chart CDN.
 The status legend reuses the cards' Action, AC/SM/DM/DV, and MCD badges with concise
-descriptions. OCAP alternates white and near-white (`#f8f8f8`) rows beneath its
+descriptions and closes on outside clicks. Summary location column headers match
+their process row labels (Azure for need-action/MCD; Bisque for action/MCD).
+OCAP alternates white and near-white (`#f8f8f8`) rows beneath its
 slightly darker column header.
 
 Static presentation belongs in `Assets/css`. Shared workflow/document styles
@@ -165,6 +184,8 @@ For local-download changes, use `Test-ReportGeneration.ps1 -DownloadOnly`,
 These modes check direct in-memory responses, removed storage routes, local
 browser downloads, PDF previews, and Blob URL cleanup without running unrelated
 workflow or full mapping suites.
+For CWC-only changes, `Test-ReportGeneration.ps1 -CwcOnly` checks the title,
+Request Content source, optional-field formatting, XLSX round-trip, and PDF export.
 HTTP/browser tools accept `-BaseUrl`; the browser runner also accepts
 `-DevToolsPort` and `-ArtifactDirectory`. Use a separately hosted test app with
 an unreachable loopback SQL override for fixture UI checks. Browser mocking
