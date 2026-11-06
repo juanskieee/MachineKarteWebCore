@@ -15,7 +15,7 @@ isolated fixture runners for database testing.
 | Monitoring initial HTML | No database work |
 | `POST /Monitoring?handler=TrackSession` after browser load | May insert/update `MachineKarte_PCStatus`, keyed by the web host's machine name |
 | Action Card Save | May insert/update the PM/TE/CC/EEE/VIS `MachineKarte_ActionCard*` table selected by user mode |
-| Summaries, dashboards, OCAP, and report/evidence retrieval | SELECTs; report generation also writes output files to the separate PM/TE network shares |
+| Summaries, dashboards, OCAP, and report/evidence retrieval | Reads; Monitoring paging materializes grouped counts in a session-local temporary table; report generation also writes output files to the separate PM/TE network shares |
 | RawData | Existing session-local `#freq_raw` / `#bmcase_raw` tables in SQL Server `tempdb`, then result reads and cleanup |
 | `MonitoringQueryBatch` | Schedules supplied reads; contains no SQL or connection logic |
 
@@ -84,6 +84,63 @@ logs do not establish that no other write occurred.
 
 ## Read scheduling and query behavior
 
+### Monitoring parity audit (2026-11-06)
+
+The missing `TE / FT / LSI2-3F / All` cards came from the TE card query's
+`a.Process = '{process}'` predicate: doubled C# interpolation braces sent the
+literal `{process}` to SQL Server. Both card branches now bind `@Process`.
+The summary could therefore find testers while their card loads and floor
+counters returned no BMs.
+
+The mapping in [MonitoringRepository](../Repositories/MonitoringRepository.cs)
+follows the active desktop queries in `Form1.LoadMCName`,
+`Form1.LoadMCName1`, and `uc_Test.LoadMCName`:
+
+| Rule | Preserved behavior |
+| --- | --- |
+| TE eligibility | Categories 1 or 4; exclude statuses 30, 31, 1, 2, 3, 7, 17; nonzero BMUnitID joined to BMTEUnit |
+| TE identity | TesterNo for machine selection; MCType for the requested column; Process and Location retained |
+| TE actions | Match BMID alone, including an action saved under another tester number; choose highest Seqno when duplicates exist |
+| PM / CC / EEE / VIS | Original status/turnover filters and category 1; cards join BMCase for PM or Why4/BMWhy for the other modes; actions match BMID and machine |
+| Content / OCAP | Effective accredited content ID retains the original fallback; BMContent text and OCAP count still use the original BMContentID/BMCaseID respectively |
+| Dates | Inclusive BETWEEN boundaries; SQL datetime parameters; format returned dates as invariant MM/dd/yyyy HH:mm:ss in C# |
+
+The replaced `CONVERT(...,120)` produced ISO timestamps that the legacy repeat
+and solved-action parsers did not accept. Returning typed dates restores their
+expected strings without SQL FORMAT overhead. MCD uses EXISTS, preserving one
+BM row even when multiple active device spellings normalize to the same name.
+
+FilteredBM restricts maintenance rows before scoped LatestAction ranking and
+process/case-specific OCAP aggregation. The shared query builder removes the
+duplicated TE and non-TE SQL bodies and obsolete commented alternatives; the
+original desktop SQL remains in `Legacy/` and is executed by the parity runner.
+
+Paging uses a grouped CTE, preserves the old EXCEPT projection's distinctness,
+and materializes it once in `#MonitoringMachineCounts`. ROW_NUMBER selects the
+page, and a second result set reads the total from the same rows. This replaces
+three copies of the maintenance aggregation. Stable tie breakers prevent tied
+counts from moving between pages. For the web's All-floor option, TesterType
+must match each BM's Location; accepting every floor's metadata inflated counts.
+The legacy single-floor metadata joins and default action line 4 are retained.
+
+`Test-MonitoringParity.ps1` executes the original uc_Test and Form1 SQL against
+the actual repository bodies in a disposable LocalDB catalog: 53 card variants
+and 106 All/specific summary variants, plus pagination, duplicate records,
+status/category/type filters, dates, counters, repeat colors, and cancellation.
+It never loads application connection settings. Add `-Benchmark` for a synthetic
+comparison using 10,006 selected cards and 50,001 action rows. A warm median
+across seven alternating runs was 482.2 ms for the original SQL and
+119.0 ms for the CTE query (4.05x). This includes SQL reads/materialization and
+excludes C# coloring; it is not a production benchmark or a 10x/100x guarantee.
+CTEs alone do not guarantee materialization; only the paging temporary table
+explicitly reuses its stored aggregation.
+
+Further production tuning needs actual plans and STATISTICS IO/TIME for the
+same filters and dates. Check maintenance filter indexes, action lookup keys
+`(BMID, Seqno)` for TE or `(BMID, MachineNo, Seqno)` for other modes, and the
+underlying gridBMOCAP view plan before choosing indexes. No indexes, schema
+changes, or live data repairs are deployed by this change.
+
 [MonitoringQueryBatch](../Repositories/MonitoringQueryBatch.cs) provides four
 shared read slots per application worker for participating dashboards, cards,
 and reports. Ordered batches bound raw-row buffering; queued waits honor
@@ -93,7 +150,7 @@ connections without a new cross-query snapshot transaction.
 
 | Path | Current implementation |
 | --- | --- |
-| Monitoring | Cancel superseded searches/filter requests; validate process identifiers; cache reader metadata per result set and group floor rows once |
+| Monitoring | Parameterized filtered card CTEs, scoped action/OCAP lookups, one stored paging aggregation, typed dates; cancel superseded searches; cache reader metadata and group floor rows once |
 | AlertBoard / MachineSummary / BmAnalytics | Ordered, bounded process/location reads; retain mode-specific filters, row counts, distinct-list order, and Form8/Form12 differences |
 | McdMonitoring | Shared read slots; valid DISTINCT ordering on projected machine/tester numbers |
 | BM report | Main row plus one batch for VR numbers and nine fixed lookups: at most two commands instead of eleven |

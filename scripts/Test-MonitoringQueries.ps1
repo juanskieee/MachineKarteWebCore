@@ -109,6 +109,9 @@ foreach (var process in user == "TE" ? new[] { "FL", "FT", "TP", "EDS", "MEMS" }
     CheckColumns(sql, "b", user == "TE" ? "BMTEUnit" : user == "PM" ? "BMCase" : "BMWhy");
     CheckColumns(sql, "c", actionTable);
     CheckColumns(sql, "ac", actionTable);
+    Require(!sql.Contains("{process}") && sql.Contains("a.Process = @Process"), $"{user}/{process} has an unresolved process filter");
+    Require(sql.Contains("WITH FilteredBM AS") && sql.Contains("FROM FilteredBM f"), "BM lookups do not use the filtered CTE");
+    Require(!Regex.IsMatch(sql, @"\bFORMAT\s*\(", RegexOptions.IgnoreCase), "Card dates should be formatted once in the reader");
     Require(!Regex.IsMatch(sql, @"ISNULL\s*\(\s*\(SELECT 'Yes'", RegexOptions.IgnoreCase), "Existence check can return multiple rows");
     if (user != "TE") Require(!Regex.IsMatch(sql, @"\bPriority\b"), $"{user}/{process} requests TE-only Priority");
     checkedQueries++;
@@ -120,7 +123,8 @@ foreach (var user in new[] { "PM", "CC", "EEE", "VIS", "TE" })
     CheckColumns(sql, "a", user == "TE" ? "TEBMMaintenance" : "DCBMMaintenance");
     CheckColumns(sql, "c", user == "TE" ? "testertype" : "MCType");
     CheckColumns(sql, "d", "Process");
-    Require(sql.Contains("SELECT COUNT(*) FROM ("), "Missing total for the paged query");
+    Require(sql.Contains("SELECT COUNT(*) FROM #MonitoringMachineCounts") && sql.Contains("ROW_NUMBER() OVER") &&
+        !sql.Contains("EXCEPT"), "Paging must reuse one grouped result for its page and total");
 }
 Console.WriteLine($"PASS: {checkedQueries} BM card query variants match schema columns; all five user modes include page totals.");
 var summaryQueries = new List<(string Sql, string Process, bool Te, string ActionTable)>();
@@ -307,5 +311,7 @@ await ReadBatch(Enumerable.Range(0, 16), async value => { await Task.Delay(30); 
 var parallelMs = clock.Elapsed.TotalMilliseconds;
 Console.WriteLine($"SYNTHETIC ONLY: 16 independent 30ms reads: sequential={sequentialMs:F1}ms, bounded-parallel={parallelMs:F1}ms, speedup={sequentialMs/parallelMs:F2}x. This is not a SQL benchmark.");
 '@ | Set-Content -Encoding UTF8 (Join-Path $checkDirectory 'Program.cs')
-& $Dotnet run --project (Join-Path $checkDirectory 'Checks.csproj') --property:NuGetAudit=false --property:UseSharedCompilation=false -- $repo
+& $Dotnet build (Join-Path $checkDirectory 'Checks.csproj') --nologo -v minimal -m:1 --nodeReuse:false --property:NuGetAudit=false --property:UseSharedCompilation=false
+if ($LASTEXITCODE -ne 0) { throw 'Monitoring query fixture build failed.' }
+& $Dotnet (Join-Path $checkDirectory 'bin/Debug/net8.0/Checks.dll') $repo
 if ($LASTEXITCODE -ne 0) { throw 'Monitoring query regression checks failed.' }

@@ -1,6 +1,5 @@
 // Repositories/MonitoringRepository.cs
-// Converted from Form1.vb SQL queries � E-Karte System
-// C# ASP.NET Core + Dapper (or plain SqlClient � swap as needed)
+// Monitoring reads mapped from Form1.vb and uc_Test.vb.
 
 using System.Data;
 using System.Globalization;
@@ -108,8 +107,8 @@ namespace MachineKarte.Web.Repositories
             }
 
             await using var cmd = new SqlCommand(sql, conn);
-            cmd.Parameters.AddWithValue("@Process", process);
-            cmd.Parameters.AddWithValue("@Location", floor);
+            cmd.Parameters.Add("@Process", SqlDbType.VarChar, Math.Max(20, process.Length)).Value = process;
+            cmd.Parameters.Add("@Location", SqlDbType.VarChar, Math.Max(20, floor.Length)).Value = floor;
 
             await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
             while (await reader.ReadAsync(cancellationToken))
@@ -142,12 +141,11 @@ namespace MachineKarte.Web.Repositories
             await conn.OpenAsync(cancellationToken);
             await using var cmd = new SqlCommand(sql, conn);
 
-            cmd.Parameters.AddWithValue("@Range1", f.DateFrom);
-            cmd.Parameters.AddWithValue("@Range2", f.DateTo);
-            cmd.Parameters.AddWithValue("@Location", f.Floor);
-            cmd.Parameters.AddWithValue("@Process", f.Process);
+            AddDateRange(cmd, f.DateFrom, f.DateTo);
+            cmd.Parameters.Add("@Location", SqlDbType.VarChar, Math.Max(20, f.Floor.Length)).Value = f.Floor;
+            cmd.Parameters.Add("@Process", SqlDbType.VarChar, 20).Value = f.Process;
             if (f.Machine != "All")
-                cmd.Parameters.AddWithValue("@Mcno", f.Machine);
+                cmd.Parameters.Add("@Mcno", SqlDbType.VarChar, Math.Max(50, f.Machine.Length)).Value = f.Machine;
 
             await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
             while (await reader.ReadAsync(cancellationToken))
@@ -337,11 +335,11 @@ namespace MachineKarte.Web.Repositories
             await conn.OpenAsync(cancellationToken);
             await using var cmd = new SqlCommand(sql, conn);
 
-            cmd.Parameters.AddWithValue("@Range1", dateFrom);
-            cmd.Parameters.AddWithValue("@Range2", dateTo);
-            cmd.Parameters.AddWithValue("@Location", location);
-            cmd.Parameters.AddWithValue("@Mcno", machineNo);
-            cmd.Parameters.AddWithValue("@MCType", machineType);
+            AddDateRange(cmd, dateFrom, dateTo);
+            cmd.Parameters.Add("@Process", SqlDbType.VarChar, 20).Value = process;
+            cmd.Parameters.Add("@Location", SqlDbType.VarChar, Math.Max(20, location.Length)).Value = location;
+            cmd.Parameters.Add("@Mcno", SqlDbType.VarChar, Math.Max(50, machineNo.Length)).Value = machineNo;
+            cmd.Parameters.Add("@MCType", SqlDbType.VarChar, Math.Max(50, machineType.Length)).Value = machineType;
 
             await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
             // The optional columns are fixed for this result set, not per BM row.
@@ -358,7 +356,9 @@ namespace MachineKarte.Web.Repositories
                     MachineNo = reader["Mcno"].ToString()!,
                     MachineType = optionalColumns.Contains("mctype")
                                     ? reader["mctype"].ToString()! : string.Empty,
-                    TimeOfRequest = reader["Timeofrequest"].ToString()!,
+                    TimeOfRequest = reader["Timeofrequest"] is DateTime requested
+                        ? requested.ToString("MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+                        : string.Empty,
                     BMCase = reader["BMCase"].ToString()!,
                     BMCaseId = optionalColumns.Contains("BMCaseID")
                                     ? reader["BMCaseID"].ToString()! : string.Empty,
@@ -468,12 +468,19 @@ namespace MachineKarte.Web.Repositories
                 throw new ArgumentException($"Unknown process '{process}'.", nameof(process));
         }
 
+        private static void AddDateRange(SqlCommand command, string from, string to)
+        {
+            // Match SQL datetime columns without session-dependent string conversion.
+            command.Parameters.Add("@Range1", SqlDbType.DateTime).Value = DateTime.Parse(from, CultureInfo.InvariantCulture);
+            command.Parameters.Add("@Range2", SqlDbType.DateTime).Value = DateTime.Parse(to, CultureInfo.InvariantCulture);
+        }
+
         private static string BuildUserFilter(string userType) => userType switch
         {
             "PM" => "(a.BMStatusID NOT IN ('30','31'))",
-            "CC" => "(Turnover IN ('CC')  AND BMStatusID IN (6,7,8,9,11,20,19,14))",
-            "EEE" => "(Turnover IN ('PE')  AND BMStatusID IN (6,7,8,9,11,20,19,14))",
-            "VIS" => "(Turnover IN ('VIS') AND BMStatusID IN (6,7,8,9,11,20,19,14))",
+            "CC" => "(a.Turnover = 'CC' AND a.BMStatusID IN (6,7,8,9,11,20,19,14))",
+            "EEE" => "(a.Turnover = 'PE' AND a.BMStatusID IN (6,7,8,9,11,20,19,14))",
+            "VIS" => "(a.Turnover = 'VIS' AND a.BMStatusID IN (6,7,8,9,11,20,19,14))",
             _ => "1=1"
         };
 
@@ -496,7 +503,7 @@ namespace MachineKarte.Web.Repositories
                       AND {addQuery}
                       AND a.BMCaseID <> 0
                     GROUP BY MCNO, actionline, a.MCType";
-            return BuildPagedSummarySQL(counts, "MACHINENAME DESC, MCNO ASC", top1, top2);
+            return BuildPagedSummarySQL(counts, "MACHINENAME DESC, MCNO ASC, MCType ASC, actionline ASC", top1, top2);
         }
 
         private static string BuildTEMachineSummarySQL(
@@ -510,7 +517,7 @@ namespace MachineKarte.Web.Repositories
                     FROM [eMaintenanceSystemDB].[dbo].[TEBMMaintenance] a
                     INNER JOIN [eMaintenanceSystemDB].[dbo].[Process] D ON a.Process = d.ProcessName
                     INNER JOIN [eMaintenanceSystemDB].[dbo].[testertype] c
-                        ON a.MCType = c.testertype AND c.ProcessID = d.ProcessID AND (@Location = 'All' OR c.location = @Location)
+                        ON a.MCType = c.testertype AND c.ProcessID = d.ProcessID AND c.Location = a.Location
                     WHERE (TimeOfRequest BETWEEN @Range1 AND @Range2)
                       AND (PMCategoryID = 1 OR PMCategoryID = 4)
                       AND d.ProcessName = @Process
@@ -519,370 +526,100 @@ namespace MachineKarte.Web.Repositories
                       AND a.BMStatusID NOT IN ('30','31','1','2','3','7','17')
                       AND BMUnitID <> 0
                     GROUP BY MCType, testerno, actionline";
-            return BuildPagedSummarySQL(counts, "MACHINENAME DESC, MCType ASC, testerno ASC", top1, top2);
+            return BuildPagedSummarySQL(counts, "MACHINENAME DESC, MCType ASC, testerno ASC, actionline ASC", top1, top2);
         }
 
+        // Retain EXCEPT's distinct projected rows, then reuse one stored aggregation for page and total.
         private static string BuildPagedSummarySQL(string counts, string order, int top1, int top2) => $@"
-            SELECT * FROM (SELECT TOP {top2} * FROM ({counts}) counts ORDER BY {order}) x
-            EXCEPT
-            SELECT * FROM (SELECT TOP {top1} * FROM ({counts}) counts ORDER BY {order}) y
-            ORDER BY {order};
-            SELECT COUNT(*) FROM ({counts}) counts;";
+            SET NOCOUNT ON;
+            ;WITH MachineCounts AS ({counts}),
+            DistinctCounts AS (SELECT DISTINCT * FROM MachineCounts)
+            SELECT *, ROW_NUMBER() OVER (ORDER BY {order}) AS PageRow
+            INTO #MonitoringMachineCounts FROM DistinctCounts;
+            SELECT * FROM #MonitoringMachineCounts
+            WHERE PageRow > {top1} AND PageRow <= {top2} ORDER BY PageRow;
+            SELECT COUNT(*) FROM #MonitoringMachineCounts;
+            DROP TABLE #MonitoringMachineCounts;";
 
         private static string BuildBMCardSQL(string userType, string process)
         {
-            if (userType == "TE")
-            {
-                return $@"
-                ;WITH LatestAction AS
-                (
-                    SELECT
-                        ac.*,
-                        ROW_NUMBER() OVER
-                        (
-                            PARTITION BY ac.BMID
-                            ORDER BY ac.SeqNo DESC
-                        ) AS RN
-                    FROM [eMaintenanceSystemDB].[dbo].[MachineKarte_ActionCard_TE] ac
-                ),
-
-                MCDList AS
-                (
-                    SELECT
-                        REPLACE(DeviceName,' ','') AS DeviceNameNoSpace
-                    FROM MachineKarte_MCD
-                    WHERE IsActive = 1
-                ),
-
-                OCAPCounts AS
-                (
-                    SELECT
-                        BMCaseID,
-                        Process,
-                        COUNT(*) AS OCAPCount
-                    FROM GridBMOCAP
-                    GROUP BY
-                        BMCaseID,
-                        Process
-                ),
-
-                BMContents AS
-                (
-                    SELECT
-                        BMContentID,
-                        Process,
-                        BMContent
-                    FROM BMContent
-                )
-
-                SELECT
-                    a.Devicename,
-
-                    CASE
-                        WHEN m.DeviceNameNoSpace IS NOT NULL
-                        THEN 'Yes'
-                        ELSE 'No'
-                    END AS isMCD,
-
-                    a.Process,
-                    a.Location,
-                    a.TesterNo AS Mcno,
-                    a.MCType,
-
-                    CONVERT(VARCHAR(19), a.TimeOfRequest, 120) AS TimeOfRequest,
-
-                    b.BMTEUnit AS BMCase,
-                    a.BMCaseID,
-                    a.BMID,
-
-                    ISNULL(o.OCAPCount,0) AS OCAPCount,
-
-                    CASE
-                        WHEN la.BMID IS NOT NULL
-                        THEN 'Yes'
-                        ELSE 'No'
-                    END AS HaveAction,
-
-                    COALESCE
-                    (
-                        CASE
-                            WHEN a.AcredBMContentID <> a.BMContentID
-                            THEN
-                                CASE
-                                    WHEN a.AcredBMContentID IS NULL
-                                      OR a.AcredBMContentID = ''
-                                      OR a.AcredBMContentID = '0'
-                                    THEN a.BMContentID
-                                    ELSE a.AcredBMContentID
-                                END
-                            ELSE a.BMContentID
-                        END,
-                        0
-                    ) AS BMContentID,
-
-                    a.Priority,
-
-                    bc.BMContent,
-
-                    la.Action  AS Accre,
-                    la.Comment AS Sect,
-                    la.Comment2 AS Dept,
-                    la.Comment3 AS Div,
-                    la.MCStatus,
-
-                    'None' AS FontColor
-
-                FROM [eMaintenanceSystemDB].[dbo].[TEBMMaintenance] a
-
-                INNER JOIN [eMaintenanceSystemDB].[dbo].[BMTEUnit] b
-                    ON a.BMUnitID = b.BMTEUnitID
-
-                LEFT JOIN LatestAction la
-                    ON la.BMID = a.BMID
-                   AND la.RN = 1
-
-                LEFT JOIN MCDList m
-                    ON m.DeviceNameNoSpace = REPLACE(a.DeviceName,' ','')
-
-                LEFT JOIN OCAPCounts o
-                    ON o.BMCaseID = a.BMCaseID
-                   AND o.Process = a.Process
-
-                LEFT JOIN BMContents bc
-                    ON bc.BMContentID = a.BMContentID
-                   AND bc.Process = a.Process
-
-                WHERE
-                    a.TimeOfRequest BETWEEN @Range1 AND @Range2
-                    AND a.Process = '{{process}}'
-                    AND (a.PMCategoryID = 1 OR a.PMCategoryID = 4)
-                    AND a.BMStatusID NOT IN ('30','31','1','2','3','7','17')
-                    AND a.BMUnitID <> 0
-                    AND (@Location = 'All' OR a.Location = @Location)
-                    AND (@Mcno = 'All' OR a.TesterNo = @Mcno)
-                    AND (@MCType = '' OR a.MCType = @MCType)
-
-                ORDER BY
-                    a.TesterNo DESC,
-                    a.MCType DESC,
-                    a.TimeOfRequest DESC,
-                    b.BMTEUnit";
-                //return $@"
-                //    SELECT a.Devicename,
-                //           CASE WHEN EXISTS (SELECT 1 FROM MachineKarte_MCD
-                //                   WHERE REPLACE(Devicename,' ','') = REPLACE(a.devicename,' ','') AND isactive = 1) THEN 'Yes' ELSE 'No' END AS isMCD,
-                //           a.process, a.location, a.testerNo AS Mcno, a.mctype,
-                //           FORMAT(a.Timeofrequest,'MM/dd/yyyy HH:mm:ss') AS Timeofrequest,
-                //           b.bmteunit AS BMCase, a.BMCaseID AS BMCaseID, a.bmid,
-                //           (SELECT COUNT(*) FROM gridBMOCAP WHERE BMCaseID = a.BMCaseID AND Process = a.process) AS OCAPCount,
-                //           CASE WHEN EXISTS (SELECT 1 FROM MachineKarte_ActionCard_TE WHERE bmid = a.bmID) THEN 'Yes' ELSE 'No' END AS HaveAction,
-                //           COALESCE(CASE WHEN a.AcredBMContentID <> a.BMContentID THEN
-                //               CASE WHEN a.AcredBMContentID = '' OR a.AcredBMContentID = '0' OR a.AcredBMContentID IS NULL
-                //                    THEN a.BMContentID ELSE a.AcredBMContentID END
-                //               ELSE a.BMContentID END, 0) AS BMContentID,
-                //           Priority,
-                //           (SELECT BMContent FROM BMContent WHERE BMContentID = a.BMContentID AND process = '{process}') AS BMContent,
-                //           c.Action AS Accre, c.Comment AS Sect, c.Comment2 AS Dept,
-                //           c.Comment3 AS Div, c.mcstatus AS MCStatus, 'None' AS FontColor
-                //    FROM [eMaintenanceSystemDB].[dbo].[TEBMMaintenance] a
-                //    INNER JOIN [eMaintenanceSystemDB].[dbo].[BMTEUnit] b ON a.bmunitid = b.bmteunitid
-                //    OUTER APPLY (SELECT TOP (1) ac.* FROM [eMaintenanceSystemDB].[dbo].[MachineKarte_ActionCard_TE] ac
-                //                 WHERE ac.bmID = a.bmID ORDER BY ac.Seqno DESC) c
-                //    WHERE (a.timeofrequest BETWEEN @Range1 AND @Range2)
-                //      AND a.process = '{process}'
-                //      AND (a.Pmcategoryid = '1' OR a.Pmcategoryid = '4')
-                //      AND a.BMStatusID NOT IN ('30','31','1','2','3','7','17')
-                //      AND a.bmunitid <> 0
-                //      AND (@Location = 'All' OR a.Location = @Location)
-                //      AND (@Mcno = 'All' OR a.testerno = @Mcno)
-                //      AND (@MCType = '' OR a.MCType = @MCType)
-                //    ORDER BY a.testerNo DESC, a.MCType DESC, a.Timeofrequest DESC, b.bmteunit";
-            }
-
-            // CC / EEE / VIS / PM
-            string addQuery = userType switch
-            {
-                "CC" => "(Turnover IN ('CC')  AND BMStatusID IN (6,7,8,9,11,20,19,14))",
-                "EEE" => "(Turnover IN ('PE')  AND BMStatusID IN (6,7,8,9,11,20,19,14))",
-                "VIS" => "(Turnover IN ('VIS') AND BMStatusID IN (6,7,8,9,11,20,19,14))",
-                _ => "(a.BMStatusID NOT IN ('30','31'))"
-            };
+            bool te = userType == "TE";
+            bool why = userType is "CC" or "EEE" or "VIS";
+            string table = te ? "TEBMMaintenance" : $"{process}BMMaintenance";
+            string machineColumn = te ? "TesterNo" : "MCNo";
+            string caseTable = te ? "BMTEUnit" : why ? "BMWhy" : "BMCase";
+            string caseId = why ? "Why4" : "BMCaseID";
+            string joinColumn = te ? "BMUnitID" : caseId;
+            string joinId = te ? "BMTEUnitID" : why ? "BMWhyID" : "BMCaseID";
             string actionTable = userType switch
             {
+                "TE" => "MachineKarte_ActionCard_TE",
                 "CC" => "MachineKarte_ActionCard_CC",
                 "EEE" => "MachineKarte_ActionCard_EEE",
                 "VIS" => "MachineKarte_ActionCard_VIS",
                 _ => "MachineKarte_ActionCard"
             };
-            bool isWhy = userType is "CC" or "EEE" or "VIS";
-            string caseTable = isWhy ? "BMWhy" : "BMCase";
-            string caseId = isWhy ? "Why4" : "BMCaseID";
-            string joinId = isWhy ? "BMWhyID" : "BMCaseID";
-            string caseText = isWhy ? "BMWhy" : "BMCase";
+            string category = te ? "a.PMCategoryID IN (1,4)" : "a.PMCategoryID = 1";
+            string status = te ? "a.BMStatusID NOT IN (30,31,1,2,3,7,17)" : BuildUserFilter(why ? userType : "PM");
+            string actionMachineFilter = te ? string.Empty : "AND ac.MachineNo = f.Mcno";
+            string actionPartition = te ? "ac.BMID" : "ac.BMID, ac.MachineNo";
+            string actionJoin = te ? string.Empty : "AND la.MachineNo = f.Mcno";
+            string priority = te ? ", a.Priority" : string.Empty;
+            string priorityResult = te ? ", f.Priority" : string.Empty;
 
+            // Filter before ranking actions or counting OCAP rows. TE actions use BMID alone,
+            // as uc_Test does; the other four modes also require the machine number.
             return $@"
-            ;WITH LatestAction AS
+            ;WITH FilteredBM AS
             (
-                SELECT
-                    ac.*,
-                    ROW_NUMBER() OVER
-                    (
-                        PARTITION BY ac.BMID, ac.MachineNo
-                        ORDER BY ac.SeqNo DESC
-                    ) AS RN
-                FROM {actionTable} ac
+                SELECT a.DeviceName, a.Process, a.Location, a.{machineColumn} AS Mcno,
+                    a.MCType, a.TimeOfRequest, b.{caseTable} AS BMCase, a.{caseId} AS BMCaseID,
+                    a.BMID, a.BMCaseID AS OcapCaseID, a.BMContentID AS OriginalBMContentID,
+                    COALESCE(CASE WHEN a.AcredBMContentID <> a.BMContentID THEN
+                        CASE WHEN a.AcredBMContentID IS NULL OR a.AcredBMContentID IN ('','0')
+                            THEN a.BMContentID ELSE a.AcredBMContentID END
+                        ELSE a.BMContentID END, 0) AS BMContentID{priority}
+                FROM [eMaintenanceSystemDB].[dbo].[{table}] a
+                INNER JOIN [eMaintenanceSystemDB].[dbo].[{caseTable}] b ON a.{joinColumn} = b.{joinId}
+                WHERE a.TimeOfRequest BETWEEN @Range1 AND @Range2
+                    AND a.Process = @Process
+                    AND {category} AND {status}
+                    AND a.{joinColumn} <> 0
+                    AND (@Location = 'All' OR a.Location = @Location)
+                    AND (@Mcno = 'All' OR a.{machineColumn} = @Mcno)
+                    AND (@MCType = '' OR a.MCType = @MCType)
             ),
-
-            MCDList AS
+            LatestAction AS
             (
-                SELECT
-                    REPLACE(DeviceName,' ','') AS DeviceName
-                FROM MachineKarte_MCD
-                WHERE IsActive = 1
+                SELECT ac.BMID, ac.MachineNo, ac.Action, ac.Comment, ac.Comment2, ac.Comment3, ac.MCStatus,
+                    ROW_NUMBER() OVER (PARTITION BY {actionPartition} ORDER BY ac.Seqno DESC) AS RN
+                FROM [eMaintenanceSystemDB].[dbo].[{actionTable}] ac
+                WHERE EXISTS (SELECT 1 FROM FilteredBM f WHERE f.BMID = ac.BMID {actionMachineFilter})
             ),
-
             OCAPCounts AS
             (
-                SELECT
-                    BMCaseID,
-                    Process,
-                    COUNT(*) AS OCAPCount
-                FROM GridBMOCAP
-                GROUP BY
-                    BMCaseID,
-                    Process
-            ),
-
-            BMContents AS
-            (
-                SELECT
-                    BMContentID,
-                    Process,
-                    BMContent
-                FROM BMContent
+                SELECT o.BMCaseID, COUNT(*) AS OCAPCount
+                FROM [eMaintenanceSystemDB].[dbo].[gridBMOCAP] o
+                WHERE o.Process = @Process
+                    AND EXISTS (SELECT 1 FROM FilteredBM f WHERE f.OcapCaseID = o.BMCaseID)
+                GROUP BY o.BMCaseID
             )
-
-            SELECT
-                a.DeviceName,
-
-                CASE
-                    WHEN m.DeviceName IS NOT NULL
-                    THEN 'Yes'
-                    ELSE 'No'
-                END AS IsMCD,
-
-                a.Process,
-                a.Location,
-                a.MCNo,
-                a.MCType,
-
-                CONVERT(VARCHAR(19), a.TimeOfRequest, 120) AS TimeOfRequest,
-
-                b.{caseText} AS BMCase,
-                a.{caseId} AS BMCaseID,
-                a.BMID,
-
-                ISNULL(o.OCAPCount, 0) AS OCAPCount,
-
-                CASE
-                    WHEN la.BMID IS NOT NULL
-                    THEN 'Yes'
-                    ELSE 'No'
-                END AS HaveAction,
-
-                COALESCE
-                (
-                    CASE
-                        WHEN a.AcredBMContentID <> a.BMContentID
-                        THEN
-                            CASE
-                                WHEN a.AcredBMContentID IS NULL
-                                  OR a.AcredBMContentID = ''
-                                  OR a.AcredBMContentID = '0'
-                                THEN a.BMContentID
-                                ELSE a.AcredBMContentID
-                            END
-                        ELSE a.BMContentID
-                    END,
-                    0
-                ) AS BMContentID,
-
-                bc.BMContent,
-
-                la.Action AS Accre,
-                la.Comment AS Sect,
-                la.Comment2 AS Dept,
-                la.Comment3 AS Div,
-                la.MCStatus,
-
-                'None' AS FontColor
-
-            FROM [eMaintenanceSystemDB].[dbo].[{process}BMMaintenance] a
-
-            INNER JOIN [eMaintenanceSystemDB].[dbo].[{caseTable}] b
-                ON a.{caseId} = b.{joinId}
-
-            LEFT JOIN MCDList m
-                ON m.DeviceName = REPLACE(a.DeviceName,' ','')
-
-            LEFT JOIN LatestAction la
-                ON la.BMID = a.BMID
-                AND la.MachineNo = a.MCNo
-                AND la.RN = 1
-
-            LEFT JOIN OCAPCounts o
-                ON o.BMCaseID = a.BMCaseID
-                AND o.Process = a.Process
-
-            LEFT JOIN BMContents bc
-                ON bc.BMContentID = a.BMContentID
-                AND bc.Process = a.Process
-
-            WHERE
-                a.TimeOfRequest BETWEEN @Range1 AND @Range2
-                AND a.Process = '{process}'
-                AND a.PMCategoryID = 1
-                AND {addQuery}
-                AND a.{caseId} <> 0
-                AND (@Location = 'All' OR a.Location = @Location)
-                AND (@Mcno = 'All' OR a.MCNo = @Mcno)
-                AND (@MCType = '' OR a.MCType = @MCType)
-
-            ORDER BY
-                a.MCNo DESC,
-                a.MCType DESC,
-                a.TimeOfRequest DESC,
-                b.{caseText}";
-            //return $@"
-            //    SELECT a.Devicename,
-            //           CASE WHEN EXISTS (SELECT 1 FROM MachineKarte_MCD
-            //                   WHERE REPLACE(Devicename,' ','') = REPLACE(a.devicename,' ','') AND isactive = 1) THEN 'Yes' ELSE 'No' END AS isMCD,
-            //           a.process, a.location, a.Mcno AS Mcno, a.MCType,
-            //           FORMAT(a.Timeofrequest,'MM/dd/yyyy HH:mm:ss') AS Timeofrequest,
-            //           b.{caseText} AS BMCase, a.{caseId} AS BMCaseID, a.bmid,
-            //           (SELECT COUNT(*) FROM gridBMOCAP WHERE BMCaseID = a.BMCaseID AND Process = a.process) AS OCAPCount,
-            //           CASE WHEN EXISTS (SELECT 1 FROM {actionTable} WHERE bmid = a.bmID AND machineno = a.mcno) THEN 'Yes' ELSE 'No' END AS HaveAction,
-            //           COALESCE(CASE WHEN a.AcredBMContentID <> a.BMContentID THEN
-            //               CASE WHEN a.AcredBMContentID = '' OR a.AcredBMContentID = '0' OR a.AcredBMContentID IS NULL
-            //                    THEN a.BMContentID ELSE a.AcredBMContentID END
-            //               ELSE a.BMContentID END, 0) AS BMContentID,
-            //           (SELECT BMContent FROM BMContent WHERE BMContentID = a.BMContentID AND process = '{process}') AS BMContent,
-            //           c.Action AS Accre, c.Comment AS Sect, c.Comment2 AS Dept,
-            //           c.Comment3 AS Div, c.mcstatus AS MCStatus, 'None' AS FontColor
-            //    FROM [eMaintenanceSystemDB].[dbo].[{process}BMMaintenance] a
-            //    INNER JOIN [eMaintenanceSystemDB].[dbo].[{caseTable}] b ON a.{caseId} = b.{joinId}
-            //    OUTER APPLY (SELECT TOP (1) ac.* FROM {actionTable} ac
-            //                 WHERE ac.bmID = a.bmID AND ac.machineno = a.mcno ORDER BY ac.Seqno DESC) c
-            //    WHERE (a.timeofrequest BETWEEN @Range1 AND @Range2)
-            //      AND a.process = '{process}'
-            //      AND a.PMCategoryID = 1
-            //      AND {addQuery}
-            //      AND a.{caseId} <> 0
-            //      AND (@Location = 'All' OR a.Location = @Location)
-            //      AND (@Mcno = 'All' OR a.Mcno = @Mcno)
-            //      AND (@MCType = '' OR a.MCType = @MCType)
-            //    ORDER BY a.Mcno DESC, a.MCType DESC, a.Timeofrequest DESC, b.{caseText}";
+            SELECT f.DeviceName,
+                CASE WHEN EXISTS (SELECT 1 FROM [eMaintenanceSystemDB].[dbo].[MachineKarte_MCD] m
+                    WHERE m.IsActive = 1 AND REPLACE(m.DeviceName,' ','') = REPLACE(f.DeviceName,' ',''))
+                    THEN 'Yes' ELSE 'No' END AS isMCD,
+                f.Process, f.Location, f.Mcno, f.MCType, f.TimeOfRequest, f.BMCase, f.BMCaseID, f.BMID,
+                COALESCE(o.OCAPCount,0) AS OCAPCount,
+                CASE WHEN la.BMID IS NOT NULL THEN 'Yes' ELSE 'No' END AS HaveAction,
+                f.BMContentID, bc.BMContent{priorityResult},
+                la.Action AS Accre, la.Comment AS Sect, la.Comment2 AS Dept, la.Comment3 AS Div,
+                la.MCStatus, 'None' AS FontColor
+            FROM FilteredBM f
+            LEFT JOIN LatestAction la ON la.BMID = f.BMID {actionJoin} AND la.RN = 1
+            LEFT JOIN OCAPCounts o ON o.BMCaseID = f.OcapCaseID
+            LEFT JOIN [eMaintenanceSystemDB].[dbo].[BMContent] bc
+                ON bc.BMContentID = f.OriginalBMContentID AND bc.Process = f.Process
+            ORDER BY f.Mcno DESC, f.MCType DESC, f.TimeOfRequest DESC, f.BMCase";
         }
     }
-
 }

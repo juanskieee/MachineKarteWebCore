@@ -136,6 +136,7 @@ for the affected behavior:
 | Script in `scripts/` | Scope and environment |
 | --- | --- |
 | `Test-MonitoringQueries.ps1` | Generated SQL/schema references, statuses, designer mappings, scheduling, and Need Action fixtures; no database |
+| `Test-MonitoringParity.ps1` | Actual Monitoring repository/dashboard reads compared with original Form1/uc_Test SQL, TE/FT regression, pagination and duplicate safety; disposable LocalDB catalog; optional `-Benchmark` |
 | `Test-ActionSummaryParity.ps1` | Form2 counts/colors against compiled original VB routines; no database |
 | `Test-ReportGeneration.ps1` | Real templates, photos, compiled mappings, XLSX/PDF output, and capacity errors; offline |
 | `Update-LegacyReportMappings.ps1 -Check` | Generated mappings match extraction and audited corrections; offline |
