@@ -1,3 +1,4 @@
+using MachineKarte.Web.Services;
 // Converted from Form4.vb SQL queries - E-Karte System
 using System.Data;
 using MachineKarte.Web.Models;
@@ -7,12 +8,11 @@ namespace MachineKarte.Web.Repositories;
 
 public class EvidenceRepository
 {
-    private readonly string _connectionString;
+    private readonly DatabaseConnectionResolver _connections;
 
-    public EvidenceRepository(IConfiguration configuration) =>
-        _connectionString = RepositorySql.GetConnectionString(configuration);
+    public EvidenceRepository(DatabaseConnectionResolver connections) =>
+        _connections = connections;
 
-    private SqlConnection Open() => new(_connectionString);
     // Evidence image groups
     // Mirrors mSQLStr1..5 in Form4.vb (gridEvidenceMaking_Ver3 queries)
     public async Task<EvidenceImageGroups> GetEvidenceImagesAsync(int bmId, string process, CancellationToken cancellationToken = default)
@@ -33,8 +33,7 @@ public class EvidenceRepository
         InitGroup(groups.DisAssembly);
         InitGroup(groups.QualityConfirm);
 
-        await using var conn = Open();
-        await conn.OpenAsync(cancellationToken);
+        await using var conn = await _connections.OpenConnectionAsync(cancellationToken);
 
         // Keep each category's TOP and ordering, but send all five SELECTs together.
         var categories = new (string Category, EvidenceImageRow[] Rows)[]
@@ -99,8 +98,7 @@ public class EvidenceRepository
 
         var tsc = new TscConfirmation();
 
-        await using var conn = Open();
-        await conn.OpenAsync(cancellationToken);
+        await using var conn = await _connections.OpenConnectionAsync(cancellationToken);
         await using var cmd = new SqlCommand(sql, conn);
         cmd.Parameters.Add("@BmId", SqlDbType.Int).Value = bmId;
 
@@ -143,8 +141,7 @@ public class EvidenceRepository
                         FROM {dataView}
                         WHERE bmID = @BmId";
 
-        await using var conn = Open();
-        await conn.OpenAsync(cancellationToken);
+        await using var conn = await _connections.OpenConnectionAsync(cancellationToken);
         await using var cmd = new SqlCommand(sql, conn);
         cmd.Parameters.Add("@BmId", SqlDbType.Int).Value = bmId;
 

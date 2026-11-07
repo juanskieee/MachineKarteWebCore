@@ -1,3 +1,4 @@
+using MachineKarte.Web.Services;
 using MachineKarte.Web.Models;
 using Microsoft.Data.SqlClient;
 
@@ -5,7 +6,7 @@ namespace MachineKarte.Web.Repositories;
 
 public class AlertBoardRepository
 {
-    private readonly string _connectionString;
+    private readonly DatabaseConnectionResolver _connections;
 
     // Domain maps
     private static readonly string[] ProcessesNormal =
@@ -21,8 +22,8 @@ public class AlertBoardRepository
         "LSI2-3F", "LSI3-1F", "LSI3-1F", "LSI3-2F", "LSI3-3F", "LSI3-4F"
     };
 
-    public AlertBoardRepository(IConfiguration configuration) =>
-        _connectionString = RepositorySql.GetConnectionString(configuration);
+    public AlertBoardRepository(DatabaseConnectionResolver connections) =>
+        _connections = connections;
 
     // Public API
     /// <summary>
@@ -301,8 +302,7 @@ public class AlertBoardRepository
         string sql, string dateFrom, string dateTo, string location, CancellationToken cancellationToken)
     {
         var list = new List<AlertBoardRow>();
-        await using var conn = new SqlConnection(_connectionString);
-        await conn.OpenAsync(cancellationToken);
+        await using var conn = await _connections.OpenConnectionAsync(cancellationToken);
         await using var cmd = new SqlCommand(sql, conn);
         RepositorySql.AddDateRange(cmd, dateFrom, dateTo);
         RepositorySql.AddVarChar(cmd, "@Location", location, 20);

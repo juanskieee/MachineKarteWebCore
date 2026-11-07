@@ -1,3 +1,4 @@
+using MachineKarte.Web.Services;
 using System.Data;
 using MachineKarte.Web.Models;
 using Microsoft.Data.SqlClient;
@@ -10,10 +11,10 @@ namespace MachineKarte.Web.Repositories;
 /// </summary>
 public class BmAnalyticsRepository
 {
-    private readonly string _connectionString;
+    private readonly DatabaseConnectionResolver _connections;
 
-    public BmAnalyticsRepository(IConfiguration configuration) =>
-        _connectionString = RepositorySql.GetConnectionString(configuration);
+    public BmAnalyticsRepository(DatabaseConnectionResolver connections) =>
+        _connections = connections;
 
     // The active grid needs only qualifying rows, not action history or BM content.
     public async Task<Dictionary<string, List<BmAnalyticsRow>>> GetRowsByLocationAsync(
@@ -50,14 +51,13 @@ WHERE a.TimeOfRequest >= @Range1
         WHERE ac.BMID = a.BMID AND ac.MachineNo = a.{machine})
 ORDER BY a.{machine} DESC, a.TimeOfRequest DESC, b.{(te ? "BMTEUnitID" : "BMCase")};";
 
-        await using var connection = new SqlConnection(_connectionString);
+        await using var connection = await _connections.OpenConnectionAsync(cancellationToken);
         await using var command = new SqlCommand(sql, connection) { CommandTimeout = 60 };
         RepositorySql.AddDateRange(command, dateFrom, dateTo);
         RepositorySql.AddVarChar(command, "@Process", process, 20);
         for (int i = 0; i < locations.Length; i++)
             RepositorySql.AddVarChar(command, $"@Location{i}", locations[i], 20);
 
-        await connection.OpenAsync(cancellationToken);
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))
         {
@@ -327,8 +327,7 @@ ORDER BY a.{machine} DESC, a.TimeOfRequest DESC, b.{(te ? "BMTEUnitID" : "BMCase
             ? TeSql
             : string.Format(EeeSql, process);
 
-        await using var conn = new SqlConnection(_connectionString);
-        await conn.OpenAsync(cancellationToken);
+        await using var conn = await _connections.OpenConnectionAsync(cancellationToken);
 
         await using var cmd = new SqlCommand(sql, conn)
         {

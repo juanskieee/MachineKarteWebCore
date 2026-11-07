@@ -27,6 +27,8 @@ using System.Reflection;
 using MachineKarte.Web.Models;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
+using MachineKarte.Web.Services;
 using RetrievalChecks.Repositories;
 
 void Require(bool condition, string message) { if (!condition) throw new Exception(message); }
@@ -43,8 +45,9 @@ await Admin($"CREATE DATABASE [{database}]");
 try {
     connection.InitialCatalog = database;
     var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> {
-        ["ConnectionStrings:DBConnection"] = connection.ConnectionString
+        ["ConnectionStrings:MachineDBConnection"] = connection.ConnectionString
     }).Build();
+    var connections = new DatabaseConnectionResolver(config, NullLogger<DatabaseConnectionResolver>.Instance);
     await using var fixture = new SqlConnection(connection.ConnectionString);
     await fixture.OpenAsync();
     async Task Sql(string sql) { await using var command = new SqlCommand(sql, fixture); await command.ExecuteNonQueryAsync(); }
@@ -85,7 +88,7 @@ INSERT ViewDCData_Ver4 VALUES (5,'MC-Z','10/05/2026 00:00:00','CURRENT'),
     (4,'MC-Z','10/04/2026 00:00:00','PREVIOUS'),(3,'MC-Z','10/03/2026 00:00:00',NULL),
     (2,'MC-Z','10/02/2026 00:00:00','OLDER'),(1,'OTHER','10/01/2026 00:00:00','OTHER');
 ");
-    var raw = new RawDataRepository(config);
+    var raw = new RawDataRepository(connections);
     var frequency = await raw.GetFrequencyRawRowsAsync("DCBMMaintenance", "LSI1-1F", "2026-10-01", "2026-10-31");
     Require(frequency.Rows.Count == 3 && frequency.Columns.Contains("BMCase"), "Raw frequency skipped its current result set");
     Require(frequency.Rows.Cast<DataRow>().All(row => row["mcno"].ToString() == "MC-Z"), "Raw frequency changed filters");
@@ -94,14 +97,14 @@ INSERT ViewDCData_Ver4 VALUES (5,'MC-Z','10/05/2026 00:00:00','CURRENT'),
     Require(frequency.Columns["DateNum"]!.DataType == typeof(int), "Raw reader changed column types");
     try { await raw.GetFrequencyRawRowsAsync("DCBMMaintenance];--", "", "", ""); throw new Exception("Raw identifier accepted"); }
     catch (ArgumentException) { }
-    var mcd = new McdMonitoringRepository(config);
+    var mcd = new McdMonitoringRepository(connections);
     var from = new DateTime(2026,10,1); var to = new DateTime(2026,10,31);
     Require((await mcd.GetMachinesAsync("DC","LSI1-1F",from,to,false)).SequenceEqual(new[] {"MC-Z"}), "MCD DISTINCT/order/filter failed");
     Require((await mcd.GetMachinesAsync("FL","LSI1-1F",from,to,true)).SequenceEqual(new[] {"TE-Z"}), "TE MCD DISTINCT/order/filter failed");
-    var machineSummary=new MachineSummaryRepository(config);
+    var machineSummary=new MachineSummaryRepository(connections);
     Require((await machineSummary.GetMachinesAsync("DC","LSI1-1F",from.AddMilliseconds(900),to,false)).SequenceEqual(new[]{"MC-Z","MC-Z","MC-Z"}),"Machine Summary lost row-count semantics or whole-second date boundaries");
     Require((await machineSummary.GetMachinesAsync("FL","LSI1-1F",from,to,true)).SequenceEqual(new[]{"TE-Z","TE-Z"}),"TE Machine Summary deduplicated BM rows");
-    var pm = await new PmReportRepository(config).GetReportDataAsync("DC", 5, "10/05/2026 00:00:00", "MC-Z");
+    var pm = await new PmReportRepository(connections).GetReportDataAsync("DC", 5, "10/05/2026 00:00:00", "MC-Z");
     Require(pm!.Current.Fields["Marker"] == "CURRENT" && pm.History.Count == 2 &&
         pm.History[0].Fields["Marker"] == "PREVIOUS" && pm.History[1].Fields["Marker"] == "", "PM history limit/order/null mapping changed");
     Require(pm.Current.Values["BMID"] is int && pm.History[1].Values["Marker"] is DBNull,"Legacy report values lost SQL types/DBNull");
@@ -114,7 +117,7 @@ INSERT ViewDCData_Ver4 VALUES (5,'MC-Z','10/05/2026 00:00:00','CURRENT'),
     foreach (var (table,key,value) in lookups) {
         await Sql($"CREATE TABLE [{table}] ([{key}] int, [{value}] nvarchar(100)); INSERT [{table}] VALUES (1,'{table}'),(2,NULL);");
     }
-    var bm = new BmReportRepository(config);
+    var bm = new BmReportRepository(connections);
     var report = new BmReportData { BmId=1, PMCategoryID="1", BMContentID="1", BMCaseID="1", BMUnitID="1",
         BMPointID="1", BMWorkContentID="1", BMCauseID="1", PrevMeasureID="1" };
     await bm.LoadSupplementalDataAsync(report);
@@ -141,7 +144,7 @@ CREATE TABLE BMWhy (BMWhyID int, BM4M nvarchar(100), BMWhy nvarchar(100)); INSER
         var lookupData = new PmReportData { Process=process,Current=new PmReportRecord() };
         var specs = MachineKarte.Reporting.LegacyReportWriter.LookupSpecs(process).Select(value=>value.Split('|')).ToArray();
         foreach(var spec in specs) lookupData.Current.Fields[spec[0]]=spec[0]=="OtherUnitCheck"?"1,A|2,B":"1";
-        var resolved = await new PmReportRepository(config).GetLookupValuesAsync(lookupData);
+        var resolved = await new PmReportRepository(connections).GetLookupValuesAsync(lookupData);
         foreach(var spec in specs) Require(resolved.ContainsKey($"{spec[1]}|1|{spec[3]}"),"Missing PM lookup: "+process+"/"+string.Join('|',spec));
         foreach(var spec in specs.Where(spec=>spec[1]=="BMWhy")) Require(resolved[$"BMWhy|1|{spec[3]}"]==(spec[3]=="BM4M"?"METHOD":"CAUSE"),"BMWhy columns crossed");
         if(specs.Any(spec=>spec[1]=="BMMCUnitWithType")) Require(resolved["BMMCUnitWithType|1|BMMCUnit"]=="PM UNIT","Machine unit/type lookup changed");
@@ -155,7 +158,7 @@ CREATE TABLE BMWhy (BMWhyID int, BM4M nvarchar(100), BMWhy nvarchar(100)); INSER
     foreach (var category in categories)
     for (var i = 4; i >= 1; i--)
         await Sql($"INSERT gridEvidenceMaking_Ver3 VALUES ({i},1,'DC','{category}','DESC-{i}','IMG-{i}');");
-    var evidence = new EvidenceRepository(config);
+    var evidence = new EvidenceRepository(connections);
     var images = await evidence.GetEvidenceImagesAsync(1,"DC");
     foreach (var group in new[] {images.ProblemPoint, images.ActionTaken, images.PartsReplaced, images.DisAssembly, images.QualityConfirm})
         Require(group.Select(row => row.ImageFile).SequenceEqual(Enumerable.Range(1,group.Length).Select(i => $"IMG-{i}")), "PM evidence TOP/order/group changed");
@@ -169,7 +172,7 @@ CREATE TABLE BMWhy (BMWhyID int, BM4M nvarchar(100), BMWhy nvarchar(100)); INSER
     var qualityCategories = new[] {"BEFORE QUALITY CONDITION","AFTER QUALITY CONDITION","IDEAL QUALITY CONDITION"};
     foreach (var category in qualityCategories)
         await Sql($"INSERT TEBMEvidenceMaking VALUES (2,1,'{category}','AFTER','','~/SECOND',NULL,NULL),(1,1,'{category}','BEFORE','','~/FIRST',NULL,NULL);");
-    var te = new TeEvidenceRepository(config);
+    var te = new TeEvidenceRepository(connections);
     var teImages = await te.GetCategoryImagesAsync("1");
     foreach (var category in teCategories) {
         var top = category == "TEST BOARD" ? 20 : 6;
@@ -244,7 +247,7 @@ INSERT ViewTEData VALUES (1,'TE-A',NULL,'REQUESTER','REPAIRER');
     Require(sparse!.TesterNo=="TE-A" && sparse.MCNo=="" && sparse.DeviceName=="" && sparse.Values["OccurrenceDate"] is DateTime,"Sparse BM view lost optional/raw fields");
     Require((await te.GetHeaderAsync("1"))!.TesterNo=="TE-A" && (await te.GetHeaderAsync("1"))!.WaferNo=="" && await te.GetTEAssignAsync("1")=="REQUESTER, REPAIRER","Sparse TE header/assignment changed");
     foreach(var invalid in new Func<Task>[] {
-        async()=>{await new OcapViewerRepository(config).GetOcapDataAsync(1,"DCBMMaintenance];--");},
+        async()=>{await new OcapViewerRepository(connections).GetOcapDataAsync(1,"DCBMMaintenance];--");},
         async()=>{await evidence.GetTscConfirmationAsync(1,"DC","viewDCEMaking_Ver3;--");},
         async()=>{await evidence.GetMachineHeaderAsync(1,"ViewDCData_Ver4;--");}
     }) { try { await invalid(); throw new Exception("Untrusted identifier accepted"); } catch(ArgumentException) { } }
@@ -270,7 +273,7 @@ UPDATE MachineKarte_ActionCard_TE SET Seqno=1,MCStatus='NO RE-OCCURRENCE AFTER 7
     foreach(var user in new[]{"CC","EEE","VIS"}) await Sql($"SELECT * INTO MachineKarte_ActionCard_{user} FROM MachineKarte_ActionCard;");
     foreach(var process in new[]{"DB","WB","MP","PL","FL","ATC","SING","FT","TP","EDS","MEMS"})
         await Sql($"SELECT * INTO {process}BMMaintenance FROM DCBMMaintenance; UPDATE {process}BMMaintenance SET Process='{process}';");
-    var alert=new AlertBoardRepository(config);
+    var alert=new AlertBoardRepository(connections);
     var flags=BindingFlags.Static|BindingFlags.NonPublic;
     object Call(string name,params object[] parameters)=>typeof(AlertBoardRepository).GetMethod(name,flags)!.Invoke(null,parameters)!;
     var fetch=typeof(AlertBoardRepository).GetMethod("FetchRowsAsync",BindingFlags.Instance|BindingFlags.NonPublic)!;
@@ -303,7 +306,7 @@ UPDATE MachineKarte_ActionCard_TE SET Seqno=1,MCStatus='NO RE-OCCURRENCE AFTER 7
         if(user=="") Require(batched.Cells["ATC_65"].Count==2,"Repeated LSI3-1F pass was lost");
     }
     Console.WriteLine("PASS: complete AlertBoard results in all five modes match 120/50 per-floor reads, including repeated floors, independent color state, totals and machine-list order; batching uses 12/5 process reads.");
-    var analyticsRows=await new BmAnalyticsRepository(config).GetRowsAsync("DC","LSI1-1F","EEE",from.AddMilliseconds(900),new DateTime(2026,11,2));
+    var analyticsRows=await new BmAnalyticsRepository(connections).GetRowsAsync("DC","LSI1-1F","EEE",from.AddMilliseconds(900),new DateTime(2026,11,2));
     Require(analyticsRows.Any(row=>row.BmId==1 && row.Timeofrequest=="10/01/2026 00:00:00"),"Analytics native date conversion or whole-second range differs");
 
     if(args.Contains("benchmark")) {

@@ -25,7 +25,8 @@ $start.RedirectStandardError = $true
 $start.EnvironmentVariables['ASPNETCORE_ENVIRONMENT'] = 'Development'
 $start.EnvironmentVariables['Logging__EventLog__LogLevel__Default'] = 'None'
 $start.EnvironmentVariables['Logging__LogLevel__Microsoft.Hosting.Lifetime'] = 'Information'
-$start.EnvironmentVariables['ConnectionStrings__DBConnection'] = "Server=tcp:127.0.0.1,$sqlPort;Database=StartupChecks;Integrated Security=true;Encrypt=false;Connect Timeout=8;Connect Retry Count=0;Max Pool Size=1"
+$start.EnvironmentVariables['ConnectionStrings__MachineDBConnection'] = "Server=tcp:127.0.0.1,$sqlPort;Database=StartupChecks;Integrated Security=true;Encrypt=false;Connect Timeout=8;Connect Retry Count=0;Max Pool Size=1"
+$start.EnvironmentVariables['ConnectionStrings__IntranetDBConnection'] = $start.EnvironmentVariables['ConnectionStrings__MachineDBConnection']
 $testApp = New-Object Diagnostics.Process
 $testApp.StartInfo = $start
 $handler = New-Object Net.Http.HttpClientHandler

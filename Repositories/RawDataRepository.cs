@@ -1,3 +1,4 @@
+using MachineKarte.Web.Services;
 using System.Data;
 using Microsoft.Data.SqlClient;
 
@@ -5,10 +6,10 @@ namespace MachineKarte.Web.Repositories;
 
 public class RawDataRepository
 {
-    private readonly string _connectionString;
+    private readonly DatabaseConnectionResolver _connections;
 
-    public RawDataRepository(IConfiguration configuration) =>
-        _connectionString = RepositorySql.GetConnectionString(configuration);
+    public RawDataRepository(DatabaseConnectionResolver connections) =>
+        _connections = connections;
 
     // Form5 compares adjacent rows in this exact order, across case runs and machines.
     // Frequency restricts dates before the window; monthly totals restrict dates afterward.
@@ -65,14 +66,13 @@ public class RawDataRepository
             "TPBMMaintenance" or "EDSBMMaintenance" or "MEMSBMMaintenance"))
             throw new ArgumentException("Unknown raw-data table.", nameof(tableName));
 
-        await using var conn = new SqlConnection(_connectionString);
+        await using var conn = await _connections.OpenConnectionAsync(cancellationToken);
         await using var cmd = new SqlCommand(sql.Replace("{TABLE}", tableName), conn);
         cmd.CommandType = CommandType.Text;
         cmd.CommandTimeout = 120;
         RepositorySql.AddVarChar(cmd, "@Location", location, 20);
         RepositorySql.AddDateRange(cmd, dateFrom, dateTo, "@DateFrom", "@DateTo");
 
-        await conn.OpenAsync(cancellationToken);
         await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
         return await ReadTableAsync(reader, cancellationToken);
     }

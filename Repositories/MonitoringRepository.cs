@@ -1,3 +1,4 @@
+using MachineKarte.Web.Services;
 // Monitoring reads mapped from Form1.vb and uc_Test.vb.
 using System.Data;
 using System.Globalization;
@@ -8,12 +9,11 @@ namespace MachineKarte.Web.Repositories;
 
 public class MonitoringRepository
 {
-    private readonly string _connectionString;
+    private readonly DatabaseConnectionResolver _connections;
 
-    public MonitoringRepository(IConfiguration configuration) =>
-        _connectionString = RepositorySql.GetConnectionString(configuration);
+    public MonitoringRepository(DatabaseConnectionResolver connections) =>
+        _connections = connections;
     // Helpers
-    private SqlConnection Open() => new(_connectionString);
 
     /// <summary>
     /// Maps location index (1-9) from Panel2 label name suffix to floor code.
@@ -65,8 +65,7 @@ public class MonitoringRepository
         string userType, string process, string floor, CancellationToken cancellationToken = default)
     {
         var results = new List<string>();
-        await using var conn = Open();
-        await conn.OpenAsync(cancellationToken);
+        await using var conn = await _connections.OpenConnectionAsync(cancellationToken);
 
         string sql;
         string colName;
@@ -120,8 +119,7 @@ public class MonitoringRepository
             : BuildTEMachineSummarySQL(addQuery, top1, top2, f.Machine == "All");
 
         var list = new List<MachineSummary>();
-        await using var conn = Open();
-        await conn.OpenAsync(cancellationToken);
+        await using var conn = await _connections.OpenConnectionAsync(cancellationToken);
         await using var cmd = new SqlCommand(sql, conn);
 
         RepositorySql.AddDateRange(cmd, f.DateFrom, f.DateTo);
@@ -310,8 +308,7 @@ public class MonitoringRepository
         string sql = BuildBMCardSQL(userType, process);
 
         var list = new List<BMCardRow>();
-        await using var conn = Open();
-        await conn.OpenAsync(cancellationToken);
+        await using var conn = await _connections.OpenConnectionAsync(cancellationToken);
         await using var cmd = new SqlCommand(sql, conn);
 
         RepositorySql.AddDateRange(cmd, dateFrom, dateTo);
@@ -411,8 +408,7 @@ public class MonitoringRepository
     public async Task UpsertPCStatusAsync(
         string pcName, string ipAddress, string version, CancellationToken cancellationToken = default)
     {
-        await using var conn = Open();
-        await conn.OpenAsync(cancellationToken);
+        await using var conn = await _connections.OpenConnectionAsync(cancellationToken);
 
         bool exists = false;
         await using (var chk = new SqlCommand(

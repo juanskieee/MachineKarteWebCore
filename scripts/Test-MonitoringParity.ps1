@@ -16,7 +16,7 @@ $projectPath = [Security.SecurityElement]::Escape((Join-Path $repo 'MachineKarte
 foreach ($name in @('RepositorySql', 'MonitoringRepository', 'MonitoringService', 'MonitoringQueryBatch')) {
     $folder = if ($name -eq 'MonitoringService') { 'Services' } else { 'Repositories' }
     $source = [IO.File]::ReadAllText((Join-Path $repo "$folder/$name.cs"))
-    $source = $source.Replace('MachineKarte.Web.Repositories', 'MonitoringChecks.Repositories').Replace('MachineKarte.Web.Services', 'MonitoringChecks.Services').Replace('[eMaintenanceSystemDB].[dbo].', '[dbo].')
+    $source = $source.Replace('MachineKarte.Web.Repositories', 'MonitoringChecks.Repositories').Replace('namespace MachineKarte.Web.Services', 'namespace MonitoringChecks.Services').Replace('[eMaintenanceSystemDB].[dbo].', '[dbo].')
     if ($source -match 'eMaintenanceSystemDB') { throw "Unredirected database reference in $name" }
     [IO.File]::WriteAllText((Join-Path $checkDirectory "$name.cs"), $source)
 }
@@ -30,6 +30,8 @@ using System.Text.Json;
 using MachineKarte.Web.Models;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
+using MachineKarte.Web.Services;
 using Repository = MonitoringChecks.Repositories.MonitoringRepository;
 using Service = MonitoringChecks.Services.MonitoringService;
 
@@ -47,9 +49,10 @@ await Admin($"CREATE DATABASE [{database}]");
 try {
     connection.InitialCatalog = database;
     var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> {
-        ["ConnectionStrings:DBConnection"] = connection.ConnectionString
+        ["ConnectionStrings:MachineDBConnection"] = connection.ConnectionString
     }).Build();
-    var repository = new Repository(config);
+    var connections = new DatabaseConnectionResolver(config, NullLogger<DatabaseConnectionResolver>.Instance);
+    var repository = new Repository(connections);
     var service = new Service(repository);
     await using var fixture = new SqlConnection(connection.ConnectionString);
     await fixture.OpenAsync();

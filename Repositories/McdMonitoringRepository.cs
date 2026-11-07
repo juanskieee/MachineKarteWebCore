@@ -1,3 +1,4 @@
+using MachineKarte.Web.Services;
 using MachineKarte.Web.Models;
 
 namespace MachineKarte.Web.Repositories;
@@ -12,17 +13,17 @@ namespace MachineKarte.Web.Repositories;
 /// </summary>
 public class McdMonitoringRepository
 {
-    private readonly string _connectionString;
+    private readonly DatabaseConnectionResolver _connections;
 
-    public McdMonitoringRepository(IConfiguration configuration) =>
-        _connectionString = RepositorySql.GetConnectionString(configuration);
+    public McdMonitoringRepository(DatabaseConnectionResolver connections) =>
+        _connections = connections;
 
     public async Task<List<string>> GetMachinesAsync(
         string process, string location, DateTime dateFrom, DateTime dateTo, bool isTe, CancellationToken cancellationToken = default)
     {
         ValidateProcess(process);
 
-        return await ImportantDeviceQuery.GetMachinesAsync(_connectionString, process, location,
+        return await ImportantDeviceQuery.GetMachinesAsync(_connections, process, location,
             dateFrom, dateTo, isTe, distinct: true, cancellationToken);
     }
     private static void ValidateProcess(string process)

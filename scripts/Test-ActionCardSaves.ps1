@@ -35,10 +35,11 @@ await Admin($"CREATE DATABASE [{database}]");
 try {
     connection.InitialCatalog = database;
     var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> {
-        ["ConnectionStrings:DBConnection"] = connection.ConnectionString
+        ["ConnectionStrings:MachineDBConnection"] = connection.ConnectionString
     }).Build();
-    ActionCardService Service() => new(new ActionCardRepository(config), NullLogger<ActionCardService>.Instance);
-    var repo = new ActionCardRepository(config);
+    var connections = new DatabaseConnectionResolver(config, NullLogger<DatabaseConnectionResolver>.Instance);
+    ActionCardService Service() => new(new ActionCardRepository(connections), NullLogger<ActionCardService>.Instance);
+    var repo = new ActionCardRepository(connections);
     async Task<object?> Sql(string sql) {
         await using var conn = new SqlConnection(connection.ConnectionString); await conn.OpenAsync();
         await using var command = new SqlCommand(sql, conn); return await command.ExecuteScalarAsync();

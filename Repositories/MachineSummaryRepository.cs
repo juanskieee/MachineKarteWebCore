@@ -1,17 +1,18 @@
+using MachineKarte.Web.Services;
 using MachineKarte.Web.Models;
 
 namespace MachineKarte.Web.Repositories;
 
 public class MachineSummaryRepository
 {
-    private readonly string _connectionString;
+    private readonly DatabaseConnectionResolver _connections;
 
-    public MachineSummaryRepository(IConfiguration configuration) =>
-        _connectionString = RepositorySql.GetConnectionString(configuration);
+    public MachineSummaryRepository(DatabaseConnectionResolver connections) =>
+        _connections = connections;
 
     public Task<Dictionary<string, Dictionary<string, List<string>>>> GetAllMachinesAsync(
         DateTime from, DateTime to, bool isTe, CancellationToken cancellationToken = default) =>
-        ImportantDeviceQuery.GetMachinesByProcessAsync(_connectionString,
+        ImportantDeviceQuery.GetMachinesByProcessAsync(_connections,
             MachineSummaryConfig.GetProcesses(isTe).ToDictionary(process => process,
                 process => MachineSummaryConfig.GetLocations(process, isTe)),
             from, to, isTe, distinct: false, cancellationToken);
@@ -22,7 +23,7 @@ public class MachineSummaryRepository
         if (!MachineSummaryConfig.IsValidProcess(process, isTe))
             throw new ArgumentException($"Unknown process '{process}'.", nameof(process));
 
-        return await ImportantDeviceQuery.GetMachinesAsync(_connectionString, process, location,
+        return await ImportantDeviceQuery.GetMachinesAsync(_connections, process, location,
             from, to, isTe, distinct: false, cancellationToken);
     }
 
@@ -32,7 +33,7 @@ public class MachineSummaryRepository
         if (!MachineSummaryConfig.IsValidProcess(process, isTe))
             throw new ArgumentException($"Unknown process '{process}'.", nameof(process));
 
-        return ImportantDeviceQuery.GetMachinesByLocationAsync(_connectionString, process,
+        return ImportantDeviceQuery.GetMachinesByLocationAsync(_connections, process,
             MachineSummaryConfig.GetLocations(process, isTe), from, to, isTe, distinct: false, cancellationToken);
     }
 }

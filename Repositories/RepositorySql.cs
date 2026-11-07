@@ -7,10 +7,6 @@ namespace MachineKarte.Web.Repositories;
 // Shared SQL plumbing only. Each repository owns its legacy filters and row ordering.
 internal static class RepositorySql
 {
-    public static string GetConnectionString(IConfiguration configuration) =>
-        configuration.GetConnectionString("DBConnection")
-        ?? throw new InvalidOperationException("DBConnection not configured.");
-
     public static void AddVarChar(SqlCommand command, string name, string value, int size) =>
         command.Parameters.Add(name, SqlDbType.VarChar, Math.Max(size, value.Length)).Value = value;
 

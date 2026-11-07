@@ -1,3 +1,4 @@
+using MachineKarte.Web.Services;
 using System.Data;
 using MachineKarte.Web.Models;
 using Microsoft.Data.SqlClient;
@@ -6,17 +7,16 @@ namespace MachineKarte.Web.Repositories;
 
 public class BmReportRepository
 {
-    private readonly string _connectionString;
+    private readonly DatabaseConnectionResolver _connections;
 
-    public BmReportRepository(IConfiguration configuration) =>
-        _connectionString = RepositorySql.GetConnectionString(configuration);
+    public BmReportRepository(DatabaseConnectionResolver connections) =>
+        _connections = connections;
     // Main record from ViewTEData_Test
     public async Task<BmReportData?> GetReportDataAsync(int bmId, CancellationToken cancellationToken = default)
     {
         const string sql = "SELECT TOP 1 * FROM ViewTEData_Test WHERE bmID = @bmID";
 
-        await using var conn = new SqlConnection(_connectionString);
-        await conn.OpenAsync(cancellationToken);
+        await using var conn = await _connections.OpenConnectionAsync(cancellationToken);
         await using var cmd = new SqlCommand(sql, conn);
         cmd.Parameters.Add("@bmID", SqlDbType.Int).Value = bmId;
 
@@ -139,7 +139,7 @@ public class BmReportRepository
             (data.BMCauseID, "TECause", "BMCauseID", "BMCause", value => data.BMCause = value),
             (data.PrevMeasureID, "TEPREVMeasure", "PREVMeasureID", "PREVMeasure", value => data.PREVMeasure = value)
         };
-        await using var conn = new SqlConnection(_connectionString);
+        await using var conn = await _connections.OpenConnectionAsync(cancellationToken);
         await using var cmd = new SqlCommand(@"SELECT VRNumber1, VRNumber2, VRNumber3
             FROM [eMaintenanceSystemDB].[dbo].[VRNumber] WHERE bmID = @bmID;", conn);
         cmd.Parameters.Add("@bmID", SqlDbType.Int).Value = data.BmId;
@@ -154,7 +154,6 @@ public class BmReportRepository
                 cmd.Parameters.AddWithValue($"@id{i}", lookup.Id);
             }
         }
-        await conn.OpenAsync(cancellationToken);
         await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
         if (await reader.ReadAsync(cancellationToken))
         {

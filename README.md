@@ -16,9 +16,13 @@ dotnet build MachineKarteWebCore.csproj --no-restore
 dotnet run --project MachineKarteWebCore.csproj --no-build
 ```
 
-Configure `ConnectionStrings:DBConnection` for the intended environment before
-running the application. Monitoring session tracking and Action Card saves can
-write to the configured database; see the database guide for test isolation.
+Configure `ConnectionStrings:MachineDBConnection` and
+`ConnectionStrings:IntranetDBConnection` for the intended environment before
+running the application. Machine is primary; Intranet is the automatic fallback.
+Old-only `DBConnection` configurations remain supported by the central resolver.
+Monitoring session tracking and Action Card saves can write to the selected
+database; see the [database guide](Documentation/DATABASE.md) for resolution,
+timeouts, recovery and test isolation.
 
 ## Documentation
 

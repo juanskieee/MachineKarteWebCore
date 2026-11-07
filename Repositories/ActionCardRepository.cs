@@ -1,3 +1,4 @@
+using MachineKarte.Web.Services;
 // Converted from Form_Input.vb SQL — E-Karte System
 using System.Data;
 using MachineKarte.Web.Models;
@@ -7,12 +8,11 @@ namespace MachineKarte.Web.Repositories;
 
 public class ActionCardRepository
 {
-    private readonly string _connectionString;
+    private readonly DatabaseConnectionResolver _connections;
 
-    public ActionCardRepository(IConfiguration configuration) =>
-        _connectionString = RepositorySql.GetConnectionString(configuration);
+    public ActionCardRepository(DatabaseConnectionResolver connections) =>
+        _connections = connections;
 
-    private SqlConnection Open() => new(_connectionString);
     // LOAD (SELECT *)
     // Mirrors: LoadData(bmid, mcno) private overload in Form_Input.vb
     public async Task<ActionCardData?> LoadAsync(
@@ -24,8 +24,7 @@ public class ActionCardRepository
                         WHERE bmid = @BmId AND Machineno = @McNo
                         ORDER BY Seqno DESC";
 
-        await using var conn = Open();
-        await conn.OpenAsync(cancellationToken);
+        await using var conn = await _connections.OpenConnectionAsync(cancellationToken);
         await using var cmd = new SqlCommand(sql, conn);
         cmd.Parameters.AddWithValue("@BmId", bmId);
         cmd.Parameters.AddWithValue("@McNo", mcNo);
@@ -122,8 +121,7 @@ public class ActionCardRepository
             SELECT 0;
         END;";
 
-        await using var conn = Open();
-        await conn.OpenAsync();
+        await using var conn = await _connections.OpenConnectionAsync();
         await using var cmd = new SqlCommand(sql, conn);
         BindParameters(cmd, d);
         // The check and insert share one SQL statement/transaction across workers.
@@ -162,8 +160,7 @@ public class ActionCardRepository
             WHERE Seqno = @Seqno AND BMID = @BmId AND Machineno = @McNo;
             SELECT @@ROWCOUNT;";
 
-        await using var conn = Open();
-        await conn.OpenAsync();
+        await using var conn = await _connections.OpenConnectionAsync();
         await using var cmd = new SqlCommand(sql, conn);
         BindParameters(cmd, d);
         cmd.Parameters.Add("@Seqno", SqlDbType.Int).Value = d.Seqno;

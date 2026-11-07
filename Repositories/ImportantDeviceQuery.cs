@@ -1,3 +1,4 @@
+using MachineKarte.Web.Services;
 using Microsoft.Data.SqlClient;
 
 namespace MachineKarte.Web.Repositories;
@@ -8,7 +9,7 @@ namespace MachineKarte.Web.Repositories;
 internal static class ImportantDeviceQuery
 {
     public static async Task<List<string>> GetMachinesAsync(
-        string connectionString,
+        DatabaseConnectionResolver connections,
         string process,
         string location,
         DateTime from,
@@ -17,13 +18,13 @@ internal static class ImportantDeviceQuery
         bool distinct,
         CancellationToken cancellationToken)
     {
-        var machines = await GetMachinesByLocationAsync(connectionString, process, [location],
+        var machines = await GetMachinesByLocationAsync(connections, process, [location],
             from, to, te, distinct, cancellationToken);
         return machines[location];
     }
 
     public static async Task<Dictionary<string, List<string>>> GetMachinesByLocationAsync(
-        string connectionString,
+        DatabaseConnectionResolver connections,
         string process,
         string[] locations,
         DateTime from,
@@ -32,13 +33,13 @@ internal static class ImportantDeviceQuery
         bool distinct,
         CancellationToken cancellationToken)
     {
-        var machines = await GetMachinesByProcessAsync(connectionString,
+        var machines = await GetMachinesByProcessAsync(connections,
             new Dictionary<string, string[]> { [process] = locations }, from, to, te, distinct, cancellationToken);
         return machines[process];
     }
 
     public static async Task<Dictionary<string, Dictionary<string, List<string>>>> GetMachinesByProcessAsync(
-        string connectionString, IReadOnlyDictionary<string, string[]> processLocations,
+        DatabaseConnectionResolver connections, IReadOnlyDictionary<string, string[]> processLocations,
         DateTime from, DateTime to, bool te, bool distinct, CancellationToken cancellationToken)
     {
         var machines = processLocations.ToDictionary(entry => entry.Key,
@@ -114,7 +115,7 @@ AND NOT EXISTS
 ORDER BY
     fm.MachineNo DESC;";
 
-        await using var connection = new SqlConnection(connectionString);
+        await using var connection = await connections.OpenConnectionAsync(cancellationToken);
 
         await using var command = new SqlCommand(sql, connection);
 
@@ -126,7 +127,6 @@ ORDER BY
                 RepositorySql.AddVarChar(command, $"@Location{i}_{j}", queries[i].Value[j], 20);
         }
 
-        await connection.OpenAsync(cancellationToken);
 
         await using var reader =
             await command.ExecuteReaderAsync(cancellationToken);

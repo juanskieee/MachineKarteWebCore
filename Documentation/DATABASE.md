@@ -5,10 +5,120 @@ validation index. [Reporting](REPORTS.md) covers report data and template rules.
 
 ## Connections and writes
 
-Repositories use `ConnectionStrings:DBConnection`. Some queries explicitly name
-`eMaintenanceSystemDB`, so changing only the initial catalog on the same server
-does not isolate every query. Use a separate test instance or the existing
-isolated fixture runners for database testing.
+Repositories obtain validated connections from the singleton
+[`DatabaseConnectionResolver`](../Services/DatabaseConnectionResolver.cs).
+`MachineDBConnection` is primary; `IntranetDBConnection` is used automatically
+when the primary cannot open or fails `SELECT 1`. Selection happens before any
+repository query. No business query or write is replayed.
+
+Configure [appsettings.json](../appsettings.json) with both endpoints:
+
+```json
+"ConnectionStrings": {
+  "MachineDBConnection": "Data Source=172.26.220.152;Initial Catalog=eMaintenanceSystemDB;User ID=eMaintUser;Password=<password>;TrustServerCertificate=True;",
+  "IntranetDBConnection": "Data Source=10.27.35.222;Initial Catalog=eMaintenanceSystemDB;User ID=eMaintUser;Password=<password>;TrustServerCertificate=True;"
+},
+"DatabaseConnection": {
+  "ValidationTimeoutSeconds": 2,
+  "PrimaryRetrySeconds": 30
+}
+```
+
+Existing deployments that supply only `ConnectionStrings:DBConnection` still
+work: the resolver treats that legacy value as the primary only when
+`MachineDBConnection` is absent. A configured new primary always takes
+precedence. Update environment variables to
+`ConnectionStrings__MachineDBConnection` and
+`ConnectionStrings__IntranetDBConnection` when migrating to the new appsettings.
+Blank/malformed/missing primary settings also permit fallback. If both endpoints
+fail, resolution logs an error and throws before repository SQL executes.
+
+The only new registration in [Program.cs](../Program.cs) is:
+
+```csharp
+builder.Services.AddSingleton<DatabaseConnectionResolver>();
+```
+
+Existing repository and business-service registrations remain scoped. No options
+class or additional package is required; the resolver reads its settings through
+`IConfiguration`. Restart the application after changing connection settings.
+Repository constructors now receive the resolver instead of configuration:
+
+```csharp
+private readonly DatabaseConnectionResolver _connections;
+
+public MonitoringRepository(DatabaseConnectionResolver connections) =>
+    _connections = connections;
+
+// Inside an existing asynchronous repository method:
+await using var conn = await _connections.OpenConnectionAsync(cancellationToken);
+// Execute the existing SQL using conn; it is already open and validated.
+```
+
+`GetConnectionStringAsync(cancellationToken)` is also available to consumers that
+need the selected original string. It validates and disposes its probe connection.
+Repositories use `OpenConnectionAsync` to reuse the connection that passed
+validation, avoiding an extra login and a separate probe/open interval. Each
+caller owns and disposes its own connection; the singleton stores no shared
+connection or transaction. `ImportantDeviceQuery` takes the same resolver for
+Machine Summary and MCD reads. `RepositorySql` retains parameter/metadata helpers.
+
+Performance and reliability considerations:
+
+- Every acquisition validates the actual pooled SQL connection with `SELECT 1`.
+  This adds one small SQL round trip, while detecting outages before repository
+  SQL even when the previous acquisition succeeded. SqlClient pooling remains
+  enabled and the configured connection strings are preserved.
+- Each endpoint's open and validation share a linked two-second cancellation
+  budget by default. The first request encountering a primary outage may spend
+  that budget before trying fallback; when both endpoints time out, their budgets
+  are sequential. Existing shorter caller cancellation budgets still apply and
+  cancellation does not trigger fallback. Repository command timeouts remain
+  unchanged after validation.
+- After a primary failure, subsequent acquisitions validate Intranet directly
+  for 30 seconds, avoiding repeated primary timeouts. Afterward, one caller
+  probes Machine while concurrent callers can continue using Intranet. A
+  successful probe restores primary preference. Healthy primary opens and
+  repository queries run concurrently; there is no global query lock.
+- Information logs identify primary selection; warning logs identify fallback
+  and individual validation failures. Failure diagnostics include the setting
+  name, exception type, validation budget, and SQL number/state/class where
+  available. Connection strings, passwords and raw exception messages are
+  excluded. Selection logs occur when the selected endpoint changes.
+- Connectivity validation proves login/database access and a trivial query.
+  It does not prove every application table permission or schema contract.
+  Errors after a connection is handed to a repository propagate normally;
+  transactions and writes are never retried on a different endpoint.
+- Both servers must expose the intended compatible application data and permit
+  its writes. This helper does not replicate data or coordinate transactions
+  across servers. In-flight operations keep their existing connection; separate
+  acquisitions during failover/recovery may use different servers.
+
+Some queries explicitly name `eMaintenanceSystemDB`, so changing only the initial
+catalog on the same server does not isolate every query. Use a separate test
+instance or the existing isolated fixture runners for database testing. Fixtures
+provide only their isolated primary; the startup check overrides both endpoints
+with its loopback non-SQL sink.
+
+Run the focused offline selection check with
+`powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-DatabaseConnections.ps1`.
+It exercises primary preference, fallback, missing/malformed configuration,
+legacy compatibility, timeout versus caller cancellation, cooldown, concurrent
+recovery and safe diagnostics. It loads no application settings and contacts no
+live database. `Test-Startup.ps1` verifies SQL-independent HTML and bounded tracking.
+
+Files affected by this connection change (complete list):
+
+| Responsibility | Files |
+| --- | --- |
+| Resolver, configuration, DI | `Services/DatabaseConnectionResolver.cs`, `appsettings.json`, `Program.cs` |
+| Repository constructor and connection acquisition | `Repositories/ActionCardRepository.cs`, `Repositories/AlertBoardRepository.cs`, `Repositories/BmAnalyticsRepository.cs`, `Repositories/BmReportRepository.cs`, `Repositories/EvidenceRepository.cs`, `Repositories/MachineSummaryRepository.cs`, `Repositories/McdMonitoringRepository.cs`, `Repositories/MonitoringRepository.cs`, `Repositories/OcapViewerRepository.cs`, `Repositories/PmReportRepository.cs`, `Repositories/RawDataRepository.cs`, `Repositories/TeEvidenceRepository.cs` |
+| Shared SQL helpers | `Repositories/ImportantDeviceQuery.cs`, `Repositories/RepositorySql.cs` |
+| Focused check and existing fixture compatibility | `scripts/Test-DatabaseConnections.ps1`, `scripts/Test-Startup.ps1`, `scripts/Test-ActionCardSaves.ps1`, `scripts/Test-DataRetrieval.ps1`, `scripts/Test-MachineSummary.ps1`, `scripts/Test-MonitoringParity.ps1` |
+| Documentation | `README.md`, `Documentation/README.md`, `Documentation/DATABASE.md` |
+
+Preserved `Legacy/*.txt` desktop sources retain their original historical
+settings references; compiled application code resolves connections centrally.
 
 | Path | Database effect |
 | --- | --- |

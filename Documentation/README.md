@@ -165,6 +165,7 @@ for the affected behavior:
 
 | Script in `scripts/` | Scope and environment |
 | --- | --- |
+| `Test-DatabaseConnections.ps1` | Central primary/fallback selection, timeout/cancellation, cooldown/recovery, legacy configuration and safe logging; offline |
 | `Test-MonitoringQueries.ps1` | Generated SQL/schema references, statuses, designer mappings, scheduling, and Need Action fixtures; no database |
 | `Test-MonitoringParity.ps1` | Actual Monitoring repository/dashboard reads; `-BoardOnly` focuses on grouped columns versus existing web reads/order in all five modes; full desktop SQL audit has a known date-window mismatch (see DATABASE.md); disposable LocalDB catalog; optional `-Benchmark` |
 | `Test-ActionSummaryParity.ps1` | Form2 counts/colors against compiled original VB routines; no database |

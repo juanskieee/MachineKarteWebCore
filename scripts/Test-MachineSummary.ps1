@@ -21,6 +21,7 @@ using System.Reflection;
 using System.Text.Json;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 
 void Require(bool condition, string message) { if (!condition) throw new Exception(message); }
 var database = "MachineKarte_SummaryTest_" + Guid.NewGuid().ToString("N");
@@ -35,8 +36,9 @@ await Admin($"CREATE DATABASE [{database}]");
 try {
     connection.InitialCatalog = database;
     var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> {
-        ["ConnectionStrings:DBConnection"] = connection.ConnectionString
+        ["ConnectionStrings:MachineDBConnection"] = connection.ConnectionString
     }).Build();
+    var connections = new DatabaseConnectionResolver(config, NullLogger<DatabaseConnectionResolver>.Instance);
     await using var fixture = new SqlConnection(connection.ConnectionString);
     await fixture.OpenAsync();
     async Task Execute(string sql) { await using var command = new SqlCommand(sql, fixture); await command.ExecuteNonQueryAsync(); }
@@ -63,7 +65,7 @@ ALTER TABLE TEBMMaintenance ADD BMContentID int NULL, AcredBMContentID int NULL;
 ");
     foreach (var process in MachineSummaryConfig.EeeProcessOrder.Where(p => p != "DC"))
         await Execute($"SELECT TOP (0) * INTO {process}BMMaintenance FROM DCBMMaintenance;");
-    var summaries = new MachineSummaryRepository(config);
+    var summaries = new MachineSummaryRepository(connections);
     var from = new DateTime(2026,11,1); var to = from;
     foreach (var te in new[] { false, true }) {
         var process = te ? "FT" : "DC";
@@ -72,7 +74,7 @@ ALTER TABLE TEBMMaintenance ADD BMContentID int NULL, AcredBMContentID int NULL;
         foreach (var (location, machines) in all)
             Require(machines.SequenceEqual(await summaries.GetMachinesAsync(process, location, new DateTime(2026,11,1), new DateTime(2026,11,1), te)), "Batched floor results differ");
         Require(all[floor].Count == 2 && all["LSI2-1F"].Count == 1, "BM rows or floor isolation changed");
-        var distinct = await new McdMonitoringRepository(config).GetMachinesAsync(process, floor, new DateTime(2026,11,1), new DateTime(2026,11,1), te);
+        var distinct = await new McdMonitoringRepository(connections).GetMachinesAsync(process, floor, new DateTime(2026,11,1), new DateTime(2026,11,1), te);
         Require(distinct.Count == 1, "Shared MCD query lost DISTINCT semantics");
         var board = await new MachineSummaryService(summaries).BuildSummaryAsync(new MachineSummaryQuery {
             UserMode=te ? "TE" : "EEE", DateFrom="2026-11-01", DateTo="2026-11-01"
@@ -119,7 +121,7 @@ INSERT MachineKarte_ActionCard (BMID,MachineNo) VALUES (30,'ATC-A');
     foreach (var te in new[] { false,true })
         Require(MachineState(await summaries.GetAllMachinesAsync(from,to,te))==MachineState(await PerProcess(te)),
             "Full-grid Machine Summary differs from individual process reads");
-    var analyticsRepo = new BmAnalyticsRepository(config);
+    var analyticsRepo = new BmAnalyticsRepository(connections);
     var analytics = new BmAnalyticsService(analyticsRepo);
     var apply = typeof(BmAnalyticsService).GetMethod("ApplyNewLoadColor",BindingFlags.NonPublic|BindingFlags.Static)!;
     async Task<BmAnalyticsResult> PerFloor(string mode,string profile) {

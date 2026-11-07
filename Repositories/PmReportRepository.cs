@@ -1,3 +1,4 @@
+using MachineKarte.Web.Services;
 using System.Data;
 using System.Globalization;
 using MachineKarte.Reporting;
@@ -24,10 +25,10 @@ public sealed class PmReportRepository
             ["EDS"] = new("EDS", "EDSTemplate.xlsx", "EDS", "ViewEDSData", false)
         };
 
-    private readonly string _connectionString;
+    private readonly DatabaseConnectionResolver _connections;
 
-    public PmReportRepository(IConfiguration configuration) =>
-        _connectionString = RepositorySql.GetConnectionString(configuration);
+    public PmReportRepository(DatabaseConnectionResolver connections) =>
+        _connections = connections;
 
     public static bool TryGetDefinition(string process, out PmReportTemplateDefinition definition)
         => Definitions.TryGetValue(process.Trim(), out definition!);
@@ -96,8 +97,7 @@ public sealed class PmReportRepository
         var records = new List<PmReportRecord>();
         var sql = $"SELECT TOP ({limit}) * FROM [{viewName}] {predicate}";
 
-        await using var connection = new SqlConnection(_connectionString);
-        await connection.OpenAsync(cancellationToken);
+        await using var connection = await _connections.OpenConnectionAsync(cancellationToken);
         await using var command = new SqlCommand(sql, connection);
         addParameters(command);
 
@@ -134,7 +134,7 @@ public sealed class PmReportRepository
             .Where(spec => !string.IsNullOrWhiteSpace(spec.Id) && spec.Id != "Select").Distinct().ToArray();
         if (requests.Length == 0) return values;
 
-        await using var connection = new SqlConnection(_connectionString);
+        await using var connection = await _connections.OpenConnectionAsync(cancellationToken);
         await using var command = new SqlCommand("", connection);
         for (var i = 0; i < requests.Length; i++)
         {
@@ -151,7 +151,6 @@ public sealed class PmReportRepository
                 : $"SELECT [{request.Value}] FROM [{request.Table}] WHERE [{request.Key}] = @id{i};";
             command.Parameters.AddWithValue($"@id{i}", request.Id);
         }
-        await connection.OpenAsync(cancellationToken);
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         for (var i = 0; i < requests.Length; i++)
         {

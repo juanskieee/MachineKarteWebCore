@@ -1,3 +1,4 @@
+using MachineKarte.Web.Services;
 using System.Data;
 using MachineKarte.Web.Models;
 using Microsoft.Data.SqlClient;
@@ -6,10 +7,10 @@ namespace MachineKarte.Web.Repositories;
 
 public class OcapViewerRepository
 {
-    private readonly string _connectionString;
+    private readonly DatabaseConnectionResolver _connections;
 
-    public OcapViewerRepository(IConfiguration configuration) =>
-        _connectionString = RepositorySql.GetConnectionString(configuration);
+    public OcapViewerRepository(DatabaseConnectionResolver connections) =>
+        _connections = connections;
 
     // OCAP checklist rows
     public async Task<List<OcapRow>> GetOcapRowsAsync(
@@ -28,11 +29,10 @@ public class OcapViewerRepository
                 BMOCAPID;";
 
         var rows = new List<OcapRow>();
-        await using var conn = new SqlConnection(_connectionString);
+        await using var conn = await _connections.OpenConnectionAsync(cancellationToken);
         await using var cmd = new SqlCommand(sql, conn);
         cmd.Parameters.AddWithValue("@BMCaseID", bmCaseId);
         RepositorySql.AddVarChar(cmd, "@Process", bmProcess, 20);
-        await conn.OpenAsync(cancellationToken);
         await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))
             rows.Add(new OcapRow
@@ -61,10 +61,9 @@ public class OcapViewerRepository
             FROM   [eMaintenanceSystemDB].[dbo].[{tableName}]
             WHERE  BMID = @BMID";
 
-        await using var conn = new SqlConnection(_connectionString);
+        await using var conn = await _connections.OpenConnectionAsync(cancellationToken);
         await using var cmd = new SqlCommand(sql, conn);
         cmd.Parameters.Add("@BMID", SqlDbType.Int).Value = bmId;
-        await conn.OpenAsync(cancellationToken);
         var result = await cmd.ExecuteScalarAsync(cancellationToken);
         return result == DBNull.Value ? null : result?.ToString();
     }

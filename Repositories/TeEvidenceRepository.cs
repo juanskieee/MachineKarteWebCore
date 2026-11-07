@@ -1,3 +1,4 @@
+using MachineKarte.Web.Services;
 using MachineKarte.Web.Models;
 using Microsoft.Data.SqlClient;
 
@@ -5,17 +6,16 @@ namespace MachineKarte.Web.Repositories;
 
 public class TeEvidenceRepository
 {
-    private readonly string _connectionString;
+    private readonly DatabaseConnectionResolver _connections;
 
-    public TeEvidenceRepository(IConfiguration configuration)
-        => _connectionString = RepositorySql.GetConnectionString(configuration);
+    public TeEvidenceRepository(DatabaseConnectionResolver connections)
+        => _connections = connections;
 
     // TEAssign (mirrors VB GetTEAssign)
     public async Task<string> GetTEAssignAsync(string bmId, CancellationToken cancellationToken = default)
     {
         const string sql = "SELECT PMConfirmGLOPReqBy, RepairedByEnd FROM ViewTEData WHERE bmID = @bmId";
-        await using var conn = new SqlConnection(_connectionString);
-        await conn.OpenAsync(cancellationToken);
+        await using var conn = await _connections.OpenConnectionAsync(cancellationToken);
         await using var cmd = new SqlCommand(sql, conn);
         cmd.Parameters.AddWithValue("@bmId", bmId);
         await using var rdr = await cmd.ExecuteReaderAsync(cancellationToken);
@@ -34,8 +34,7 @@ public class TeEvidenceRepository
         const string sql = "SELECT * FROM ViewTEData WHERE bmID = @bmId";
 
         var header = new TeEvidenceHeader();
-        await using var conn = new SqlConnection(_connectionString);
-        await conn.OpenAsync(cancellationToken);
+        await using var conn = await _connections.OpenConnectionAsync(cancellationToken);
         await using var cmd = new SqlCommand(sql, conn);
         cmd.Parameters.AddWithValue("@bmId", bmId);
         await using var rdr = await cmd.ExecuteReaderAsync(cancellationToken);
@@ -67,8 +66,7 @@ WHERE  bmID = @bmId
   AND  BMEvidence_Desc <> ''";
 
         var list = new List<TeEvidenceCategoryDesc>();
-        await using var conn = new SqlConnection(_connectionString);
-        await conn.OpenAsync(cancellationToken);
+        await using var conn = await _connections.OpenConnectionAsync(cancellationToken);
         await using var cmd = new SqlCommand(sql, conn);
         cmd.Parameters.AddWithValue("@bmId", bmId);
         await using var rdr = await cmd.ExecuteReaderAsync(cancellationToken);
@@ -111,8 +109,7 @@ WHERE  bmID = @bmId
 
         var result = new List<TeEvidenceImage>();
 
-        await using var conn = new SqlConnection(_connectionString);
-        await conn.OpenAsync(cancellationToken);
+        await using var conn = await _connections.OpenConnectionAsync(cancellationToken);
 
         // One round trip; TOP is still applied across BEFORE/AFTER together.
         var sql = string.Join(";", categories.Select((category, i) => $@"
@@ -158,8 +155,7 @@ WHERE  bmID = @bmId
   AND  TelekoEvidence IS NOT NULL";
 
         var list = new List<TelekoEvidenceImage>();
-        await using var conn = new SqlConnection(_connectionString);
-        await conn.OpenAsync(cancellationToken);
+        await using var conn = await _connections.OpenConnectionAsync(cancellationToken);
         await using var cmd = new SqlCommand(sql, conn);
         cmd.Parameters.AddWithValue("@bmId", bmId);
         await using var rdr = await cmd.ExecuteReaderAsync(cancellationToken);
@@ -176,8 +172,7 @@ WHERE  bmID = @bmId
             { "BEFORE QUALITY CONDITION", "AFTER QUALITY CONDITION", "IDEAL QUALITY CONDITION" };
 
         var list = new List<QualityConditionImage>();
-        await using var conn = new SqlConnection(_connectionString);
-        await conn.OpenAsync(cancellationToken);
+        await using var conn = await _connections.OpenConnectionAsync(cancellationToken);
 
         var sql = string.Join(";", categories.Select((_, i) => $@"
 SELECT TOP 1 BMEvidence_ImgFile
@@ -215,8 +210,7 @@ ORDER BY BMEvidenceID"));
     public async Task<IList<IDictionary<string, object>>> GetMiscRowsAsync(string bmId, CancellationToken cancellationToken = default)
     {
         var rows = new List<IDictionary<string, object>>();
-        await using var conn = new SqlConnection(_connectionString);
-        await conn.OpenAsync(cancellationToken);
+        await using var conn = await _connections.OpenConnectionAsync(cancellationToken);
 
         var availableColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         const string schemaSql = @"
