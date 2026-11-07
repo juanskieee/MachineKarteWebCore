@@ -14,6 +14,66 @@ public class BmAnalyticsRepository
 
     public BmAnalyticsRepository(IConfiguration configuration) =>
         _connectionString = RepositorySql.GetConnectionString(configuration);
+
+    // The active grid needs only qualifying rows, not action history or BM content.
+    public async Task<Dictionary<string, List<BmAnalyticsRow>>> GetRowsByLocationAsync(
+        string process, string[] locations, string mode, DateTime dateFrom, DateTime dateTo,
+        CancellationToken cancellationToken = default)
+    {
+        if (!BmAnalyticsMappings.GetProcesses(mode).Contains(process, StringComparer.OrdinalIgnoreCase))
+            throw new ArgumentException($"Unknown process '{process}'.", nameof(process));
+
+        var rows = locations.ToDictionary(location => location, _ => new List<BmAnalyticsRow>(),
+            StringComparer.OrdinalIgnoreCase);
+        if (locations.Length == 0) return rows;
+
+        bool te = mode == "TE";
+        string machine = te ? "TesterNo" : "Mcno";
+        string sql = $@"
+SELECT a.Process, a.Location, a.{machine}
+FROM dbo.{(te ? "TE" : process)}BMMaintenance a
+INNER JOIN dbo.{(te ? "BMTEUnit" : "BMCase")} b
+    ON a.{(te ? "BMUnitID" : "BMCaseID")} = b.{(te ? "BMTEUnitID" : "BMCaseID")}
+WHERE a.TimeOfRequest >= @Range1
+    AND a.TimeOfRequest < DATEADD(DAY,1,@Range2)
+    AND a.Location IN ({string.Join(", ", locations.Select((_, i) => $"@Location{i}"))})
+    AND a.PMCategoryID {(te ? "IN (1,4)" : "= 1")}
+    AND a.BMStatusID NOT IN ({(te ? "30,31,1,2,3,7,17" : "30,31")})
+    AND a.{(te ? "BMUnitID" : "BMCaseID")} <> 0
+    {(te ? "AND a.Process = @Process" : string.Empty)}
+    AND EXISTS (
+        SELECT 1 FROM dbo.MachineKarte_MCD mcd
+        WHERE mcd.IsActive = 1
+            AND REPLACE(mcd.DeviceName,' ','') = REPLACE(a.DeviceName,' ',''))
+    AND EXISTS (
+        SELECT 1 FROM dbo.MachineKarte_ActionCard{(te ? "_TE" : string.Empty)} ac
+        WHERE ac.BMID = a.BMID AND ac.MachineNo = a.{machine})
+ORDER BY a.{machine} DESC, a.TimeOfRequest DESC, b.{(te ? "BMTEUnitID" : "BMCase")};";
+
+        await using var connection = new SqlConnection(_connectionString);
+        await using var command = new SqlCommand(sql, connection) { CommandTimeout = 60 };
+        RepositorySql.AddDateRange(command, dateFrom, dateTo);
+        RepositorySql.AddVarChar(command, "@Process", process, 20);
+        for (int i = 0; i < locations.Length; i++)
+            RepositorySql.AddVarChar(command, $"@Location{i}", locations[i], 20);
+
+        await connection.OpenAsync(cancellationToken);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            string location = reader.GetString(1);
+            rows[location.Trim()].Add(new BmAnalyticsRow
+            {
+                Process = reader[0].ToString() ?? string.Empty,
+                Location = location,
+                Mcno = reader[2].ToString() ?? string.Empty,
+                IsMCD = "Yes",
+                HaveAction = "Yes"
+            });
+        }
+        return rows;
+    }
+
     // EEE query  (per-process table e.g. DCBMMaintenance + BMCase)
     private const string EeeSql = @"
         ;WITH LatestAction AS

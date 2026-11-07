@@ -45,11 +45,12 @@ namespace MachineKarte.Web.Services
                 result.Rows.Add(row);
             }
 
-            // Read each process table once for all its floors.
-            await foreach (var (row, locations) in MonitoringQueryBatch.ReadAsync(result.Rows,
-                row => _repo.GetMachinesByLocationAsync(row.Process, from, to, isTe, cancellationToken), cancellationToken))
+            var machinesByProcess = await MonitoringQueryBatch.RunAsync(
+                () => _repo.GetAllMachinesAsync(from, to, isTe, cancellationToken), cancellationToken);
+            foreach (var row in result.Rows)
             {
-                foreach (var (location, machines) in locations)
+                cancellationToken.ThrowIfCancellationRequested();
+                foreach (var (location, machines) in machinesByProcess[row.Process])
                 {
                     row.Cells[location] = new SummaryCellData
                     {

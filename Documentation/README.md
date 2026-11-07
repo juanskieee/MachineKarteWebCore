@@ -170,6 +170,7 @@ for the affected behavior:
 | `Update-LegacyReportMappings.ps1 -Check` | Generated mappings match extraction and audited corrections; offline |
 | `Audit-ReportTemplates.ps1` | Reproducible template/binding inventories; offline, output defaults to OS temporary storage |
 | `Test-SummaryDuplicates.ps1` | Real summary SQL against session-local tables in LocalDB |
+| `Test-MachineSummary.ps1` | Machine Summary full-grid/process parity and Analytics Form8/Form12 EEE/TE counts, lists, filters, mappings, and cancellation; disposable LocalDB database; optional `-Benchmark` |
 | `Test-ActionCardSaves.ps1` | Concurrent inserts, duplicate guards, loaded identities, and edits; disposable LocalDB database |
 | `Test-DataRetrieval.ps1` | Actual repository reads, original Form5 SQL parity, complete AlertBoard batching parity, count/distinct differences, sparse views, report lookups, evidence limits, and cancellation; disposable LocalDB database; optional `-Benchmark` |
 | `Test-Startup.ps1` | Starts its own app with a loopback non-SQL sink; HTML responsiveness and bounded tracking |

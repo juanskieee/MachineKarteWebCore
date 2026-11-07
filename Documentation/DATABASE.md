@@ -147,6 +147,40 @@ or all-repository speedup. No 100x claim or new production index is implied.
 Live plans, I/O, network waits,
 view costs, and concurrent-user behavior still need representative measurement.
 
+### Machine Summary and BM Analytics (2026-11-07)
+
+Machine Summary reads the complete grid in one command rather than 12 EEE or
+5 TE commands. EEE combines the configured process tables with `UNION ALL`;
+TE reads its shared maintenance table once with process-specific floor filters.
+The request uses one shared read slot. Eligibility, descending machine order,
+BM-row counts, and distinct drilldown lists are retained. The query remains
+read-only and does not copy the action history into temporary tables.
+
+BM Analytics reads all configured floors once per process: Form8 EEE drops from
+38 to 12 commands and Form12 EEE from 52 to 12; TE drops from 14/17 to 5.
+The active NewLoadColor path needs only process, location, and machine number.
+Its grid query filters MCD/action eligibility with duplicate-safe `EXISTS`
+and retains the case/unit join, without ranking action history, joining content,
+or formatting dates that the grid never uses. Each floor is still processed in
+its legacy order; Form8/Form12 mappings, `ATC_65`, row counts and machine-list
+deduplication remain separate. The previous raw-row query is retained for
+diagnostics and independent parity comparisons.
+
+`Test-MachineSummary.ps1` checks both summary modes and all four Analytics
+mode/profile combinations in a disposable LocalDB database. `-Benchmark` adds
+50,000 unrelated action rows and takes three alternating measurements of the
+previous and current read paths. The measured EEE medians were:
+
+| Path | Previous | Current | Commands |
+| --- | --- | --- | --- |
+| Machine Summary | 12.6 ms | 6.0 ms | 12 to 1 |
+| BM Analytics, Form12 | 585.9 ms | 19.0 ms | 52 to 12 |
+
+This small maintenance fixture isolates scheduling and action-history overhead;
+it does not establish production timings or large-result/concurrent-user speed.
+The configured live database could not be reached during this change, so the
+reported 4.72s/16.26s still require production remeasurement.
+
 ### Monitoring parity audit
 
 The missing `TE / FT / LSI2-3F / All` cards came from the TE card query's
@@ -215,7 +249,8 @@ connections without a new cross-query snapshot transaction.
 | --- | --- |
 | Monitoring | Parameterized filtered card CTEs, scoped action/OCAP lookups, one stored paging aggregation, typed dates; cancel superseded searches; cache reader metadata and group floor rows once |
 | AlertBoard | Ordered, bounded process reads, then original per-floor processing; 120/50 commands reduced to 12/5 |
-| MachineSummary / BmAnalytics | Ordered, bounded process/location reads; retain mode-specific filters, row counts, distinct-list order, and Form8/Form12 differences |
+| MachineSummary | One full-grid command; EEE table union and one TE table read; retains per-process floor eligibility, BM counts and distinct-list order |
+| BmAnalytics | Bounded process reads across configured floors; only qualifying MCD/action rows and the three fields used by the grid; retains Form8/Form12 differences |
 | McdMonitoring | Shared important-device query and read slots; valid DISTINCT ordering on projected machine/tester numbers |
 | BM report | Main row plus one batch for VR numbers and nine fixed lookups: at most two commands instead of eleven |
 | PM evidence | Five category reads in one batch, plus confirmation/header: three commands instead of seven |

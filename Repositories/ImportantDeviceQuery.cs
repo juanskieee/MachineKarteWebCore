@@ -32,13 +32,20 @@ internal static class ImportantDeviceQuery
         bool distinct,
         CancellationToken cancellationToken)
     {
-        var machines = locations.ToDictionary(location => location, _ => new List<string>(),
-            StringComparer.OrdinalIgnoreCase);
-        if (locations.Length == 0) return machines;
+        var machines = await GetMachinesByProcessAsync(connectionString,
+            new Dictionary<string, string[]> { [process] = locations }, from, to, te, distinct, cancellationToken);
+        return machines[process];
+    }
 
-        string table = te
-            ? "TEBMMaintenance"
-            : $"{process}BMMaintenance";
+    public static async Task<Dictionary<string, Dictionary<string, List<string>>>> GetMachinesByProcessAsync(
+        string connectionString, IReadOnlyDictionary<string, string[]> processLocations,
+        DateTime from, DateTime to, bool te, bool distinct, CancellationToken cancellationToken)
+    {
+        var machines = processLocations.ToDictionary(entry => entry.Key,
+            entry => entry.Value.ToDictionary(location => location, _ => new List<string>(),
+                StringComparer.OrdinalIgnoreCase), StringComparer.OrdinalIgnoreCase);
+        var queries = processLocations.Where(entry => entry.Value.Length > 0).ToArray();
+        if (queries.Length == 0) return machines;
 
         string machine = te
             ? "TesterNo"
@@ -48,10 +55,6 @@ internal static class ImportantDeviceQuery
             ? "BMUnitID"
             : "BMCaseID";
 
-        string processFilter = te
-            ? "AND a.Process = @Process"
-            : string.Empty;
-
         string statusFilter = te
             ? "a.BMStatusID NOT IN (30,31,1,2,3,7,17)"
             : "a.BMStatusID NOT IN (30,31)";
@@ -60,10 +63,11 @@ internal static class ImportantDeviceQuery
             ? "a.PMCategoryID IN (1,4)"
             : "a.PMCategoryID = 1";
 
-        string sql = $@"
-;WITH FilteredMaintenance AS
-(
+        // Keep each table's legacy eligibility; TE shares one table across processes.
+        string LocationFilter(int i) => $"a.Location IN ({string.Join(", ", queries[i].Value.Select((_, j) => $"@Location{i}_{j}"))})";
+        string MaintenanceSelect(string table, string process, string filter) => $@"
     SELECT
+        {process} AS Process,
         a.BMID,
         a.DeviceName,
         a.Location,
@@ -72,14 +76,21 @@ internal static class ImportantDeviceQuery
     WHERE
         a.TimeOfRequest >= @Range1
         AND a.TimeOfRequest < DATEADD(DAY,1,@Range2)
-        AND a.Location IN ({string.Join(", ", locations.Select((_, i) => $"@Location{i}"))})
+        AND ({filter})
         AND {categoryFilter}
         AND {statusFilter}
-        AND a.{caseId} <> 0
-        {processFilter}
-)
+        AND a.{caseId} <> 0";
+
+        string maintenance = te
+            ? MaintenanceSelect("TEBMMaintenance", "a.Process", string.Join(" OR ", queries.Select((_, i) =>
+                $"(a.Process = @Process{i} AND {LocationFilter(i)})")))
+            : string.Join(" UNION ALL ", queries.Select((entry, i) =>
+                MaintenanceSelect($"{entry.Key}BMMaintenance", $"@Process{i}", LocationFilter(i))));
+
+        string sql = $@"
+;WITH FilteredMaintenance AS ({maintenance})
 SELECT {(distinct ? "DISTINCT" : string.Empty)}
-       fm.MachineNo, fm.Location
+       fm.MachineNo, fm.Location, fm.Process
 FROM FilteredMaintenance fm
 
 WHERE EXISTS
@@ -87,8 +98,7 @@ WHERE EXISTS
     SELECT 1
     FROM dbo.MachineKarte_MCD mcd
     WHERE
-        mcd.IsActive = 1
-        AND REPLACE(mcd.DeviceName,' ','')
+        mcd.IsActive = 1 AND REPLACE(mcd.DeviceName,' ','')
             = REPLACE(fm.DeviceName,' ','')
 )
 
@@ -109,12 +119,11 @@ ORDER BY
         await using var command = new SqlCommand(sql, connection);
 
         RepositorySql.AddDateRange(command, from, to);
-        for (var i = 0; i < locations.Length; i++)
-            RepositorySql.AddVarChar(command, $"@Location{i}", locations[i], 20);
-
-        if (te)
+        for (var i = 0; i < queries.Length; i++)
         {
-            RepositorySql.AddVarChar(command, "@Process", process, 20);
+            RepositorySql.AddVarChar(command, $"@Process{i}", queries[i].Key, 20);
+            for (var j = 0; j < queries[i].Value.Length; j++)
+                RepositorySql.AddVarChar(command, $"@Location{i}_{j}", queries[i].Value[j], 20);
         }
 
         await connection.OpenAsync(cancellationToken);
@@ -128,7 +137,7 @@ ORDER BY
 
             if (!string.IsNullOrWhiteSpace(value))
             {
-                machines[reader.GetString(1).Trim()].Add(value);
+                machines[reader.GetString(2).Trim()][reader.GetString(1).Trim()].Add(value);
             }
         }
 
