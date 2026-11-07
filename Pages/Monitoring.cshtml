@@ -1,7 +1,7 @@
 @page
 @model MachineKarte.Web.Pages.MonitoringModel
 @{
-    ViewData["Title"] = "Machine Monitoring";
+    ViewData["Title"] = "E-Karte";
     Layout = "_Layout";
 }
 <div class="monitoring-screen">
@@ -14,7 +14,12 @@
                 </table>
             </div>
             <div class="monitoring-heading">
-                <h1>E-Karte System</h1>
+                <div class="ekarte-brand">
+                    <img src="/favicon.ico"
+                        alt="E-Karte System Logo"
+                        class="ekarte-logo" />
+                    <h1>E-Karte System</h1>
+                </div>
                 <div class="monitoring-status">
                     <details class="monitoring-legend">
                         <summary>Status &amp; action legend</summary>

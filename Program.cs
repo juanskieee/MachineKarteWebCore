@@ -6,6 +6,7 @@ using Microsoft.Extensions.FileProviders;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddSingleton<DatabaseConnectionResolver>();
+builder.Services.AddHostedService(provider => provider.GetRequiredService<DatabaseConnectionResolver>());
 builder.Services.AddMemoryCache();
 
 // ─────────────────────────────────────────────────────────────

@@ -5,11 +5,16 @@ validation index. [Reporting](REPORTS.md) covers report data and template rules.
 
 ## Connections and writes
 
-Repositories obtain validated connections from the singleton
+Repositories obtain connections from the hosted singleton
 [`DatabaseConnectionResolver`](../Services/DatabaseConnectionResolver.cs).
 `MachineDBConnection` is primary; `IntranetDBConnection` is used automatically
-when the primary cannot open or fails `SELECT 1`. Selection happens before any
-repository query. No business query or write is replayed.
+when the primary cannot open or fails a connectivity probe. Discovery starts
+with the application, before normal database requests, and caches its selection.
+Page rendering never waits for discovery. No business query or write is replayed.
+
+SQL connections originate from the web server, so the selected endpoint reflects
+the server's connectivity rather than the browser user's network/IP. All users
+of the same application worker share the resolved selection.
 
 Configure [appsettings.json](../appsettings.json) with both endpoints:
 
@@ -33,10 +38,12 @@ precedence. Update environment variables to
 Blank/malformed/missing primary settings also permit fallback. If both endpoints
 fail, resolution logs an error and throws before repository SQL executes.
 
-The only new registration in [Program.cs](../Program.cs) is:
+Register the same instance as both resolver and background service in
+[Program.cs](../Program.cs):
 
 ```csharp
 builder.Services.AddSingleton<DatabaseConnectionResolver>();
+builder.Services.AddHostedService(provider => provider.GetRequiredService<DatabaseConnectionResolver>());
 ```
 
 Existing repository and business-service registrations remain scoped. No options
@@ -52,40 +59,51 @@ public MonitoringRepository(DatabaseConnectionResolver connections) =>
 
 // Inside an existing asynchronous repository method:
 await using var conn = await _connections.OpenConnectionAsync(cancellationToken);
-// Execute the existing SQL using conn; it is already open and validated.
+// Execute existing SQL using conn; it is already open on the selected endpoint.
 ```
 
 `GetConnectionStringAsync(cancellationToken)` is also available to consumers that
-need the selected original string. It validates and disposes its probe connection.
-Repositories use `OpenConnectionAsync` to reuse the connection that passed
-validation, avoiding an extra login and a separate probe/open interval. Each
-caller owns and disposes its own connection; the singleton stores no shared
-connection or transaction. `ImportantDeviceQuery` takes the same resolver for
+need the selected original string. After discovery it returns an already-completed
+cached task: no database access, timeout, probe, or selection lock. The
+`ActiveConnectionName` property identifies Machine or Intranet without exposing
+credentials. `InitializeAsync` allows an explicit wait when needed; concurrent
+cold callers share one discovery, and cancelling a wait does not cancel discovery
+for everyone else.
+
+Repositories keep calling `OpenConnectionAsync`. It opens the cached endpoint
+without executing `SELECT 1`. If opening fails, the resolver selects and validates
+the alternate before handing a connection to repository SQL. Each caller owns
+and disposes its own connection; the singleton stores no shared open connection
+or transaction. `ImportantDeviceQuery` takes the same resolver for
 Machine Summary and MCD reads. `RepositorySql` retains parameter/metadata helpers.
 
 Performance and reliability considerations:
 
-- Every acquisition validates the actual pooled SQL connection with `SELECT 1`.
-  This adds one small SQL round trip, while detecting outages before repository
-  SQL even when the previous acquisition succeeded. SqlClient pooling remains
-  enabled and the configured connection strings are preserved.
-- Each endpoint's open and validation share a linked two-second cancellation
-  budget by default. The first request encountering a primary outage may spend
-  that budget before trying fallback; when both endpoints time out, their budgets
-  are sequential. Existing shorter caller cancellation budgets still apply and
-  cancellation does not trigger fallback. Repository command timeouts remain
-  unchanged after validation.
-- After a primary failure, subsequent acquisitions validate Intranet directly
-  for 30 seconds, avoiding repeated primary timeouts. Afterward, one caller
-  probes Machine while concurrent callers can continue using Intranet. A
-  successful probe restores primary preference. Healthy primary opens and
-  repository queries run concurrently; there is no global query lock.
+- Startup discovery opens and validates Machine first with `SELECT 1`, then
+  Intranet only if needed. It runs asynchronously so HTML remains responsive.
+  The first database operation may still wait for unfinished discovery; later
+  operations reuse its cached decision. This warms SQL connection pooling too.
+- Normal acquisitions perform only their required `SqlConnection.OpenAsync`;
+  the repeated `SELECT 1` round trip is removed. Configured connection strings,
+  SqlClient pooling and repository query/command behavior are preserved.
+- The hosted service checks connectivity every `PrimaryRetrySeconds` (default
+  30 seconds), always preferring Machine. Health probes and primary recovery do
+  not delay cached lookups or successful connection opens on the current server.
+  Recovered Machine becomes primary automatically. There is no common request
+  lock; only discovery, health checks and failure selection are serialized.
+- Each connection open/probe retains the configured two-second budget. Caller
+  cancellation does not trigger fallback. A newly failed connection can still
+  cost its timeout before fallback; the change removes repeated discovery from
+  healthy request paths rather than eliminating physical network latency.
+- When neither endpoint is available, database operations fail quickly using
+  the cached unavailable state. Background checks continue attempting recovery;
+  requests do not each repeat both connection timeouts. The host remains up.
 - Information logs identify primary selection; warning logs identify fallback
   and individual validation failures. Failure diagnostics include the setting
   name, exception type, validation budget, and SQL number/state/class where
   available. Connection strings, passwords and raw exception messages are
   excluded. Selection logs occur when the selected endpoint changes.
-- Connectivity validation proves login/database access and a trivial query.
+- Background connectivity validation proves login/database access and a trivial query.
   It does not prove every application table permission or schema contract.
   Errors after a connection is handed to a repository propagate normally;
   transactions and writes are never retried on a different endpoint.
@@ -103,11 +121,16 @@ with its loopback non-SQL sink.
 Run the focused offline selection check with
 `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-DatabaseConnections.ps1`.
 It exercises primary preference, fallback, missing/malformed configuration,
-legacy compatibility, timeout versus caller cancellation, cooldown, concurrent
-recovery and safe diagnostics. It loads no application settings and contacts no
+legacy compatibility, shared startup discovery, cached lookup, probe-free opens,
+background recovery, timeout/cancellation, total-outage caching and safe diagnostics.
+One offline run completed 100,000 cached string lookups in 2.15 ms (about 21.5 ns
+per lookup), with zero additional connection/probe calls. This measures resolver
+lookup overhead, not SQL query or HTTP response speed; a system-wide 100x speedup
+has not been measured. The check loads no application settings and contacts no
 live database. `Test-Startup.ps1` verifies SQL-independent HTML and bounded tracking.
 
-Files affected by this connection change (complete list):
+Original connection-migration file inventory (startup/cache optimization itself
+only changes the resolver, Program registration, focused check and documentation):
 
 | Responsibility | Files |
 | --- | --- |
@@ -122,7 +145,7 @@ settings references; compiled application code resolves connections centrally.
 
 | Path | Database effect |
 | --- | --- |
-| Monitoring initial HTML | No database work |
+| Monitoring initial HTML | No blocking database work; application-start discovery runs independently |
 | `POST /Monitoring?handler=TrackSession` after browser load | May insert/update `MachineKarte_PCStatus`, keyed by the web host's machine name |
 | Action Card Save | May insert/update the PM/TE/CC/EEE/VIS `MachineKarte_ActionCard*` table selected by user mode |
 | Summaries, dashboards, OCAP, and report/evidence retrieval | Reads; Monitoring paging materializes grouped counts in a session-local temporary table; generated reports are returned directly to the browser without output-share writes |

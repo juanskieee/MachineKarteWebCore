@@ -4,7 +4,7 @@
 .monitoring-overview { min-width: 0; display: flex; align-items: center; gap: 8px; }
 .monitoring-heading { flex: 0 0 210px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
 .monitoring-status { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.monitoring-heading h1 { margin: 0; font-size: 22px; font-weight: 700; }
+.monitoring-heading h1 { margin: 0; font-size: 20px; font-weight: 700; }
 .monitoring-legend { position: relative; font-size: 12px; }
 .monitoring-legend summary { cursor: pointer; padding: 6px 0; }
 .legend-content { position: absolute; right: 0; top: 100%; display: grid; gap: 8px; width: min(380px, calc(100vw - 24px)); max-height: 70dvh; overflow-y: auto; z-index: 20; background: #343434; padding: 10px; box-shadow: 0 8px 20px #0005; }

@@ -127,3 +127,19 @@
 .workflow .ab-table .ab-cell-label { background: var(--summary-label); font-size: 15px; font-weight: 700; }
 .workflow .ab-table .ab-cell-na { background: lightgray; }
 .workflow .ab-table .ab-cell-grand { color: red; }
+.ekarte-brand {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.ekarte-logo {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+}
+
+.monitoring-heading h1 {
+    margin: 0;
+}
