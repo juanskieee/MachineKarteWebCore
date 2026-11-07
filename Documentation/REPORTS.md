@@ -77,9 +77,12 @@ length changes; BM values and populated workbooks are never cached. Shared
 template cloning is locked, while all population and serialization happen on
 the private workbook outside that lock.
 
-PM/TE evidence resolves distinct photo paths and copies distinct source photos
-to a per-export OS temporary directory, with at most four concurrent filesystem
-operations. The same validated PM/TE/archive roots, precedence, missing-image
+PM/TE evidence validates photo paths without network access, then opens and copies
+each distinct source directly to a per-export OS temporary directory, with at
+most four concurrent filesystem operations. A separate SMB `File.Exists` request
+before every copy has been removed. Resolution and copying form one pipeline;
+absolute/relative aliases share the same in-flight copy. Unavailable candidates
+continue to the archive root or placeholder. The same validated PM/TE/archive roots, precedence, missing-image
 marks, category ordering, TOP limits, connector routing, and worksheet mappings
 still apply. The compiled writer reads these local copies and memoizes its
 picture existence checks; it never mutates a workbook concurrently. Form10's
@@ -88,10 +91,33 @@ tildes in resolved local staging directories. Temporary
 photos are removed on success, failure, or cancellation. Fresh generations read
 current database rows and photos rather than reusing a previous report.
 
+TE generation reads its assignment from the already-loaded header instead of
+querying `ViewTEData` a second time. The header projects only its needed fields
+from the wide view; a whitelisted metadata projection retains support for older
+views with missing optional columns. It stages only the final visible row for
+each test-board condition/connector, preserving the writer's last-row behavior
+without fetching photographs that it would immediately overwrite. Both evidence
+services load/clone their templates while independent SQL reads are in flight.
+Image bytes, image quality, workbook mappings and PDF selection remain unchanged.
+
+Successful PM/TE generations log separate milliseconds for data/template work,
+photo staging, workbook population, serialization and total service time. These
+timings identify SQL/share delays separately from PDF conversion without logging
+photo paths or report contents. Monitoring's MachineList response also includes
+its service duration in the `Server-Timing` header.
+
 The offline regression runner measures fresh-template loading versus cached
 cloning and checks both formats with actual templates and photo bytes. Its
 measurements cover local fixtures; total generation time on the production SQL
 server and file shares still needs a representative deployment measurement.
+The focused `Test-ReportGeneration.ps1 -EvidenceOnly` run exercises all eleven
+PM evidence processes and the TE main/connector/quality sheets, path validation,
+photo bytes, cleanup, clones and both output formats, skipping PM/TE record-report
+fixtures. One local run measured PM PDF serialization at 220–835 ms after the
+first 2,368 ms export, and TE PDF serialization at 122–164 ms. These figures exclude
+production SQL/share latency and are not replacement timings for the reported
+28.49-second PM or 21.64-second TE HTTP requests. Live SQL/share reachability was
+unavailable during this change, so those complete request durations remain unmeasured.
 
 ## Template selection
 
@@ -251,6 +277,7 @@ to check named routing; incomplete copies exercise missing-sheet rejection. The
 runner prints its unique OS temporary artifact directory. Its focused
 `-DownloadOnly` mode checks real in-memory XLSX/PDF responses without running the
 full mapping suite.
+Use `-EvidenceOnly` for PM/TE evidence and source-photo performance changes.
 
 The audit defaults to `MachineKarte-ReportAudit/Inventory` under OS temporary
 storage and accepts `-OutputDirectory`. It regenerates `Templates.csv`,

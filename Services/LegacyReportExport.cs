@@ -72,21 +72,27 @@ public static class LegacyReportExport
     // Absolute paths must name one of those roots; never search by filename alone.
     public static string ResolveEvidenceImage(string storedPath, string legacySystemRoot, string imageRoot,
         bool te = false, string? sharedEvidenceRoot = null)
+        => EvidenceImageCandidates(storedPath, legacySystemRoot, te, sharedEvidenceRoot).FirstOrDefault(File.Exists)
+            ?? Path.Combine(imageRoot, "noimage.png");
+
+    // Validate paths without touching the network. Staging opens candidates directly,
+    // avoiding a separate SMB existence request for every photograph.
+    internal static IReadOnlyList<string> EvidenceImageCandidates(string storedPath, string legacySystemRoot,
+        bool te = false, string? sharedEvidenceRoot = null)
     {
-        var placeholder = Path.Combine(imageRoot, "noimage.png");
-        if (string.IsNullOrEmpty(storedPath)) return placeholder;
+        if (string.IsNullOrEmpty(storedPath)) return [];
 
         var path = (te ? storedPath.Replace("~", "") : storedPath).Replace('/', '\\');
         try
         {
-            string? ExistingImage(string root, string relative)
+            string? Candidate(string root, string relative)
             {
                 var parts = relative.Split('\\');
                 if (parts.Any(part => part.Length == 0 || part is "." or ".." || part.Contains(':')))
                     return null;
                 var prefix = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
                 var candidate = Path.GetFullPath(Path.Combine(new[] { root }.Concat(parts).ToArray()));
-                return candidate.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) && File.Exists(candidate)
+                return candidate.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
                     ? candidate : null;
             }
 
@@ -97,24 +103,25 @@ public static class LegacyReportExport
                     if (string.IsNullOrEmpty(root)) continue;
                     var prefix = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
                     if (path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-                        return ExistingImage(root, path[prefix.Length..]) ?? placeholder;
+                        return Candidate(root, path[prefix.Length..]) is { } absolute ? [absolute] : [];
                 }
-                return placeholder;
+                return [];
             }
 
-            if (!path.StartsWith(@"\Upload\", StringComparison.OrdinalIgnoreCase)) return placeholder;
-            var image = ExistingImage(legacySystemRoot, path[1..]);
-            if (image is not null) return image;
+            if (!path.StartsWith(@"\Upload\", StringComparison.OrdinalIgnoreCase)) return [];
+            var candidates = new List<string>();
+            if (Candidate(legacySystemRoot, path[1..]) is { } original) candidates.Add(original);
 
             const string archivePrefix = @"\Upload\Evidence\";
-            return sharedEvidenceRoot is not null && path.StartsWith(archivePrefix, StringComparison.OrdinalIgnoreCase)
-                ? ExistingImage(sharedEvidenceRoot, path[archivePrefix.Length..]) ?? placeholder
-                : placeholder;
+            if (sharedEvidenceRoot is not null && path.StartsWith(archivePrefix, StringComparison.OrdinalIgnoreCase)
+                && Candidate(sharedEvidenceRoot, path[archivePrefix.Length..]) is { } archive)
+                candidates.Add(archive);
+            return candidates;
         }
         catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
         {
             // Form4/Form10 use File.Exists; malformed or missing records use noimage.
-            return placeholder;
+            return [];
         }
     }
 }

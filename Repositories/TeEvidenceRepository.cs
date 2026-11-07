@@ -31,7 +31,18 @@ public class TeEvidenceRepository
     // Header from ViewTEData
     public async Task<TeEvidenceHeader?> GetHeaderAsync(string bmId, CancellationToken cancellationToken = default)
     {
-        const string sql = "SELECT * FROM ViewTEData WHERE bmID = @bmId";
+        // Project only the header fields from the wide view. Inspecting its columns
+        // keeps compatibility with older/sparse views where some fields are absent.
+        const string sql = @"
+DECLARE @columns nvarchar(max) = STUFF((
+    SELECT N',' + QUOTENAME(COLUMN_NAME)
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = 'ViewTEData'
+      AND COLUMN_NAME IN ('bmID', 'MCNo', 'TesterNo', 'DeviceName', 'LOTNo', 'RequestContent',
+          'WaferNo', 'StartOfRepair', 'EndOfRepair', 'Remarks', 'PMConfirmGLOPReqBy', 'RepairedByEnd')
+    FOR XML PATH(''), TYPE).value('.', 'nvarchar(max)'), 1, 1, N'');
+DECLARE @query nvarchar(max) = N'SELECT ' + @columns + N' FROM dbo.ViewTEData WHERE bmID = @id';
+EXEC sys.sp_executesql @query, N'@id int', @id = @bmId;";
 
         var header = new TeEvidenceHeader();
         await using var conn = await _connections.OpenConnectionAsync(cancellationToken);
@@ -50,6 +61,9 @@ public class TeEvidenceRepository
             header.StartOfRepair = RepositorySql.ReadOptional(rdr, columns, "StartOfRepair");
             header.EndOfRepair = RepositorySql.ReadOptional(rdr, columns, "EndOfRepair");
             header.Remarks = RepositorySql.ReadOptional(rdr, columns, "Remarks");
+            var requestedBy = RepositorySql.ReadOptional(rdr, columns, "PMConfirmGLOPReqBy");
+            var repairedBy = RepositorySql.ReadOptional(rdr, columns, "RepairedByEnd");
+            header.TEAssign = requestedBy == repairedBy ? requestedBy : $"{requestedBy}, {repairedBy}";
             return header;
         }
         return null;

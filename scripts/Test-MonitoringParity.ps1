@@ -1,4 +1,4 @@
-param([string]$Dotnet = 'dotnet', [string]$LocalDbInstance = 'MSSQLLocalDB', [switch]$Benchmark, [switch]$BoardOnly)
+param([string]$Dotnet = 'dotnet', [string]$LocalDbInstance = 'MSSQLLocalDB', [switch]$Benchmark, [switch]$BoardOnly, [switch]$MachineListOnly)
 # Execute the real repository against a disposable LocalDB catalog, with original VB SQL as the oracle.
 # Never loads appsettings or connects to an application database.
 $ErrorActionPreference = 'Stop'
@@ -31,6 +31,7 @@ using MachineKarte.Web.Models;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Caching.Memory;
 using MachineKarte.Web.Services;
 using Repository = MonitoringChecks.Repositories.MonitoringRepository;
 using Service = MonitoringChecks.Services.MonitoringService;
@@ -57,6 +58,48 @@ try {
     await using var fixture = new SqlConnection(connection.ConnectionString);
     await fixture.OpenAsync();
     async Task Execute(string sql) { await using var command = new SqlCommand(sql, fixture); await command.ExecuteNonQueryAsync(); }
+    if (args.Contains("machine-list-only")) {
+        await Execute(@"
+CREATE TABLE Process (ProcessID int PRIMARY KEY, ProcessName varchar(10));
+INSERT Process VALUES (1,'FT'),(2,'DC');
+CREATE TABLE MCList (MCNo varchar(30), ProcessID int, MCLocation varchar(10));
+INSERT MCList VALUES ('MC-Z',1,'LSI2-3F'),('MC-A',1,'LSI2-3F'),('MC-A',1,'LSI2-3F'),
+    ('MC-OTHER',1,'LSI1-2F'),('DC-ONLY',2,'LSI2-3F');
+CREATE TABLE TEBMMaintenance (TesterNo varchar(30), Process varchar(10), Location varchar(10));
+INSERT TEBMMaintenance VALUES ('TE-Z','FT','LSI2-3F'),('TE-A','FT','LSI2-3F'),
+    ('TE-A','FT','LSI2-3F'),('','FT','LSI2-3F'),('OTHER','FT','LSI1-2F');
+CREATE TABLE ViewTEData (bmID int, MCNo varchar(30), TesterNo varchar(30), PMConfirmGLOPReqBy varchar(30), RepairedByEnd varchar(30));
+INSERT ViewTEData VALUES (1,'MC-A','TE-A','REQUESTER','REPAIRER'),(2,'MC-A','TE-A','SAME','SAME');
+");
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        var cachedRepository = new Repository(connections, cache);
+        var cachedService = new Service(cachedRepository);
+        var clock = Stopwatch.StartNew();
+        var first = await cachedService.GetMachineListAsync("PM", "FT", "LSI2-3F");
+        var coldMs = clock.Elapsed.TotalMilliseconds;
+        Require(first.SequenceEqual(new[] { "All", "MC-A", "MC-Z" }), "Machine list order/distinct/floor changed.");
+        first.Add("LOCAL-EDIT");
+        clock.Restart();
+        var warm = await cachedService.GetMachineListAsync("PM", "FT", "LSI2-3F");
+        var warmMs = clock.Elapsed.TotalMilliseconds;
+        Require(warm.SequenceEqual(new[] { "All", "MC-A", "MC-Z" }), "Cached machine list was mutated or duplicated All.");
+        Require((await cachedRepository.GetMachinesAsync("TE", "FT", "LSI2-3F")).SequenceEqual(new[] { "TE-A", "TE-Z" }), "TE list reused a PM cache entry.");
+        Require((await cachedRepository.GetMachinesAsync("PM", "DC", "LSI2-3F")).SequenceEqual(new[] { "DC-ONLY" }), "Process cache isolation failed.");
+        Require((await cachedRepository.GetMachinesAsync("PM", "FT", "LSI1-2F")).SequenceEqual(new[] { "MC-OTHER" }), "Floor cache isolation failed.");
+        Require((await cachedRepository.GetMachinesAsync("PM", "FT", "All")).SequenceEqual(new[] { "MC-A", "MC-OTHER", "MC-Z" }), "Direct All-floor repository behavior changed.");
+        await Execute("INSERT MCList VALUES ('MC-NEW',1,'LSI2-3F')");
+        Require((await cachedRepository.GetMachinesAsync("CC", "FT", "LSI2-3F")).SequenceEqual(new[] { "MC-A", "MC-Z" }), "PM family did not share its short-lived cache.");
+        cache.Compact(1);
+        Require((await cachedRepository.GetMachinesAsync("PM", "FT", "LSI2-3F")).Contains("MC-NEW"), "Cache refill did not read current SQL data.");
+        using var cancellation = new CancellationTokenSource(); cancellation.Cancel();
+        try { await cachedRepository.GetMachinesAsync("PM", "FT", "LSI2-3F", cancellation.Token); throw new Exception("Cache hit ignored cancellation."); }
+        catch (OperationCanceledException) { }
+        var te = new MachineKarte.Web.Repositories.TeEvidenceRepository(connections);
+        foreach (var id in new[] { "1", "2" })
+            Require((await te.GetHeaderAsync(id))!.TEAssign == await te.GetTEAssignAsync(id), "Reused TE header changed assignment formatting.");
+        Console.WriteLine($"PASS: MachineList SQL results, distinct/order/floor/process/family isolation, mutation safety, refill/cancellation and reused TE assignment. LocalDB first={coldMs:F2}ms; cached={warmMs:F2}ms (not production endpoint timing).");
+        return;
+    }
     await Execute(@"
 ;WITH Digits(n) AS (SELECT n FROM (VALUES(0),(1),(2),(3),(4),(5),(6),(7),(8),(9)) d(n))
 SELECT TOP (50000) CAST(ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS int) AS value INTO FixtureNumbers
@@ -314,10 +357,12 @@ INSERT MachineKarte_ActionCard_TE SELECT 1000+value,100000+value,'UNRELATED','',
     await Admin($"ALTER DATABASE [{database}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [{database}]");
 }
 '@ | Set-Content -Encoding UTF8 (Join-Path $checkDirectory 'Program.cs')
-& $Dotnet build (Join-Path $checkDirectory 'Checks.csproj') --nologo -v minimal -r win-x64 --self-contained false --property:UseAppHost=false -m:1 --nodeReuse:false --property:NuGetAudit=false --property:UseSharedCompilation=false
+# Keep the RID on the runner so project references build/copy the same portable app DLL.
+& $Dotnet build (Join-Path $checkDirectory 'Checks.csproj') --nologo -v minimal --self-contained false --property:UseAppHost=false -m:1 --nodeReuse:false --property:NuGetAudit=false --property:UseSharedCompilation=false
 if ($LASTEXITCODE -ne 0) { throw 'Monitoring parity fixture build failed.' }
 $runArguments = @((Join-Path $checkDirectory 'bin/Debug/net8.0/win-x64/Checks.dll'), $repo, $LocalDbInstance)
 if ($Benchmark) { $runArguments += 'benchmark' }
 if ($BoardOnly) { $runArguments += 'board-only' }
+if ($MachineListOnly) { $runArguments += 'machine-list-only' }
 & $Dotnet @runArguments
 if ($LASTEXITCODE -ne 0) { throw 'Monitoring parity regression checks failed.' }

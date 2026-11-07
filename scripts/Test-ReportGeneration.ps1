@@ -1,4 +1,4 @@
-param([string]$Dotnet = 'dotnet', [switch]$DownloadOnly, [switch]$CwcOnly)
+param([string]$Dotnet = 'dotnet', [switch]$DownloadOnly, [switch]$CwcOnly, [switch]$EvidenceOnly)
 # Offline: real templates/images and compiled legacy mappings. DownloadOnly hosts
 # a loopback file-response fixture; no appsettings, SQL, or source-template writes.
 $ErrorActionPreference='Stop'
@@ -232,7 +232,9 @@ void Save(ExcelFile book,string name,bool preview=false){
   geometry.Add($"\"{sheet.Name}\",{sheet.Cells[from.Row.Index,from.Column.Index].Name},{range.Name},{position.Width},{position.Height},{width},{height},{overflow}");
  }
  File.WriteAllLines(Path.Combine(output,name+"-images.csv"),geometry);
- var xlsx=LegacyReportExport.Save(book,"xlsx");var pdf=LegacyReportExport.Save(book,"pdf");
+ var clock=System.Diagnostics.Stopwatch.StartNew();
+ var xlsx=LegacyReportExport.Save(book,"xlsx");var xlsxMs=clock.Elapsed.TotalMilliseconds;
+ clock.Restart();var pdf=LegacyReportExport.Save(book,"pdf");var pdfMs=clock.Elapsed.TotalMilliseconds;
  Require(Positions(book)==before,name+" PDF serialization changed picture geometry");
  Require(Positions(ExcelFile.Load(new MemoryStream(xlsx)))==before,name+" XLSX round trip changed picture geometry");
  Require(xlsx[0]=='P'&&xlsx[1]=='K',name+" is not XLSX");Require(Encoding.ASCII.GetString(pdf,0,5)=="%PDF-",name+" is not real PDF");
@@ -242,6 +244,7 @@ void Save(ExcelFile book,string name,bool preview=false){
  File.WriteAllBytes(Path.Combine(output,name+".xlsx"),xlsx);File.WriteAllBytes(Path.Combine(output,name+".pdf"),pdf);
  if(preview) book.Save(Path.Combine(output,name+".png"),new ImageSaveOptions{Format=ImageSaveFormat.Png,PageNumber=0});
  Console.WriteLine($"PASS: {name} real XLSX/PDF ({xlsx.Length}/{pdf.Length} bytes), sheets={book.Worksheets.Count}.");
+ Console.WriteLine($"MEASURE: {name} serialization XLSX={xlsxMs:F1}ms, PDF={pdfMs:F1}ms (local fixture).");
 }
 bool ContainsPhoto(ExcelFile book,string photo){
  var expected=File.ReadAllBytes(photo);
@@ -259,6 +262,7 @@ void PhotoAt(ExcelFile book,string anchor,string photo){
  Require(bytes.ToArray().SequenceEqual(expected),"Wrong source photograph at "+anchor);
 }
 var processes=new[]{"MEMS","WB","DB","DC","MP","PL","FT","SING","FL","TP","EDS"};
+if(!args.Contains("evidence-only")) {
 foreach(var process in processes){
  Require(PmReportRepository.TryGetDefinition(process,out var definition),"Missing PM definition");
  var book=LegacyReportExport.Load(Path.Combine(root,"Templates",definition.TemplateFolder,definition.TemplateFile));
@@ -358,6 +362,7 @@ foreach(var process in new[]{"FT","EDS"}){
  Require(book.Worksheets[1].Cells["B2"].Value?.ToString()==data["WD1"].ToString(),"Work diary sheet mapping changed");
  if(process=="FT") Require(book.Worksheets.ActiveWorksheet!.Cells["BE52"].StringValue=="TE-SIGN"&&book.Worksheets.ActiveWorksheet.Cells["BE53"].StringValue=="PD-SIGN","TE approval mapping changed");
 }
+}
 var photoSources=new[]{"A.png","B.png","C.png","PBox2.png","FBox2.png","PFNBox2.png","ABox.png","BBox.png","CBox.png","NBox.png","68e9d436-c7ac-4152-b771-1e2c2bc005d2.jpg","ROHM_logo.jpg"};
 var photoNumber=0;
 EvidenceImageRow[] Group(int count)=>Enumerable.Range(0,count).Select(i=>{
@@ -402,6 +407,11 @@ for(var category=0;category<teCategories.Length;category++)for(var condition=0;c
 }
 tePhotos.AddRange(new[]{new TeEvidenceImage{Category="TEST BOARD",Condition="BEFORE",CN="CN3",ImgFile=@"~\Upload\2026\photo.png"},new TeEvidenceImage{Category="TEST BOARD",Condition="AFTER",CN="CN1",ImgFile=@"~\Upload\2026\photo.png"}});
 tePhotos.Add(new TeEvidenceImage{Category="TEST BOARD",Condition="BEFORE",CN="CN3",ImgFile=@"~\Upload\Evidence\2020\photo.png"});
+tePhotos=((IEnumerable<TeEvidenceImage>)typeof(TeEvidenceMakingService).GetMethod("VisibleImages",
+    System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Static)!.Invoke(null,new object[]{tePhotos})!).ToList();
+Require(tePhotos.Count(row=>row.Category=="TEST BOARD")==2 &&
+    tePhotos.Single(row=>row.Category=="TEST BOARD"&&row.Condition=="BEFORE").ImgFile.Contains("Evidence"),
+    "TE staging must omit overwritten connector photos while retaining the last visible row");
 var telekoPhotos=Enumerable.Range(0,4).Select(_=>new TelekoEvidenceImage{TelekoEvidence=@"~/Upload/Evidence/2020/photo.png"}).ToList();
 using var tePhotosCache=await EvidenceImageCache.LoadAsync(tePhotos.Select(row=>row.ImgFile).Concat(telekoPhotos.Select(row=>row.TelekoEvidence)),teLegacyShare,Images(true),true,sharedArchive);
 TeEvidenceMakingService.PopulateWorkbook(cwc,teHeader,new(),tePhotos,telekoPhotos,new(),Images(true),teLegacyShare,sharedEvidenceRoot:sharedArchive,imagePaths:tePhotosCache.Paths);
@@ -464,8 +474,9 @@ sealed class ReportResponseProbe : MachineKarte.Web.Controllers.WorkflowControll
  public Microsoft.AspNetCore.Mvc.FileContentResult Generate(byte[] bytes,string name)=>ReportFile(bytes,name);
 }
 '@ | Set-Content -Encoding UTF8 (Join-Path $directory 'Program.cs')
-& $Dotnet build (Join-Path $directory 'Checks.csproj') --nologo -v minimal -r win-x64 --self-contained false --property:UseAppHost=false -m:1 --nodeReuse:false --property:NuGetAudit=false --property:UseSharedCompilation=false
+# Keep the RID on the runner so project references build/copy the same portable app DLL.
+& $Dotnet build (Join-Path $directory 'Checks.csproj') --nologo -v minimal --self-contained false --property:UseAppHost=false -m:1 --nodeReuse:false --property:NuGetAudit=false --property:UseSharedCompilation=false
 if($LASTEXITCODE -ne 0){throw 'Report fixture build failed.'}
-$downloadMode=if($CwcOnly){'cwc-only'}elseif($DownloadOnly){'download-only'}else{'all'}
+$downloadMode=if($CwcOnly){'cwc-only'}elseif($DownloadOnly){'download-only'}elseif($EvidenceOnly){'evidence-only'}else{'all'}
 & $Dotnet (Join-Path $directory 'bin/Debug/net8.0/win-x64/Checks.dll') $repo $downloadMode
 if($LASTEXITCODE -ne 0){throw 'Report generation checks failed.'}

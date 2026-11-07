@@ -1,4 +1,5 @@
 using GemBox.Spreadsheet;
+using System.Diagnostics;
 using MachineKarte.Reporting;
 using MachineKarte.Web.Models;
 using MachineKarte.Web.Repositories;
@@ -23,6 +24,7 @@ public class EvidenceMakingService
         if (cfg is null) return Fail($"Unknown process: {request.Process}");
         try
         {
+            var clock = Stopwatch.StartNew();
             var format = LegacyReportExport.NormalizeFormat(request.Format);
             var imagesTask = MonitoringQueryBatch.RunAsync(
                 () => _repo.GetEvidenceImagesAsync(request.BmId, request.Process, cancellationToken), cancellationToken);
@@ -30,7 +32,9 @@ public class EvidenceMakingService
                 () => _repo.GetTscConfirmationAsync(request.BmId, request.Process, cfg.EvidenceView, cancellationToken), cancellationToken);
             var headerTask = MonitoringQueryBatch.RunAsync(
                 () => _repo.GetMachineHeaderAsync(request.BmId, cfg.DataView, cancellationToken), cancellationToken);
+            var workbook = LegacyReportExport.Load(Path.Combine(_env.ContentRootPath, "Templates", "EvidenceMaking", cfg.TemplateFile));
             await Task.WhenAll(imagesTask, tscTask, headerTask);
+            var dataMs = clock.Elapsed.TotalMilliseconds;
             var header = await headerTask;
             if (header is null) return Fail($"No machine data found for BM ID {request.BmId}");
             cancellationToken.ThrowIfCancellationRequested();
@@ -39,15 +43,21 @@ public class EvidenceMakingService
             using var photos = await EvidenceImageCache.LoadAsync(groups.SelectMany(group => group).Select(row => row.ImageFile),
                 LegacyReportExport.LegacyEvidenceRoot(_config, false), LegacyReportExport.ImageRoot(_env, false),
                 false, LegacyReportExport.SharedEvidenceRoot(_config), cancellationToken);
-            var workbook = LegacyReportExport.Load(Path.Combine(_env.ContentRootPath, "Templates", "EvidenceMaking", cfg.TemplateFile));
+            var photosMs = clock.Elapsed.TotalMilliseconds;
             PopulateWorkbook(workbook, request.Process, header, await tscTask, images,
                 LegacyReportExport.ImageRoot(_env, false), LegacyReportExport.LegacyEvidenceRoot(_config, false),
                 LegacyReportExport.SharedEvidenceRoot(_config), photos.Paths);
+            var populateMs = clock.Elapsed.TotalMilliseconds;
+            cancellationToken.ThrowIfCancellationRequested();
+            var bytes = LegacyReportExport.Save(workbook, format);
+            _logger.LogInformation("PM evidence {Process}/{BmId} {Format}: data/template {DataMs:F1}ms, photos {PhotosMs:F1}ms, population {PopulationMs:F1}ms, serialization {SerializationMs:F1}ms, total {TotalMs:F1}ms.",
+                request.Process, request.BmId, format, dataMs, photosMs - dataMs,
+                populateMs - photosMs, clock.Elapsed.TotalMilliseconds - populateMs, clock.Elapsed.TotalMilliseconds);
             var fileName = $"{request.Process}Evidence_{request.BmId}.{format}";
             return new EvidenceGenerateResult
             {
                 Success = true, FileName = fileName,
-                Bytes = LegacyReportExport.Save(workbook, format)
+                Bytes = bytes
             };
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)

@@ -16,39 +16,55 @@ public sealed class EvidenceImageCache : IDisposable
         var cache = new EvidenceImageCache();
         try
         {
+            Directory.CreateDirectory(cache._directory);
             var resolved = new ConcurrentDictionary<string, string>(StringComparer.Ordinal);
+            var copies = new ConcurrentDictionary<string, Lazy<Task<string?>>>(StringComparer.OrdinalIgnoreCase);
             var options = new ParallelOptions { MaxDegreeOfParallelism = 4, CancellationToken = cancellationToken };
-            await Parallel.ForEachAsync(storedPaths.Distinct(StringComparer.Ordinal), options, (path, token) =>
+            var placeholder = Path.Combine(imageRoot, "noimage.png");
+            await Parallel.ForEachAsync(storedPaths.Distinct(StringComparer.Ordinal), options, async (path, token) =>
             {
                 token.ThrowIfCancellationRequested();
-                resolved[path] = LegacyReportExport.ResolveEvidenceImage(path, legacySystemRoot, imageRoot, te, sharedEvidenceRoot);
-                return ValueTask.CompletedTask;
-            });
-            Directory.CreateDirectory(cache._directory);
-            var local = new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            var placeholder = Path.Combine(imageRoot, "noimage.png");
-            await Parallel.ForEachAsync(resolved.Values.Distinct(StringComparer.OrdinalIgnoreCase), options, async (path, token) =>
-            {
-                if (path.Equals(placeholder, StringComparison.OrdinalIgnoreCase))
+                var local = placeholder;
+                foreach (var candidate in LegacyReportExport.EvidenceImageCandidates(path, legacySystemRoot, te, sharedEvidenceRoot))
                 {
-                    local[path] = path;
-                    return;
+                    var staged = await copies.GetOrAdd(candidate, source => new Lazy<Task<string?>>(
+                        () => cache.CopyAsync(source, token))).Value;
+                    if (staged is null) continue;
+                    local = staged;
+                    break;
                 }
-                var target = Path.Combine(cache._directory, Guid.NewGuid().ToString("N") + Path.GetExtension(path));
-                await using var source = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read,
-                    81920, FileOptions.Asynchronous | FileOptions.SequentialScan);
-                await using var destination = new FileStream(target, FileMode.CreateNew, FileAccess.Write, FileShare.None,
-                    81920, FileOptions.Asynchronous | FileOptions.SequentialScan);
-                await source.CopyToAsync(destination, token);
-                local[path] = target;
+                resolved[path] = local;
             });
-            cache.Paths = resolved.ToDictionary(pair => pair.Key, pair => local[pair.Value], StringComparer.Ordinal);
+            cache.Paths = resolved;
             return cache;
         }
         catch
         {
             cache.Dispose();
             throw;
+        }
+    }
+
+    private async Task<string?> CopyAsync(string path, CancellationToken cancellationToken)
+    {
+        FileStream source;
+        try
+        {
+            source = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read,
+                81920, FileOptions.Asynchronous | FileOptions.SequentialScan);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            // Match File.Exists: unavailable candidates allow the next root or noimage.
+            return null;
+        }
+        await using (source)
+        {
+            var target = Path.Combine(_directory, Guid.NewGuid().ToString("N") + Path.GetExtension(path));
+            await using var destination = new FileStream(target, FileMode.CreateNew, FileAccess.Write, FileShare.None,
+                81920, FileOptions.Asynchronous | FileOptions.SequentialScan);
+            await source.CopyToAsync(destination, cancellationToken);
+            return target;
         }
     }
 

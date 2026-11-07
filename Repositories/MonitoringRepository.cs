@@ -4,15 +4,17 @@ using System.Data;
 using System.Globalization;
 using MachineKarte.Web.Models;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace MachineKarte.Web.Repositories;
 
 public class MonitoringRepository
 {
     private readonly DatabaseConnectionResolver _connections;
+    private readonly IMemoryCache? _cache;
 
-    public MonitoringRepository(DatabaseConnectionResolver connections) =>
-        _connections = connections;
+    public MonitoringRepository(DatabaseConnectionResolver connections, IMemoryCache? cache = null) =>
+        (_connections, _cache) = (connections, cache);
     // Helpers
 
     /// <summary>
@@ -64,6 +66,10 @@ public class MonitoringRepository
     public async Task<List<string>> GetMachinesAsync(
         string userType, string process, string floor, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        var cacheKey = (typeof(MonitoringRepository), _connections, userType is "PM" or "CC" or "EEE" or "VIS", process, floor);
+        if (_cache?.TryGetValue(cacheKey, out string[]? cached) == true)
+            return cached!.ToList();
         var results = new List<string>();
         await using var conn = await _connections.OpenConnectionAsync(cancellationToken);
 
@@ -77,7 +83,7 @@ public class MonitoringRepository
                     INNER JOIN [eMaintenanceSystemDB].[dbo].[Process] b
                         ON a.ProcessID = b.ProcessID
                     WHERE b.ProcessName = @Process
-                      AND (@Location = 'All' OR a.MCLocation = @Location)
+                      AND a.MCLocation = @Location
                     ORDER BY a.MCNo ASC";
             colName = "Val";
         }
@@ -86,12 +92,15 @@ public class MonitoringRepository
             sql = @"SELECT DISTINCT TesterNo AS Val
                     FROM [eMaintenanceSystemDB].[dbo].[TEBMMaintenance]
                     WHERE Process   = @Process
-                      AND (@Location = 'All' OR Location = @Location)
+                      AND Location = @Location
                       AND TesterNo <> ''
                     ORDER BY TesterNo ASC";
             colName = "Val";
         }
 
+        // Direct repository callers retain their legacy All-floor behavior.
+        if (floor == "All")
+            sql = sql.Replace("AND a.MCLocation = @Location", "").Replace("AND Location = @Location", "");
         await using var cmd = new SqlCommand(sql, conn);
         RepositorySql.AddVarChar(cmd, "@Process", process, 20);
         RepositorySql.AddVarChar(cmd, "@Location", floor, 20);
@@ -100,6 +109,8 @@ public class MonitoringRepository
         while (await reader.ReadAsync(cancellationToken))
             results.Add(reader[colName].ToString()!);
 
+        cancellationToken.ThrowIfCancellationRequested();
+        _cache?.Set(cacheKey, results.ToArray(), TimeSpan.FromSeconds(30));
         return results;
     }
     // Paged machine summary (drives card column headers)

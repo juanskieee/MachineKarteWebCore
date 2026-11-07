@@ -1,4 +1,5 @@
 using GemBox.Spreadsheet;
+using System.Diagnostics;
 using MachineKarte.Reporting;
 using MachineKarte.Web.Models;
 using MachineKarte.Web.Repositories;
@@ -10,42 +11,57 @@ public class TeEvidenceMakingService
     private readonly TeEvidenceRepository _repo;
     private readonly IConfiguration _config;
     private readonly IWebHostEnvironment _env;
+    private readonly ILogger<TeEvidenceMakingService> _logger;
 
-    public TeEvidenceMakingService(TeEvidenceRepository repo, IConfiguration config, IWebHostEnvironment env)
-        => (_repo, _config, _env) = (repo, config, env);
+    public TeEvidenceMakingService(TeEvidenceRepository repo, IConfiguration config, IWebHostEnvironment env,
+        ILogger<TeEvidenceMakingService> logger)
+        => (_repo, _config, _env, _logger) = (repo, config, env, logger);
 
     public async Task<(byte[] Bytes, string FileName)> GenerateAsync(string bmId, string process,
         CancellationToken cancellationToken = default, string format = "xlsx")
     {
+        var clock = Stopwatch.StartNew();
         format = LegacyReportExport.NormalizeFormat(format);
         process = LegacyReportExport.NormalizeProcess(process);
         if (!int.TryParse(bmId, out var id) || id <= 0) throw new ArgumentException("A valid BM ID is required.");
         var headerTask = MonitoringQueryBatch.RunAsync(() => _repo.GetHeaderAsync(bmId, cancellationToken), cancellationToken);
-        var assignTask = MonitoringQueryBatch.RunAsync(() => _repo.GetTEAssignAsync(bmId, cancellationToken), cancellationToken);
         var descriptionsTask = MonitoringQueryBatch.RunAsync(() => _repo.GetCategoryDescsAsync(bmId, cancellationToken), cancellationToken);
         var imagesTask = MonitoringQueryBatch.RunAsync(() => _repo.GetCategoryImageRowsAsync(bmId, cancellationToken), cancellationToken);
         var telekoTask = MonitoringQueryBatch.RunAsync(() => _repo.GetTelekoImagesAsync(bmId, cancellationToken), cancellationToken);
         var qualityTask = MonitoringQueryBatch.RunAsync(() => _repo.GetQualityImagesAsync(bmId, cancellationToken), cancellationToken);
         var miscTask = MonitoringQueryBatch.RunAsync(() => _repo.GetMiscRowsAsync(bmId, cancellationToken), cancellationToken);
-        await Task.WhenAll(headerTask, assignTask, descriptionsTask, imagesTask, telekoTask, qualityTask, miscTask);
+        var workbook = LegacyReportExport.Load(Path.Combine(_env.ContentRootPath, "Templates", "EvidenceMaking", "CWC.xlsx"));
+        await Task.WhenAll(headerTask, descriptionsTask, imagesTask, telekoTask, qualityTask, miscTask);
+        var dataMs = clock.Elapsed.TotalMilliseconds;
         cancellationToken.ThrowIfCancellationRequested();
         var header = await headerTask ?? throw new InvalidDataException($"No TE machine data found for BM ID {id}.");
-        header.TEAssign = await assignTask;
-        var images = await imagesTask;
+        var images = VisibleImages(await imagesTask).ToList();
         var teleko = await telekoTask;
         var quality = await qualityTask;
         using var photos = await EvidenceImageCache.LoadAsync(images.Select(row => row.ImgFile)
                 .Concat(teleko.Select(row => row.TelekoEvidence)).Concat(quality.Select(row => row.ImgFile)),
             LegacyReportExport.LegacyEvidenceRoot(_config, true), LegacyReportExport.ImageRoot(_env, true),
             true, LegacyReportExport.SharedEvidenceRoot(_config), cancellationToken);
-        var workbook = LegacyReportExport.Load(Path.Combine(_env.ContentRootPath, "Templates", "EvidenceMaking", "CWC.xlsx"));
+        var photosMs = clock.Elapsed.TotalMilliseconds;
         PopulateWorkbook(workbook, header, await descriptionsTask, images, teleko, quality,
             LegacyReportExport.ImageRoot(_env, true),
             LegacyReportExport.LegacyEvidenceRoot(_config, true), await miscTask,
             LegacyReportExport.SharedEvidenceRoot(_config), photos.Paths);
+        var populateMs = clock.Elapsed.TotalMilliseconds;
+        cancellationToken.ThrowIfCancellationRequested();
+        var bytes = LegacyReportExport.Save(workbook, format);
+        _logger.LogInformation("TE evidence {Process}/{BmId} {Format}: data/template {DataMs:F1}ms, photos {PhotosMs:F1}ms, population {PopulationMs:F1}ms, serialization {SerializationMs:F1}ms, total {TotalMs:F1}ms.",
+            process, id, format, dataMs, photosMs - dataMs, populateMs - photosMs,
+            clock.Elapsed.TotalMilliseconds - populateMs, clock.Elapsed.TotalMilliseconds);
         var fileName = $"TE_Evidence_{id}.{format}";
-        return (LegacyReportExport.Save(workbook, format), fileName);
+        return (bytes, fileName);
     }
+
+    // Earlier rows for the same connector are overwritten by the legacy writer.
+    // Fetch only the last visible photograph from the file share.
+    internal static IEnumerable<TeEvidenceImage> VisibleImages(IEnumerable<TeEvidenceImage> images) =>
+        images.Where(row => row.Category != "TEST BOARD").Concat(images.Where(row => row.Category == "TEST BOARD")
+            .GroupBy(row => (row.Condition, row.CN)).Select(group => group.Last()));
 
     public static void PopulateWorkbook(ExcelFile workbook, TeEvidenceHeader header,
         List<TeEvidenceCategoryDesc> descriptions, List<TeEvidenceImage> images,

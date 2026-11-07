@@ -167,9 +167,9 @@ for the affected behavior:
 | --- | --- |
 | `Test-DatabaseConnections.ps1` | Central primary/fallback selection, timeout/cancellation, cooldown/recovery, legacy configuration and safe logging; offline |
 | `Test-MonitoringQueries.ps1` | Generated SQL/schema references, statuses, designer mappings, scheduling, and Need Action fixtures; no database |
-| `Test-MonitoringParity.ps1` | Actual Monitoring repository/dashboard reads; `-BoardOnly` focuses on grouped columns versus existing web reads/order in all five modes; full desktop SQL audit has a known date-window mismatch (see DATABASE.md); disposable LocalDB catalog; optional `-Benchmark` |
+| `Test-MonitoringParity.ps1` | Actual Monitoring repository/dashboard reads; `-MachineListOnly` checks dropdown SQL/cache and TE header assignment; `-BoardOnly` focuses on grouped columns versus existing web reads/order in all five modes; full desktop SQL audit has a known date-window mismatch (see DATABASE.md); disposable LocalDB catalog; optional `-Benchmark` |
 | `Test-ActionSummaryParity.ps1` | Form2 counts/colors against compiled original VB routines; no database |
-| `Test-ReportGeneration.ps1` | Real templates, photos, compiled mappings, XLSX/PDF output, and capacity errors; offline |
+| `Test-ReportGeneration.ps1` | Real templates, photos, compiled mappings, XLSX/PDF output, and capacity errors; `-EvidenceOnly` limits execution to PM/TE evidence and photo staging; offline |
 | `Update-LegacyReportMappings.ps1 -Check` | Generated mappings match extraction and audited corrections; offline |
 | `Audit-ReportTemplates.ps1` | Reproducible template/binding inventories; offline, output defaults to OS temporary storage |
 | `Test-SummaryDuplicates.ps1` | Real summary SQL against session-local tables in LocalDB |

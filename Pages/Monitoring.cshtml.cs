@@ -2,6 +2,8 @@ using MachineKarte.Web.Models;
 using MachineKarte.Web.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using System.Diagnostics;
+using System.Globalization;
 
 namespace MachineKarte.Web.Pages;
 
@@ -27,7 +29,11 @@ public class MonitoringModel : PageModel
     {
         if (!MonitoringService.IsSpecificFloor(floor)) return InvalidLocation();
 
+        var started = Stopwatch.GetTimestamp();
         var machines = await _service.GetMachineListAsync(userType, process, floor, HttpContext.RequestAborted);
+        var elapsed = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+        Response.Headers["Server-Timing"] = "machine-list;dur=" + elapsed.ToString("F1", CultureInfo.InvariantCulture);
+        _logger.LogInformation("Machine list {UserType}/{Process}/{Floor}: {ElapsedMs:F1}ms.", userType, process, floor, elapsed);
         return new JsonResult(new AjaxResult<MachineListResult>
         {
             Data = new MachineListResult { Machines = machines }

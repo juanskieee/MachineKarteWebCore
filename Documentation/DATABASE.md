@@ -365,7 +365,7 @@ connections without a new cross-query snapshot transaction.
 | McdMonitoring | Shared important-device query and read slots; valid DISTINCT ordering on projected machine/tester numbers |
 | BM report | Main row plus one batch for VR numbers and nine fixed lookups: at most two commands instead of eleven |
 | PM evidence | Five category reads in one batch, plus confirmation/header: three commands instead of seven |
-| TE evidence | Batched category and quality reads: eight commands including metadata inspection instead of fifteen |
+| TE evidence | Batched category and quality reads; assignment reuses the header: seven commands including metadata inspection instead of fifteen |
 | PM report | Typed current/history records, one allowlisted parameterized lookup batch, and cancellation before workbook construction |
 | RawData | Shared recurrence CTE, retained date-filter placement, async typed result-set reads, table allowlist, and the correct `MEMSBMMaintenance` name |
 | Action Cards / OCAP | Cancellable loads; Action Card writes retain their completion and identity protections |
@@ -373,6 +373,24 @@ connections without a new cross-query snapshot transaction.
 Command counts describe source/fixture behavior, not measured production speed.
 Process/table identifiers come from server-side allowlists or fixed maps;
 dropdown choices alone are not the validation boundary.
+
+MachineList uses direct location equality for specific floors, avoiding the
+optional-filter `OR` in the normal lookup. Direct repository callers retain
+their existing All-floor behavior. Its successful raw lists are cached for
+30 seconds per application worker, database resolver, process, floor and PM/TE
+family through ASP.NET Core `IMemoryCache`. PM/CC/EEE/VIS share their identical
+machine lookup; TE uses a separate entry. Each caller receives a fresh list,
+so adding the service's All option cannot mutate cached data. Failures and
+cancellations are not cached. Metadata changes become visible after expiry;
+the first request and cache refills still pay connection validation/query time.
+The cache can retain a pre-failover machine list for up to 30 seconds.
+
+`Test-MonitoringParity.ps1 -MachineListOnly` runs only isolated machine-list SQL,
+cache separation/mutation/refill/cancellation checks and TE header-assignment
+equivalence, skipping board/parity fixtures. One LocalDB run measured 136.93 ms
+for its first list and 1.09 ms for the cached call. These are fixture timings,
+not new timings for the reported 2.27-second HTTP request. The handler exposes
+its measured duration in `Server-Timing` and the application log.
 
 ## Browser snapshots and rendering
 
