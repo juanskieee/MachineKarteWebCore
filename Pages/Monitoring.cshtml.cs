@@ -10,14 +10,13 @@ namespace MachineKarte.Web.Pages;
 public class MonitoringModel : PageModel
 {
     private readonly MonitoringService _service;
-    private readonly IConfiguration _config;
     private readonly ILogger<MonitoringModel> _logger;
 
-    public MonitoringModel(MonitoringService service, IConfiguration config, ILogger<MonitoringModel> logger)
-        => (_service, _config, _logger) = (service, config, logger);
+    public MonitoringModel(MonitoringService service, ILogger<MonitoringModel> logger)
+        => (_service, _logger) = (service, logger);
 
     public string DefaultDateFrom => DateTime.Now.AddDays(-30).ToString("yyyy-MM-dd");
-    public string DefaultDateTo => DateTime.Now.AddDays(1).ToString("yyyy-MM-dd");
+    public string DefaultDateTo => DateTime.Today.ToString("yyyy-MM-dd");
 
     public IActionResult OnGetProcessList(string userType) =>
         new JsonResult(new AjaxResult<List<string>> { Data = _service.GetProcessList(userType) });
@@ -98,7 +97,7 @@ public class MonitoringModel : PageModel
             await _service.TrackSessionAsync(
                 Environment.MachineName,
                 HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown",
-                _config["AppVersion"] ?? "1.0.0",
+                typeof(MonitoringModel).Assembly.GetName().Version?.ToString() ?? "Unknown",
                 timeout.Token);
         }
         catch (OperationCanceledException) when (timeout.IsCancellationRequested)

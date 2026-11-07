@@ -604,7 +604,8 @@ public class MonitoringRepository
                     ELSE a.BMContentID END, 0) AS BMContentID{priority}
             FROM [eMaintenanceSystemDB].[dbo].[{table}] a
             INNER JOIN [eMaintenanceSystemDB].[dbo].[{caseTable}] b ON a.{joinColumn} = b.{joinId}
-            WHERE a.TimeOfRequest BETWEEN @Range1 AND @Range2
+            WHERE a.TimeOfRequest >= @Range1
+                AND a.TimeOfRequest < DATEADD(DAY,1,@Range2)
                 AND a.Process = @Process
                 AND {category} AND {status}
                 AND a.{joinColumn} <> 0

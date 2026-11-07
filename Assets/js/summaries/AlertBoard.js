@@ -3,7 +3,7 @@
 Workflows.register("AlertBoard", (root, options, context) => {
     "use strict";
 
-    // A modal-local snapshot keeps drilldowns consistent for 30 seconds.
+    // A modal-local snapshot keeps drilldowns consistent for 1 minute.
     const { byId } = context;
 
     const dateFrom = options.dateFrom;
@@ -50,11 +50,11 @@ Workflows.register("AlertBoard", (root, options, context) => {
             );
             if (!json.success) throw new Error(json.message);
             if (context.signal.aborted) return;
-            const snapshot = { data: json.data, expiresAt: Date.now() + 30000 };
+            const snapshot = { data: json.data, expiresAt: Date.now() + 60000 };
             boardSnapshot = snapshot;
             context.setTimeout(() => {
                 if (boardSnapshot === snapshot) boardSnapshot = null;
-            }, 30000);
+            }, 60000);
             renderBoard(json.data);
         } catch (err) {
             if (context.signal.aborted) return;

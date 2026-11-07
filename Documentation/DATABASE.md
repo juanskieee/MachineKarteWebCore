@@ -213,11 +213,10 @@ clients could insert duplicates. The complete records and database-side
 attribution remain unverified. Preserve their contents for owner review before
 choosing a repair; do not infer that the higher Seqno is redundant.
 
-[Audit-LegacyRepeatBm.sql](../scripts/Audit-LegacyRepeatBm.sql) is the retained
-SELECT-only diagnostic for connection identity, duplicate candidates in all
-five tables, and visible trigger metadata. Its results must be correlated with
-the actual failing filters. The earlier audit found no confirmed successful
-production write in the captured development output; incomplete client-side
+For a SELECT-only incident audit, capture connection identity, duplicate
+candidates in all five tables, and visible trigger metadata. Correlate the
+results with the actual failing filters. The earlier audit found no confirmed
+successful production write in the captured development output; incomplete client-side
 logs do not establish that no other write occurred.
 
 ## Read scheduling and query behavior
@@ -334,7 +333,7 @@ follows the active desktop queries in `Form1.LoadMCName`,
 | TE actions | Match BMID alone, including an action saved under another tester number; choose highest Seqno when duplicates exist |
 | PM / CC / EEE / VIS | Original status/turnover filters and category 1; cards join BMCase for PM or Why4/BMWhy for the other modes; actions match BMID and machine |
 | Content / OCAP | Effective accredited content ID retains the original fallback; BMContent text and OCAP count still use the original BMContentID/BMCaseID respectively |
-| Dates | Inclusive BETWEEN boundaries; SQL datetime parameters; format returned dates as invariant MM/dd/yyyy HH:mm:ss in C# |
+| Dates | The date-only web range includes the full To day: `>= @Range1 AND < DATEADD(DAY,1,@Range2)` for both headers and cards; SQL datetime parameters; invariant MM/dd/yyyy HH:mm:ss output |
 
 The replaced `CONVERT(...,120)` produced ISO timestamps that the legacy repeat
 and solved-action parsers did not accept. Returning typed dates restores their
@@ -429,24 +428,27 @@ The browser keeps this search snapshot and inserts only the active ten columns.
 Next/Previous perform no HTTP or SQL requests. Search, changed filters, the
 600-second refresh, Action Card refresh and Clear Filters replace/discard the
 snapshot. Completed columns are constructed off-DOM and inserted together;
-there are no independent column loading completions. Fixed-height BM cards use
-native `content-visibility: auto` to defer offscreen layout/paint. Newly visible
-cards rejoin the document blink clock; staircase heights and bottom scrolling
-remain stable. The initial response is larger because it includes all matching
-columns, while other floors return only their counters/lists.
+there are no independent column loading completions. Fixed card heights and
+batched insertion bound layout work. The current stylesheet uses
+`content-visibility: visible`; intrinsic-size and visibility-event hooks remain
+available. See [Monitoring](MONITORING.md) for column sizing and frozen bottom
+summaries. The initial response includes all matching columns, while other
+floors return only their counters/lists.
 
 Focused validation is `Test-MonitoringParity.ps1 -BoardOnly` (78 actual grouped
 columns across all five modes against existing individual web reads, page order,
 duplicates, interleaved floors, tester types and cancellation), and
 `Test-Workflows.ps1 -MonitoringOnly` (real browser/HTML/assets with AJAX fixtures).
-The browser fixture measured about 25 ms per cached page and verified zero
-per-column/page requests, error/retry, cancellation, counts, colors, commands,
-staircase geometry and desktop/mobile captures. This is not a production timing.
+The browser fixture checks zero per-column/page requests, error/retry,
+cancellation, counts, colors, commands, staircase geometry and desktop/mobile
+captures. Local fixture timings are not production benchmarks.
 
-The broader desktop SQL audit currently stops at `PM/DC/All`: its inclusive
-`BETWEEN` date window differs from the existing web summary's
-`< DATEADD(DAY,1,@Range2)` upper bound. The board-specific check compares against
-the existing web behavior; this change does not alter those date rules.
+Legacy SQL takes timestamp boundaries with inclusive `BETWEEN`; the web controls
+provide calendar dates. Header and card queries therefore use the same
+half-open range through the end of the selected To day. The legacy parity
+oracle uses that day's final SQL datetime when comparing date-only requests.
+The service orders all columns by actual displayed card count before pagination,
+preserving SQL order for ties; see [staircase ordering](MONITORING.md#staircase-order).
 
 AlertBoard, MachineSummary, and McdMonitoring reuse the loaded summary's machine
 lists for up to 30 seconds. Snapshots are modal-local and invalidated by a new

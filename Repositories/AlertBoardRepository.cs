@@ -145,7 +145,7 @@ public class AlertBoardRepository
             + CONVERT(char(8),a.Timeofrequest,108) AS Timeofrequest,
 
             b.BMCase,
-            a.bmid,
+            a.bmid, 
 
             CASE
                 WHEN ae.bmid IS NOT NULL THEN 'Yes'

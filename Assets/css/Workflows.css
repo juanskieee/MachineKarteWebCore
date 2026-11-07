@@ -33,10 +33,19 @@
 .workflow :is(.ms-th-process, .bma-hdr-process, .ms-th-total, .bma-hdr-total) { background: var(--summary-accent) !important; color: var(--summary-heading) !important; }
 .workflow :is(.ms-td-process, .bma-proc-label) { background: var(--summary-label); font-weight: 700; font-size: 15px; }
 .workflow :is(.ms-grid .ms-th-loc, .bma-table .bma-hdr-loc, .mcd-header-row .mcd-loc-col) { background: var(--summary-label); }
-.workflow :is(.ms-cell, .bma-cell, .ab-cell) { background: #fff; color: #111; }
+.workflow :is(.ms-cell, .bma-cell, .ab-cell) { background: #fff; color: #111; cursor: default; }
 .workflow :is(.ms-na, .bma-cell-na) { background: lightgray; color: #444; }
-.workflow :is(.ms-active, .bma-cell-active) { cursor: pointer; color: #a00000; font-weight: 700; }
-.workflow :is(.ms-active, .bma-cell-active):hover { background: #dde6ed; }
+.workflow :is(.ms-cell.ms-active, .bma-cell.bma-cell-active, .ab-cell.ab-alert)[aria-disabled="false"] {
+    cursor: pointer;
+    background: #fac6bd;
+    color: #84453c;
+    font-weight: 700;
+}
+
+.workflow :is(.ms-cell.ms-active, .bma-cell.bma-cell-active, .ab-cell.ab-alert)[aria-disabled="false"]:hover {
+    background: #f7b9ae;
+    color: #6f3a32;
+}
 .workflow :is(.ms-tf-label, .ms-tf-cell, .ms-tf-grand, .ms-td-rowtotal, .bma-row-total, .bma-col-total, .bma-grand-total) { background: #fff; font-weight: 700; }
 .workflow :is(.ms-tf-label, .bma-total-row .bma-proc-label) { background: var(--summary-accent); color: var(--summary-heading); }
 .workflow :is(.ab-header-row, .ab-proc-row, .mcd-header-row, .mcd-grid-row, .mcd-total-row) { display: grid; grid-template-columns: 100px repeat(9, minmax(86px, 1fr)) 85px; min-width: 1000px; gap: 1px; }
@@ -44,9 +53,11 @@
 .workflow :is(.ab-header-row, .mcd-header-row) > div { background: lightgray; font-size: 13px; font-weight: 700; white-space: nowrap; }
 .workflow :is(.ab-hdr-process, .ab-hdr-total, .mcd-header-row .mcd-process-col, .mcd-header-row .mcd-total-col) { background: var(--summary-accent) !important; color: var(--summary-heading); }
 .workflow :is(.ab-cell-label, .mcd-proc-label) { background: var(--summary-label) !important; font-weight: 700; }
-.workflow :is(.ab-cell-active, .mcd-cell-clickable) { cursor: pointer; }
+.workflow .ab-cell { cursor: default; }
+.workflow .mcd-cell-clickable { cursor: pointer; }
 .workflow :is(.ab-alert, .mcd-cell-hot) { color: #a00000; font-weight: 700; }
-.workflow :is(.ab-cell-active, .mcd-cell-clickable):hover { background: #dde6ed; }
+.workflow .ab-cell.ab-cell-active[aria-disabled="false"]:hover { background: #f7b9ae; }
+.workflow .mcd-cell-clickable:hover { background: #dde6ed; }
 .workflow .mcd-cell-na { background: lightgray !important; }
 .workflow :is(.ab-cell-total, .ab-cell-grand, .mcd-total-cell, .mcd-proc-total) { font-weight: 700; }
 .workflow :is(.mcd-total-label, .ab-totals-row .ab-cell-label) { background: var(--summary-accent) !important; color: var(--summary-heading); font-weight: 700; }

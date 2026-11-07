@@ -160,8 +160,42 @@
         assert(errors.length===0, `Browser errors: ${errors.join('; ')}`);
         return 'PASS: all 11 dialogs, parent drilldown, Form11/Form12 mappings, save/refresh, timer cleanup, errors, and unique IDs';
     };
+    window.runMonitoringDateChecks = async () => {
+        const dateFrom = document.getElementById('dt1');
+        const dateTo = document.getElementById('dt2');
+        const previous = [dateFrom.value, dateTo.value, dateTo.max];
+        try {
+            resetDates();
+            const now = new Date();
+            const today = formatDate(now);
+            assert(dateTo.value===today && dateTo.max===today, 'Monitoring To default/maximum is not today');
+            assert(dateTo.checkValidity(), 'Today is rejected');
+            const yesterday = new Date(now); yesterday.setDate(yesterday.getDate()-1);
+            dateTo.value = formatDate(yesterday);
+            assert(dateTo.checkValidity(), 'Past To dates are rejected');
+            dateTo.max = formatDate(yesterday);
+            dateTo.dispatchEvent(new Event('focus'));
+            assert(dateTo.max===today, 'Focusing To did not update a stale date limit');
+            const tomorrow = new Date(now); tomorrow.setDate(tomorrow.getDate()+1);
+            dateTo.value = formatDate(tomorrow);
+            assert(dateTo.validity.rangeOverflow, 'A future To date is accepted');
+            const requestCount = requests.length;
+            const searchId = State.searchId;
+            await doSearch(1);
+            assert(requests.length===requestCount && State.searchId===searchId, 'Future To date started a search');
+            dateTo.value = '';
+            await doSearch(1);
+            assert(dateTo.validity.valueMissing && requests.length===requestCount, 'Empty To date started a search');
+            resetDates();
+            assert(dateTo.value===today && dateTo.max===today, 'Reset did not restore today');
+            return 'PASS: Monitoring To defaults/limits to today, permits past dates, updates on focus, and blocks future/empty searches';
+        } finally {
+            [dateFrom.value, dateTo.value, dateTo.max] = previous;
+        }
+    };
     window.runMonitoringChecks = async () => {
         Workflows.close();
+        await window.runMonitoringDateChecks();
         const clock = document.querySelector('.refresh-clock');
         const legend = document.querySelector('.monitoring-legend');
         assert(!document.getElementById('toolbar').contains(clock) && clock.previousElementSibling===legend, 'Refresh clock is not below the legend');
@@ -173,9 +207,10 @@
         window.__monitoringStairs = true;
         await doSearch(1);
         const columns = [...document.querySelectorAll('.machine-col')];
+        const headers = [...document.querySelectorAll('.mc-col-header')];
         const earlyBlink = columns[0].querySelector('.needs-action .bm-card-content').getAnimations()[0];
         await tick();
-        renderMachineCard(State.dashboard.machineCards[1], buildFilter(), columns[1].querySelector('.bm-card-list'));
+        renderMachineCard(State.dashboard.machineCards[1], buildFilter(), columns[1].querySelector('.bm-card-list'), headers[1]);
         await nextPaint();
         synchronizeBlinkAnimations(columns[1]);
         const lateBlink = columns[1].querySelector('.needs-action .bm-card-content').getAnimations()[0];
@@ -185,13 +220,22 @@
         assert(Math.abs(rects[1][0].top-rects[0][0].top-120)<1 && Math.abs(rects[2][0].top-rects[1][0].top-240)<1, 'Staircase is reversed or top-aligned');
         assert(rects.every(rows => Math.abs(rows.at(-1).bottom-rects[0].at(-1).bottom)<1), 'BM stacks have different baselines');
         const initialScroller = document.getElementById('cardScroller');
-        assert(Math.abs(columns[0].querySelector('.mc-col-header').getBoundingClientRect().bottom-initialScroller.getBoundingClientRect().top-initialScroller.clientHeight)<1, 'Short staircase is not clamped to the board bottom');
-        const columnWidth = Math.max(186, document.getElementById('cardScroller').clientWidth/10);
-        assert(columns.every(col => Math.abs(col.getBoundingClientRect().width-columnWidth)<1), 'Sparse results stretch machine columns');
+        assert(Math.abs(rects[0].at(-1).bottom-initialScroller.getBoundingClientRect().top-initialScroller.clientHeight)<1, 'Short staircase is not clamped to the board bottom');
+        assert(Math.abs(headers[0].getBoundingClientRect().top-initialScroller.getBoundingClientRect().bottom)<1, 'Frozen headers do not sit below the card viewport');
+        assert(!initialScroller.querySelector('.mc-col-header'), 'Headers are still included in the vertical scrolling content');
+        const alignedColumns = () => [...document.querySelectorAll('.machine-col')].every((col, index) => {
+            const header = document.querySelectorAll('.mc-col-header')[index].getBoundingClientRect();
+            const cards = col.getBoundingClientRect();
+            return Math.abs(header.left-cards.left)<1 && Math.abs(header.width-cards.width)<1 && cards.width>=186;
+        });
+        assert(alignedColumns(), 'Frozen headers and sparse card columns are misaligned');
+        const columnWidth = Math.max(186, initialScroller.clientWidth/10);
+        assert(columns.every(col => Math.abs(col.getBoundingClientRect().width-columnWidth)<1), 'Sparse results stretch past their machine column slots');
+        assert(columns.every(col => [...col.querySelectorAll('.bm-card')].every(card => Math.abs(card.getBoundingClientRect().width-col.getBoundingClientRect().width)<1)), 'BM cards do not stay within their machine column width');
         document.getAnimations().forEach(animation => { animation.pause(); animation.currentTime=0; });
         assert(getComputedStyle(columns[0].querySelector('.bm-card-content')).backgroundColor==='rgb(250, 128, 114)', 'Missing Salmon card header');
         assert(getComputedStyle(columns[0].querySelector('.bm-card-case')).backgroundColor==='rgb(255, 228, 225)', 'Missing MistyRose case panel');
-        assert(getComputedStyle(columns[0].querySelector('.mc-no')).backgroundColor==='rgb(252, 227, 138)', 'Missing machine summary palette');
+        assert(getComputedStyle(headers[0].querySelector('.mc-no')).backgroundColor==='rgb(252, 227, 138)', 'Missing machine summary palette');
         assert(getComputedStyle(columns[0].querySelector('.badge-action')).backgroundColor==='rgb(255, 0, 0)', 'Action status does not use MCStatus');
         assert(getComputedStyle(columns[0].querySelectorAll('.bm-card-case')[1]).color==='rgb(0, 0, 255)', 'Repeat text color missing');
         assert([...columns[0].querySelectorAll('.bm-card:first-child .bm-command')].map(node => node.dataset.command).join(',')==='ocap,report,evidence', 'Wrong O/R/E command order');
@@ -219,7 +263,7 @@
             testCard.remove();
         }
         assert(!buildBMCard({...card, isMCD:'No'}, 16, 'PM').querySelector('.badge-mcd'), 'Non-MCD card shows stars');
-        assert(columns[0].querySelector('.need-action-badge').textContent==='1' && columns[2].querySelector('.need-action-badge').textContent==='0', 'Footer ignores returned Need Action counts');
+        assert(headers[0].querySelector('.need-action-badge').textContent==='1' && headers[2].querySelector('.need-action-badge').textContent==='0', 'Header ignores returned Need Action counts');
         assert(document.querySelector('#floorSummaryGrid tbody').rows.length===3, 'Missing summary counter rows');
         assert([...document.querySelectorAll('#floorSummaryGrid tbody tr')].map(row => row.cells[1].textContent).join(',')==='2,3,4', 'Summary counter types are mixed');
         assert(!document.querySelector('.monitoring-deck button[onclick*="RawData"]') && !document.querySelector('#floorSummaryGrid button'), 'Unexpected toolbar/counter buttons');
@@ -233,6 +277,7 @@
         assert(document.querySelectorAll('.machine-col').length===10 && document.querySelector('.machine-col').dataset.mcno==='PAGE-MC-11','Second page has the wrong cached columns');
         await changePage(1);
         assert(document.querySelectorAll('.machine-col').length===3 && document.querySelector('.machine-col').dataset.mcno==='PAGE-MC-21','Final page has the wrong cached columns');
+        assert(document.querySelectorAll('.mc-col-header').length===3 && document.querySelector('.mc-no').textContent==='PAGE-MC-21' && alignedColumns(), 'Pagination retained stale or misaligned headers');
         assert(requests.filter(request=>request.path==='/Monitoring').length===pageRequests,'Changing pages repeated a server request');
         assert(!requests.some(request=>request.handler==='MachineCard'),'Board still requests each machine separately');
         window.__monitoringPageMilliseconds=(performance.now()-pageClock)/2;
@@ -249,22 +294,36 @@
         assert(Math.abs(scroller.scrollTop+scroller.clientHeight-scroller.scrollHeight)<1, 'Board does not start at the bottom');
         assert(histories.every(list => list.scrollHeight<=list.clientHeight+1 && getComputedStyle(list).overflowY==='visible' && list.tabIndex===-1), 'A history still scrolls independently');
         assert(scroller.tabIndex===0, 'Shared board is not keyboard scrollable');
-        const footerTops = [...document.querySelectorAll('.mc-col-header')].map(node=>node.getBoundingClientRect().top);
+        const headerTops = [...document.querySelectorAll('.mc-col-header')].map(node=>node.getBoundingClientRect().top);
+        const cardTops = histories.map(list=>list.querySelector('.bm-card').getBoundingClientRect().top);
         const boardScroll = scroller.scrollTop;
         scroller.scrollTop=0;
         await nextPaint();
-        assert([...document.querySelectorAll('.mc-col-header')].every((node,index)=>Math.abs(node.getBoundingClientRect().top-footerTops[index]-boardScroll)<1), 'Shared scroll does not move every machine together');
+        assert([...document.querySelectorAll('.mc-col-header')].every((node,index)=>Math.abs(node.getBoundingClientRect().top-headerTops[index])<1), 'Frozen headers moved during vertical scrolling');
+        assert(histories.every((list,index)=>Math.abs(list.querySelector('.bm-card').getBoundingClientRect().top-cardTops[index]-boardScroll)<1), 'Shared scroll does not move all card columns together');
         window.__monitoringCounts = [52,27,12,9,7,5,4,3,2,1];
         await doSearch(1);
         const tallColumns = [...document.querySelectorAll('.machine-col')];
-        const baseline = tallColumns[0].querySelector('.mc-col-header').getBoundingClientRect();
-        assert(scroller.scrollWidth>scroller.clientWidth && scroller.scrollHeight>scroller.clientHeight, 'Missing combined horizontal and vertical overflow fixture');
-        assert(Math.abs(scroller.scrollTop+scroller.clientHeight-scroller.scrollHeight)<1 && Math.abs(baseline.bottom-scroller.getBoundingClientRect().top-scroller.clientHeight)<1, 'Long staircase does not start clamped at the bottom');
+        const horizontal = document.getElementById('cardContainer');
+        const baseline = scroller.getBoundingClientRect().top+scroller.clientHeight;
+        assert(horizontal.scrollWidth>horizontal.clientWidth && scroller.scrollHeight>scroller.clientHeight, 'Missing combined horizontal and vertical overflow fixture');
+        assert(scroller.scrollHeight===52*120, 'Frozen header height is included in vertical scrollHeight');
+        assert(Math.abs(scroller.scrollTop+scroller.clientHeight-scroller.scrollHeight)<1, 'Long staircase does not start clamped at the bottom');
         assert(tallColumns.every((col,index) => {
             const cards = [...col.querySelectorAll('.bm-card')];
-            return Math.abs(cards.at(-1).getBoundingClientRect().bottom-baseline.top)<1 &&
-                Math.abs(cards[0].getBoundingClientRect().top-baseline.top+window.__monitoringCounts[index]*120)<1;
+            return Math.abs(cards.at(-1).getBoundingClientRect().bottom-baseline)<1 &&
+                Math.abs(cards[0].getBoundingClientRect().top-baseline+window.__monitoringCounts[index]*120)<1;
         }), 'Long/unequal BM histories lost their bottom staircase');
+        horizontal.scrollLeft=horizontal.scrollWidth;
+        await nextPaint();
+        assert(horizontal.scrollLeft>0 && alignedColumns(), 'Horizontal scrolling misaligns headers and cards');
+        scroller.scrollTop=0;
+        await nextPaint();
+        assert(alignedColumns() && Math.abs(document.querySelector('.mc-col-header').getBoundingClientRect().top-scroller.getBoundingClientRect().bottom)<1, 'Frozen bottom headers moved while scrolling long histories');
+        window.__monitoringCounts = [0,1,0];
+        await doSearch(1);
+        assert(document.querySelectorAll('.no-bm').length===2 && document.querySelectorAll('.mc-col-header').length===3 && alignedColumns(), 'Machines without BM records lost their frozen headers');
+        assert(horizontal.scrollLeft===0 && scroller.scrollHeight===scroller.clientHeight, 'Short histories retained overflow from the previous page');
         window.__monitoringCounts = [8,7,5];
         window.__monitoringActionLine = 2;
         await doSearch(1);
@@ -301,13 +360,13 @@
         window.__monitoringCounts = undefined;
         window.__monitoringStairs = false;
         await doSearch(1);
-        assert(Math.abs(document.querySelector('.machine-col').getBoundingClientRect().width-columnWidth)<1, 'One machine stretches across the board');
+        assert(Math.abs(document.querySelector('.machine-col').getBoundingClientRect().width-Math.max(186, scroller.clientWidth/10))<1 && alignedColumns(), 'One machine stretches past one column slot');
         window.__monitoringStairs = true;
         window.__monitoringCounts = Array(10).fill(1);
-        scroller.style.width = '2200px';
+        document.getElementById('machineBoard').style.width = '2200px';
         await doSearch(1);
-        assert(Math.abs([...scroller.querySelectorAll('.machine-col')].reduce((sum, col) => sum+col.getBoundingClientRect().width, 0)-scroller.clientWidth)<1, 'Ten columns do not fill the wider parent');
-        scroller.style.width = '';
+        assert(Math.abs([...scroller.querySelectorAll('.machine-col')].reduce((sum, col) => sum+col.getBoundingClientRect().width, 0)-scroller.clientWidth)<1 && alignedColumns(), 'Ten columns do not fill the wider parent');
+        document.getElementById('machineBoard').style.width = '';
         window.__monitoringCounts = undefined;
         window.__monitoringStairs = false;
         await doSearch(1);
@@ -337,14 +396,15 @@
         releaseSearch(); releaseFilter();
         await Promise.all([beforeClearSearch, beforeClearFilter]);
         assert(!document.querySelector('.machine-col') && !State.lastFilter && !val('cbUser') && !val('cbMachine') && val('cbProcess')==='-Select-' && val('cbFloor')==='-Select-', 'Clear Filters retained filters or late results');
+        assert(!document.querySelector('.mc-col-header') && document.getElementById('machineBoard').classList.contains('is-hidden'), 'Clear Filters retained frozen headers');
         assert(document.getElementById('lblPageNumber').textContent==='1/1' && document.getElementById('btnPrev').disabled && document.getElementById('btnNext').disabled, 'Clear Filters did not reset pagination');
         assert([...document.querySelectorAll('#floorSummaryGrid tbody td')].every(cell=>cell.textContent==='0'), 'Clear Filters retained floor totals');
         assert(!document.getElementById('monitoringWelcome').classList.contains('is-hidden') && document.getElementById('loadingSpinner').classList.contains('is-hidden') && document.getElementById('lblMachineLabel').textContent==='Machine', 'Clear Filters did not restore the initial screen');
         const now = new Date();
-        assert(val('dt1')===formatDate(new Date(now.getTime()-30*86400000)) && val('dt2')===formatDate(new Date(now.getTime()+86400000)), 'Clear Filters did not reset dates');
+        assert(val('dt1')===formatDate(new Date(now.getTime()-30*86400000)) && val('dt2')===formatDate(now), 'Clear Filters did not reset dates');
         await applyMonitoringSelection(query);
         assert(errors.length===0, errors.join('; '));
-        return `PASS: one grouped search, zero per-column/page requests, ten-column lazy page rendering (${window.__monitoringPageMilliseconds.toFixed(1)} ms/page in browser fixture), staircase/scrolling, counts/colors, commands, retry, cancellation and stale-search isolation`;
+        return `PASS: one grouped search, zero per-column/page requests, ten-column lazy page rendering (${window.__monitoringPageMilliseconds.toFixed(1)} ms/page in browser fixture), frozen headers, shared scrolling without header height, column alignment, staircase, counts/colors, commands, retry, cancellation and stale-search isolation`;
     };
     window.runRetrievalChecks = async () => {
         const originalNow = Date.now;
@@ -766,8 +826,9 @@
             window.__monitoringCounts = name==='MonitoringOverflow' ? [52,27,12,9,7,5,4,3,2,1] : undefined;
             await doSearch(1); await tick();
             const scroller=document.getElementById('cardScroller');
-            const footer=document.querySelector('.mc-col-header').getBoundingClientRect();
-            assert(Math.abs(scroller.scrollTop+scroller.clientHeight-scroller.scrollHeight)<1 && Math.abs(footer.bottom-scroller.getBoundingClientRect().top-scroller.clientHeight)<1, `${name} staircase is not bottom-aligned at ${innerWidth}px`);
+            const header=document.querySelector('.mc-col-header').getBoundingClientRect();
+            assert(Math.abs(scroller.scrollTop+scroller.clientHeight-scroller.scrollHeight)<1 && Math.abs(header.top-scroller.getBoundingClientRect().bottom)<1, `${name} cards are not bottom-aligned above frozen bottom headers at ${innerWidth}px`);
+            assert([...document.querySelectorAll('.machine-col')].every((col,index)=>Math.abs(col.getBoundingClientRect().left-document.querySelectorAll('.mc-col-header')[index].getBoundingClientRect().left)<1), `${name} headers are misaligned at ${innerWidth}px`);
             window.__monitoringCounts=undefined;
         }
         else if(name==='MachineList') { Workflows.close(); onFloorCellClick('LSI1-1F', ['TEST-MC-01','TEST-MC-02']); }

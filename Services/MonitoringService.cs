@@ -104,6 +104,10 @@ namespace MachineKarte.Web.Services
             // then needs neither another search nor one query per machine.
             var columnRows = rows.Where(row => string.Equals(row.Location, f.Floor, StringComparison.OrdinalIgnoreCase))
                 .ToLookup(row => (row.MachineNo, row.MachineType));
+            // Match the legacy descending staircase using the cards actually displayed.
+            // Stable ordering retains the legacy SQL tie order; sort before paging.
+            summaries = summaries.OrderByDescending(summary =>
+                columnRows[(summary.MachineNo, summary.MachineType)].Count()).ToList();
             var columns = summaries.Select(summary =>
             {
                 var cards = columnRows[(summary.MachineNo, summary.MachineType)].ToList();

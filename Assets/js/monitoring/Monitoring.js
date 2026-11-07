@@ -30,7 +30,47 @@ document.addEventListener("DOMContentLoaded", () => {
     document
         .getElementById("btnClearFilters")
         .addEventListener("click", clearFilters);
+    document.getElementById("dt2").addEventListener("focus", (event) => {
+        event.target.max = formatDate(new Date());
+    });
     const legend = document.querySelector('.monitoring-legend');
+    const logo = document.querySelector(".ekarte-logo");
+    const hideCatGif = () => {
+        const celebration = document.getElementById("catGifCelebration");
+        if (!celebration) return;
+        celebration.classList.add("is-hidden");
+        document.querySelector(".monitoring-screen").classList.remove("cat-gif-background");
+    };
+    const showCatGif = () => {
+        let celebration = document.getElementById("catGifCelebration");
+        if (!celebration) {
+            celebration = document.createElement("div");
+            celebration.id = "catGifCelebration";
+            celebration.className = "cat-gif-celebration is-hidden";
+            celebration.setAttribute("aria-live", "polite");
+            celebration.innerHTML = `<img alt="Dancing cat" src="${logo.dataset.catGif}">`;
+            document.body.append(celebration);
+            celebration.addEventListener("click", hideCatGif);
+            celebration.querySelector("img").addEventListener("click", (event) => {
+                event.stopPropagation();
+            });
+        }
+        const gif = celebration.querySelector("img");
+        gif.src = "";
+        gif.src = logo.dataset.catGif;
+        celebration.classList.remove("is-hidden");
+        document.querySelector(".monitoring-screen").classList.add("cat-gif-background");
+    };
+    logo.addEventListener("click", showCatGif);
+    logo.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            showCatGif();
+        }
+    });
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") hideCatGif();
+    });
     document.getElementById('machineBoard').addEventListener('contentvisibilityautostatechange', event => {
         if (!event.skipped) synchronizeBlinkAnimations(event.target);
     }, { capture: true });
@@ -38,7 +78,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!legend.contains(event.target)) legend.open = false;
     }, { capture: true });
 
-    // Set default dates (mirrors Form1_Load dt1/dt2 init)
+    // Start with the last 30 days, with To capped at today.
     resetDates();
 
     startRefreshTimer();
@@ -187,9 +227,8 @@ function resetDates() {
     document.getElementById("dt1").value = formatDate(
         new Date(today.getTime() - 30 * 86400000),
     );
-    document.getElementById("dt2").value = formatDate(
-        new Date(today.getTime() + 86400000),
-    );
+    const dateTo = document.getElementById("dt2");
+    dateTo.max = dateTo.value = formatDate(today);
 }
 
 function clearFilters() {
@@ -226,6 +265,10 @@ function clearFilters() {
 // SEARCH  (btnSearch_Click)
 
 async function doSearch(page = 1) {
+    const dateTo = document.getElementById("dt2");
+    dateTo.max = formatDate(new Date());
+    if (!dateTo.reportValidity()) return;
+
     const machine = val("cbMachine");
     if (!machine) {
         showToast("Please select a machine number.");
@@ -494,57 +537,67 @@ function closeSidebar() {
 async function renderMachineCards(columns, filter, signal) {
     const scroller = document.getElementById("cardScroller");
     const board = document.getElementById("machineBoard");
+    const headerRow = document.getElementById("machineHeaderRow");
     const searchId = State.searchId;
     const page = State.page;
     const noResult = document.getElementById("noResultMsg");
 
     if (signal?.aborted) return;
     if (!columns || columns.length === 0) {
-        board.replaceChildren();
+        clearCards();
         noResult.classList.remove("is-hidden");
         return;
     }
     noResult.classList.add("is-hidden");
 
+    const headers = document.createDocumentFragment();
     const fragment = document.createDocumentFragment();
     columns.forEach((mc, idx) => {
+        const header = document.createElement("div");
+        header.className = "mc-col-header";
+        header.id = `header_${idx}`;
+        header.innerHTML = `
+            <span class="mc-location">${escapeHtml(filter.floor)}</span>
+            <span class="mc-no">${escapeHtml(mc.machineNo)}</span>
+            <span class="mc-type">${escapeHtml(mc.machineType)}</span>
+            <span class="need-action-label" title="Repeat BM groups within seven days without an action card">Need Action</span><span class="need-action-badge"></span>`;
+        headers.append(header);
+
         const col = document.createElement("div");
-        col.className = "machine-col";
+        col.className = "machine-col machine-card-column";
         col.dataset.mcno = mc.machineNo;
         col.id = `col_${idx}`;
+        col.setAttribute("role", "group");
+        col.setAttribute("aria-labelledby", header.id);
 
         col.innerHTML = `
-            <div class="mc-col-header">
-                <span class="mc-location">${escapeHtml(filter.floor)}</span>
-                <span class="mc-no">${escapeHtml(mc.machineNo)}</span>
-                <span class="mc-type">${escapeHtml(mc.machineType)}</span>
-                <span class="need-action-label" title="Repeat BM groups within seven days without an action card">Need Action</span><span class="need-action-badge"></span>
-            </div>
             <div class="bm-card-list" id="cards_${idx}">
             </div>`;
         fragment.append(col);
-        renderMachineCard(mc, filter, col.querySelector('.bm-card-list'));
+        renderMachineCard(mc, filter, col.querySelector('.bm-card-list'), header);
     });
-    // Insert completed columns together; request completion order cannot affect the board.
-    board.replaceChildren(fragment);
+    // Both grids share track sizing and page order; no width/scroll synchronization needed.
+    board.style.setProperty("--machine-column-count", columns.length);
+    headerRow.replaceChildren(headers);
+    scroller.replaceChildren(fragment);
+    board.classList.remove("is-hidden");
     synchronizeBlinkAnimations(board);
     // Resolve the shared content height (including horizontal overflow) before
     // starting at the legacy bottom position. Ignore superseded searches.
     await new Promise(requestAnimationFrame);
     if (searchId === State.searchId && page === State.page && !signal?.aborted) {
         scroller.scrollTop = scroller.scrollHeight;
-        scroller.scrollLeft = 0;
+        document.getElementById("cardContainer").scrollLeft = 0;
     }
 }
 
-function renderMachineCard(data, filter, container) {
+function renderMachineCard(data, filter, container, header) {
     const { bmCards, actionLine, needActionCount } = data;
-    const column = container.closest(".machine-col");
-    const needActionBadge = column?.querySelector(".need-action-badge");
+    const needActionBadge = header.querySelector(".need-action-badge");
     if (needActionBadge) {
         needActionBadge.textContent = needActionCount ?? 0;
     }
-    const location = column.querySelector(".mc-location");
+    const location = header.querySelector(".mc-location");
     if (location && bmCards.length)
         location.textContent = [
             ...new Set(bmCards.map((card) => card.location)),
@@ -690,9 +743,13 @@ function openBMCommand(command, card, userType) {
 }
 function clearCards() {
     const scroller = document.getElementById("cardScroller");
-    document.getElementById("machineBoard").replaceChildren();
+    const board = document.getElementById("machineBoard");
+    document.getElementById("machineHeaderRow").replaceChildren();
+    scroller.replaceChildren();
+    board.style.removeProperty("--machine-column-count");
+    board.classList.add("is-hidden");
     scroller.scrollTop = 0;
-    scroller.scrollLeft = 0;
+    document.getElementById("cardContainer").scrollLeft = 0;
 }
 
 // BM CARD CLICK → Action Card modal

@@ -82,13 +82,13 @@ each distinct source directly to a per-export OS temporary directory, with at
 most four concurrent filesystem operations. A separate SMB `File.Exists` request
 before every copy has been removed. Resolution and copying form one pipeline;
 absolute/relative aliases share the same in-flight copy. Unavailable candidates
-continue to the archive root or placeholder. The same validated PM/TE/archive roots, precedence, missing-image
-marks, category ordering, TOP limits, connector routing, and worksheet mappings
-still apply. The compiled writer reads these local copies and memoizes its
+continue to the archive root or placeholder. The same validated PM/TE/archive
+roots, precedence, missing-image marks, category ordering, TOP limits, connector
+routing, and worksheet mappings still apply. The compiled writer reads these local copies and memoizes its
 picture existence checks; it never mutates a workbook concurrently. Form10's
 tilde normalization applies to stored paths before resolution, preserving literal
-tildes in resolved local staging directories. Temporary
-photos are removed on success, failure, or cancellation. Fresh generations read
+tildes in resolved local staging directories. Temporary photos are removed on
+success, failure, or cancellation. Fresh generations read
 current database rows and photos rather than reusing a previous report.
 
 TE generation reads its assignment from the already-loaded header instead of
@@ -106,18 +106,13 @@ timings identify SQL/share delays separately from PDF conversion without logging
 photo paths or report contents. Monitoring's MachineList response also includes
 its service duration in the `Server-Timing` header.
 
-The offline regression runner measures fresh-template loading versus cached
-cloning and checks both formats with actual templates and photo bytes. Its
-measurements cover local fixtures; total generation time on the production SQL
-server and file shares still needs a representative deployment measurement.
-The focused `Test-ReportGeneration.ps1 -EvidenceOnly` run exercises all eleven
+The offline regression runner compares fresh-template loading with cached
+cloning using real templates and photo bytes. `-EvidenceOnly` covers all eleven
 PM evidence processes and the TE main/connector/quality sheets, path validation,
-photo bytes, cleanup, clones and both output formats, skipping PM/TE record-report
-fixtures. One local run measured PM PDF serialization at 220–835 ms after the
-first 2,368 ms export, and TE PDF serialization at 122–164 ms. These figures exclude
-production SQL/share latency and are not replacement timings for the reported
-28.49-second PM or 21.64-second TE HTTP requests. Live SQL/share reachability was
-unavailable during this change, so those complete request durations remain unmeasured.
+photo bytes, cleanup, clones and both formats. See
+[validation commands](#reproducing-validation-artifacts) for the appropriate
+focused run. Fixture timings exclude production SQL/share latency; complete
+generation durations still require representative deployment measurements.
 
 ## Template selection
 

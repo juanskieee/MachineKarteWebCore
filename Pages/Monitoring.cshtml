@@ -17,8 +17,12 @@
                 <div class="ekarte-brand">
                     <img src="/favicon.ico"
                         alt="E-Karte System Logo"
-                        class="ekarte-logo" />
-                    <h1>E-Karte System</h1>
+                        class="ekarte-logo"
+                        role="button"
+                        tabindex="0"
+                        aria-label="Show dancing cat"
+                        data-cat-gif="/Assets/images/dancing_cat.gif" />
+                    <h1>E-Karte Web System</h1>
                 </div>
                 <div class="monitoring-status">
                     <details class="monitoring-legend">
@@ -57,7 +61,7 @@
             <div><label for="cbFloor">Location</label><select id="cbFloor" onchange="onFloorChanged()"><option value="-Select-">-Select-</option></select></div>
             <div><label for="cbMachine" id="lblMachineLabel">Machine</label><select id="cbMachine"><option value="">-Select-</option></select></div>
             <div><label for="dt1">From</label><input type="date" id="dt1" value="@Model.DefaultDateFrom" required /></div>
-            <div><label for="dt2">To</label><input type="date" id="dt2" value="@Model.DefaultDateTo" required /></div>
+            <div><label for="dt2">To</label><input type="date" id="dt2" value="@Model.DefaultDateTo" max="@Model.DefaultDateTo" required /></div>
             <button id="btnSearch" class="btn-search" type="submit">Search</button>
             <button id="btnClearFilters" class="btn-clear-filters" type="button">Clear Filters</button>
             <div class="pagination-group" aria-label="Machine pages">
@@ -74,11 +78,55 @@
         <div class="summary-panel-footer"><button id="machineListGo" class="summary-panel-go" type="button" disabled>View selected machine</button></div>
     </dialog>
     <div id="cardContainer" class="card-container">
-        <div id="cardScroller" class="card-scroller" tabindex="0" role="region" aria-label="Machine BM histories">
-            <div id="noResultMsg" class="no-result-msg is-hidden">No machines found for the selected filters.</div>
-            <div id="loadingSpinner" class="loading-spinner is-hidden" role="status"><span class="spinner"></span>Loading machines…</div>
-            <p id="monitoringWelcome" class="monitoring-welcome">Select a user, process, location, and machine, then Search.</p>
-            <div id="machineBoard" class="machine-board"></div>
+        <div id="loadingSpinner"
+             class="loading-state is-hidden"
+             role="status">
+            <span class="spinner"></span>
+            <div class="loading-content">
+                <strong>Loading Machine Histories</strong>
+                <span>Please wait while records are being retrieved...</span>
+            </div>
+        </div>
+
+        <div id="monitoringWelcome"
+             class="monitoring-state monitoring-state--welcome">
+            <div class="monitoring-state-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                    <path d="M10.5 3a7.5 7.5 0 1 1 0 15a7.5 7.5 0 0 1 0-15zm0 2a5.5 5.5 0 1 0 0 11a5.5 5.5 0 0 0 0-11zm7.7 11.3L22 20.1L20.1 22l-3.8-3.8z" />
+                </svg>
+            </div>
+
+            <h3>Machine Monitoring</h3>
+
+            <p>
+                Select a user, process, location, and machine,
+                then click <strong>Search</strong> to view BM history.
+            </p>
+        </div>
+
+        <div id="noResultMsg"
+             class="monitoring-state monitoring-state--empty is-hidden">
+            <div class="monitoring-state-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                    <path d="M4 5h16v10H4zm1.5 1.5v.2l6.5 4.9l6.5-4.9v-.2zm13 7V8.6L12 13.5L5.5 8.6v4.9zM4 17h16v2H4z" />
+                </svg>
+            </div>
+
+            <h3>No Records Found</h3>
+
+            <p>
+                No machine histories matched the selected filters.
+                Try another process, location, machine, or date range.
+            </p>
+        </div>
+
+        <div id="machineBoard" class="machine-board is-hidden">
+            <div id="cardScroller"
+                 class="card-scroller machine-scroll-area"
+                 tabindex="0"
+                 role="region"
+                 aria-label="Machine BM histories"></div>
+            <div id="machineHeaderRow" class="machine-header-row"></div>
         </div>
     </div>
     <div id="toastMsg" class="toast-msg is-hidden" role="status" aria-live="polite"></div>

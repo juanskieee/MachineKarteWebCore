@@ -6,7 +6,8 @@ legacy flow, approved web interaction changes, compiled mappings, and regression
 checks take precedence over abandoned controls or commented-out routines.
 
 Related guides: [database and performance](DATABASE.md), [reporting](REPORTS.md),
-and [JavaScript conventions](../Assets/js/README.md).
+[Monitoring filters and board](MONITORING.md), and
+[JavaScript conventions](../Assets/js/README.md).
 
 ## Structure
 
@@ -87,9 +88,9 @@ generate or download a report. Do not add standalone pages for these child flows
 
 ## Behavior to preserve
 
-- Monitoring defaults to 30 days ago through tomorrow. Its legacy morning reset
-  uses today as the end date. PM/CC/EEE/VIS use machine processes; TE uses
-  FL/FT/TP/EDS/MEMS tester processes. Clear Filters cancels pending requests and
+- Monitoring defaults to 30 days ago through today. Its To filter allows today
+  and earlier dates; its morning reset also ends today. PM/CC/EEE/VIS use machine
+  processes; TE uses FL/FT/TP/EDS/MEMS tester processes. Clear Filters cancels pending requests and
   resets dates, filters, results, counters, paging, and refresh state.
 - Monitoring requires one of the nine specific locations. Location has no All
   option; machine-list, search, and machine-card requests reject blank, All, and
@@ -138,11 +139,11 @@ Tomato/MistyRose, need-action summaries Blue/Azure, and action summaries
 DarkOrange/Bisque. Action Card comments/replies retain their blue/purple/green
 division rows.
 
-Machine columns occupy ten board slots with a 186px minimum width, stay left
-aligned for sparse results, and share one scrolling board. Unequal histories
-form a bottom-aligned staircase; scroll to the bottom after requests and layout
-finish. One search loads all matching column data; page changes reuse it and
-render ten completed columns together. Offscreen card layout/paint is deferred.
+Monitoring uses ten column slots with a 186px minimum, a shared card scroller,
+and frozen bottom summaries. Sparse results occupy only their own slots.
+[MONITORING.md](MONITORING.md) owns the date-filter, layout, rendering, and
+focused validation details.
+
 Blink animations share the document clock, and reduced-motion settings
 keep static alert colors. RawData uses native SVG charts without a chart CDN.
 The status legend reuses the cards' Action, AC/SM/DM/DV, and MCD badges with concise
@@ -159,14 +160,30 @@ moving JavaScript files.
 
 ## Validation
 
-Run `dotnet build MachineKarteWebCore.csproj --no-restore` after restoring packages,
-and `git diff --check` for source/documentation changes. Choose further checks
-for the affected behavior:
+The scripts are a mixed validation toolbox, not a dedicated unit-test suite.
+Offline rule checks can provide unit-style coverage; LocalDB SQL/save checks
+are integration tests, while HTTP/browser checks cover routes and UI behavior.
+Maintenance tools such as mapping updates and PDF rendering are not unit tests.
+
+LocalDB runners do not read the web app's connection strings and cannot target
+a remote SQL Server as written. HTTP/browser runners accept a reachable hosted
+app through `-BaseUrl`, but endpoint checks avoid business-data reads and browser
+fixtures replace AJAX data. Neither validates the app's connected database.
+Use separate integration checks against a suitable isolated SQL Server test
+instance for real schema, permission, data, and performance acceptance; see
+[database test isolation](DATABASE.md#connections-and-writes).
+
+Use `git diff --check` for source/documentation changes. Build after C# or Razor
+logic changes with `dotnet build MachineKarteWebCore.csproj --no-restore` after
+restoring packages. Choose further checks for the affected behavior; use focused
+Monitoring layout checks for board placement and scrolling changes rather than
+unrelated database, reporting, or full workflow suites:
 
 | Script in `scripts/` | Scope and environment |
 | --- | --- |
 | `Test-DatabaseConnections.ps1` | Startup discovery, cached lookups, probe-free opens, fallback, background recovery, cancellation, legacy settings and safe logging; offline |
 | `Test-MonitoringQueries.ps1` | Generated SQL/schema references, statuses, designer mappings, scheduling, and Need Action fixtures; no database |
+| `Test-MonitoringStaircase.ps1` | Focused offline Monitoring column order, stable ties, pagination and To-day boundaries; optional `-Sql` adds synthetic LocalDB rows; no application settings or application database access |
 | `Test-MonitoringParity.ps1` | Actual Monitoring repository/dashboard reads; `-MachineListOnly` checks dropdown SQL/cache and TE header assignment; `-BoardOnly` focuses on grouped columns versus existing web reads/order in all five modes; full desktop SQL audit has a known date-window mismatch (see DATABASE.md); disposable LocalDB catalog; optional `-Benchmark` |
 | `Test-ActionSummaryParity.ps1` | Form2 counts/colors against compiled original VB routines; no database |
 | `Test-ReportGeneration.ps1` | Real templates, photos, compiled mappings, XLSX/PDF output, and capacity errors; `-EvidenceOnly` limits execution to PM/TE evidence and photo staging; offline |
@@ -183,6 +200,8 @@ for the affected behavior:
 
 Invoke PowerShell tools from the repository root, for example
 `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-MonitoringQueries.ps1`.
+For a To-date change, run only `window.runMonitoringDateChecks()` from
+`WorkflowBrowserChecks.js` in a browser fixture; a full workflow run is unnecessary.
 For local-download changes, use `Test-ReportGeneration.ps1 -DownloadOnly`,
 `Test-WorkflowEndpoints.ps1 -ReportsOnly`, and `Test-Workflows.ps1 -ReportsOnly`.
 These modes check direct in-memory responses, removed storage routes, local

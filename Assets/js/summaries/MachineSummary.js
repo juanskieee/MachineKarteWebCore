@@ -82,12 +82,12 @@ Workflows.register("MachineSummary", (root, options, context) => {
             if (context.signal.aborted) return;
             const snapshot = {
                 rows: new Map(json.data.rows.map((row) => [row.process, row])),
-                expiresAt: Date.now() + 30000,
+                expiresAt: Date.now() + 60000,
             };
             summarySnapshot = snapshot;
             context.setTimeout(() => {
                 if (summarySnapshot === snapshot) summarySnapshot = null;
-            }, 30000);
+            }, 60000);
             renderGrid(json.data);
         } catch (err) {
             if (seq === loadSeq && !context.signal.aborted)

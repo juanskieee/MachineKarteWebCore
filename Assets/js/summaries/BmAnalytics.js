@@ -9,7 +9,7 @@ Workflows.register("BmAnalytics", (root, options, context) => {
 
     // State
 
-    let currentResult = null; // last BmAnalyticsResult from server
+    let currentResult = null; // last BmAnalyticsResult snapshot from server
 
     // DOM refs
 
@@ -60,8 +60,15 @@ Workflows.register("BmAnalytics", (root, options, context) => {
             if (!json.success) throw new Error(json.message);
             if (context.signal.aborted) return;
 
-            currentResult = json.data;
-            renderGrid(currentResult);
+            const snapshot = {
+                data: json.data,
+                expiresAt: Date.now() + 60000,
+            };
+            currentResult = snapshot;
+            context.setTimeout(() => {
+                if (currentResult === snapshot) currentResult = null;
+            }, 60000);
+            renderGrid(snapshot.data);
         } catch (err) {
             if (context.signal.aborted) return;
             error.textContent = "Unable to load summary: " + err.message;
@@ -155,8 +162,11 @@ Workflows.register("BmAnalytics", (root, options, context) => {
     // Flyout panel
 
     function openFlyout(key, proc, loc) {
-        if (!currentResult) return;
-        const cells = currentResult.cells || {};
+        if (!currentResult || Date.now() >= currentResult.expiresAt) {
+            currentResult = null;
+            return;
+        }
+        const cells = currentResult.data.cells || {};
         const cell = cells[key];
         if (!cell || cell.count === 0) return;
 

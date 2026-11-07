@@ -178,8 +178,10 @@ INSERT TEBMMaintenance VALUES
                 paged.AddRange((await repository.GetPagedMachineSummariesAsync(request)).Machines);
             }
             Require(grouped.CurrentPage==grouped.TotalPages && grouped.MachineSummaries.Count<=10,"Grouped search lost page clamping");
+            var displayedCounts=grouped.MachineCards.ToDictionary(c=>(c.MachineNo,c.MachineType,c.ActionLine),c=>c.BMCards.Count);
+            var staircase=paged.OrderByDescending(c=>displayedCounts[(c.MachineNo,c.MachineType,c.ActionLine)]);
             Require(grouped.MachineCards.Select(c=>(c.MachineNo,c.MachineType,c.ActionLine))
-                .SequenceEqual(paged.Select(c=>(c.MachineNo,c.MachineType,c.ActionLine))),user+": all-column order differs from existing pages");
+                .SequenceEqual(staircase.Select(c=>(c.MachineNo,c.MachineType,c.ActionLine))),user+": columns are not descending by displayed cards with stable legacy ties");
             foreach(var column in grouped.MachineCards) {
                 var single=await service.GetMachineCardAsync(request,column.MachineNo,column.MachineType,column.ActionLine);
                 Require(JsonSerializer.Serialize(column)==JsonSerializer.Serialize(single),user+": grouped column changed rows, colors, counts or metadata for "+column.MachineNo);
@@ -190,7 +192,7 @@ INSERT TEBMMaintenance VALUES
         using var boardCancellation=new CancellationTokenSource(); boardCancellation.Cancel();
         try { await service.SearchDashboardAsync(new MonitoringFilter{UserType="TE",Process="FT",Floor="LSI2-3F"},boardCancellation.Token); throw new Exception("Grouped search ignored cancellation"); }
         catch(OperationCanceledException) { }
-        Console.WriteLine($"PASS: {columns} grouped columns in all five modes exactly match existing per-column reads and page order, including duplicate MCD/actions, multiple tester types, interleaved floors, counts/colors, page clamping and cancellation. Two SQL reads per search; no repeated per-column/page reads needed.");
+        Console.WriteLine($"PASS: {columns} grouped columns match per-column reads in all five modes, ordered by displayed count with stable legacy ties, including duplicate MCD/actions, tester types, interleaved floors, counts/colors, page clamping and cancellation. Two SQL reads per search; no repeated per-column/page reads needed.");
         return;
     }
     // Use the checked-in uc_Test statements themselves, changing only VB string concatenation and catalog.
@@ -212,7 +214,8 @@ INSERT TEBMMaintenance VALUES
     async Task<DataTable> Read(string sql,string machine,string type="TYPE",string floor="LSI2-3F",string process="FT") {
         await using var command = new SqlCommand(sql,fixture);
         command.Parameters.AddWithValue("@Range1",new DateTime(2026,10,1));
-        command.Parameters.AddWithValue("@Range2",new DateTime(2026,11,2));
+        // Legacy controls supplied timestamps; the web's To date includes its entire day.
+        command.Parameters.AddWithValue("@Range2",new DateTime(2026,11,3).AddMilliseconds(-3));
         command.Parameters.AddWithValue("@Location",floor); command.Parameters.AddWithValue("@Mcno",machine);
         command.Parameters.AddWithValue("@MCType",type); command.Parameters.AddWithValue("@Process",process);
         await using var reader = await command.ExecuteReaderAsync(); var result=new DataTable(); result.Load(reader); return result;
@@ -269,7 +272,7 @@ INSERT TEBMMaintenance VALUES
     Require(testerList.Count==25 && testerList.SequenceEqual(testerList.Order()) && testerList.Contains("TE-A"),"TE tester dropdown lost process/floor filters or distinct ordering");
     Require((await repository.GetMachinesAsync("PM","DC",filter.Floor)).SequenceEqual(new[]{"MC-A"}),"PM machine dropdown changed");
     var all=await repository.GetBMCardsAsync("TE","FT",filter.Floor,"All",filter.DateFrom,filter.DateTo);
-    Require(all.Count==30 && all.All(row=>row.Process=="FT"),"TE/FT/LSI2-3F/All filters lost or added BM cards");
+    Require(all.Count==31 && all.All(row=>row.Process=="FT"),"TE/FT/LSI2-3F/All filters lost or added BM cards");
     var pages=new List<MachineSummary>();
     for(var page=1;page<=3;page++) {
         filter.Page=page; var result=await repository.GetPagedMachineSummariesAsync(filter);
@@ -281,10 +284,10 @@ INSERT TEBMMaintenance VALUES
     filter.Page=1; filter.Floor="All";
     var allFloorCounts=new List<MachineSummary>();
     for(var page=1;page<=3;page++) { filter.Page=page; allFloorCounts.AddRange((await repository.GetPagedMachineSummariesAsync(filter)).Machines); }
-    Require(allFloorCounts.Sum(row=>row.BMCount)==31,"All floors multiplied TesterType matches");
+    Require(allFloorCounts.Sum(row=>row.BMCount)==32,"All floors multiplied TesterType matches");
     filter.Page=1;
     filter.Floor="LSI2-3F"; filter.Machine="TE-A";
-    Require((await repository.GetPagedMachineSummariesAsync(filter)).Machines.Single().BMCount==6,"Specific tester filter differs");
+    Require((await repository.GetPagedMachineSummariesAsync(filter)).Machines.Single().BMCount==7,"Specific tester filter differs");
     filter.Machine="MISSING";
     var empty=await repository.GetPagedMachineSummariesAsync(filter);
     Require(empty.Machines.Count==0 && empty.TotalPages==1,"Empty summary contract differs");
@@ -296,14 +299,14 @@ INSERT MachineKarte_ActionCard_TE VALUES (2,1,'ANOTHER-TESTER','LATEST','NEW SEC
 INSERT MachineKarte_ActionCard VALUES (2,1,'MC-A','LATEST','NEW SECTION','NEW DEPARTMENT','NEW DIVISION','STOP (WAITING FOR QC INSTRUCTION)');
 ");
     var duplicates=await repository.GetBMCardsAsync("TE","FT","LSI2-3F","TE-A",filter.DateFrom,filter.DateTo,"TYPE");
-    Require(duplicates.Count==6 && duplicates.Single(row=>row.BMId==1).ActionMarker=="LATEST" && duplicates.Single(row=>row.BMId==1).ActionColor=="Aqua","MCD/action duplicates multiplied BMs or selected old action");
+    Require(duplicates.Count==7 && duplicates.Single(row=>row.BMId==1).ActionMarker=="LATEST" && duplicates.Single(row=>row.BMId==1).ActionColor=="Aqua","MCD/action duplicates multiplied BMs or selected old action");
     var pmDuplicates=await repository.GetBMCardsAsync("PM","DC","LSI2-3F","MC-A",filter.DateFrom,filter.DateTo,"TYPE");
     Require(pmDuplicates.Select(row=>row.BMId).Distinct().Count()==pmDuplicates.Count && pmDuplicates.Single(row=>row.BMId==1).ActionMarker=="LATEST","PM duplicate handling differs");
     filter.Machine="All"; filter.Page=99;
     var dashboard=await service.SearchDashboardAsync(filter);
-    Require(dashboard.CurrentPage==3 && dashboard.TotalPages==3 && dashboard.FloorSummaries.Single(row=>row.FloorCode=="LSI2-3F").BMCount==30,"Real dashboard lost cards, counters or page clamping");
+    Require(dashboard.CurrentPage==3 && dashboard.TotalPages==3 && dashboard.FloorSummaries.Single(row=>row.FloorCode=="LSI2-3F").BMCount==31,"Real dashboard lost cards, counters or page clamping");
     var machineCard=await service.GetMachineCardAsync(filter,"TE-A","TYPE",4);
-    Require(machineCard.BMCards.Count==6 && machineCard.BMCards.Any(row=>row.NeedsAction),"Real machine-card flow lost cards or repeat detection");
+    Require(machineCard.BMCards.Count==7 && machineCard.BMCards.Any(row=>row.NeedsAction),"Real machine-card flow lost cards or repeat detection");
     using var cancelled=new CancellationTokenSource(); cancelled.Cancel();
     try { await repository.GetBMCardsAsync("TE","FT","LSI2-3F","All",filter.DateFrom,filter.DateTo,cancellationToken:cancelled.Token); throw new Exception("Cancelled read completed"); }
     catch(OperationCanceledException) { }
@@ -313,9 +316,9 @@ INSERT MachineKarte_ActionCard VALUES (2,1,'MC-A','LATEST','NEW SECTION','NEW DE
     await Execute("INSERT TesterType VALUES ('TYPE',9,'LSI2-3F',4); INSERT MCType VALUES ('TYPE',1,4);");
     filter.Page=1; filter.Machine="TE-A";
     var metadataDuplicates=await repository.GetPagedMachineSummariesAsync(filter);
-    Require(metadataDuplicates.Machines.Count==1 && metadataDuplicates.Machines[0].BMCount==6,"Duplicate projected tester groups changed legacy EXCEPT semantics");
+    Require(metadataDuplicates.Machines.Count==1 && metadataDuplicates.Machines[0].BMCount==7,"Duplicate projected tester groups changed legacy EXCEPT semantics");
     var pmSummary=await repository.GetPagedMachineSummariesAsync(new MonitoringFilter{UserType="PM",Process="DC",Floor="LSI2-3F",Machine="MC-A",DateFrom=filter.DateFrom,DateTo=filter.DateTo});
-    Require(pmSummary.Machines.Count==1 && pmSummary.Machines[0].BMCount==6,"Duplicate projected machine groups changed legacy EXCEPT semantics");
+    Require(pmSummary.Machines.Count==1 && pmSummary.Machines[0].BMCount==7,"Duplicate projected machine groups changed legacy EXCEPT semantics");
     await Execute(@"
 INSERT TEBMMaintenance SELECT 100+status,'MC-A','TE-A','TYPE','FT','LSI2-3F','2026-10-20',1,status,1,1,1,64,0,'DEVICEA','QUALITY BM','CC',''
 FROM (VALUES(1),(2),(3),(7),(17),(30),(31)) excluded(status);
