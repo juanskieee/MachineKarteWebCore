@@ -70,14 +70,14 @@ namespace MachineKarte.Web.Services
 
         public async Task<MonitoringDashboardResult> SearchDashboardAsync(MonitoringFilter f, CancellationToken cancellationToken = default)
         {
-            var (summaries, totalPages) = await _repo.GetPagedMachineSummariesAsync(f, cancellationToken);
-            if (f.Page > totalPages)
-            {
-                f.Page = totalPages;
-                (summaries, totalPages) = await _repo.GetPagedMachineSummariesAsync(f, cancellationToken);
-            }
-            var rows = await _repo.GetBMCardsAsync(
-                f.UserType, f.Process, "All", "All", f.DateFrom, f.DateTo, cancellationToken: cancellationToken);
+            var summariesTask = MonitoringQueryBatch.RunAsync(
+                () => _repo.GetPagedMachineSummariesAsync(f, cancellationToken, allPages: true), cancellationToken);
+            var rowsTask = MonitoringQueryBatch.RunAsync(() => _repo.GetBMCardsAsync(
+                f.UserType, f.Process, "All", "All", f.DateFrom, f.DateTo, cancellationToken: cancellationToken), cancellationToken);
+            await Task.WhenAll(summariesTask, rowsTask);
+            var (summaries, totalPages) = await summariesTask;
+            var rows = await rowsTask;
+            f.Page = Math.Clamp(f.Page, 1, totalPages);
             var rowsByFloor = rows.ToLookup(row => row.Location);
             var floors = GetProcessFloors(f.Process).Select(floor =>
             {
@@ -100,9 +100,27 @@ namespace MachineKarte.Web.Services
                 };
             }).ToList();
 
+            // Reuse the rows already read for the floor counters. A page change
+            // then needs neither another search nor one query per machine.
+            var columnRows = rows.Where(row => string.Equals(row.Location, f.Floor, StringComparison.OrdinalIgnoreCase))
+                .ToLookup(row => (row.MachineNo, row.MachineType));
+            var columns = summaries.Select(summary =>
+            {
+                var cards = columnRows[(summary.MachineNo, summary.MachineType)].ToList();
+                return new MachineCardResult
+                {
+                    MachineNo = summary.MachineNo,
+                    MachineType = summary.MachineType,
+                    ActionLine = summary.ActionLine,
+                    NeedActionCount = CountNeedActionGroups(cards),
+                    BMCards = cards
+                };
+            }).ToList();
+
             return new MonitoringDashboardResult
             {
-                MachineSummaries = summaries,
+                MachineSummaries = summaries.Skip((f.Page - 1) * 10).Take(10).ToList(),
+                MachineCards = columns,
                 FloorSummaries = floors,
                 CurrentPage = f.Page,
                 TotalPages = totalPages
@@ -110,7 +128,7 @@ namespace MachineKarte.Web.Services
         }
 
         // ----------------------------------------------------------------
-        // BM cards for a single machine column (AJAX per-card lazy load)
+        // Retained single-column API and parity reference for grouped loading.
         // ----------------------------------------------------------------
 
         public async Task<MachineCardResult> GetMachineCardAsync(

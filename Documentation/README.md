@@ -141,7 +141,9 @@ division rows.
 Machine columns occupy ten board slots with a 186px minimum width, stay left
 aligned for sparse results, and share one scrolling board. Unequal histories
 form a bottom-aligned staircase; scroll to the bottom after requests and layout
-finish. Blink animations share the document clock, and reduced-motion settings
+finish. One search loads all matching column data; page changes reuse it and
+render ten completed columns together. Offscreen card layout/paint is deferred.
+Blink animations share the document clock, and reduced-motion settings
 keep static alert colors. RawData uses native SVG charts without a chart CDN.
 The status legend reuses the cards' Action, AC/SM/DM/DV, and MCD badges with concise
 descriptions and closes on outside clicks. Summary location column headers match
@@ -164,7 +166,7 @@ for the affected behavior:
 | Script in `scripts/` | Scope and environment |
 | --- | --- |
 | `Test-MonitoringQueries.ps1` | Generated SQL/schema references, statuses, designer mappings, scheduling, and Need Action fixtures; no database |
-| `Test-MonitoringParity.ps1` | Actual Monitoring repository/dashboard reads compared with original Form1/uc_Test SQL, TE/FT regression, pagination and duplicate safety; disposable LocalDB catalog; optional `-Benchmark` |
+| `Test-MonitoringParity.ps1` | Actual Monitoring repository/dashboard reads; `-BoardOnly` focuses on grouped columns versus existing web reads/order in all five modes; full desktop SQL audit has a known date-window mismatch (see DATABASE.md); disposable LocalDB catalog; optional `-Benchmark` |
 | `Test-ActionSummaryParity.ps1` | Form2 counts/colors against compiled original VB routines; no database |
 | `Test-ReportGeneration.ps1` | Real templates, photos, compiled mappings, XLSX/PDF output, and capacity errors; offline |
 | `Update-LegacyReportMappings.ps1 -Check` | Generated mappings match extraction and audited corrections; offline |
@@ -175,7 +177,7 @@ for the affected behavior:
 | `Test-DataRetrieval.ps1` | Actual repository reads, original Form5 SQL parity, complete AlertBoard batching parity, count/distinct differences, sparse views, report lookups, evidence limits, and cancellation; disposable LocalDB database; optional `-Benchmark` |
 | `Test-Startup.ps1` | Starts its own app with a loopback non-SQL sink; HTML responsiveness and bounded tracking |
 | `Test-WorkflowEndpoints.ps1` | Existing local app: redirects/partials, rejected requests, download streams and inline headers |
-| `Test-Workflows.ps1` | Existing local app and Chromium debugging port: real partials/assets with AJAX fixtures, all eleven workflows, desktop/mobile geometry, cancellation, and resource cleanup |
+| `Test-Workflows.ps1` | Existing local app and Chromium debugging port: real partials/assets with AJAX fixtures; `-MonitoringOnly` checks grouped loading, cached paging, rendering, cancellation and desktop/mobile captures; default covers all eleven workflows |
 | `Render-ReportPdf.ps1` | Independent Windows PDF rendering; requires an exported PDF and output directory |
 
 Invoke PowerShell tools from the repository root, for example

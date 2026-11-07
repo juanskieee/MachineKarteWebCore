@@ -106,11 +106,11 @@ public class MonitoringRepository
     // Paged machine summary (drives card column headers)
     // Mirrors LoadMCName() strQuery2 � PM/CC/EEE/VIS and TE branches
     public async Task<(List<MachineSummary> Machines, int TotalPages)> GetPagedMachineSummariesAsync(
-        MonitoringFilter f, CancellationToken cancellationToken = default)
+        MonitoringFilter f, CancellationToken cancellationToken = default, bool allPages = false)
     {
         ValidateProcess(f.UserType, f.Process);
-        int top2 = f.Page * 10;
-        int top1 = (f.Page * 10) - 10;
+        int top2 = allPages ? int.MaxValue : f.Page * 10;
+        int top1 = allPages ? 0 : (f.Page * 10) - 10;
 
         string addQuery = BuildUserFilter(f.UserType);
         bool isMachine = f.UserType is "PM" or "CC" or "EEE" or "VIS";
@@ -363,8 +363,14 @@ public class MonitoringRepository
                                 ? reader["Div"].ToString()! : string.Empty
             });
         }
-        ApplyLegacyActionColors(list);
-        ApplyLegacyRepeatColors(list, userType, process);
+        // The shared all-floor read may interleave locations. Color complete
+        // columns independently, exactly as the single-column request does.
+        foreach (var group in list.GroupBy(row => (row.MachineNo, row.MachineType, row.Location)))
+        {
+            var column = group.ToList();
+            ApplyLegacyActionColors(column);
+            ApplyLegacyRepeatColors(column, userType, process);
+        }
         return list;
     }
 

@@ -1,4 +1,4 @@
-param([string]$Dotnet = 'dotnet', [string]$LocalDbInstance = 'MSSQLLocalDB', [switch]$Benchmark)
+param([string]$Dotnet = 'dotnet', [string]$LocalDbInstance = 'MSSQLLocalDB', [switch]$Benchmark, [switch]$BoardOnly)
 # Execute the real repository against a disposable LocalDB catalog, with original VB SQL as the oracle.
 # Never loads appsettings or connects to an application database.
 $ErrorActionPreference = 'Stop'
@@ -26,6 +26,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Reflection;
 using System.Text.RegularExpressions;
+using System.Text.Json;
 using MachineKarte.Web.Models;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
@@ -109,6 +110,42 @@ INSERT gridBMOCAP VALUES (1,'{process}'),(1,'{process}'),(2,'{process}');
 SELECT * INTO {process}BMMaintenance FROM Seed;
 UPDATE {process}BMMaintenance SET Process='{process}',BMContentID={48+i*2},AcredBMContentID=CASE WHEN AcredBMContentID=49 THEN {49+i*2} WHEN AcredBMContentID=48 THEN {48+i*2} ELSE AcredBMContentID END;");
         if (testers.Contains(process)) await Execute($"INSERT TEBMMaintenance SELECT * FROM {process}BMMaintenance;");
+    }
+    if(args.Contains("board-only")) {
+        // Compare the changed board directly with the existing web page/card
+        // queries; leave the separate desktop SQL audit out of this focused run.
+        await Execute(@"
+INSERT MachineKarte_MCD VALUES ('DEV ICEA',1);
+INSERT MachineKarte_ActionCard_TE VALUES (2,1,'OTHER','NEW ACTION','','','','STOP (ONGOING INVESTIGATION)');
+INSERT TesterType VALUES ('SECOND',9,'LSI2-3F',6),('TYPE',9,'LSI2-2F',4);
+INSERT TEBMMaintenance VALUES
+(200,'MC-A','TE-A','SECOND','FT','LSI2-3F','2026-10-20',4,6,1,1,1,64,0,'DEVICEA','QUALITY BM','CC',''),
+(201,'MC-A','TE-A','TYPE','FT','LSI2-2F','2026-10-31 12:00:00',1,6,1,1,1,48,0,'DEVICEA','QUALITY BM','CC','');
+");
+        int columns=0;
+        foreach(var user in new[]{"PM","CC","EEE","VIS","TE"}) {
+            var request=new MonitoringFilter{UserType=user,Process=user=="TE"?"FT":"DC",Floor="LSI2-3F",Machine="All",DateFrom="2026-10-01",DateTo="2026-11-02",Page=999};
+            var grouped=await service.SearchDashboardAsync(request);
+            var paged=new List<MachineSummary>();
+            for(var page=1;page<=grouped.TotalPages;page++) {
+                request.Page=page;
+                paged.AddRange((await repository.GetPagedMachineSummariesAsync(request)).Machines);
+            }
+            Require(grouped.CurrentPage==grouped.TotalPages && grouped.MachineSummaries.Count<=10,"Grouped search lost page clamping");
+            Require(grouped.MachineCards.Select(c=>(c.MachineNo,c.MachineType,c.ActionLine))
+                .SequenceEqual(paged.Select(c=>(c.MachineNo,c.MachineType,c.ActionLine))),user+": all-column order differs from existing pages");
+            foreach(var column in grouped.MachineCards) {
+                var single=await service.GetMachineCardAsync(request,column.MachineNo,column.MachineType,column.ActionLine);
+                Require(JsonSerializer.Serialize(column)==JsonSerializer.Serialize(single),user+": grouped column changed rows, colors, counts or metadata for "+column.MachineNo);
+                Require(column.BMCards.All(c=>c.Location==request.Floor && c.MachineType==column.MachineType),"Grouped rows crossed floors/types");
+                columns++;
+            }
+        }
+        using var boardCancellation=new CancellationTokenSource(); boardCancellation.Cancel();
+        try { await service.SearchDashboardAsync(new MonitoringFilter{UserType="TE",Process="FT",Floor="LSI2-3F"},boardCancellation.Token); throw new Exception("Grouped search ignored cancellation"); }
+        catch(OperationCanceledException) { }
+        Console.WriteLine($"PASS: {columns} grouped columns in all five modes exactly match existing per-column reads and page order, including duplicate MCD/actions, multiple tester types, interleaved floors, counts/colors, page clamping and cancellation. Two SQL reads per search; no repeated per-column/page reads needed.");
+        return;
     }
     // Use the checked-in uc_Test statements themselves, changing only VB string concatenation and catalog.
     var vb = File.ReadAllText(Path.Combine(args[0],"Legacy","uc_Test.vb.txt"));
@@ -243,6 +280,7 @@ INSERT TesterType VALUES ('SECOND',9,'LSI2-3F',6);
     Require((await repository.GetBMCardsAsync("TE","FT","LSI2-3F","TE-A",filter.DateFrom,filter.DateTo,"SECOND")).Single().BMId==200,"Tester type/category 4 filtering lost valid cards");
     Console.WriteLine("PASS: legacy EXCEPT distinctness for NULL/default metadata, all seven TE status exclusions, and separate tester types/category 4.");
 
+
     if(args.Contains("benchmark")) {
         // Synthetic workload only; both queries use the same database, data, indexes and connection.
         await Execute(@"
@@ -277,5 +315,6 @@ INSERT MachineKarte_ActionCard_TE SELECT 1000+value,100000+value,'UNRELATED','',
 if ($LASTEXITCODE -ne 0) { throw 'Monitoring parity fixture build failed.' }
 $runArguments = @((Join-Path $checkDirectory 'bin/Debug/net8.0/win-x64/Checks.dll'), $repo, $LocalDbInstance)
 if ($Benchmark) { $runArguments += 'benchmark' }
+if ($BoardOnly) { $runArguments += 'board-only' }
 & $Dotnet @runArguments
 if ($LASTEXITCODE -ne 0) { throw 'Monitoring parity regression checks failed.' }

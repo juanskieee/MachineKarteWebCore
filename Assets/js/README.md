@@ -40,8 +40,17 @@ mode. Keep record-specific state inside that initializer.
 Legacy form mappings, request sequence guards, first-match duplicate handling,
 snapshot expiration, and the shared refresh clock are intentional behavior.
 
+Monitoring keeps the latest Search response's `machineCards` for all matching
+pages. Next/Previous slice that snapshot into ten-column pages and construct
+each complete board off-DOM before replacing it once. Do not restore individual
+MachineCard requests or repeat Search on cached page changes. Explicit searches,
+changed filters, refresh/save notifications and Clear Filters invalidate the
+snapshot. Native `content-visibility` defers offscreen card layout/paint; its
+visibility event synchronizes newly visible animations to the document clock.
+
 Build with `dotnet build MachineKarteWebCore.csproj --no-restore`. With a local
 app and a Chromium browser exposing its debugging port, run
 `powershell -ExecutionPolicy Bypass -File scripts/Test-Workflows.ps1` with the
 matching `-BaseUrl` and `-DevToolsPort`. Its fixtures replace AJAX data while
 testing the real Razor partials and assets; no live database is required.
+Use `-MonitoringOnly` for board changes without running child-workflow checks.

@@ -17,6 +17,7 @@ const State = {
     timerHandle: null, // Timer1 interval
     toastTimer: null,
     lastFilter: null, // cached last successful MonitoringFilter
+    dashboard: null, // matching columns for every page of the current search
     antiForgery: "",
 };
 
@@ -30,6 +31,9 @@ document.addEventListener("DOMContentLoaded", () => {
         .getElementById("btnClearFilters")
         .addEventListener("click", clearFilters);
     const legend = document.querySelector('.monitoring-legend');
+    document.getElementById('machineBoard').addEventListener('contentvisibilityautostatechange', event => {
+        if (!event.skipped) synchronizeBlinkAnimations(event.target);
+    }, { capture: true });
     document.addEventListener('click', (event) => {
         if (!legend.contains(event.target)) legend.open = false;
     }, { capture: true });
@@ -195,6 +199,7 @@ function clearFilters() {
     ++State.searchId;
     ++State.filterId;
     State.lastFilter = null;
+    State.dashboard = null;
     State.page = State.totalPages = 1;
     State.timerCount = 600;
     document.getElementById("lblTimer").textContent = "600";
@@ -244,6 +249,7 @@ async function doSearch(page = 1) {
 
     const filter = buildFilter();
     State.lastFilter = filter;
+    State.dashboard = null;
     document.getElementById("monitoringWelcome").classList.add("is-hidden");
 
     showSpinner(true);
@@ -255,9 +261,9 @@ async function doSearch(page = 1) {
         signal: controller.signal,
     });
     if (searchId !== State.searchId) return;
-    showSpinner(false);
 
     if (!resp.success) {
+        showSpinner(false);
         showToast(resp.message);
         return;
     }
@@ -265,21 +271,31 @@ async function doSearch(page = 1) {
     State.page = resp.data.currentPage;
     State.totalPages = resp.data.totalPages;
     filter.page = State.page;
+    State.dashboard = resp.data;
     updatePagination();
     renderFloorSummary(resp.data.floorSummaries);
-    await renderMachineCards(
-        resp.data.machineSummaries,
-        filter,
-        controller.signal,
-    );
+    await renderCurrentPage(controller.signal);
+    if (searchId === State.searchId) showSpinner(false);
 }
 
 // PAGINATION  (lblPrev / lblNext Click)
 
-function changePage(delta) {
+async function changePage(delta) {
     const newPage = State.page + delta;
     if (newPage < 1 || newPage > State.totalPages) return;
-    doSearch(newPage);
+    const filter = buildFilter();
+    if (!State.dashboard || !['userType', 'process', 'floor', 'machine', 'dateFrom', 'dateTo']
+        .every(key => filter[key] === State.lastFilter[key]))
+        return doSearch(1);
+
+    State.page = newPage;
+    updatePagination();
+    await renderCurrentPage(State.searchController?.signal);
+}
+
+function renderCurrentPage(signal) {
+    const offset = (State.page - 1) * 10;
+    return renderMachineCards(State.dashboard.machineCards.slice(offset, offset + 10), State.lastFilter, signal);
 }
 
 function updatePagination() {
@@ -475,20 +491,23 @@ function closeSidebar() {
 
 // MACHINE CARD RENDERING  (Panel1 / uC_Test in Form1)
 
-async function renderMachineCards(summaries, filter, signal) {
+async function renderMachineCards(columns, filter, signal) {
     const scroller = document.getElementById("cardScroller");
     const board = document.getElementById("machineBoard");
     const searchId = State.searchId;
+    const page = State.page;
     const noResult = document.getElementById("noResultMsg");
 
-    if (!summaries || summaries.length === 0) {
+    if (signal?.aborted) return;
+    if (!columns || columns.length === 0) {
+        board.replaceChildren();
         noResult.classList.remove("is-hidden");
         return;
     }
     noResult.classList.add("is-hidden");
 
     const fragment = document.createDocumentFragment();
-    const containers = summaries.map((mc, idx) => {
+    columns.forEach((mc, idx) => {
         const col = document.createElement("div");
         col.className = "machine-col";
         col.dataset.mcno = mc.machineNo;
@@ -499,57 +518,27 @@ async function renderMachineCards(summaries, filter, signal) {
                 <span class="mc-location">${escapeHtml(filter.floor)}</span>
                 <span class="mc-no">${escapeHtml(mc.machineNo)}</span>
                 <span class="mc-type">${escapeHtml(mc.machineType)}</span>
-                <span class="need-action-label" title="Repeat BM groups within seven days without an action card">Need Action</span><span class="need-action-badge">…</span>
+                <span class="need-action-label" title="Repeat BM groups within seven days without an action card">Need Action</span><span class="need-action-badge"></span>
             </div>
             <div class="bm-card-list" id="cards_${idx}">
-                <div class="card-loading">Loading...</div>
             </div>`;
         fragment.append(col);
-        return col.querySelector(".bm-card-list");
+        renderMachineCard(mc, filter, col.querySelector('.bm-card-list'));
     });
-    board.append(fragment);
-    await Promise.all(
-        summaries.map((mc, index) =>
-            loadMachineCard(mc, filter, containers[index], signal),
-        ),
-    );
+    // Insert completed columns together; request completion order cannot affect the board.
+    board.replaceChildren(fragment);
+    synchronizeBlinkAnimations(board);
     // Resolve the shared content height (including horizontal overflow) before
     // starting at the legacy bottom position. Ignore superseded searches.
     await new Promise(requestAnimationFrame);
-    if (searchId === State.searchId) scroller.scrollTop = scroller.scrollHeight;
+    if (searchId === State.searchId && page === State.page && !signal?.aborted) {
+        scroller.scrollTop = scroller.scrollHeight;
+        scroller.scrollLeft = 0;
+    }
 }
 
-/** Lazy loads BM card rows for one machine column (mirrors uC_Test.LoadMain) */
-async function loadMachineCard(mc, filter, container, signal) {
-    container.innerHTML =
-        '<div class="card-loading" role="status">Loading…</div>';
-    const query = new URLSearchParams({
-        userType: filter.userType,
-        process: filter.process,
-        floor: filter.floor,
-        machineNo: mc.machineNo,
-        machineType: mc.machineType,
-        actionLine: mc.actionLine,
-        dateFrom: filter.dateFrom,
-        dateTo: filter.dateTo,
-    });
-    const resp = await request(`/Monitoring?handler=MachineCard&${query}`, {
-        signal,
-    });
-    if (signal?.aborted || !container.isConnected) return;
-
-    if (!resp || !resp.success || !resp.data) {
-        container.innerHTML = `<div class="card-error" role="alert"><p>${escapeHtml(resp?.message || "BM records could not be loaded.")}</p><button type="button">Retry</button></div>`;
-        container
-            .querySelector("button")
-            .addEventListener("click", () =>
-                loadMachineCard(mc, filter, container, signal),
-            );
-        return;
-    }
-
-    container.replaceChildren();
-    const { bmCards, actionLine, needActionCount } = resp.data;
+function renderMachineCard(data, filter, container) {
+    const { bmCards, actionLine, needActionCount } = data;
     const column = container.closest(".machine-col");
     const needActionBadge = column?.querySelector(".need-action-badge");
     if (needActionBadge) {
@@ -578,7 +567,6 @@ async function loadMachineCard(mc, filter, container, signal) {
         fragment.append(element);
     });
     container.replaceChildren(fragment);
-    synchronizeBlinkAnimations(container);
 }
 
 /** Builds one BM card DOM element (mirrors MachineMonitoringCard.ascx HTML) */

@@ -52,11 +52,18 @@
             if (handler === 'MachineList') return json({ machines:['All','TEST-MC-01'] });
             if (handler === 'Search') {
                 if (window.__monitoringSearchGate) await window.__monitoringSearchGate;
-                const page = JSON.parse(options.body).page;
-                const machineSummaries = window.__monitoringEmpty ? [] : window.__monitoringStairs
+                const requestedPage = JSON.parse(options.body).page;
+                let summaries = window.__monitoringEmpty ? [] : window.__monitoringStairs
                     ? (window.__monitoringCounts || [4,3,1]).map((bmCount, index) => ({ machineNo:`TEST-MC-0${index+1}`, machineType:'TEST', bmCount, actionLine:16 }))
                     : [{ machineNo:'TEST-MC-01', machineType:'TEST', bmCount:1, actionLine:4 }];
-                return json({ machineSummaries, currentPage:page, totalPages:3, floorSummaries:locations.map((floorCode,index) => ({ floorCode, repeatBMCount:index===0?2:0, needActionCount:index===0?3:0, withActionCount:index===0?4:0, repeatMachines:['TEST-MC-01'], needActionMachines:['TEST-MC-01'], withActionMachines:['TEST-MC-01'] })) });
+                if(window.__monitoringPages) summaries=Array.from({length:23},(_,index)=>({...summaries[index%summaries.length],machineNo:`PAGE-MC-${index+1}`}));
+                const totalPages=Math.max(1,Math.ceil(summaries.length/10));
+                const page=Math.min(requestedPage,totalPages);
+                const machineCards=summaries.map(mc=>{
+                    const bmCards=Array.from({length:mc.bmCount},(_,index)=>({...card,bmId:123+index,haveAction:index===0?'Yes':'No',needsAction:index===1,mcdNeedsAction:index>1,fontColor:index===1?'Blue':'None',machineNo:mc.machineNo,timeOfRequest:`10/${String(30-index).padStart(2,'0')}/2026 08:30:00`}));
+                    return {...mc,bmCards,actionLine:window.__monitoringActionLine??mc.actionLine,needActionCount:bmCards.filter(row=>row.needsAction).length};
+                });
+                return json({ machineSummaries:summaries.slice((page-1)*10,page*10),machineCards,currentPage:page,totalPages,floorSummaries:locations.map((floorCode,index) => ({ floorCode, repeatBMCount:index===0?2:0, needActionCount:index===0?3:0, withActionCount:index===0?4:0, repeatMachines:['TEST-MC-01'], needActionMachines:['TEST-MC-01'], withActionMachines:['TEST-MC-01'] })) });
             }
             if (handler === 'MachineCard') {
                 if (window.__monitoringCardGate) await window.__monitoringCardGate;
@@ -168,7 +175,9 @@
         const columns = [...document.querySelectorAll('.machine-col')];
         const earlyBlink = columns[0].querySelector('.needs-action .bm-card-content').getAnimations()[0];
         await tick();
-        await loadMachineCard({machineNo:'TEST-MC-02',machineType:'TEST',actionLine:16}, buildFilter(), columns[1].querySelector('.bm-card-list'));
+        renderMachineCard(State.dashboard.machineCards[1], buildFilter(), columns[1].querySelector('.bm-card-list'));
+        await nextPaint();
+        synchronizeBlinkAnimations(columns[1]);
         const lateBlink = columns[1].querySelector('.needs-action .bm-card-content').getAnimations()[0];
         assert(earlyBlink.startTime===0 && lateBlink.startTime===0, 'AJAX card arrivals do not share the document blink clock');
         const rects = columns.map(col => [...col.querySelectorAll('.bm-card')].map(node => node.getBoundingClientRect()));
@@ -214,12 +223,24 @@
         assert(document.querySelector('#floorSummaryGrid tbody').rows.length===3, 'Missing summary counter rows');
         assert([...document.querySelectorAll('#floorSummaryGrid tbody tr')].map(row => row.cells[1].textContent).join(',')==='2,3,4', 'Summary counter types are mixed');
         assert(!document.querySelector('.monitoring-deck button[onclick*="RawData"]') && !document.querySelector('#floorSummaryGrid button'), 'Unexpected toolbar/counter buttons');
+        window.__monitoringPages=true;
+        await doSearch(1);
         assert(document.getElementById('lblPageNumber').textContent==='1/3' && document.getElementById('btnPrev').disabled, 'First page state is incorrect');
-        await doSearch(3);
+        const pageRequests=requests.filter(request=>request.path==='/Monitoring').length;
+        assert(document.querySelectorAll('.machine-col').length===10 && document.querySelector('.machine-col').dataset.mcno==='PAGE-MC-1','First page is not limited to ten columns');
+        const pageClock=performance.now();
+        await changePage(1);
+        assert(document.querySelectorAll('.machine-col').length===10 && document.querySelector('.machine-col').dataset.mcno==='PAGE-MC-11','Second page has the wrong cached columns');
+        await changePage(1);
+        assert(document.querySelectorAll('.machine-col').length===3 && document.querySelector('.machine-col').dataset.mcno==='PAGE-MC-21','Final page has the wrong cached columns');
+        assert(requests.filter(request=>request.path==='/Monitoring').length===pageRequests,'Changing pages repeated a server request');
+        assert(!requests.some(request=>request.handler==='MachineCard'),'Board still requests each machine separately');
+        window.__monitoringPageMilliseconds=(performance.now()-pageClock)/2;
         assert(document.getElementById('lblPageNumber').textContent==='3/3' && document.getElementById('btnNext').disabled, 'Last page state is incorrect');
         const searches = requests.filter(request=>request.handler==='Search').length;
         changePage(1);
         assert(requests.filter(request=>request.handler==='Search').length===searches, 'Next ran past final page');
+        window.__monitoringPages=false;
         window.__monitoringCounts = [12,7,5];
         await doSearch(1);
         const scroller = document.getElementById('cardScroller');
@@ -250,25 +271,22 @@
         const tierCards = [...document.querySelectorAll('#cards_0 .bm-card')];
         assert(['rgb(240, 255, 240)','rgb(230, 230, 250)','rgb(224, 255, 255)','rgb(255, 228, 225)'].every(color => tierCards.some(node => getComputedStyle(node.querySelector('.bm-card-case')).backgroundColor===color)), 'Capacity color tiers missing');
         window.__monitoringActionLine = undefined;
-        const mc = { machineNo:'TEST-MC-01', machineType:'TEST', actionLine:16 };
-        let list = document.getElementById('cards_0');
         window.__failWorkflowData = true;
-        await loadMachineCard(mc, buildFilter(), list);
-        assert(list.querySelector('[role="alert"]')?.textContent.includes('Connection unavailable') && list.querySelector('button'), 'Failure/retry state missing');
+        await doSearch(1);
+        assert(document.getElementById('toastMsg').textContent.includes('Connection unavailable') && !State.dashboard, 'Failure state retained stale page data');
         window.__failWorkflowData = false;
-        list.querySelector('button').click();
-        await waitFor(()=>list.querySelector('.bm-card'));
+        await doSearch(1);
+        assert(document.querySelector('.bm-card'), 'Search retry did not restore the board');
         let release;
-        window.__monitoringCardGate = new Promise(resolve=>{ release=resolve; });
-        const pending = loadMachineCard(mc, buildFilter(), list);
-        list.closest('.machine-col').remove();
-        window.__monitoringCardGate = null;
+        window.__monitoringSearchGate = new Promise(resolve=>{ release=resolve; });
+        const pending = doSearch(1);
+        window.__monitoringSearchGate = null;
         await doSearch(1);
         const replacement = document.getElementById('cards_0');
         const before = replacement.innerHTML;
         release();
         await pending;
-        assert(replacement.innerHTML===before, 'Late card response overwrote the current search');
+        assert(replacement.innerHTML===before, 'Late search response overwrote the current search');
         window.__monitoringEmpty = true;
         await doSearch(1);
         assert(!document.getElementById('noResultMsg').classList.contains('is-hidden'), 'Missing empty search state');
@@ -326,7 +344,7 @@
         assert(val('dt1')===formatDate(new Date(now.getTime()-30*86400000)) && val('dt2')===formatDate(new Date(now.getTime()+86400000)), 'Clear Filters did not reset dates');
         await applyMonitoringSelection(query);
         assert(errors.length===0, errors.join('; '));
-        return 'PASS: ten-slot BM sizing for sparse/full results, right-docked steady/blinking MCD stars, legacy blink phases, O/R/E order, scrolling, counts, pagination, retry, and stale-card isolation';
+        return `PASS: one grouped search, zero per-column/page requests, ten-column lazy page rendering (${window.__monitoringPageMilliseconds.toFixed(1)} ms/page in browser fixture), staircase/scrolling, counts/colors, commands, retry, cancellation and stale-search isolation`;
     };
     window.runRetrievalChecks = async () => {
         const originalNow = Date.now;

@@ -2,7 +2,8 @@ param(
     [string]$BaseUrl = 'http://127.0.0.1:5098',
     [int]$DevToolsPort = 9227,
     [string]$ArtifactDirectory = (Join-Path $env:TEMP 'MachineKarte-Workflow-QA'),
-    [switch]$ReportsOnly
+    [switch]$ReportsOnly,
+    [switch]$MonitoringOnly
 )
 # Run the application and an installed Chromium browser with --remote-debugging-port=9227.
 # Browser fixtures replace only AJAX data; HTML partials and assets come from the real app.
@@ -43,7 +44,7 @@ function Invoke-JavaScript([string]$expression) {
     return $result.result.value
 }
 try {
-    if (!$ReportsOnly) {
+    if (!$ReportsOnly -and !$MonitoringOnly) {
     $monitoringHtml = $client.GetStringAsync("$BaseUrl/Monitoring").GetAwaiter().GetResult()
     $assetPaths = @([regex]::Matches($monitoringHtml, '<(?:link|script)\b[^>]*(?:href|src)="(/[^"]+)"') |
         ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
@@ -87,6 +88,17 @@ try {
     Invoke-Cdp 'Emulation.setDeviceMetricsOverride' @{ width = 1440; height = 1000; deviceScaleFactor = 1; mobile = $false } | Out-Null
     Invoke-Cdp 'Page.navigate' @{ url = "$BaseUrl/Monitoring" } | Out-Null
     $ready = Invoke-JavaScript "new Promise((resolve, reject) => { let attempts = 0; const timer = setInterval(() => { if (window.Workflows && document.readyState === 'complete') { clearInterval(timer); resolve(true); } else if (++attempts > 150) { clearInterval(timer); reject(new Error('Monitoring failed to load')); } }, 100); })"
+    if ($MonitoringOnly) {
+        Write-Output (Invoke-JavaScript 'window.runMonitoringChecks()')
+        New-Item -ItemType Directory -Path $ArtifactDirectory -Force | Out-Null
+        foreach ($viewport in @(@{name='desktop';width=1440;height=1000}, @{name='mobile';width=390;height=844})) {
+            Invoke-Cdp 'Emulation.setDeviceMetricsOverride' @{ width=$viewport.width; height=$viewport.height; deviceScaleFactor=1; mobile=($viewport.name -eq 'mobile') } | Out-Null
+            Write-Output (Invoke-JavaScript "window.prepareWorkflowCapture('MonitoringOverflow')")
+            $capture=Invoke-Cdp 'Page.captureScreenshot' @{ format='png'; captureBeyondViewport=$false }
+            [IO.File]::WriteAllBytes((Join-Path $ArtifactDirectory ($viewport.name+'-Monitoring.png')), [Convert]::FromBase64String($capture.data))
+        }
+        return
+    }
     if ($ReportsOnly) {
         $localDownloads=Join-Path $ArtifactDirectory ('Downloads-'+[guid]::NewGuid().ToString('N'))
         New-Item -ItemType Directory -Path $localDownloads -Force | Out-Null

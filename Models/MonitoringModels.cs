@@ -105,13 +105,15 @@ namespace MachineKarte.Web.Models
     public class MonitoringDashboardResult
     {
         public List<MachineSummary> MachineSummaries { get; set; } = new();
+        /// <summary>All matching columns in page order; the browser renders ten at a time.</summary>
+        public List<MachineCardResult> MachineCards { get; set; } = new();
         public List<FloorSummary> FloorSummaries { get; set; } = new();
         public int TotalPages { get; set; } = 1;
         public int CurrentPage { get; set; } = 1;
     }
 
     /// <summary>
-    /// BM cards for one specific machine column — loaded per card via AJAX.
+    /// BM cards for one machine column, included in the grouped dashboard payload.
     /// </summary>
     public class MachineCardResult
     {

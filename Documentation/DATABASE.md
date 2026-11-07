@@ -178,8 +178,9 @@ previous and current read paths. The measured EEE medians were:
 
 This small maintenance fixture isolates scheduling and action-history overhead;
 it does not establish production timings or large-result/concurrent-user speed.
-The configured live database could not be reached during this change, so the
-reported 4.72s/16.26s still require production remeasurement.
+The configured live database could not be reached during that change. The user
+subsequently reported Machine Summary at 1.88s (from 4.72s) and BM Analytics at
+2.91s (from 16.26s); these are user-supplied production observations.
 
 ### Monitoring parity audit
 
@@ -247,7 +248,7 @@ connections without a new cross-query snapshot transaction.
 
 | Path | Current implementation |
 | --- | --- |
-| Monitoring | Parameterized filtered card CTEs, scoped action/OCAP lookups, one stored paging aggregation, typed dates; cancel superseded searches; cache reader metadata and group floor rows once |
+| Monitoring | Two concurrent reads per search: all ordered machine headers and shared BM rows for counters/columns; one complete browser snapshot, ten columns rendered per page, no per-column/page requests |
 | AlertBoard | Ordered, bounded process reads, then original per-floor processing; 120/50 commands reduced to 12/5 |
 | MachineSummary | One full-grid command; EEE table union and one TE table read; retains per-process floor eligibility, BM counts and distinct-list order |
 | BmAnalytics | Bounded process reads across configured floors; only qualifying MCD/action rows and the three fields used by the grid; retains Form8/Form12 differences |
@@ -264,6 +265,37 @@ Process/table identifiers come from server-side allowlists or fixed maps;
 dropdown choices alone are not the validation boundary.
 
 ## Browser snapshots and rendering
+
+Monitoring Search returns all matching columns for the selected floor in
+`machineCards`, ordered exactly like the existing ten-column pages. The
+`machineSummaries` property still contains the requested page for compatibility.
+The service reuses the BM rows already loaded for floor counters rather than
+querying each column again. Header and BM reads use separate connections through
+the shared scheduler. Coloring runs independently per machine/type/location so
+interleaved floors cannot split a column's repeat group.
+
+The browser keeps this search snapshot and inserts only the active ten columns.
+Next/Previous perform no HTTP or SQL requests. Search, changed filters, the
+600-second refresh, Action Card refresh and Clear Filters replace/discard the
+snapshot. Completed columns are constructed off-DOM and inserted together;
+there are no independent column loading completions. Fixed-height BM cards use
+native `content-visibility: auto` to defer offscreen layout/paint. Newly visible
+cards rejoin the document blink clock; staircase heights and bottom scrolling
+remain stable. The initial response is larger because it includes all matching
+columns, while other floors return only their counters/lists.
+
+Focused validation is `Test-MonitoringParity.ps1 -BoardOnly` (78 actual grouped
+columns across all five modes against existing individual web reads, page order,
+duplicates, interleaved floors, tester types and cancellation), and
+`Test-Workflows.ps1 -MonitoringOnly` (real browser/HTML/assets with AJAX fixtures).
+The browser fixture measured about 25 ms per cached page and verified zero
+per-column/page requests, error/retry, cancellation, counts, colors, commands,
+staircase geometry and desktop/mobile captures. This is not a production timing.
+
+The broader desktop SQL audit currently stops at `PM/DC/All`: its inclusive
+`BETWEEN` date window differs from the existing web summary's
+`< DATEADD(DAY,1,@Range2)` upper bound. The board-specific check compares against
+the existing web behavior; this change does not alter those date rules.
 
 AlertBoard, MachineSummary, and McdMonitoring reuse the loaded summary's machine
 lists for up to 30 seconds. Snapshots are modal-local and invalidated by a new
