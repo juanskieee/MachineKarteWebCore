@@ -1,7 +1,36 @@
-using MachineKarte.Web.Services;
+using System.Data;
+using System.Globalization;
 using Microsoft.Data.SqlClient;
+using MachineKarte.Web.Services;
 
 namespace MachineKarte.Web.Repositories;
+
+// Shared SQL plumbing only. Each repository owns its legacy filters and row ordering.
+internal static class RepositorySql
+{
+    public static void AddVarChar(SqlCommand command, string name, string value, int size) =>
+        command.Parameters.Add(name, SqlDbType.VarChar, Math.Max(size, value.Length)).Value = value;
+
+    public static void AddDateRange(SqlCommand command, string from, string to,
+        string fromParameter = "@Range1", string toParameter = "@Range2")
+    {
+        command.Parameters.Add(fromParameter, SqlDbType.DateTime).Value = DateTime.Parse(from, CultureInfo.InvariantCulture);
+        command.Parameters.Add(toParameter, SqlDbType.DateTime).Value = DateTime.Parse(to, CultureInfo.InvariantCulture);
+    }
+
+    public static void AddDateRange(SqlCommand command, DateTime from, DateTime to)
+    {
+        // These callers previously sent HH:mm:ss strings, discarding fractional seconds.
+        command.Parameters.Add("@Range1", SqlDbType.DateTime).Value = from.AddTicks(-(from.Ticks % TimeSpan.TicksPerSecond));
+        command.Parameters.Add("@Range2", SqlDbType.DateTime).Value = to.AddTicks(-(to.Ticks % TimeSpan.TicksPerSecond));
+    }
+
+    public static HashSet<string> GetColumns(SqlDataReader reader) =>
+        Enumerable.Range(0, reader.FieldCount).Select(reader.GetName).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+    public static string ReadOptional(SqlDataReader reader, IReadOnlySet<string> columns, string name) =>
+        columns.Contains(name) ? reader[name].ToString() ?? string.Empty : string.Empty;
+}
 
 // Forms 7 and 11 share eligibility and ordering.
 // Form 7 counts distinct machines.
@@ -142,5 +171,41 @@ ORDER BY
         }
 
         return machines;
+    }
+}
+
+internal static class MonitoringQueryBatch
+{
+    // Bound dashboard batches; interactive report generation does not use this queue.
+    private const int BatchSize = 4;
+    private static readonly SemaphoreSlim Slots = new(BatchSize);
+
+    public static async IAsyncEnumerable<(T Item, TResult Result)> ReadAsync<T, TResult>(
+        IEnumerable<T> items, Func<T, Task<TResult>> read,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        // Consume batches in input order to bound raw-row buffering.
+        foreach (var batch in items.Chunk(BatchSize))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var results = await Task.WhenAll(batch.Select(item => RunAsync(() => read(item), cancellationToken)));
+            for (var i = 0; i < batch.Length; i++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                yield return (batch[i], results[i]);
+            }
+        }
+    }
+
+    public static async Task<TResult> RunAsync<TResult>(
+        Func<Task<TResult>> read, CancellationToken cancellationToken = default)
+    {
+        await Slots.WaitAsync(cancellationToken);
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return await read();
+        }
+        finally { Slots.Release(); }
     }
 }

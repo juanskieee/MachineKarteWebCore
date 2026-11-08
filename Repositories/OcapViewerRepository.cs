@@ -1,7 +1,7 @@
-using MachineKarte.Web.Services;
 using System.Data;
-using MachineKarte.Web.Models;
 using Microsoft.Data.SqlClient;
+using MachineKarte.Web.Models;
+using MachineKarte.Web.Services;
 
 namespace MachineKarte.Web.Repositories;
 
@@ -12,7 +12,6 @@ public class OcapViewerRepository
     public OcapViewerRepository(DatabaseConnectionResolver connections) =>
         _connections = connections;
 
-    // OCAP checklist rows
     public async Task<List<OcapRow>> GetOcapRowsAsync(
         string bmCaseId, string bmProcess, CancellationToken cancellationToken = default)
     {
@@ -46,7 +45,6 @@ public class OcapViewerRepository
         return rows;
     }
 
-    // Saved OCAPData string for a specific BM record
     // Validate again at the SQL boundary, including direct repository callers.
     public async Task<string?> GetOcapDataAsync(
         int bmId, string tableName, CancellationToken cancellationToken = default)

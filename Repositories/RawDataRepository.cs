@@ -1,6 +1,7 @@
-using MachineKarte.Web.Services;
 using System.Data;
+using System.Data.Common;
 using Microsoft.Data.SqlClient;
+using MachineKarte.Web.Services;
 
 namespace MachineKarte.Web.Repositories;
 
@@ -57,6 +58,7 @@ public class RawDataRepository
             ORDER BY DATEPART(year,OccurrenceDate), DATEPART(MM,OccurrenceDate), BMCount DESC;";
         return QueryAsync(sql, tableName, location, dateFrom, dateTo, cancellationToken);
     }
+
     private async Task<DataTable> QueryAsync(string sql, string tableName, string location,
         string dateFrom, string dateTo, CancellationToken cancellationToken)
     {
@@ -67,9 +69,11 @@ public class RawDataRepository
             throw new ArgumentException("Unknown raw-data table.", nameof(tableName));
 
         await using var conn = await _connections.OpenConnectionAsync(cancellationToken);
-        await using var cmd = new SqlCommand(sql.Replace("{TABLE}", tableName), conn);
-        cmd.CommandType = CommandType.Text;
-        cmd.CommandTimeout = 120;
+        await using var cmd = new SqlCommand(sql.Replace("{TABLE}", tableName), conn)
+        {
+            CommandType = CommandType.Text,
+            CommandTimeout = 120
+        };
         RepositorySql.AddVarChar(cmd, "@Location", location, 20);
         RepositorySql.AddDateRange(cmd, dateFrom, dateTo, "@DateFrom", "@DateTo");
 
@@ -78,7 +82,7 @@ public class RawDataRepository
     }
 
     private static async Task<DataTable> ReadTableAsync(
-        System.Data.Common.DbDataReader reader, CancellationToken cancellationToken)
+        DbDataReader reader, CancellationToken cancellationToken)
     {
         var dt = new DataTable();
         // Preserve SQL column types and DBNull while materializing asynchronously.

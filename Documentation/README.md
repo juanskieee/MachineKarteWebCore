@@ -42,11 +42,13 @@ namespace remains stable. C# orchestration stays in `Services/` under
 `MachineKarte.Web.Services`. The web project's default file globs exclude
 `Reporting/`, so its source/build artifacts do not become web content.
 
-Repositories retain workflow-specific SQL and mappings. `RepositorySql` holds
-shared parameter/metadata handling, `ImportantDeviceQuery` shares MCD/Machine
-Summary eligibility while retaining their count differences, and
-`MonitoringQueryBatch` bounds participating reads. Repository conventions,
-legacy exceptions, and measured changes are documented in [DATABASE.md](DATABASE.md).
+The twelve repositories retain workflow-specific SQL and mappings. Their three
+internal helpers share [RepositorySupport.cs](../Repositories/RepositorySupport.cs):
+`RepositorySql` handles typed parameters and metadata, `ImportantDeviceQuery`
+batches MCD/Machine Summary reads while retaining their count differences, and
+`MonitoringQueryBatch` bounds participating dashboard reads. Connection selection
+belongs to `DatabaseConnectionResolver`. Repository conventions, legacy exceptions,
+and measured changes are documented in [DATABASE.md](DATABASE.md).
 
 ## Navigation and lifecycle
 

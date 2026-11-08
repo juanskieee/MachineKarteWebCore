@@ -1,9 +1,9 @@
-using MachineKarte.Web.Services;
 using System.Data;
 using System.Globalization;
+using Microsoft.Data.SqlClient;
 using MachineKarte.Reporting;
 using MachineKarte.Web.Models;
-using Microsoft.Data.SqlClient;
+using MachineKarte.Web.Services;
 
 namespace MachineKarte.Web.Repositories;
 
@@ -43,11 +43,13 @@ public sealed class PmReportRepository
         if (!TryGetDefinition(process, out var definition))
             throw new ArgumentException($"Unsupported PM report process: {process}", nameof(process));
 
-        var current = await QuerySingleAsync(
+        var currentRows = await QueryManyAsync(
             definition.ViewName,
             "WHERE bmID = @bmId",
             command => command.Parameters.Add("@bmId", SqlDbType.Int).Value = bmId,
+            1,
             cancellationToken);
+        var current = currentRows.FirstOrDefault();
 
         if (current is null)
             return null;
@@ -75,16 +77,6 @@ public sealed class PmReportRepository
             Current = current,
             History = history
         };
-    }
-
-    private async Task<PmReportRecord?> QuerySingleAsync(
-        string viewName,
-        string predicate,
-        Action<SqlCommand> addParameters,
-        CancellationToken cancellationToken)
-    {
-        var rows = await QueryManyAsync(viewName, predicate, addParameters, 1, cancellationToken);
-        return rows.FirstOrDefault();
     }
 
     private async Task<List<PmReportRecord>> QueryManyAsync(

@@ -1,6 +1,6 @@
-using MachineKarte.Web.Services;
-using MachineKarte.Web.Models;
 using Microsoft.Data.SqlClient;
+using MachineKarte.Web.Models;
+using MachineKarte.Web.Services;
 
 namespace MachineKarte.Web.Repositories;
 
@@ -8,10 +8,9 @@ public class TeEvidenceRepository
 {
     private readonly DatabaseConnectionResolver _connections;
 
-    public TeEvidenceRepository(DatabaseConnectionResolver connections)
-        => _connections = connections;
+    public TeEvidenceRepository(DatabaseConnectionResolver connections) =>
+        _connections = connections;
 
-    // Header from ViewTEData
     public async Task<TeEvidenceHeader?> GetHeaderAsync(string bmId, CancellationToken cancellationToken = default)
     {
         // Project only the header fields from the wide view. Inspecting its columns
@@ -229,5 +228,4 @@ GROUP BY {string.Join(", ", selectColumns)}";
             });
         return rows;
     }
-
 }

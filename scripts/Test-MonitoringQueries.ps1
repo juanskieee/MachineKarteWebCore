@@ -118,7 +118,7 @@ foreach (var process in user == "TE" ? new[] { "FL", "FT", "TP", "EDS", "MEMS" }
 }
 foreach (var user in new[] { "PM", "CC", "EEE", "VIS", "TE" })
 {
-    var sql = user == "TE" ? Sql("BuildTEMachineSummarySQL", "1=1", 10, 20, false)
+    var sql = user == "TE" ? Sql("BuildTEMachineSummarySQL", 10, 20, false)
         : Sql("BuildMachineSummarySQL", "DC", "1=1", 10, 20, false);
     CheckColumns(sql, "a", user == "TE" ? "TEBMMaintenance" : "DCBMMaintenance");
     CheckColumns(sql, "c", user == "TE" ? "testertype" : "MCType");

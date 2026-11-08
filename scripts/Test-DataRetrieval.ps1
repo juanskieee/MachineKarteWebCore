@@ -15,7 +15,7 @@ $projectPath = [Security.SecurityElement]::Escape((Join-Path $repo 'MachineKarte
 "@ | Set-Content -Encoding UTF8 (Join-Path $checkDirectory 'Checks.csproj')
 # Test copies keep the real repository bodies, redirecting fully qualified reads
 # into the disposable catalog. Reject any surviving production database name.
-foreach ($name in @('RepositorySql','ImportantDeviceQuery','MonitoringQueryBatch','RawDataRepository','EvidenceRepository','TeEvidenceRepository','BmReportRepository','McdMonitoringRepository','PmReportRepository','AlertBoardRepository','BmAnalyticsRepository','MachineSummaryRepository','OcapViewerRepository')) {
+foreach ($name in @('RepositorySupport','RawDataRepository','EvidenceRepository','TeEvidenceRepository','BmReportRepository','McdMonitoringRepository','PmReportRepository','AlertBoardRepository','BmAnalyticsRepository','MachineSummaryRepository','OcapViewerRepository')) {
     $source = [IO.File]::ReadAllText((Join-Path $repo "Repositories/$name.cs"))
     $source = $source.Replace('MachineKarte.Web.Repositories', 'RetrievalChecks.Repositories').Replace('[eMaintenanceSystemDB].[dbo].', '[dbo].')
     if ($source -match 'eMaintenanceSystemDB') { throw "Unredirected database reference in $name" }

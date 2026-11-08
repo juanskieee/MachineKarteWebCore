@@ -1,8 +1,7 @@
-using MachineKarte.Web.Services;
-// Converted from Form_Input.vb SQL — E-Karte System
 using System.Data;
-using MachineKarte.Web.Models;
 using Microsoft.Data.SqlClient;
+using MachineKarte.Web.Models;
+using MachineKarte.Web.Services;
 
 namespace MachineKarte.Web.Repositories;
 
@@ -13,7 +12,6 @@ public class ActionCardRepository
     public ActionCardRepository(DatabaseConnectionResolver connections) =>
         _connections = connections;
 
-    // LOAD (SELECT *)
     // Mirrors: LoadData(bmid, mcno) private overload in Form_Input.vb
     public async Task<ActionCardData?> LoadAsync(
         string bmId, string mcNo, string userType, CancellationToken cancellationToken = default)
@@ -71,7 +69,7 @@ public class ActionCardRepository
             PMDate3 = reader["PMDate3"].ToString()!,
         };
     }
-    // INSERT
+
     // Mirrors: SaveData() in Form_Input.vb
     public async Task<bool> InsertAsync(ActionCardData d, string userType)
     {
@@ -127,7 +125,7 @@ public class ActionCardRepository
         // The check and insert share one SQL statement/transaction across workers.
         return Convert.ToInt32(await cmd.ExecuteScalarAsync()) == 1;
     }
-    // UPDATE
+
     // Mirrors: UpdateData() in Form_Input.vb
     public async Task<bool> UpdateAsync(ActionCardData d, string userType)
     {
@@ -166,7 +164,7 @@ public class ActionCardRepository
         cmd.Parameters.Add("@Seqno", SqlDbType.Int).Value = d.Seqno;
         return Convert.ToInt32(await cmd.ExecuteScalarAsync()) == 1;
     }
-    // Shared parameter binding (INSERT and UPDATE share same columns)
+
     private static void BindParameters(SqlCommand cmd, ActionCardData d)
     {
         string mcStatus = d.McStatus == "-SELECT-" ? string.Empty : d.McStatus;

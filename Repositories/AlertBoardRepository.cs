@@ -1,6 +1,6 @@
-using MachineKarte.Web.Services;
-using MachineKarte.Web.Models;
 using Microsoft.Data.SqlClient;
+using MachineKarte.Web.Models;
+using MachineKarte.Web.Services;
 
 namespace MachineKarte.Web.Repositories;
 
@@ -8,7 +8,6 @@ public class AlertBoardRepository
 {
     private readonly DatabaseConnectionResolver _connections;
 
-    // Domain maps
     private static readonly string[] ProcessesNormal =
         { "DC", "DB", "WB", "MP", "PL", "FL", "FT", "TP", "MEMS", "EDS", "ATC", "SING" };
 
@@ -25,7 +24,6 @@ public class AlertBoardRepository
     public AlertBoardRepository(DatabaseConnectionResolver connections) =>
         _connections = connections;
 
-    // Public API
     /// <summary>
     /// Fetches all BM rows for the requested date range and user mode,
     /// applies the duplicate-case / 7-day / no-action-card filtering,
@@ -74,7 +72,6 @@ public class AlertBoardRepository
     public List<string> GetCellMachines(AlertBoardData board, string cellKey)
         => board.Cells.TryGetValue(cellKey, out var cell) ? cell.Machines : new();
 
-    // SQL builders
     private static string BuildAddQuery(string user) => user switch
     {
         "CC" => "(Turnover IN ('CC')  AND BMStatusID IN (6,7,8,9,11,20,19,14))",
@@ -297,7 +294,6 @@ public class AlertBoardRepository
             b.bmteunit;";
     }
 
-    // Data fetch
     private async Task<List<AlertBoardRow>> FetchRowsAsync(
         string sql, string dateFrom, string dateTo, string location, CancellationToken cancellationToken)
     {
@@ -332,7 +328,6 @@ public class AlertBoardRepository
         return list;
     }
 
-    // Solve / color logic (mirrors VB CheckIfSolve + GetDuplicateRowsByColumn)
     /// <summary>
     /// Port of VB CheckIfSolve → GetDuplicateRowsByColumn → AreOtherRowsSame.
     /// Sorts by Mcno DESC, BMCase ASC, Timeofrequest DESC then marks duplicate-case
@@ -350,7 +345,6 @@ public class AlertBoardRepository
             .ThenBy(row => row.BMCase, StringComparer.CurrentCultureIgnoreCase)
             .ThenByDescending(row => row.Timeofrequest, StringComparer.CurrentCultureIgnoreCase).ToList();
 
-        // Separate duplicate-case rows from non-duplicate-case rows
         var duplicates = new List<AlertBoardRow>();
         var nonDuplicates = new List<AlertBoardRow>();
 
@@ -376,7 +370,6 @@ public class AlertBoardRepository
                 }
             }
 
-            // Last row
             if (i == rowCount - 2)
             {
                 var last = rows[rowCount - 1];
@@ -385,7 +378,6 @@ public class AlertBoardRepository
             }
         }
 
-        // AreOtherRowsSame — mark solved rows (Color=Green)
         MarkSolvedRows(duplicates, firstColumnDate);
         // Form2 merges the non-duplicate middle rows back before LoadColor.
         duplicates.AddRange(nonDuplicates);
@@ -437,7 +429,6 @@ public class AlertBoardRepository
     // Font color / 7-day cascade (mirrors VB LoadColor / LoadColor_TE)
     private static void ApplyColorNormal(List<AlertBoardRow> rows, AlertBoardData board)
     {
-
         rows = SortForColor(rows);
 
         for (int i = 0; i < rows.Count; i++)
@@ -509,7 +500,6 @@ public class AlertBoardRepository
         }
     }
 
-    // Helpers
     private static List<AlertBoardRow> SortForColor(List<AlertBoardRow> rows)
         => rows.OrderByDescending(row => row.Mcno, StringComparer.CurrentCultureIgnoreCase)
             .ThenByDescending(row => row.Timeofrequest, StringComparer.CurrentCultureIgnoreCase)
@@ -583,9 +573,8 @@ public class AlertBoardRepository
         _ => ""
     };
 
-    // Board cell builder (mirrors VB InputToLabel)
     /// <summary>
-    /// Maps (process, location, mcno) → cell key and increments count/list.
+    /// Mirrors VB InputToLabel, mapping (process, location, mcno) to a cell count/list.
     /// Existing API keys, query locations and designer columns are mapped
     /// together in AlertBoardConfig; suffixes are not query-loop indices.
     /// </summary>

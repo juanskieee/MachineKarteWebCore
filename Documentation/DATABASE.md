@@ -75,7 +75,10 @@ without executing `SELECT 1`. If opening fails, the resolver selects and validat
 the alternate before handing a connection to repository SQL. Each caller owns
 and disposes its own connection; the singleton stores no shared open connection
 or transaction. `ImportantDeviceQuery` takes the same resolver for
-Machine Summary and MCD reads. `RepositorySql` retains parameter/metadata helpers.
+Machine Summary and MCD reads. It shares
+[RepositorySupport.cs](../Repositories/RepositorySupport.cs) with the
+`RepositorySql` parameter/metadata helpers and `MonitoringQueryBatch` scheduler;
+none of these helpers selects a database endpoint.
 
 Performance and reliability considerations:
 
@@ -136,7 +139,7 @@ only changes the resolver, Program registration, focused check and documentation
 | --- | --- |
 | Resolver, configuration, DI | `Services/DatabaseConnectionResolver.cs`, `appsettings.json`, `Program.cs` |
 | Repository constructor and connection acquisition | `Repositories/ActionCardRepository.cs`, `Repositories/AlertBoardRepository.cs`, `Repositories/BmAnalyticsRepository.cs`, `Repositories/BmReportRepository.cs`, `Repositories/EvidenceRepository.cs`, `Repositories/MachineSummaryRepository.cs`, `Repositories/McdMonitoringRepository.cs`, `Repositories/MonitoringRepository.cs`, `Repositories/OcapViewerRepository.cs`, `Repositories/PmReportRepository.cs`, `Repositories/RawDataRepository.cs`, `Repositories/TeEvidenceRepository.cs` |
-| Shared SQL helpers | `Repositories/ImportantDeviceQuery.cs`, `Repositories/RepositorySql.cs` |
+| Shared SQL helpers and read scheduling | `Repositories/RepositorySupport.cs` (`RepositorySql`, `ImportantDeviceQuery`, `MonitoringQueryBatch`) |
 | Focused check and existing fixture compatibility | `scripts/Test-DatabaseConnections.ps1`, `scripts/Test-Startup.ps1`, `scripts/Test-ActionCardSaves.ps1`, `scripts/Test-DataRetrieval.ps1`, `scripts/Test-MachineSummary.ps1`, `scripts/Test-MonitoringParity.ps1` |
 | Documentation | `README.md`, `Documentation/README.md`, `Documentation/DATABASE.md` |
 
@@ -221,21 +224,50 @@ logs do not establish that no other write occurred.
 
 ## Read scheduling and query behavior
 
-### Repository cleanup and measured changes (2026-11-06)
+### Repository cleanup and preserved conventions (2026-11-08)
 
-All twelve repositories use file-scoped namespaces, ordered imports, a consistent
-connection field/constructor, and the same missing-configuration error.
-`RepositorySql` contains shared connection lookup, typed varchar/date parameters,
-and result-set metadata helpers. SQL filters and output mappings remain owned
-by the repositories; there is no generic repository layer or new dependency.
-User-entered Action Card text retains its Unicode parameter binding and atomic
-insert/exact-row edit behavior.
+The folder retains twelve workflow repositories and one shared support source,
+[RepositorySupport.cs](../Repositories/RepositorySupport.cs). The former
+`RepositorySql.cs`, `ImportantDeviceQuery.cs`, and `MonitoringQueryBatch.cs` are
+consolidated there; their internal type names and execution behavior remain intact.
+They are static helpers, not additional repositories or DI services:
 
-`ImportantDeviceQuery` removes duplicated MCD/Machine Summary SQL and execution.
-Form7 still selects DISTINCT machines; Form11 keeps repeated BM rows for counts.
-Their TE action exclusion matches BMID plus tester number. Monitoring/AlertBoard
-TE action existence uses BMID alone, while Analytics also matches the tester.
-These screen-specific legacy differences are intentional.
+| Helper | Purpose and retained benefit |
+| --- | --- |
+| `RepositorySql` | Typed varchar/date parameters and case-insensitive result-set metadata/optional-column reads; keeps parameter binding and sparse-view handling consistent |
+| `ImportantDeviceQuery` | Shared MCD/Machine Summary eligibility and batched process/location SQL; retains distinct machine lists for Form7 and repeated BM rows for Form11 counts |
+| `MonitoringQueryBatch` | Four shared read slots per worker, ordered batches and bounded raw-row buffering; cancellable waits and slot release on failure; interactive reports/evidence bypass it |
+
+All twelve repositories use file-scoped namespaces, ordered imports, the
+`_connections` resolver field and constructor injection, and asynchronous
+connection/command disposal. Connection selection, caching and configuration
+errors belong to `DatabaseConnectionResolver`, not `RepositorySql`. Each
+repository continues to own its workflow SQL, row mapping, ordering and identifier
+allowlists; no generic repository layer or new dependency is introduced. Request
+cancellation flows through read operations. Action Card saves retain their atomic
+insert/exact-row edit behavior and Unicode text parameters.
+
+Uniform structure does not erase legacy query differences. MCD/Machine Summary
+TE action exclusion matches BMID plus tester number. Monitoring/AlertBoard TE
+action existence uses BMID alone, while Analytics also matches the tester. Date
+boundaries, category/status filters, Form8/Form12 process/location profiles, and
+distinct-list versus BM-row counts retain their workflow-specific semantics.
+The existing batching, duplicate-safe action/MCD reads, typed parameters and
+machine-list cache remain in place; reducing the support-file count does not
+change their query count or concurrency limits.
+
+The cleanup also removes Monitoring's unused location-index lookup and unused
+TE summary-builder argument, and inlines PM report's one-use single-row wrapper.
+SQL filters, selected columns, parameter types/values and legacy report mappings
+are preserved. Fixture source-copy lists use the consolidated support file; the
+TE header fixture checks assignment formatting directly instead of calling the
+previously removed assignment-only query.
+
+Cleanup validation used the application build, syntax-equivalence checks for all
+three consolidated helpers, and unchanged SQL-fragment checks across all twelve
+repositories (normalizing source line endings). The existing offline scheduler
+checks passed for four concurrent reads, ordering, failure recovery and queued
+cancellation. No database connection or production timing measurement was used.
 
 AlertBoard reads all floors once per process: 12 commands instead of 120 for
 normal modes, or 5 instead of 50 for TE. Each process result is partitioned by
@@ -371,7 +403,7 @@ same filters and dates. Check maintenance filter indexes, action lookup keys
 underlying gridBMOCAP view plan before choosing indexes. No indexes, schema
 changes, or live data repairs are deployed by this change.
 
-[MonitoringQueryBatch](../Repositories/MonitoringQueryBatch.cs) provides four
+`MonitoringQueryBatch` in [RepositorySupport.cs](../Repositories/RepositorySupport.cs) provides four
 shared read slots per application worker for participating dashboards and cards.
 Interactive report/evidence reads bypass this queue so monitoring refreshes
 cannot delay generation. Each evidence request still has a fixed set of three

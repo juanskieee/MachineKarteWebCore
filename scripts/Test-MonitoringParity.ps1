@@ -13,7 +13,7 @@ $projectPath = [Security.SecurityElement]::Escape((Join-Path $repo 'MachineKarte
   <ItemGroup><ProjectReference Include="$projectPath" /></ItemGroup>
 </Project>
 "@ | Set-Content -Encoding UTF8 (Join-Path $checkDirectory 'Checks.csproj')
-foreach ($name in @('RepositorySql', 'MonitoringRepository', 'MonitoringService', 'MonitoringQueryBatch')) {
+foreach ($name in @('RepositorySupport', 'MonitoringRepository', 'MonitoringService')) {
     $folder = if ($name -eq 'MonitoringService') { 'Services' } else { 'Repositories' }
     $source = [IO.File]::ReadAllText((Join-Path $repo "$folder/$name.cs"))
     $source = $source.Replace('MachineKarte.Web.Repositories', 'MonitoringChecks.Repositories').Replace('namespace MachineKarte.Web.Services', 'namespace MonitoringChecks.Services').Replace('[eMaintenanceSystemDB].[dbo].', '[dbo].')
@@ -95,8 +95,11 @@ INSERT ViewTEData VALUES (1,'MC-A','TE-A','REQUESTER','REPAIRER'),(2,'MC-A','TE-
         try { await cachedRepository.GetMachinesAsync("PM", "FT", "LSI2-3F", cancellation.Token); throw new Exception("Cache hit ignored cancellation."); }
         catch (OperationCanceledException) { }
         var te = new MachineKarte.Web.Repositories.TeEvidenceRepository(connections);
-        foreach (var id in new[] { "1", "2" })
-            Require((await te.GetHeaderAsync(id))!.TEAssign == await te.GetTEAssignAsync(id), "Reused TE header changed assignment formatting.");
+        foreach (var (id, expected) in new[] { ("1", "REQUESTER, REPAIRER"), ("2", "SAME") })
+        {
+            var header = await te.GetHeaderAsync(id);
+            Require(header?.TEAssign == expected, "Reused TE header changed assignment formatting.");
+        }
         Console.WriteLine($"PASS: MachineList SQL results, distinct/order/floor/process/family isolation, mutation safety, refill/cancellation and reused TE assignment. LocalDB first={coldMs:F2}ms; cached={warmMs:F2}ms (not production endpoint timing).");
         return;
     }

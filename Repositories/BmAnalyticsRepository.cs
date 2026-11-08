@@ -1,13 +1,12 @@
-using MachineKarte.Web.Services;
 using System.Data;
-using MachineKarte.Web.Models;
 using Microsoft.Data.SqlClient;
+using MachineKarte.Web.Models;
+using MachineKarte.Web.Services;
 
 namespace MachineKarte.Web.Repositories;
 
 /// <summary>
-/// Fetches raw BM rows for one process+location combination.
-/// Query logic mirrors Form12.vb → LoadMCName().
+/// Loads Form8/Form12 grid rows and retains the original detailed reads for parity checks.
 /// </summary>
 public class BmAnalyticsRepository
 {
@@ -74,7 +73,7 @@ ORDER BY a.{machine} DESC, a.TimeOfRequest DESC, b.{(te ? "BMTEUnitID" : "BMCase
         return rows;
     }
 
-    // EEE query  (per-process table e.g. DCBMMaintenance + BMCase)
+    // Detailed per-floor queries remain the independent reference for grid parity checks.
     private const string EeeSql = @"
         ;WITH LatestAction AS
         (
@@ -194,7 +193,6 @@ ORDER BY a.{machine} DESC, a.TimeOfRequest DESC, b.{(te ? "BMTEUnitID" : "BMCase
             a.Timeofrequest DESC,
             b.BMCase;";
 
-    // TE query  (teBMMaintenance + BMTEUnit + MachineKarte_ActionCard_TE)
     private const string TeSql = @"
         ;WITH LatestAction AS
         (

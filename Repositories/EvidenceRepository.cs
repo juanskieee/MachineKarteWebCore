@@ -1,8 +1,7 @@
-using MachineKarte.Web.Services;
-// Converted from Form4.vb SQL queries - E-Karte System
 using System.Data;
-using MachineKarte.Web.Models;
 using Microsoft.Data.SqlClient;
+using MachineKarte.Web.Models;
+using MachineKarte.Web.Services;
 
 namespace MachineKarte.Web.Repositories;
 
@@ -13,7 +12,6 @@ public class EvidenceRepository
     public EvidenceRepository(DatabaseConnectionResolver connections) =>
         _connections = connections;
 
-    // Evidence image groups
     // Mirrors mSQLStr1..5 in Form4.vb (gridEvidenceMaking_Ver3 queries)
     public async Task<EvidenceImageGroups> GetEvidenceImagesAsync(int bmId, string process, CancellationToken cancellationToken = default)
     {
@@ -72,7 +70,7 @@ public class EvidenceRepository
         }
         return groups;
     }
-    // TSC Confirmation data
+
     // Mirrors Sqlss1 / DCss1 query in Form4.vb
     public async Task<TscConfirmation> GetTscConfirmationAsync(
         int bmId, string process, string evidenceView, CancellationToken cancellationToken = default)
@@ -127,7 +125,7 @@ public class EvidenceRepository
 
         return tsc;
     }
-    // Machine header data
+
     // Mirrors the ProcessTableData SELECT in Form4.vb
     public async Task<EvidenceMachineHeader?> GetMachineHeaderAsync(
         int bmId, string dataView, CancellationToken cancellationToken = default)
@@ -164,7 +162,7 @@ public class EvidenceRepository
             EndOfRepair = reader["EndOfRepair"].ToString()!,
         };
     }
-    // Helper
+
     private static void InitGroup(EvidenceImageRow[] group)
     {
         for (int i = 0; i < group.Length; i++)

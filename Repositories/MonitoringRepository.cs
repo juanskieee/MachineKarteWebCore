@@ -1,13 +1,12 @@
-using MachineKarte.Web.Services;
-// Monitoring reads mapped from Form1.vb and uc_Test.vb.
-using System.Data;
 using System.Globalization;
-using MachineKarte.Web.Models;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Caching.Memory;
+using MachineKarte.Web.Models;
+using MachineKarte.Web.Services;
 
 namespace MachineKarte.Web.Repositories;
 
+// Monitoring reads mapped from Form1.vb and uc_Test.vb.
 public class MonitoringRepository
 {
     private readonly DatabaseConnectionResolver _connections;
@@ -15,25 +14,6 @@ public class MonitoringRepository
 
     public MonitoringRepository(DatabaseConnectionResolver connections, IMemoryCache? cache = null) =>
         (_connections, _cache) = (connections, cache);
-    // Helpers
-
-    /// <summary>
-    /// Maps location index (1-9) from Panel2 label name suffix to floor code.
-    /// Mirrors checkProcessAndLocation() in Form1.vb.
-    /// </summary>
-    public static string LocationIndexToCode(int idx) => idx switch
-    {
-        1 => "LSI1-1F",
-        2 => "LSI1-2F",
-        3 => "LSI2-1F",
-        4 => "LSI2-2F",
-        5 => "LSI2-3F",
-        6 => "LSI3-2F",
-        7 => "LSI3-4F",
-        8 => "LSI3-3F",
-        9 => "LSI3-1F",
-        _ => string.Empty
-    };
 
     /// <summary>
     /// Returns the floor list relevant for a given process.
@@ -58,7 +38,7 @@ public class MonitoringRepository
         _ => new[] { "LSI1-1F", "LSI1-2F", "LSI2-1F", "LSI2-2F",
                        "LSI2-3F", "LSI3-2F", "LSI3-4F", "LSI3-1F", "LSI3-3F" }
     };
-    // Dropdown helpers
+
     /// <summary>
     /// Gets distinct machine numbers for cbMachine dropdown.
     /// Mirrors cbFloor_SelectedIndexChanged in Form1.vb.
@@ -74,7 +54,6 @@ public class MonitoringRepository
         await using var conn = await _connections.OpenConnectionAsync(cancellationToken);
 
         string sql;
-        string colName;
 
         if (userType is "PM" or "CC" or "EEE" or "VIS")
         {
@@ -85,7 +64,6 @@ public class MonitoringRepository
                     WHERE b.ProcessName = @Process
                       AND a.MCLocation = @Location
                     ORDER BY a.MCNo ASC";
-            colName = "Val";
         }
         else // TE
         {
@@ -95,7 +73,6 @@ public class MonitoringRepository
                       AND Location = @Location
                       AND TesterNo <> ''
                     ORDER BY TesterNo ASC";
-            colName = "Val";
         }
 
         // Direct repository callers retain their legacy All-floor behavior.
@@ -107,14 +84,14 @@ public class MonitoringRepository
 
         await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))
-            results.Add(reader[colName].ToString()!);
+            results.Add(reader["Val"].ToString()!);
 
         cancellationToken.ThrowIfCancellationRequested();
         _cache?.Set(cacheKey, results.ToArray(), TimeSpan.FromSeconds(30));
         return results;
     }
-    // Paged machine summary (drives card column headers)
-    // Mirrors LoadMCName() strQuery2 � PM/CC/EEE/VIS and TE branches
+
+    // Mirrors LoadMCName() strQuery2 for the PM/CC/EEE/VIS and TE column headers.
     public async Task<(List<MachineSummary> Machines, int TotalPages)> GetPagedMachineSummariesAsync(
         MonitoringFilter f, CancellationToken cancellationToken = default, bool allPages = false)
     {
@@ -127,7 +104,7 @@ public class MonitoringRepository
 
         string sql = isMachine
             ? BuildMachineSummarySQL(f.Process, addQuery, top1, top2, f.Machine == "All")
-            : BuildTEMachineSummarySQL(addQuery, top1, top2, f.Machine == "All");
+            : BuildTEMachineSummarySQL(top1, top2, f.Machine == "All");
 
         var list = new List<MachineSummary>();
         await using var conn = await _connections.OpenConnectionAsync(cancellationToken);
@@ -308,7 +285,7 @@ public class MonitoringRepository
 
         return id == ids.Blue ? "Blue" : id == ids.Red ? "Red" : "Black";
     }
-    // BM card rows per machine (drives uC_Test card content)
+
     // Mirrors LoadMCName1() strQuery
     public async Task<List<BMCardRow>> GetBMCardsAsync(
         string userType, string process, string location,
@@ -415,7 +392,8 @@ public class MonitoringRepository
             }
         }
     }
-    // PC Status tracking (UpdatePCStatus / CheckIfExisting from Form1)
+
+    // Mirrors UpdatePCStatus / CheckIfExisting from Form1.
     public async Task UpsertPCStatusAsync(
         string pcName, string ipAddress, string version, CancellationToken cancellationToken = default)
     {
@@ -443,7 +421,7 @@ public class MonitoringRepository
         cmd.Parameters.AddWithValue("@UserType", "PM");
         await cmd.ExecuteNonQueryAsync(cancellationToken);
     }
-    // Private SQL builders
+
     private static void ValidateProcess(string userType, string process)
     {
         if (!MachineSummaryConfig.IsValidProcess(process, userType == "TE"))
@@ -507,7 +485,6 @@ public class MonitoringRepository
     }
 
     private static string BuildTEMachineSummarySQL(
-        string addQuery,
         int top1,
         int top2,
         bool allMachines)

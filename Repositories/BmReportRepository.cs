@@ -1,7 +1,7 @@
-using MachineKarte.Web.Services;
 using System.Data;
-using MachineKarte.Web.Models;
 using Microsoft.Data.SqlClient;
+using MachineKarte.Web.Models;
+using MachineKarte.Web.Services;
 
 namespace MachineKarte.Web.Repositories;
 
@@ -11,7 +11,7 @@ public class BmReportRepository
 
     public BmReportRepository(DatabaseConnectionResolver connections) =>
         _connections = connections;
-    // Main record from ViewTEData_Test
+
     public async Task<BmReportData?> GetReportDataAsync(int bmId, CancellationToken cancellationToken = default)
     {
         const string sql = "SELECT TOP 1 * FROM ViewTEData_Test WHERE bmID = @bmID";

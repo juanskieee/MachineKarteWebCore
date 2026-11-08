@@ -1,5 +1,5 @@
-using MachineKarte.Web.Services;
 using MachineKarte.Web.Models;
+using MachineKarte.Web.Services;
 
 namespace MachineKarte.Web.Repositories;
 
@@ -26,6 +26,7 @@ public class McdMonitoringRepository
         return await ImportantDeviceQuery.GetMachinesAsync(_connections, process, location,
             dateFrom, dateTo, isTe, distinct: true, cancellationToken);
     }
+
     private static void ValidateProcess(string process)
     {
         if (!McdMonitoringConfig.EeeProcesses.Contains(process) &&
