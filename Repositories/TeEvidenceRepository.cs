@@ -11,23 +11,6 @@ public class TeEvidenceRepository
     public TeEvidenceRepository(DatabaseConnectionResolver connections)
         => _connections = connections;
 
-    // TEAssign (mirrors VB GetTEAssign)
-    public async Task<string> GetTEAssignAsync(string bmId, CancellationToken cancellationToken = default)
-    {
-        const string sql = "SELECT PMConfirmGLOPReqBy, RepairedByEnd FROM ViewTEData WHERE bmID = @bmId";
-        await using var conn = await _connections.OpenConnectionAsync(cancellationToken);
-        await using var cmd = new SqlCommand(sql, conn);
-        cmd.Parameters.AddWithValue("@bmId", bmId);
-        await using var rdr = await cmd.ExecuteReaderAsync(cancellationToken);
-        if (await rdr.ReadAsync(cancellationToken))
-        {
-            var req = rdr["PMConfirmGLOPReqBy"].ToString()!;
-            var rep = rdr["RepairedByEnd"].ToString()!;
-            return req == rep ? req : $"{req}, {rep}";
-        }
-        return "";
-    }
-
     // Header from ViewTEData
     public async Task<TeEvidenceHeader?> GetHeaderAsync(string bmId, CancellationToken cancellationToken = default)
     {
@@ -38,7 +21,7 @@ DECLARE @columns nvarchar(max) = STUFF((
     SELECT N',' + QUOTENAME(COLUMN_NAME)
     FROM INFORMATION_SCHEMA.COLUMNS
     WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = 'ViewTEData'
-      AND COLUMN_NAME IN ('bmID', 'MCNo', 'TesterNo', 'DeviceName', 'LOTNo', 'RequestContent',
+      AND COLUMN_NAME IN ('bmID', 'MCNo', 'TesterNo', 'DeviceName', 'LOTNo', 'TestNoNG',
           'WaferNo', 'StartOfRepair', 'EndOfRepair', 'Remarks', 'PMConfirmGLOPReqBy', 'RepairedByEnd')
     FOR XML PATH(''), TYPE).value('.', 'nvarchar(max)'), 1, 1, N'');
 DECLARE @query nvarchar(max) = N'SELECT ' + @columns + N' FROM dbo.ViewTEData WHERE bmID = @id';
@@ -56,7 +39,7 @@ EXEC sys.sp_executesql @query, N'@id int', @id = @bmId;";
             header.TesterNo = RepositorySql.ReadOptional(rdr, columns, "TesterNo");
             header.DeviceName = RepositorySql.ReadOptional(rdr, columns, "DeviceName");
             header.LotNo = RepositorySql.ReadOptional(rdr, columns, "LOTNo");
-            header.RequestContent = RepositorySql.ReadOptional(rdr, columns, "RequestContent");
+            header.TestNoNG = RepositorySql.ReadOptional(rdr, columns, "TestNoNG");
             header.WaferNo = RepositorySql.ReadOptional(rdr, columns, "WaferNo");
             header.StartOfRepair = RepositorySql.ReadOptional(rdr, columns, "StartOfRepair");
             header.EndOfRepair = RepositorySql.ReadOptional(rdr, columns, "EndOfRepair");
@@ -92,20 +75,6 @@ WHERE  bmID = @bmId
                 Desc = rdr["BMEvidence_Desc"].ToString()!
             });
         return list;
-    }
-
-    // Evidence images (BEFORE/AFTER) grouped by category
-    public async Task<Dictionary<string, List<string>>> GetCategoryImagesAsync(string bmId, CancellationToken cancellationToken = default)
-    {
-        var result = new Dictionary<string, List<string>>();
-        foreach (var category in new[] { "PHENOMENON", "MACHINE COUNTER AND VISUAL BIN", "PROGRAM LOADED", "TEST BOARD", "TEST CABLE", "OTHER EVIDENCE" })
-        {
-            result[category + "_BEFORE"] = new();
-            result[category + "_AFTER"] = new();
-        }
-        foreach (var row in await GetCategoryImageRowsAsync(bmId, cancellationToken))
-            result[row.Category + (row.Condition.ToUpperInvariant() == "BEFORE" ? "_BEFORE" : "_AFTER")].Add(row.ImgFile);
-        return result;
     }
 
     public async Task<List<TeEvidenceImage>> GetCategoryImageRowsAsync(string bmId, CancellationToken cancellationToken = default)
@@ -210,15 +179,6 @@ ORDER BY BMEvidenceID"));
                 await rdr.NextResultAsync(cancellationToken);
         }
         return list;
-    }
-
-    // Misc data row (Ideas, WaferNo, Remarks, TelekoCheckingData)
-    public async Task<(string Ideas, string WaferNo, string Remarks, string TelekoCheckingData)>
-        GetMiscDataAsync(string bmId, CancellationToken cancellationToken = default)
-    {
-        var row = (await GetMiscRowsAsync(bmId, cancellationToken)).LastOrDefault();
-        return row is null ? ("", "", "", "") :
-            (row["Ideas"].ToString()!, row["WaferNo"].ToString()!, row["Remarks"].ToString()!, row["TelekoCheckingData"].ToString()!);
     }
 
     public async Task<IList<IDictionary<string, object>>> GetMiscRowsAsync(string bmId, CancellationToken cancellationToken = default)

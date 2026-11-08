@@ -173,14 +173,14 @@ CREATE TABLE BMWhy (BMWhyID int, BM4M nvarchar(100), BMWhy nvarchar(100)); INSER
     foreach (var category in qualityCategories)
         await Sql($"INSERT TEBMEvidenceMaking VALUES (2,1,'{category}','AFTER','','~/SECOND',NULL,NULL),(1,1,'{category}','BEFORE','','~/FIRST',NULL,NULL);");
     var te = new TeEvidenceRepository(connections);
-    var teImages = await te.GetCategoryImagesAsync("1");
+    var teImages = await te.GetCategoryImageRowsAsync("1");
     foreach (var category in teCategories) {
         var top = category == "TEST BOARD" ? 20 : 6;
-        Require(teImages[category+"_BEFORE"].SequenceEqual(Enumerable.Range(1,top).Where(i => i%2==1).Select(i => $"/IMG-{i}")) &&
-            teImages[category+"_AFTER"].SequenceEqual(Enumerable.Range(1,top).Where(i => i%2==0).Select(i => $"/IMG-{i}")), "TE TOP/order/condition split changed");
+        Require(teImages.Where(row=>row.Category==category && row.Condition=="BEFORE").Select(row=>row.ImgFile).SequenceEqual(Enumerable.Range(1,top).Where(i => i%2==1).Select(i => $"/IMG-{i}")) &&
+            teImages.Where(row=>row.Category==category && row.Condition=="AFTER").Select(row=>row.ImgFile).SequenceEqual(Enumerable.Range(1,top).Where(i => i%2==0).Select(i => $"/IMG-{i}")), "TE TOP/order/condition split changed");
     }
-    Require((await te.GetCategoryImagesAsync("999")).Values.All(list => list.Count==0), "TE empty category alignment failed");
-    Require((await te.GetCategoryImageRowsAsync("1")).Where(row=>row.Category=="TEST BOARD").All(row=>row.CN=="CN4"),"Test-board connector identifiers were lost");
+    Require((await te.GetCategoryImageRowsAsync("999")).Count==0, "TE empty category alignment failed");
+    Require(teImages.Where(row=>row.Category=="TEST BOARD").All(row=>row.CN=="CN4"),"Test-board connector identifiers were lost");
     var quality = await te.GetQualityImagesAsync("1");
     Require(quality.Select(row => row.Category).SequenceEqual(qualityCategories) && quality.All(row => row.ImgFile=="/FIRST"), "TE quality TOP/order changed");
     Require((await te.GetQualityImagesAsync("999")).Count==0, "Empty quality results changed");
@@ -245,7 +245,8 @@ INSERT ViewTEData VALUES (1,'TE-A',NULL,'REQUESTER','REPAIRER');
 ");
     var sparse=await bm.GetReportDataAsync(1);
     Require(sparse!.TesterNo=="TE-A" && sparse.MCNo=="" && sparse.DeviceName=="" && sparse.Values["OccurrenceDate"] is DateTime,"Sparse BM view lost optional/raw fields");
-    Require((await te.GetHeaderAsync("1"))!.TesterNo=="TE-A" && (await te.GetHeaderAsync("1"))!.WaferNo=="" && await te.GetTEAssignAsync("1")=="REQUESTER, REPAIRER","Sparse TE header/assignment changed");
+    var sparseTeHeader = (await te.GetHeaderAsync("1"))!;
+    Require(sparseTeHeader.TesterNo=="TE-A" && sparseTeHeader.WaferNo=="" && sparseTeHeader.TEAssign=="REQUESTER, REPAIRER","Sparse TE header/assignment changed");
     foreach(var invalid in new Func<Task>[] {
         async()=>{await new OcapViewerRepository(connections).GetOcapDataAsync(1,"DCBMMaintenance];--");},
         async()=>{await evidence.GetTscConfirmationAsync(1,"DC","viewDCEMaking_Ver3;--");},
@@ -327,7 +328,7 @@ UPDATE MachineKarte_ActionCard_TE SET Seqno=1,MCStatus='NO RE-OCCURRENCE AFTER 7
     foreach (var read in new Func<Task>[] {
         async () => { await raw.GetFrequencyRawRowsAsync("DCBMMaintenance","LSI1-1F","2026-10-01","2026-10-31",cancelled.Token); },
         async () => { await evidence.GetEvidenceImagesAsync(1,"DC",cancelled.Token); },
-        async () => { await te.GetCategoryImagesAsync("1",cancelled.Token); },
+        async () => { await te.GetCategoryImageRowsAsync("1",cancelled.Token); },
         async () => { await te.GetQualityImagesAsync("1",cancelled.Token); },
         async () => { await bm.LoadSupplementalDataAsync(report,cancelled.Token); },
         async () => { await mcd.GetMachinesAsync("DC","LSI1-1F",from,to,false,cancelled.Token); }

@@ -3,6 +3,7 @@ Imports System.IO
 Imports System.Collections.Generic
 Imports System.Linq
 Imports GemBox.Spreadsheet
+Imports SkiaSharp
 
 Namespace MachineKarte.Reporting
     ' Runs only worksheet mappings against already-loaded records. No SQL or desktop UI.
@@ -11,6 +12,8 @@ Namespace MachineKarte.Reporting
         Private ReadOnly lookups As IDictionary(Of String, String)
         Private ReadOnly vrNumbers As String()
         Private ReadOnly pictureFiles As New Dictionary(Of String, Boolean)(StringComparer.OrdinalIgnoreCase)
+        Private ReadOnly pictureSources As New Dictionary(Of String, (Width As Double, Height As Double, Format As ExcelPictureFormat))(StringComparer.OrdinalIgnoreCase)
+        Private ReadOnly preparedPictures As New Dictionary(Of (String, Integer, Integer), Byte())
 
         Public Sub New(imageRoot As String, lookups As IDictionary(Of String, String), Optional vrNumbers As String() = Nothing)
             Me.imageRoot = Path.GetFullPath(imageRoot)
@@ -46,12 +49,66 @@ Namespace MachineKarte.Reporting
                 maxWidth = Math.Min(maxWidth, Enumerable.Range(area.FirstColumnIndex, area.Width).Sum(Function(column) sheet.Columns(column).GetWidth(LengthUnit.Point)))
                 maxHeight = Math.Min(maxHeight, Enumerable.Range(area.FirstRowIndex, area.Height).Sum(Function(row) sheet.Rows(row).GetHeight(LengthUnit.Point)))
             End If
-            Dim picture = sheet.Pictures.Add(file, cell)
-            Dim scale = Math.Min(maxWidth / picture.Position.Width, maxHeight / picture.Position.Height)
-            picture.Position.Width *= scale
-            picture.Position.Height *= scale
+            Dim picture As ExcelPicture = Nothing
+            Dim source As (Width As Double, Height As Double, Format As ExcelPictureFormat)
+            If Not pictureSources.TryGetValue(file, source) Then
+                picture = sheet.Pictures.Add(file, cell)
+                source = (picture.Position.Width, picture.Position.Height, picture.PictureFormat)
+                pictureSources(file) = source
+            End If
+            Dim scale = Math.Min(maxWidth / source.Width, maxHeight / source.Height)
+            Dim finalWidth = source.Width * scale
+            Dim finalHeight = source.Height * scale
+            Dim pixelWidth = CInt(Math.Ceiling(finalWidth * 220 / 72))
+            Dim pixelHeight = CInt(Math.Ceiling(finalHeight * 220 / 72))
+            Dim key = (file, pixelWidth, pixelHeight)
+            Dim prepared As Byte() = Nothing
+            Dim format = source.Format
+            If Not preparedPictures.TryGetValue(key, prepared) Then
+                ' Prepare each source/size once, before embedding or serializing repeated photos.
+                Using codec = SKCodec.Create(file)
+                    ' JPEG output can retain its EXIF orientation after resizing raw pixels.
+                    If codec IsNot Nothing AndAlso (codec.EncodedOrigin = SKEncodedOrigin.TopLeft OrElse format = ExcelPictureFormat.Jpeg) AndAlso (codec.Info.Width > pixelWidth OrElse codec.Info.Height > pixelHeight) Then
+                        Dim sample = codec.GetScaledDimensions(CSng(Math.Max(pixelWidth / codec.Info.Width, pixelHeight / codec.Info.Height)))
+                        Using decoded = SKBitmap.Decode(codec, New SKImageInfo(sample.Width, sample.Height))
+                            Using resized = decoded.Resize(New SKImageInfo(Math.Min(pixelWidth, codec.Info.Width), Math.Min(pixelHeight, codec.Info.Height)), New SKSamplingOptions(SKFilterMode.Linear))
+                                Using image = SKImage.FromBitmap(resized)
+                                    Using data = image.Encode(If(format = ExcelPictureFormat.Jpeg, SKEncodedImageFormat.Jpeg, SKEncodedImageFormat.Png), 90)
+                                        prepared = data.ToArray()
+                                        If format = ExcelPictureFormat.Jpeg AndAlso codec.EncodedOrigin <> SKEncodedOrigin.TopLeft Then
+                                            prepared = WithJpegOrientation(prepared, codec.EncodedOrigin)
+                                        End If
+                                    End Using
+                                End Using
+                            End Using
+                        End Using
+                    End If
+                End Using
+                preparedPictures(key) = prepared
+            End If
+            If prepared IsNot Nothing Then
+                If picture IsNot Nothing Then sheet.Pictures.Remove(picture)
+                ' GemBox retains this managed stream for subsequent saves and workbook clones.
+                picture = sheet.Pictures.Add(New MemoryStream(prepared, writable:=False), If(format = ExcelPictureFormat.Jpeg, format, ExcelPictureFormat.Png), cell, finalWidth, finalHeight, LengthUnit.Point)
+            ElseIf picture Is Nothing Then
+                picture = sheet.Pictures.Add(file, cell, finalWidth, finalHeight, LengthUnit.Point)
+            Else
+                picture.Position.Width = finalWidth
+                picture.Position.Height = finalHeight
+            End If
             picture.Position.Mode = PositioningMode.MoveAndSize
             Return picture
+        End Function
+
+        Private Shared Function WithJpegOrientation(jpeg As Byte(), origin As SKEncodedOrigin) As Byte()
+            ' JPEG APP1 segment: little-endian TIFF with only the original orientation tag.
+            Dim exif = Convert.FromHexString("FFE1002245786966000049492A0008000000010012010300010000000000000000000000")
+            exif(28) = CByte(origin)
+            Dim result(jpeg.Length + exif.Length - 1) As Byte
+            Array.Copy(jpeg, result, 2)
+            Array.Copy(exif, 0, result, 2, exif.Length)
+            Array.Copy(jpeg, 2, result, 2 + exif.Length, jpeg.Length - 2)
+            Return result
         End Function
 
         Private Function RetPFImg(value As String) As String

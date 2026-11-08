@@ -24,16 +24,19 @@ public sealed class PmReportService
         try
         {
             var format = LegacyReportExport.NormalizeFormat(request.Format);
-            var data = await _repository.GetReportDataAsync(process, request.BmId,
+            var dataTask = _repository.GetReportDataAsync(process, request.BmId,
                 request.TimeOfRequest, request.MachineNo, cancellationToken);
+            var workbook = LegacyReportExport.Load(
+                Path.Combine(_environment.ContentRootPath, "Templates", definition.TemplateFolder, definition.TemplateFile));
+            var data = await dataTask;
             if (data is null) return PmReportResult.Failed($"No PM report record was found for BM ID {request.BmId}.");
             var lookups = await _repository.GetLookupValuesAsync(data, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
-            var workbook = LegacyReportExport.Load(Path.Combine(_environment.ContentRootPath, "Templates", definition.TemplateFolder, definition.TemplateFile));
             workbook.Worksheets.ActiveWorksheet = workbook.Worksheets[definition.WorksheetName];
             var writer = new LegacyReportWriter(LegacyReportExport.ImageRoot(_environment, false), lookups);
             writer.PopulatePm(workbook, process, data.Current.Values,
                 data.History.Select(record => (IDictionary<string, object>)record.Values).ToList());
+            cancellationToken.ThrowIfCancellationRequested();
             var bytes = LegacyReportExport.Save(workbook, format);
             var fileName = $"{process}_{request.BmId}.{format}";
             return new PmReportResult

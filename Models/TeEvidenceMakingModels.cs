@@ -1,5 +1,3 @@
-﻿using System.Collections.Generic;
-
 namespace MachineKarte.Web.Models
 {
     // ─── Header / meta data from ViewTEData ──────────────────────────────────
@@ -9,7 +7,7 @@ namespace MachineKarte.Web.Models
         public string TesterNo { get; set; } = "";
         public string DeviceName { get; set; } = "";
         public string LotNo { get; set; } = "";
-        public string RequestContent { get; set; } = "";
+        public string TestNoNG { get; set; } = "";
         public string WaferNo { get; set; } = "";
         public string StartOfRepair { get; set; } = "";
         public string EndOfRepair { get; set; } = "";
@@ -19,7 +17,6 @@ namespace MachineKarte.Web.Models
         // From mSQLStr_Data row
         public string Ideas { get; set; } = "";
         public string TelekoCheckingData { get; set; } = "";  // pipe+comma delimited QC table
-        public string QualityDefect { get; set; } = "";
     }
 
     // ─── One evidence image slot ──────────────────────────────────────────────
@@ -52,16 +49,4 @@ namespace MachineKarte.Web.Models
         public string ImgFile { get; set; } = "";
     }
 
-    // ─── Full payload assembled by the service ────────────────────────────────
-    public class TeEvidencePackage
-    {
-        public TeEvidenceHeader Header { get; set; } = new();
-        public List<TeEvidenceCategoryDesc> CategoryDescs { get; set; } = new();
-        public Dictionary<string, List<string>> Images { get; set; } = new();
-        // key = "{CATEGORY}_{CONDITION}", value = ordered list of server-relative img paths (up to 6)
-        // e.g.  "PHENOMENON_BEFORE" → ["/images/...", ...]
-
-        public List<TelekoEvidenceImage> TelekoImages { get; set; } = new();
-        public List<QualityConditionImage> QualityImages { get; set; } = new();
-    }
 }

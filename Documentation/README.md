@@ -186,7 +186,7 @@ unrelated database, reporting, or full workflow suites:
 | `Test-MonitoringStaircase.ps1` | Focused offline Monitoring column order, stable ties, pagination and To-day boundaries; optional `-Sql` adds synthetic LocalDB rows; no application settings or application database access |
 | `Test-MonitoringParity.ps1` | Actual Monitoring repository/dashboard reads; `-MachineListOnly` checks dropdown SQL/cache and TE header assignment; `-BoardOnly` focuses on grouped columns versus existing web reads/order in all five modes; full desktop SQL audit has a known date-window mismatch (see DATABASE.md); disposable LocalDB catalog; optional `-Benchmark` |
 | `Test-ActionSummaryParity.ps1` | Form2 counts/colors against compiled original VB routines; no database |
-| `Test-ReportGeneration.ps1` | Real templates, photos, compiled mappings, XLSX/PDF output, and capacity errors; `-EvidenceOnly` limits execution to PM/TE evidence and photo staging; offline |
+| `Test-ReportGeneration.ps1` | Real templates, photos, compiled mappings, XLSX/PDF output, and capacity errors; `-EvidenceOnly` covers PM/TE evidence, TE maintenance pages and photo staging; `-PerformanceOnly` targets EXIF orientations, path validation, template clones and staging cleanup; `-PhotoBenchmark` adds 6MP photo comparisons; offline |
 | `Update-LegacyReportMappings.ps1 -Check` | Generated mappings match extraction and audited corrections; offline |
 | `Audit-ReportTemplates.ps1` | Reproducible template/binding inventories; offline, output defaults to OS temporary storage |
 | `Test-SummaryDuplicates.ps1` | Real summary SQL against session-local tables in LocalDB |
@@ -208,7 +208,7 @@ These modes check direct in-memory responses, removed storage routes, local
 browser downloads, PDF previews, and Blob URL cleanup without running unrelated
 workflow or full mapping suites.
 For CWC-only changes, `Test-ReportGeneration.ps1 -CwcOnly` checks the title,
-Request Content source, optional-field formatting, XLSX round-trip, and PDF export.
+legacy TestNoNG source for Request Content, optional-field formatting, XLSX round-trip, and single-page PDF export.
 HTTP/browser tools accept `-BaseUrl`; the browser runner also accepts
 `-DevToolsPort` and `-ArtifactDirectory`. Use a separately hosted test app with
 an unreachable loopback SQL override for fixture UI checks. Browser mocking

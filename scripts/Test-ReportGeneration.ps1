@@ -1,4 +1,4 @@
-param([string]$Dotnet = 'dotnet', [switch]$DownloadOnly, [switch]$CwcOnly, [switch]$EvidenceOnly)
+param([string]$Dotnet = 'dotnet', [switch]$DownloadOnly, [switch]$CwcOnly, [switch]$EvidenceOnly, [switch]$PhotoBenchmark, [switch]$PerformanceOnly)
 # Offline: real templates/images and compiled legacy mappings. DownloadOnly hosts
 # a loopback file-response fixture; no appsettings, SQL, or source-template writes.
 $ErrorActionPreference='Stop'
@@ -30,14 +30,58 @@ var root=args[0]; var output=Path.GetFullPath(Path.Combine(AppContext.BaseDirect
 void Require(bool condition,string message){if(!condition)throw new Exception(message);}
 string Images(bool te)=>Path.Combine(root,"Assets","images",te?"TEeMaintenanceSystems_images":"eMaintenanceSystems_images");
 
+if(args.Contains("performance-only")) {
+ LegacyReportExport.NormalizeFormat("xlsx");
+ var add=typeof(LegacyReportWriter).GetMethod("AddEvidencePicture",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!;
+ using var bitmap=new SkiaSharp.SKBitmap(2400,1600);
+ using(var canvas=new SkiaSharp.SKCanvas(bitmap)) {
+  canvas.Clear(SkiaSharp.SKColors.Blue);
+  using var paint=new SkiaSharp.SKPaint { Color=SkiaSharp.SKColors.Red };
+  canvas.DrawRect(0,0,1200,800,paint);
+ }
+ using var image=SkiaSharp.SKImage.FromBitmap(bitmap);
+ using var encoded=image.Encode(SkiaSharp.SKEncodedImageFormat.Jpeg,90);
+ var jpeg=encoded.ToArray();
+ foreach(var origin in Enumerable.Range(1,8)) {
+  var exif=Convert.FromHexString("45786966000049492A0008000000010012010300010000000000000000000000");
+  exif[24]=(byte)origin;
+  var source=Path.Combine(output,$"orientation-{origin}.jpg");
+  using(var bytes=new MemoryStream()) {
+   bytes.Write(jpeg,0,2); bytes.Write(new byte[]{255,225,0,(byte)(exif.Length+2)}); bytes.Write(exif); bytes.Write(jpeg,2,jpeg.Length-2);
+   File.WriteAllBytes(source,bytes.ToArray());
+  }
+  var book=LegacyReportExport.Load(Path.Combine(root,"Templates","EvidenceMaking","EvidenceMaking_DC.xlsx"));
+  var sheet=book.Worksheets[0];
+  var original=sheet.Pictures.Add(source,"C11");
+  var ratio=original.Position!.Width/original.Position.Height;
+  sheet.Pictures.Remove(original);
+  var clock=System.Diagnostics.Stopwatch.StartNew();
+  var picture=(ExcelPicture)add.Invoke(new LegacyReportWriter(Images(false),new Dictionary<string,string>()),
+   new object[]{sheet,source,"C11",2.0,1.6,LengthUnit.Inch})!;
+  using var content=new MemoryStream(); picture.PictureStream.Position=0; picture.PictureStream.CopyTo(content);
+  using var codec=SkiaSharp.SKCodec.Create(new SkiaSharp.SKMemoryStream(content.ToArray()));
+  Require(Math.Abs(picture.Position!.Width/picture.Position.Height-ratio)<0.001,"Photo aspect ratio changed for EXIF "+origin);
+  Require(codec.Info.Width<2400 && codec.Info.Height<1600 && content.Length<jpeg.Length/2,"EXIF photo kept its oversized original: "+origin);
+  Require((int)codec.EncodedOrigin==origin,"Resizing lost EXIF orientation "+origin);
+  using(var pixels=SkiaSharp.SKBitmap.Decode(content.ToArray()))
+   Require(pixels.GetPixel(pixels.Width/4,pixels.Height/4).Red>200 && pixels.GetPixel(3*pixels.Width/4,3*pixels.Height/4).Blue>200,"Resizing changed raw pixel orientation "+origin);
+  Console.WriteLine($"MEASURE: EXIF {origin}: population={clock.Elapsed.TotalMilliseconds:F1}ms, original={new FileInfo(source).Length:N0} bytes, embedded={content.Length:N0} bytes, pixels={codec.Info.Width}x{codec.Info.Height}, origin={codec.EncodedOrigin}, sheet ratio={ratio:F3}.");
+  foreach(var format in new[]{"xlsx","pdf"}) {
+   var bytes=LegacyReportExport.Save(book,format);
+   Require(format=="pdf"?Encoding.ASCII.GetString(bytes,0,5)=="%PDF-":bytes[0]=='P'&&bytes[1]=='K',"Oriented photo export failed");
+  }
+ }
+ Console.WriteLine("PASS: all EXIF orientations retain sheet aspect ratio and export both formats.");
+}
+
 if(args.Contains("cwc-only")) {
  var source=Path.Combine(root,"Templates","EvidenceMaking","CWC.xlsx");
  var book=LegacyReportExport.Load(source);
- TeEvidenceMakingService.PopulateWorkbook(book,new TeEvidenceHeader { RequestContent="TESTERPROBLEM" },new(),new(),new(),new(),Images(true),Images(true));
+ TeEvidenceMakingService.PopulateWorkbook(book,new TeEvidenceHeader { TestNoNG="TESTER PROBLEM" },new(),new(),new(),new(),Images(true),Images(true));
  void CheckCwc(ExcelFile report) {
   var sheet=report.Worksheets["FORMAT"];
   Require(!sheet.Shapes.Any(shape=>shape.Text.ToString().Contains("T.E EVIDENCE CONFIRMATION",StringComparison.OrdinalIgnoreCase)),"CWC title text box remains");
-  Require(sheet.Cells["B5"].StringValue=="TESTERPROBLEM","CWC Request Content uses the wrong source field");
+  Require(sheet.Cells["B5"].StringValue=="TESTER PROBLEM","CWC Request Content must use legacy TestNoNG");
   Require(sheet.Cells["Q10"].Value is null,"Empty TTL Stoppage was populated");
   var rule=sheet.ConditionalFormatting.Single();
   Require(rule.AppliesTo.Contains("M10:P11") && !rule.AppliesTo.Contains("M10:Q11") &&
@@ -49,8 +93,9 @@ if(args.Contains("cwc-only")) {
  Require(Encoding.ASCII.GetString(pdf,0,5)=="%PDF-","CWC PDF export failed");
  var empty=LegacyReportExport.Load(source);
  TeEvidenceMakingService.PopulateWorkbook(empty,new(),new(),new(),new(),new(),Images(true),Images(true));
- Require(empty.Worksheets["FORMAT"].Cells["B5"].StringValue=="","Empty Request Content gained fabricated text");
- Console.WriteLine("PASS: CWC title removal, actual RequestContent, empty optional fields, retained required formatting, XLSX round-trip and PDF export.");
+ Require(empty.Worksheets["FORMAT"].Cells["B5"].StringValue=="","Empty TestNoNG gained fabricated text");
+ Require(Regex.Matches(Encoding.Latin1.GetString(pdf),@"/Type\s*/Page\b").Count==1,"CWC PDF includes supplemental sheets");
+ Console.WriteLine("PASS: CWC title removal, legacy TestNoNG, empty optional fields, retained required formatting, XLSX round-trip and single-page PDF export.");
  return;
 }
 
@@ -180,13 +225,14 @@ Console.WriteLine($"MEASURE: CWC template median load={timings.Select(t=>t[0]).O
 
 // Staging deduplicates paths while preserving root precedence, bytes, placeholders and cleanup.
 string stagedPath;
-using(var photos=await EvidenceImageCache.LoadAsync(new[]{@"\Upload\2026\photo.png",pmImage,@"\Upload\2026\missing.png",@"\Upload\Evidence\2020\photo.png"},pmLegacyShare,Images(false),false,sharedArchive)) {
+using(var photos=await LegacyReportExport.StagedPhotos.LoadAsync(new[]{@"\Upload\2026\photo.png",pmImage,@"\Upload\2026\missing.png",@"\Upload\Evidence\2020\photo.png"},pmLegacyShare,Images(false),false,sharedArchive)) {
  stagedPath=photos.Paths[pmImage];
  Require(stagedPath==photos.Paths[@"\Upload\2026\photo.png"] && File.ReadAllBytes(stagedPath).SequenceEqual(File.ReadAllBytes(pmImage)),"Staging duplicated a source or changed photo bytes");
  Require(photos.Paths[@"\Upload\2026\missing.png"]==pmPlaceholder && File.ReadAllBytes(photos.Paths[@"\Upload\Evidence\2020\photo.png"]).SequenceEqual(File.ReadAllBytes(collision)),"Staging changed placeholder or root precedence");
 }
 Require(!File.Exists(stagedPath),"Export photo staging was not cleaned up");
 Console.WriteLine("PASS: independent template clones, invalidation, staged photo bytes, deduplication, root precedence and cleanup.");
+if(args.Contains("performance-only")) return;
 
 var date=new DateTime(2026,10,1,10,0,0);
 Dictionary<string,object> Record(string profile){
@@ -238,8 +284,8 @@ void Save(ExcelFile book,string name,bool preview=false){
  Require(Positions(book)==before,name+" PDF serialization changed picture geometry");
  Require(Positions(ExcelFile.Load(new MemoryStream(xlsx)))==before,name+" XLSX round trip changed picture geometry");
  Require(xlsx[0]=='P'&&xlsx[1]=='K',name+" is not XLSX");Require(Encoding.ASCII.GetString(pdf,0,5)=="%PDF-",name+" is not real PDF");
- if(name is "TE-FT" or "TE-EDS") Require(Regex.Matches(Encoding.Latin1.GetString(pdf),@"/Type\s*/Page\b").Count>=3,
-     name+" PDF omitted visible work-detail/accessories worksheets");
+ if(name.StartsWith("TE-")) Require(Regex.Matches(Encoding.Latin1.GetString(pdf),@"/Type\s*/Page\b").Count==1,
+     name+" PDF includes supplemental worksheets instead of the legacy main page");
  using(var zip=new ZipArchive(new MemoryStream(xlsx)))Require(zip.GetEntry("xl/styles.xml")!=null,name+" lost workbook styles");
  File.WriteAllBytes(Path.Combine(output,name+".xlsx"),xlsx);File.WriteAllBytes(Path.Combine(output,name+".pdf"),pdf);
  if(preview) book.Save(Path.Combine(output,name+".png"),new ImageSaveOptions{Format=ImageSaveFormat.Png,PageNumber=0});
@@ -248,9 +294,9 @@ void Save(ExcelFile book,string name,bool preview=false){
 }
 bool ContainsPhoto(ExcelFile book,string photo){
  var expected=File.ReadAllBytes(photo);
- using var zip=new ZipArchive(new MemoryStream(LegacyReportExport.Save(book,"xlsx")));
- return zip.Entries.Where(entry=>entry.FullName.StartsWith("xl/media/")).Any(entry=>{
-  using var stream=entry.Open(); using var bytes=new MemoryStream(); stream.CopyTo(bytes);
+ return book.Worksheets.SelectMany(sheet=>sheet.Pictures).Any(picture=>{
+  var stream=picture.PictureStream;var previous=stream.Position;stream.Position=0;
+  using var bytes=new MemoryStream(); stream.CopyTo(bytes);stream.Position=previous;
   return bytes.ToArray().SequenceEqual(expected);
  });
 }
@@ -352,16 +398,17 @@ var parts=LegacyReportExport.Load(wbTemplate);new LegacyReportWriter(Images(fals
 Require(parts.Worksheets.ActiveWorksheet!.Cells["BB51"].StringValue=="0"&&parts.Worksheets.ActiveWorksheet.Cells["BB52"].StringValue=="",
     "Real zero quantity was removed or an empty parts row leaked a default");
 Console.WriteLine("PASS: empty part-row defaults, real zero quantities and PL NG/Action Done separation.");
-foreach(var process in new[]{"FT","EDS"}){
+}
+foreach(var process in new[]{"FL","FT","MEMS","EDS"}){
  var profile=process=="EDS"?"TE_EDS":"TE";var data=Record(profile);data["WD1"]="DIARY-FIRST";data["WD10"]="DIARY-LAST";data["TESign"]="TE-SIGN";data["PDSign1"]="PD-SIGN";
  var book=LegacyReportExport.Load(Path.Combine(root,"Templates","BmReport",process=="EDS"?"EDS-CSPTemplate.xlsx":"TETemplate.xlsx"));
+ book.Worksheets.ActiveWorksheet=book.Worksheets[1]; // Writer must select the main sheet regardless of the saved tab.
  new LegacyReportWriter(Images(true),Lookups(profile,data),new[]{"ONE","TWO","THREE"}).PopulateTe(book,process,data);
  if(process=="EDS")Require(book.Worksheets[0].Cells["BK59"].Value is null&&book.Worksheets[0].Cells["BL59"].Value is null,
      "EDS developer row indices/code leaked into the report");
  Save(book,"TE-"+process,true);
  Require(book.Worksheets[1].Cells["B2"].Value?.ToString()==data["WD1"].ToString(),"Work diary sheet mapping changed");
  if(process=="FT") Require(book.Worksheets.ActiveWorksheet!.Cells["BE52"].StringValue=="TE-SIGN"&&book.Worksheets.ActiveWorksheet.Cells["BE53"].StringValue=="PD-SIGN","TE approval mapping changed");
-}
 }
 var photoSources=new[]{"A.png","B.png","C.png","PBox2.png","FBox2.png","PFNBox2.png","ABox.png","BBox.png","CBox.png","NBox.png","68e9d436-c7ac-4152-b771-1e2c2bc005d2.jpg","ROHM_logo.jpg"};
 var photoNumber=0;
@@ -371,7 +418,7 @@ EvidenceImageRow[] Group(int count)=>Enumerable.Range(0,count).Select(i=>{
  return new EvidenceImageRow{Description="Evidence slot "+number+": alignment and inspection",ImageFile=@"\Upload\2026\"+file};
 }).ToArray();
 var groups=new EvidenceImageGroups{ProblemPoint=Group(3),ActionTaken=Group(2),PartsReplaced=Group(2),DisAssembly=Group(2),QualityConfirm=Group(3)};
-using var pmPhotos=await EvidenceImageCache.LoadAsync(new[]{groups.ProblemPoint,groups.ActionTaken,groups.PartsReplaced,groups.DisAssembly,groups.QualityConfirm}.SelectMany(group=>group).Select(row=>row.ImageFile),pmLegacyShare,Images(false),false,sharedArchive);
+using var pmPhotos=await LegacyReportExport.StagedPhotos.LoadAsync(new[]{groups.ProblemPoint,groups.ActionTaken,groups.PartsReplaced,groups.DisAssembly,groups.QualityConfirm}.SelectMany(group=>group).Select(row=>row.ImageFile),pmLegacyShare,Images(false),false,sharedArchive);
 var header=new EvidenceMachineHeader{McNo="FIXTURE-MC",OccurrenceDate="10/01/2026",PmConfirmBy="FIXTURE"};
 foreach(var process in processes){
  var config=ProcessTemplateMap.Get(process)!;var book=LegacyReportExport.Load(Path.Combine(root,"Templates","EvidenceMaking",config.TemplateFile));
@@ -397,7 +444,7 @@ Require(ContainsPhoto(uploadedEvidence,pmImage)&&ContainsPhoto(uploadedEvidence,
 Save(uploadedEvidence,"E-UPLOADED-PHOTOS");
 var cwc=LegacyReportExport.Load(Path.Combine(root,"Templates","EvidenceMaking","CWC.xlsx"));
 Require(cwc.Worksheets.Select(sheet=>sheet.Name).SequenceEqual(new[]{"FORMAT","TESTBOARD","DATASHEET"}),"The wrong CWC workbook version is selected");
-var teHeader=new TeEvidenceHeader{MCNo="FIXTURE-MC",TesterNo="FIXTURE-TE",RequestContent="TESTERPROBLEM",StartOfRepair="10/01/2026 10:20:00",EndOfRepair="10/01/2026 10:50:00",TEAssign="TE1",Ideas="IDEA",TelekoCheckingData="1,2,3,4|5,6,7,8|9,10,11,12|13,14,15,16|17,18,19,20"};
+var teHeader=new TeEvidenceHeader{MCNo="FIXTURE-MC",TesterNo="FIXTURE-TE",TestNoNG="TESTER PROBLEM",StartOfRepair="10/01/2026 10:20:00",EndOfRepair="10/01/2026 10:50:00",TEAssign="TE1",Ideas="IDEA",TelekoCheckingData="1,2,3,4|5,6,7,8|9,10,11,12|13,14,15,16|17,18,19,20"};
 var teCategories=new[]{"PHENOMENON","MACHINE COUNTER AND VISUAL BIN","PROGRAM LOADED","TEST CABLE","OTHER EVIDENCE"};
 var tePhotos=new List<TeEvidenceImage>();
 for(var category=0;category<teCategories.Length;category++)for(var condition=0;condition<2;condition++) {
@@ -413,8 +460,9 @@ Require(tePhotos.Count(row=>row.Category=="TEST BOARD")==2 &&
     tePhotos.Single(row=>row.Category=="TEST BOARD"&&row.Condition=="BEFORE").ImgFile.Contains("Evidence"),
     "TE staging must omit overwritten connector photos while retaining the last visible row");
 var telekoPhotos=Enumerable.Range(0,4).Select(_=>new TelekoEvidenceImage{TelekoEvidence=@"~/Upload/Evidence/2020/photo.png"}).ToList();
-using var tePhotosCache=await EvidenceImageCache.LoadAsync(tePhotos.Select(row=>row.ImgFile).Concat(telekoPhotos.Select(row=>row.TelekoEvidence)),teLegacyShare,Images(true),true,sharedArchive);
-TeEvidenceMakingService.PopulateWorkbook(cwc,teHeader,new(),tePhotos,telekoPhotos,new(),Images(true),teLegacyShare,sharedEvidenceRoot:sharedArchive,imagePaths:tePhotosCache.Paths);
+using var teStagedPhotos=await LegacyReportExport.StagedPhotos.LoadAsync(tePhotos.Select(row=>row.ImgFile).Concat(telekoPhotos.Select(row=>row.TelekoEvidence)),teLegacyShare,Images(true),true,sharedArchive);
+TeEvidenceMakingService.PopulateWorkbook(cwc,teHeader,new(),tePhotos,telekoPhotos,new(),Images(true),teLegacyShare,sharedEvidenceRoot:sharedArchive,imagePaths:teStagedPhotos.Paths);
+Require(cwc.Worksheets["FORMAT"].Cells["B5"].StringValue=="TESTER PROBLEM","CWC Request Content differs from Form10 TestNoNG");
 var blankRule=cwc.Worksheets["FORMAT"].ConditionalFormatting.Single();
 Require(blankRule.AppliesTo.Contains("M6:Q6") && blankRule.AppliesTo.Contains("M8:Q8") &&
  blankRule.AppliesTo.Contains("M10:P11") && !blankRule.AppliesTo.Contains("M10:Q11") &&
@@ -469,6 +517,60 @@ foreach(var pair in new[]{("E7","QUALITY-0"),("J7","QUALITY-1"),("O7","QUALITY-2
  Require(qualityBook.Worksheets["DATASHEET"].Cells[pair.Item1].StringValue==pair.Item2,"Quality description mapped to the wrong sheet/cell");
 Save(qualityBook,"TE-EVIDENCE-QUALITY");
 Console.WriteLine("PASS: actual CWC CN5-CN8/quality sheets, named routing after sheet reordering, QC/time, Teleko and explicit missing-sheet errors.");
+if(args.Contains("photo-benchmark")) {
+ // Phone-sized photographs exercise the expensive path that small static marks cannot.
+ var largePhotos=new List<string>();
+ for(var number=0;number<3;number++) {
+  using var bitmap=new SkiaSharp.SKBitmap(3000,2000);
+  var pixels=new int[bitmap.Width*bitmap.Height];var random=new Random(number);
+  for(var index=0;index<pixels.Length;index++)pixels[index]=unchecked((int)0xff000000)|random.Next(0x1000000);
+  System.Runtime.InteropServices.Marshal.Copy(pixels,0,bitmap.GetPixels(),pixels.Length);
+  using var image=SkiaSharp.SKImage.FromBitmap(bitmap);using var encoded=image.Encode(SkiaSharp.SKEncodedImageFormat.Jpeg,90);
+  var path=Path.Combine(output,$"phone-{number}.jpg");File.WriteAllBytes(path,encoded.ToArray());largePhotos.Add(path);
+ }
+ var localPaths=largePhotos.ToDictionary(path=>path,path=>path);
+ var slot=0;
+ EvidenceImageRow[] LargeGroup(int count)=>Enumerable.Range(0,count).Select(_=>new EvidenceImageRow{ImageFile=largePhotos[slot++%3]}).ToArray();
+ var largeGroups=new EvidenceImageGroups{ProblemPoint=LargeGroup(3),ActionTaken=LargeGroup(2),PartsReplaced=LargeGroup(2),DisAssembly=LargeGroup(2),QualityConfirm=LargeGroup(3)};
+ var pm=LegacyReportExport.Load(Path.Combine(root,"Templates","EvidenceMaking","EvidenceMaking_DC.xlsx"));
+ var preparation=System.Diagnostics.Stopwatch.StartNew();
+ EvidenceMakingService.PopulateWorkbook(pm,"DC",header,new(),largeGroups,Images(false),pmLegacyShare,imagePaths:localPaths);
+ var pmPreparationMs=preparation.Elapsed.TotalMilliseconds;
+ var te=LegacyReportExport.Load(Path.Combine(root,"Templates","EvidenceMaking","CWC.xlsx"));
+ var largeRows=teCategories.SelectMany(category=>Enumerable.Range(0,6).Select(index=>new TeEvidenceImage{
+  Category=category,Condition=index<3?"BEFORE":"AFTER",ImgFile=largePhotos[index%3]})).ToList();
+ preparation.Restart();
+ TeEvidenceMakingService.PopulateWorkbook(te,teHeader,new(),largeRows,new(),new(),Images(true),teLegacyShare,imagePaths:localPaths);
+ var tePreparationMs=preparation.Elapsed.TotalMilliseconds;
+ foreach(var fixture in new[]{(Name:"PM evidence",Book:pm,PreparationMs:pmPreparationMs),(Name:"TE evidence",Book:te,PreparationMs:tePreparationMs)}) {
+  // Recreate the previous full-resolution embeddings at identical anchors and sizes.
+  var baseline=fixture.Book.Clone();var sourceIndex=0;
+  foreach(var sheet in baseline.Worksheets) foreach(var picture in sheet.Pictures.ToArray()) {
+   if(picture.PictureFormat!=ExcelPictureFormat.Jpeg)continue;
+   var position=picture.Position!;var from=position.From!;
+   var anchor=sheet.Cells[from.Row.Index,from.Column.Index].Name;
+   var width=position.Width;var height=position.Height;
+   sheet.Pictures.Remove(picture);
+   sheet.Pictures.Add(largePhotos[sourceIndex++%3],anchor,width,height,LengthUnit.Point).Position!.Mode=PositioningMode.MoveAndSize;
+  }
+  foreach(var format in new[]{"xlsx","pdf"}) {
+  var clock=System.Diagnostics.Stopwatch.StartNew();
+  using var original=new MemoryStream();
+  baseline.Save(original,format=="pdf"?new PdfSaveOptions{SelectionType=SelectionType.EntireFile}:SaveOptions.XlsxDefault);
+  var oldMs=clock.Elapsed.TotalMilliseconds;clock.Restart();
+  var optimized=LegacyReportExport.Save(fixture.Book,format);var newMs=clock.Elapsed.TotalMilliseconds;
+  Require(optimized.Length<original.Length/2,fixture.Name+" oversized photographs were not reduced");
+  if(format=="xlsx") {
+   var roundTrip=ExcelFile.Load(new MemoryStream(optimized));
+   Require(roundTrip.Worksheets.Sum(sheet=>sheet.Pictures.Count)==fixture.Book.Worksheets.Sum(sheet=>sheet.Pictures.Count),"Image optimization dropped photographs");
+   using var bitmap=SkiaSharp.SKBitmap.Decode(roundTrip.Worksheets[0].Pictures[0].PictureStream);
+   Require(bitmap.Width<3000 && bitmap.Height<2000,"XLSX still embeds phone-sized originals");
+  }
+  File.WriteAllBytes(Path.Combine(output,fixture.Name.Replace(' ','-')+"-optimized."+format),optimized);
+  Console.WriteLine($"MEASURE: {fixture.Name} {format}: previous save={oldMs:F1}ms/{original.Length:N0} bytes, optimized save={newMs:F1}ms/{optimized.Length:N0} bytes, optimized population/preparation={fixture.PreparationMs:F1}ms (6MP synthetic photos; excludes SQL/share).");
+  }
+ }
+}
 Console.WriteLine("Report artifacts: "+output);
 sealed class ReportResponseProbe : MachineKarte.Web.Controllers.WorkflowController {
  public Microsoft.AspNetCore.Mvc.FileContentResult Generate(byte[] bytes,string name)=>ReportFile(bytes,name);
@@ -477,6 +579,7 @@ sealed class ReportResponseProbe : MachineKarte.Web.Controllers.WorkflowControll
 # Keep the RID on the runner so project references build/copy the same portable app DLL.
 & $Dotnet build (Join-Path $directory 'Checks.csproj') --nologo -v minimal --self-contained false --property:UseAppHost=false -m:1 --nodeReuse:false --property:NuGetAudit=false --property:UseSharedCompilation=false
 if($LASTEXITCODE -ne 0){throw 'Report fixture build failed.'}
-$downloadMode=if($CwcOnly){'cwc-only'}elseif($DownloadOnly){'download-only'}elseif($EvidenceOnly){'evidence-only'}else{'all'}
-& $Dotnet (Join-Path $directory 'bin/Debug/net8.0/win-x64/Checks.dll') $repo $downloadMode
+$downloadMode=if($PerformanceOnly){'performance-only'}elseif($CwcOnly){'cwc-only'}elseif($DownloadOnly){'download-only'}elseif($EvidenceOnly){'evidence-only'}else{'all'}
+$benchmarkMode=if($PhotoBenchmark){'photo-benchmark'}else{'no-benchmark'}
+& $Dotnet (Join-Path $directory 'bin/Debug/net8.0/win-x64/Checks.dll') $repo $downloadMode $benchmarkMode
 if($LASTEXITCODE -ne 0){throw 'Report generation checks failed.'}

@@ -19,17 +19,31 @@
     transform: scale(0.95);
 }
 .monitoring-screen.cat-gif-background { filter: blur(5px); }
-.cat-gif-celebration { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; overflow: hidden; pointer-events: auto; background: #0003; }
+.cat-gif-celebration { position: fixed; inset: 0; z-index: 100; display: grid; grid-template-columns: repeat(3, minmax(0, 320px)); place-items: center; place-content: center; gap: clamp(12px, 3vw, 32px); padding: 24px; overflow: hidden; pointer-events: auto; background: #0003; }
 .cat-gif-celebration.is-hidden { display: none; }
 .cat-gif-celebration::before, .cat-gif-celebration::after { position: absolute; font-size: clamp(24px, 5vw, 52px); pointer-events: none; animation: cat-party 2.4s ease-in-out infinite; }
 .cat-gif-celebration::before { content: "\1F389  \1F63A  \1F389"; top: 16%; left: 8%; transform: rotate(-12deg); }
 .cat-gif-celebration::after { content: "\1F604  \2728  \1F604"; right: 8%; bottom: 16%; animation-delay: -1.2s; transform: rotate(12deg); }
-.cat-gif-celebration img { width: min(320px, 70vw); max-height: 70vh; object-fit: contain; animation: cat-sway 1.1s ease-in-out infinite, cat-glow 2.2s linear infinite; }
+.cat-gif-celebration img { width: 100%; max-height: 70vh; object-fit: contain; animation: var(--cat-motion, cat-sway) var(--cat-speed, 1.1s) ease-in-out infinite, cat-glow 2.2s linear infinite; }
+.cat-gif-celebration img:nth-child(2) { --cat-motion: cat-slide; --cat-speed: 1.7s; }
+.cat-gif-celebration img:nth-child(3) { --cat-motion: cat-bounce; --cat-speed: .85s; transform-origin: center bottom; }
+@media (max-width: 620px) {
+    .cat-gif-celebration { grid-template-columns: minmax(0, 200px); }
+    .cat-gif-celebration img { max-height: 24dvh; }
+}
 @keyframes cat-sway {
     0%, 100% { transform: rotate(-7deg) translateX(-10px) scale(1); }
     25% { transform: rotate(5deg) translateX(12px) scale(1.05); }
     50% { transform: rotate(-4deg) translateX(-8px) scale(1); }
     75% { transform: rotate(7deg) translateX(10px) scale(1.05); }
+}
+@keyframes cat-slide {
+    0%, 100% { transform: translateX(-24px) rotate(-3deg); }
+    50% { transform: translateX(24px) rotate(3deg); }
+}
+@keyframes cat-bounce {
+    0%, 100% { transform: translateY(0) rotate(4deg) scale(1.04, .96); }
+    50% { transform: translateY(-24px) rotate(-4deg) scale(.96, 1.04); }
 }
 @keyframes cat-glow {
     0%, 100% { filter: drop-shadow(0 0 8px #ff69b4) hue-rotate(0deg); }

@@ -48,16 +48,19 @@ document.addEventListener("DOMContentLoaded", () => {
             celebration.id = "catGifCelebration";
             celebration.className = "cat-gif-celebration is-hidden";
             celebration.setAttribute("aria-live", "polite");
-            celebration.innerHTML = `<img alt="Dancing cat" src="${logo.dataset.catGif}">`;
+            celebration.innerHTML = logo.dataset.catGifs.split(" ")
+                .map((src) => `<img alt="Dancing cat" src="${src}">`).join("");
             document.body.append(celebration);
             celebration.addEventListener("click", hideCatGif);
-            celebration.querySelector("img").addEventListener("click", (event) => {
-                event.stopPropagation();
+            celebration.querySelectorAll("img").forEach((gif) => {
+                gif.addEventListener("click", (event) => event.stopPropagation());
             });
         }
-        const gif = celebration.querySelector("img");
-        gif.src = "";
-        gif.src = logo.dataset.catGif;
+        celebration.querySelectorAll("img").forEach((gif) => {
+            const src = gif.src;
+            gif.src = "";
+            gif.src = src;
+        });
         celebration.classList.remove("is-hidden");
         document.querySelector(".monitoring-screen").classList.add("cat-gif-background");
     };

@@ -1,10 +1,17 @@
 using GemBox.Spreadsheet;
+using System.Collections.Concurrent;
 
 namespace MachineKarte.Web.Services;
 
 public static class LegacyReportExport
 {
-    private static readonly Dictionary<string, (DateTime Modified, long Length, ExcelFile Workbook)> Templates = new(StringComparer.OrdinalIgnoreCase);
+    private sealed class Template
+    {
+        public DateTime Modified;
+        public long Length;
+        public ExcelFile? Workbook;
+    }
+    private static readonly ConcurrentDictionary<string, Template> Templates = new(StringComparer.OrdinalIgnoreCase);
     static LegacyReportExport() => SpreadsheetInfo.SetLicense("FREE-LIMITED-KEY");
 
     public static string NormalizeProcess(string process)
@@ -28,14 +35,16 @@ public static class LegacyReportExport
     public static ExcelFile Load(string path)
     {
         var file = new FileInfo(path);
-        // ponytail: serialize template cloning; use per-template locks if export contention warrants it.
-        lock (Templates)
+        var template = Templates.GetOrAdd(file.FullName, _ => new Template());
+        // Protect the shared source workbook without blocking unrelated templates.
+        lock (template)
         {
-            if (!Templates.TryGetValue(file.FullName, out var template) ||
+            if (template.Workbook is null ||
                 template.Modified != file.LastWriteTimeUtc || template.Length != file.Length)
             {
-                template = (file.LastWriteTimeUtc, file.Length, ExcelFile.Load(file.FullName));
-                Templates[file.FullName] = template;
+                template.Workbook = ExcelFile.Load(file.FullName);
+                template.Modified = file.LastWriteTimeUtc;
+                template.Length = file.Length;
             }
             return template.Workbook.Clone();
         }
@@ -44,8 +53,9 @@ public static class LegacyReportExport
     public static byte[] Save(ExcelFile workbook, string format)
     {
         using var stream = new MemoryStream();
+        // Evidence photos are already sized by the writer; avoid repeating image work at save time.
         workbook.Save(stream, NormalizeFormat(format) == "pdf"
-            ? new PdfSaveOptions { SelectionType = SelectionType.EntireFile }
+            ? new PdfSaveOptions { SelectionType = SelectionType.ActiveSheet }
             : SaveOptions.XlsxDefault);
         return stream.ToArray();
     }
@@ -122,6 +132,80 @@ public static class LegacyReportExport
         {
             // Form4/Form10 use File.Exists; malformed or missing records use noimage.
             return [];
+        }
+    }
+
+    // Per-export staging, not a cache between requests. Only share reads run in parallel;
+    // the writer uses local copies and mutates its workbook sequentially.
+    public sealed class StagedPhotos : IDisposable
+    {
+        private readonly string _directory = Path.Combine(Path.GetTempPath(), "MachineKarte-Evidence-" + Guid.NewGuid().ToString("N"));
+        public IReadOnlyDictionary<string, string> Paths { get; private set; } = new Dictionary<string, string>();
+
+        private StagedPhotos() { }
+
+        public static async Task<StagedPhotos> LoadAsync(IEnumerable<string> storedPaths,
+            string legacySystemRoot, string imageRoot, bool te, string sharedEvidenceRoot,
+            CancellationToken cancellationToken = default)
+        {
+            var photos = new StagedPhotos();
+            try
+            {
+                Directory.CreateDirectory(photos._directory);
+                var resolved = new ConcurrentDictionary<string, string>(StringComparer.Ordinal);
+                var copies = new ConcurrentDictionary<string, Lazy<Task<string?>>>(StringComparer.OrdinalIgnoreCase);
+                var options = new ParallelOptions { MaxDegreeOfParallelism = 4, CancellationToken = cancellationToken };
+                var placeholder = Path.Combine(imageRoot, "noimage.png");
+                await Parallel.ForEachAsync(storedPaths.Distinct(StringComparer.Ordinal), options, async (path, token) =>
+                {
+                    token.ThrowIfCancellationRequested();
+                    var local = placeholder;
+                    foreach (var candidate in EvidenceImageCandidates(path, legacySystemRoot, te, sharedEvidenceRoot))
+                    {
+                        var staged = await copies.GetOrAdd(candidate, source => new Lazy<Task<string?>>(
+                            () => photos.CopyAsync(source, token))).Value;
+                        if (staged is null) continue;
+                        local = staged;
+                        break;
+                    }
+                    resolved[path] = local;
+                });
+                photos.Paths = resolved;
+                return photos;
+            }
+            catch
+            {
+                photos.Dispose();
+                throw;
+            }
+        }
+
+        private async Task<string?> CopyAsync(string path, CancellationToken cancellationToken)
+        {
+            FileStream source;
+            try
+            {
+                source = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read,
+                    81920, FileOptions.Asynchronous | FileOptions.SequentialScan);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                // Match File.Exists: unavailable candidates allow the next root or noimage.
+                return null;
+            }
+            await using (source)
+            {
+                var target = Path.Combine(_directory, Guid.NewGuid().ToString("N") + Path.GetExtension(path));
+                await using var destination = new FileStream(target, FileMode.CreateNew, FileAccess.Write, FileShare.None,
+                    81920, FileOptions.Asynchronous | FileOptions.SequentialScan);
+                await source.CopyToAsync(destination, cancellationToken);
+                return target;
+            }
+        }
+
+        public void Dispose()
+        {
+            if (Directory.Exists(_directory)) Directory.Delete(_directory, recursive: true);
         }
     }
 }

@@ -71,7 +71,6 @@ function Add-Body([string]$form, [string]$profile, [string[]]$body) {
         # The service already resolves Form10 paths. Do not strip a literal tilde
         # from an absolute local staging directory or a resolved upload filename.
         $text=$text.Replace('.Replace("~", "")', '')
-        $text=$text.Replace('ws.Cells("B5").Value = DR("TestNoNG").ToString', 'ws.Cells("B5").Value = DR("RequestContent").ToString')
         $text=$text.Replace('ws.PrintOptions.BottomMargin = (0)', 'ws.PrintOptions.BottomMargin = 0.3')
     }
     [void]$output.AppendLine($text)
@@ -198,6 +197,7 @@ foreach($profile in $profiles) { [void]$output.AppendLine('Case "'+$profile+'" :
 [void]$output.AppendLine('End Select')
 [void]$output.AppendLine('End Sub')
 [void]$output.AppendLine('Public Sub PopulateTe(wb As ExcelFile, process As String, current As IDictionary(Of String, Object))')
+[void]$output.AppendLine('wb.Worksheets.ActiveWorksheet = wb.Worksheets("TE Template")')
 [void]$output.AppendLine('If process = "EDS" Then')
 [void]$output.AppendLine('TE_EDS(wb, New LegacyRecord(current), process)')
 [void]$output.AppendLine('Else')

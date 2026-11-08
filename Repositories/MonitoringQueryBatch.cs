@@ -2,7 +2,7 @@ namespace MachineKarte.Web.Repositories;
 
 internal static class MonitoringQueryBatch
 {
-    // Share the existing four read slots across batched dashboards and reports.
+    // Bound dashboard batches; interactive report generation does not use this queue.
     private const int BatchSize = 4;
     private static readonly SemaphoreSlim Slots = new(BatchSize);
 

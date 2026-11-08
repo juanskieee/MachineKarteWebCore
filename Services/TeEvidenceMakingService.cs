@@ -1,5 +1,4 @@
 using GemBox.Spreadsheet;
-using System.Diagnostics;
 using MachineKarte.Reporting;
 using MachineKarte.Web.Models;
 using MachineKarte.Web.Repositories;
@@ -11,48 +10,45 @@ public class TeEvidenceMakingService
     private readonly TeEvidenceRepository _repo;
     private readonly IConfiguration _config;
     private readonly IWebHostEnvironment _env;
-    private readonly ILogger<TeEvidenceMakingService> _logger;
-
-    public TeEvidenceMakingService(TeEvidenceRepository repo, IConfiguration config, IWebHostEnvironment env,
-        ILogger<TeEvidenceMakingService> logger)
-        => (_repo, _config, _env, _logger) = (repo, config, env, logger);
+    public TeEvidenceMakingService(TeEvidenceRepository repo, IConfiguration config, IWebHostEnvironment env)
+        => (_repo, _config, _env) = (repo, config, env);
 
     public async Task<(byte[] Bytes, string FileName)> GenerateAsync(string bmId, string process,
         CancellationToken cancellationToken = default, string format = "xlsx")
     {
-        var clock = Stopwatch.StartNew();
         format = LegacyReportExport.NormalizeFormat(format);
         process = LegacyReportExport.NormalizeProcess(process);
         if (!int.TryParse(bmId, out var id) || id <= 0) throw new ArgumentException("A valid BM ID is required.");
-        var headerTask = MonitoringQueryBatch.RunAsync(() => _repo.GetHeaderAsync(bmId, cancellationToken), cancellationToken);
-        var descriptionsTask = MonitoringQueryBatch.RunAsync(() => _repo.GetCategoryDescsAsync(bmId, cancellationToken), cancellationToken);
-        var imagesTask = MonitoringQueryBatch.RunAsync(() => _repo.GetCategoryImageRowsAsync(bmId, cancellationToken), cancellationToken);
-        var telekoTask = MonitoringQueryBatch.RunAsync(() => _repo.GetTelekoImagesAsync(bmId, cancellationToken), cancellationToken);
-        var qualityTask = MonitoringQueryBatch.RunAsync(() => _repo.GetQualityImagesAsync(bmId, cancellationToken), cancellationToken);
-        var miscTask = MonitoringQueryBatch.RunAsync(() => _repo.GetMiscRowsAsync(bmId, cancellationToken), cancellationToken);
+        var headerTask = _repo.GetHeaderAsync(bmId, cancellationToken);
+        var descriptionsTask = _repo.GetCategoryDescsAsync(bmId, cancellationToken);
+        var imagesTask = _repo.GetCategoryImageRowsAsync(bmId, cancellationToken);
+        var telekoTask = _repo.GetTelekoImagesAsync(bmId, cancellationToken);
+        // Quality photographs are on DATASHEET, outside the legacy PDF's main sheet.
+        var qualityTask = format == "pdf" ? Task.FromResult(new List<QualityConditionImage>())
+            : _repo.GetQualityImagesAsync(bmId, cancellationToken);
+        var miscTask = _repo.GetMiscRowsAsync(bmId, cancellationToken);
+        var dataTask = Task.WhenAll(headerTask, descriptionsTask, imagesTask, telekoTask, qualityTask, miscTask);
         var workbook = LegacyReportExport.Load(Path.Combine(_env.ContentRootPath, "Templates", "EvidenceMaking", "CWC.xlsx"));
-        await Task.WhenAll(headerTask, descriptionsTask, imagesTask, telekoTask, qualityTask, miscTask);
-        var dataMs = clock.Elapsed.TotalMilliseconds;
-        cancellationToken.ThrowIfCancellationRequested();
-        var header = await headerTask ?? throw new InvalidDataException($"No TE machine data found for BM ID {id}.");
-        var images = VisibleImages(await imagesTask).ToList();
+        var images = VisibleImages(await imagesTask)
+            .Where(row => format != "pdf" || row.Category != "TEST BOARD" || row.CN is "CN1" or "CN2" or "CN3" or "CN4")
+            .ToList();
         var teleko = await telekoTask;
         var quality = await qualityTask;
-        using var photos = await EvidenceImageCache.LoadAsync(images.Select(row => row.ImgFile)
+        using var photos = await LegacyReportExport.StagedPhotos.LoadAsync(images.Select(row => row.ImgFile)
                 .Concat(teleko.Select(row => row.TelekoEvidence)).Concat(quality.Select(row => row.ImgFile)),
             LegacyReportExport.LegacyEvidenceRoot(_config, true), LegacyReportExport.ImageRoot(_env, true),
             true, LegacyReportExport.SharedEvidenceRoot(_config), cancellationToken);
-        var photosMs = clock.Elapsed.TotalMilliseconds;
-        PopulateWorkbook(workbook, header, await descriptionsTask, images, teleko, quality,
+        await dataTask;
+        cancellationToken.ThrowIfCancellationRequested();
+        var header = await headerTask ?? throw new InvalidDataException($"No TE machine data found for BM ID {id}.");
+        var descriptions = await descriptionsTask;
+        var misc = await miscTask;
+        PopulateWorkbook(workbook, header, descriptions, images, teleko, quality,
             LegacyReportExport.ImageRoot(_env, true),
-            LegacyReportExport.LegacyEvidenceRoot(_config, true), await miscTask,
+            LegacyReportExport.LegacyEvidenceRoot(_config, true), misc,
             LegacyReportExport.SharedEvidenceRoot(_config), photos.Paths);
-        var populateMs = clock.Elapsed.TotalMilliseconds;
         cancellationToken.ThrowIfCancellationRequested();
         var bytes = LegacyReportExport.Save(workbook, format);
-        _logger.LogInformation("TE evidence {Process}/{BmId} {Format}: data/template {DataMs:F1}ms, photos {PhotosMs:F1}ms, population {PopulationMs:F1}ms, serialization {SerializationMs:F1}ms, total {TotalMs:F1}ms.",
-            process, id, format, dataMs, photosMs - dataMs, populateMs - photosMs,
-            clock.Elapsed.TotalMilliseconds - populateMs, clock.Elapsed.TotalMilliseconds);
         var fileName = $"TE_Evidence_{id}.{format}";
         return (bytes, fileName);
     }
@@ -85,7 +81,7 @@ public class TeEvidenceMakingService
         {
             ["DR"] = Rows(new[] { new Dictionary<string, object> {
                 ["MCNo"]=header.MCNo, ["TesterNo"]=header.TesterNo, ["DeviceName"]=header.DeviceName,
-                ["LOTNo"]=header.LotNo, ["RequestContent"]=header.RequestContent, ["StartOfRepair"]=header.StartOfRepair,
+                ["LOTNo"]=header.LotNo, ["TestNoNG"]=header.TestNoNG, ["StartOfRepair"]=header.StartOfRepair,
                 ["EndOfRepair"]=header.EndOfRepair } }),
             ["emDRCat"] = Rows(descriptions.Select(row => new Dictionary<string, object> {
                 ["BMEvidence_Category"]=row.Category, ["Condition"]=row.Condition, ["BMEvidence_Desc"]=row.Desc })),

@@ -372,8 +372,10 @@ underlying gridBMOCAP view plan before choosing indexes. No indexes, schema
 changes, or live data repairs are deployed by this change.
 
 [MonitoringQueryBatch](../Repositories/MonitoringQueryBatch.cs) provides four
-shared read slots per application worker for participating dashboards, cards,
-and reports. Ordered batches bound raw-row buffering; queued waits honor
+shared read slots per application worker for participating dashboards and cards.
+Interactive report/evidence reads bypass this queue so monitoring refreshes
+cannot delay generation. Each evidence request still has a fixed set of three
+PM or up to six TE concurrent reads. Ordered dashboard batches bound raw-row buffering; queued waits honor
 cancellation and slots release on failure. This is not a global limit across
 all repository calls or deployed workers. Independent reads use separate
 connections without a new cross-query snapshot transaction.

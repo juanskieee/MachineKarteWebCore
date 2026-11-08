@@ -3,7 +3,8 @@
 PM/TE maintenance records and evidence use the supplied workbooks with compiled
 VB mappings and GemBox.Spreadsheet. All four dialogs support genuine XLSX/PDF
 output, default to Excel, and require separate Generate and Download actions.
-PDF output includes all printable worksheets while retaining sheet visibility.
+PDF output uses the main worksheet, matching the original desktop export.
+Excel retains the populated supplemental worksheets for editing and reference.
 
 Related guides: [application and validation](README.md),
 [database behavior](DATABASE.md), and [JavaScript conventions](../Assets/js/README.md).
@@ -74,12 +75,14 @@ and is cleaned up after the export; it does not archive generated reports.
 `LegacyReportExport.Load` caches parsed source templates and gives each export an
 independent deep clone. The cache reloads a template when its last-write time or
 length changes; BM values and populated workbooks are never cached. Shared
-template cloning is locked, while all population and serialization happen on
-the private workbook outside that lock.
+template cloning is locked per template, while all population and serialization
+happen on the private workbook outside that lock. Loading a different template
+does not wait behind another workflow's clone.
 
-PM/TE evidence validates photo paths without network access, then opens and copies
-each distinct source directly to a per-export OS temporary directory, with at
-most four concurrent filesystem operations. A separate SMB `File.Exists` request
+`LegacyReportExport.StagedPhotos` validates PM/TE evidence photo paths without
+network access, then opens and copies each distinct source directly to a per-export
+OS temporary directory, with at most four concurrent filesystem operations. A
+separate SMB `File.Exists` request
 before every copy has been removed. Resolution and copying form one pipeline;
 absolute/relative aliases share the same in-flight copy. Unavailable candidates
 continue to the archive root or placeholder. The same validated PM/TE/archive
@@ -88,8 +91,9 @@ routing, and worksheet mappings still apply. The compiled writer reads these loc
 picture existence checks; it never mutates a workbook concurrently. Form10's
 tilde normalization applies to stored paths before resolution, preserving literal
 tildes in resolved local staging directories. Temporary photos are removed on
-success, failure, or cancellation. Fresh generations read
-current database rows and photos rather than reusing a previous report.
+success, failure, or cancellation. Staging and deduplication have one-export
+lifetime; source photos are not cached across requests. Every Generate request
+reads current database rows and source photos.
 
 TE generation reads its assignment from the already-loaded header instead of
 querying `ViewTEData` a second time. The header projects only its needed fields
@@ -98,21 +102,62 @@ views with missing optional columns. It stages only the final visible row for
 each test-board condition/connector, preserving the writer's last-row behavior
 without fetching photographs that it would immediately overwrite. Both evidence
 services load/clone their templates while independent SQL reads are in flight.
-Image bytes, image quality, workbook mappings and PDF selection remain unchanged.
+PM/TE maintenance reports do this too. Evidence reads bypass the shared
+monitoring read queue, so dashboard refreshes cannot occupy their slots. The
+fixed three PM/up-to-six TE reads remain asynchronous with request cancellation;
+no rows or generated reports are cached. Photo staging starts when the photo
+queries finish, overlapping the remaining header/description/confirmation/misc reads.
+For PDF, CN5-CN8 test-board and quality-condition photographs are not fetched:
+they belong to supplemental worksheets outside the main-page export. Excel still
+loads and populates these photographs.
 
-Successful PM/TE generations log separate milliseconds for data/template work,
-photo staging, workbook population, serialization and total service time. These
-timings identify SQL/share delays separately from PDF conversion without logging
-photo paths or report contents. Monitoring's MachineList response also includes
-its service duration in the `Server-Timing` header.
+The shared evidence writer sizes oversized photographs to 220 DPI at their actual
+placeholder dimensions before embedding them. It uses the existing SkiaSharp
+dependency, including reduced-resolution JPEG decoding, and reuses each prepared
+source/size within the export. JPEG output uses quality 90; other decoded raster
+images use PNG to preserve transparency. Small images, unsupported image codecs,
+and EXIF-oriented non-JPEG images retain their original bytes. Oversized JPEGs
+are resized for every EXIF orientation, retaining their original orientation tag
+alongside the resized raw pixels. Previously those phone photographs bypassed
+resizing entirely. The decoder also reuses its already-open codec instead of
+opening the same staged file again. Source uploads and
+staged copies are unchanged; exported photographs can contain fewer pixels.
+Anchors, printed dimensions and aspect ratios remain unchanged. Save-time image
+resampling is unnecessary, avoiding repeated decoding of full-sized photographs
+for serialization. This reduces output size, browser memory use, download time,
+and PDF preview work.
+
+Monitoring's MachineList response includes its service duration in `Server-Timing`.
 
 The offline regression runner compares fresh-template loading with cached
 cloning using real templates and photo bytes. `-EvidenceOnly` covers all eleven
-PM evidence processes and the TE main/connector/quality sheets, path validation,
+PM evidence processes and TE FL/FT/MEMS/EDS maintenance records, the
+main/connector/quality sheets, path validation,
 photo bytes, cleanup, clones and both formats. See
 [validation commands](#reproducing-validation-artifacts) for the appropriate
 focused run. Fixture timings exclude production SQL/share latency; complete
 generation durations still require representative deployment measurements.
+Add `-PhotoBenchmark` to compare the previous save options with current XLSX/PDF
+serialization using deterministic 6MP photographs in real PM/TE evidence templates.
+The benchmark also reports current population/photo-preparation time separately;
+the previous-save baseline reconstructs full-resolution photos at the same anchors.
+Those measurements exclude SQL/share latency. `TempData/` comparison artifacts are
+excluded from build/publish content so supplied legacy PDFs are not copied into
+application or validation output.
+
+Use `-PerformanceOnly` for the smaller offline regression: all eight EXIF
+orientations must resize, retain their orientation/aspect ratio and raw pixel
+direction, and export XLSX/PDF successfully. This mode neither loads appsettings
+nor accesses a database or file server. It also covers path boundaries, template
+clone isolation/invalidation, staged photo bytes/deduplication and cleanup.
+
+The focused offline EXIF fixture reproduced the prior bypass for orientations
+2-8: each embedded JPEG retained all 2400x1600 pixels and 23,172 bytes. After
+the change, every orientation embedded 440x294 pixels at the same sheet geometry
+(1,916-1,952 bytes), retained its original orientation and raw pixel direction,
+and exported both formats. This verifies photo sizing; it does not establish
+production request durations. Database, share and complete HTTP latency remain
+unmeasured locally.
 
 ## Template selection
 
@@ -192,11 +237,11 @@ templates and preserved forms.
 | Third-photo captions | SING's third problem description uses Z19; the common layout uses AD21 |
 | CWC Ideas | Keep B78 visible through print area Q80, with separate body/footer space |
 | CWC optional fields | Exclude Wafer No. (M7:Q7), Remarks (M14:Q15), and TTL Stoppage (Q10:Q11) from the supplied template's pink blank-cell rule in generated reports; retain other required-field rules and source-template bytes |
-| CWC heading and request | Remove the floating T.E EVIDENCE CONFIRMATION (CWC) text box; B5 uses the record's RequestContent (for example TESTERPROBLEM), rather than its failed-test number |
+| CWC heading and request | Remove the floating T.E EVIDENCE CONFIRMATION (CWC) text box; B5 uses `ViewTEData.TestNoNG`, exactly as Form10 does (the supplied legacy example displays TESTER PROBLEM). Do not substitute `RequestContent`; the two fields have different meanings |
 | Repeated connector images | Render one image per condition/CN using the last ordered row, matching the legacy visible result |
 | MEMS fallback fields | AG14, AD33, AH33, AN33 prefer nonblank current values, then their occurrence/production-treatment historical equivalents; retain current zero values |
 | Main worksheets | Select the configured PM worksheet and named TE main sheet explicitly |
-| PDF serialization | Use `SelectionType.EntireFile` so TE supplemental sheets are not omitted |
+| PDF serialization | Use `SelectionType.ActiveSheet` with the explicitly selected main worksheet; TE work details/accessories and CWC TESTBOARD/DATASHEET must not become extra PDF pages |
 
 The generator also removes unconditional dead assignments that were immediately
 overwritten. It does not invent destinations or change ambiguous repeated
@@ -266,13 +311,15 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Audit-ReportTemplate
 
 The mapping check is offline. Report fixtures use real templates/images, typed
 values, empty/zero/history cases, photo bytes/anchors, workbook geometry, genuine
-file signatures, supplemental PDF sheets, and explicit capacity errors. Connector
+file signatures, single-page TE PDFs, and explicit capacity errors. Connector
 and quality checks use the retained CWC's real sheets, including a reordered copy
 to check named routing; incomplete copies exercise missing-sheet rejection. The
 runner prints its unique OS temporary artifact directory. Its focused
 `-DownloadOnly` mode checks real in-memory XLSX/PDF responses without running the
 full mapping suite.
-Use `-EvidenceOnly` for PM/TE evidence and source-photo performance changes.
+Use `-EvidenceOnly` for PM/TE evidence and source-photo changes; `-PerformanceOnly`
+targets EXIF photo sizing, path validation, template clones and staging cleanup
+without the full evidence suite.
 
 The audit defaults to `MachineKarte-ReportAudit/Inventory` under OS temporary
 storage and accepts `-OutputDirectory`. It regenerates `Templates.csv`,
