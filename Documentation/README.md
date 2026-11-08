@@ -90,8 +90,10 @@ generate or download a report. Do not add standalone pages for these child flows
 
 ## Behavior to preserve
 
-- Monitoring defaults to 30 days ago through today. Its To filter allows today
-  and earlier dates; its morning reset also ends today. PM/CC/EEE/VIS use machine
+- Monitoring defaults to 30 days ago through tomorrow, matching Form1_Load.
+  Its To filter has no current-date cap; the legacy morning reset ends today.
+  Pickers retain their time and send the original 12-hour hh:mm:ss without AM/PM.
+  Queries use inclusive From/To endpoints without adding a day. PM/CC/EEE/VIS use machine
   processes; TE uses FL/FT/TP/EDS/MEMS tester processes. Clear Filters cancels pending requests and
   resets dates, filters, results, counters, paging, and refresh state.
 - Monitoring requires one of the nine specific locations. Location has no All
@@ -109,10 +111,10 @@ generate or download a report. Do not add standalone pages for these child flows
   markers reflect action and successive comment fields. Existing Action Card
   edits retain the loaded `Seqno`; nonempty comment/reply blur stamps the legacy
   12-hour timestamp, and clearing the text clears its date.
-- AlertBoard, MachineSummary, and BmAnalytics open with their own today-minus-30
-  through tomorrow range and selected user. Monitoring's process, location,
-  machine, and chosen dates do not constrain them. McdMonitoring retains its
-  own editable filters.
+- AlertBoard, MachineSummary, and BmAnalytics use Monitoring's dates and retained
+  times, matching their active Form1.dt1/dt2 query parameters. They read those
+  values again on refresh. Monitoring's process/location/machine do not restrict
+  the summaries. McdMonitoring retains its own editable filters.
 - Primary summary layouts appear before data arrives. Search stays disabled
   during a load; white cells and totals show an em dash until success. Failure
   retains the layout for retry. All twelve process rows remain visible in TE
@@ -124,6 +126,8 @@ generate or download a report. Do not add standalone pages for these child flows
 - MCD summaries count qualifying rows separately from their deduplicated machine
   lists. Forms 7/8 use reduced location profiles; Forms 11/12 retain expanded
   mappings. Form12's `ATC_65` slot is intentional. Do not merge these profiles.
+  Form11's LSI3-3F footer retains its original repeated ATC/SING terms; process
+  totals and the grand total count each cell once.
 - RawData retains the legacy recurrence grouping and date-filter placement.
   Its machine argument does not add a SQL machine filter. OCAP is read-only,
   overlays serialized remarks/judgements only when both sections exist, and
@@ -185,14 +189,14 @@ unrelated database, reporting, or full workflow suites:
 | --- | --- |
 | `Test-DatabaseConnections.ps1` | Startup discovery, cached lookups, probe-free opens, fallback, background recovery, cancellation, legacy settings and safe logging; offline |
 | `Test-MonitoringQueries.ps1` | Generated SQL/schema references, statuses, designer mappings, scheduling, and Need Action fixtures; no database |
-| `Test-MonitoringStaircase.ps1` | Focused offline Monitoring column order, stable ties, pagination and To-day boundaries; optional `-Sql` adds synthetic LocalDB rows; no application settings or application database access |
-| `Test-MonitoringParity.ps1` | Actual Monitoring repository/dashboard reads; `-MachineListOnly` checks dropdown SQL/cache and TE header assignment; `-BoardOnly` focuses on grouped columns versus existing web reads/order in all five modes; full desktop SQL audit has a known date-window mismatch (see DATABASE.md); disposable LocalDB catalog; optional `-Benchmark` |
+| `Test-MonitoringStaircase.ps1` | Focused offline Monitoring column order, stable ties, pagination and legacy inclusive date endpoints; optional `-Sql` adds synthetic LocalDB rows; no application settings or application database access |
+| `Test-MonitoringParity.ps1` | Actual Monitoring repository/dashboard reads; `-MachineListOnly` checks dropdown SQL/cache and TE header assignment; `-BoardOnly` focuses on grouped columns versus existing web reads/order in all five modes; full desktop SQL audit uses identical endpoints; disposable LocalDB catalog; optional `-Benchmark` |
 | `Test-ActionSummaryParity.ps1` | Form2 counts/colors against compiled original VB routines; no database |
 | `Test-ReportGeneration.ps1` | Real templates, photos, compiled mappings, XLSX/PDF output, and capacity errors; `-EvidenceOnly` covers PM/TE evidence, TE maintenance pages and photo staging; `-PerformanceOnly` targets EXIF orientations, path validation, template clones and staging cleanup; `-PhotoBenchmark` adds 6MP photo comparisons; offline |
 | `Update-LegacyReportMappings.ps1 -Check` | Generated mappings match extraction and audited corrections; offline |
 | `Audit-ReportTemplates.ps1` | Reproducible template/binding inventories; offline, output defaults to OS temporary storage |
 | `Test-SummaryDuplicates.ps1` | Real summary SQL against session-local tables in LocalDB |
-| `Test-MachineSummary.ps1` | Machine Summary full-grid/process parity and Analytics Form8/Form12 EEE/TE counts, lists, filters, mappings, and cancellation; disposable LocalDB database; optional `-Benchmark` |
+| `Test-MachineSummary.ps1` | Machine Summary full-grid/process parity and Analytics Form8/Form12 EEE/TE counts, lists, filters, mappings, cancellation and Form11's repeated ATC/SING footer terms; disposable LocalDB database; optional `-Benchmark` |
 | `Test-ActionCardSaves.ps1` | Concurrent inserts, duplicate guards, loaded identities, and edits; disposable LocalDB database |
 | `Test-DataRetrieval.ps1` | Actual repository reads, original Form5 SQL parity, complete AlertBoard batching parity, count/distinct differences, sparse views, report lookups, evidence limits, and cancellation; disposable LocalDB database; optional `-Benchmark` |
 | `Test-Startup.ps1` | Starts its own app with a loopback non-SQL sink; HTML responsiveness and bounded tracking |
@@ -202,8 +206,8 @@ unrelated database, reporting, or full workflow suites:
 
 Invoke PowerShell tools from the repository root, for example
 `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-MonitoringQueries.ps1`.
-For a To-date change, run only `window.runMonitoringDateChecks()` from
-`WorkflowBrowserChecks.js` in a browser fixture; a full workflow run is unnecessary.
+For a To-date UI change, use `Test-Workflows.ps1 -DatesOnly`, which runs only
+`window.runMonitoringDateChecks()`; a full workflow run is unnecessary.
 For local-download changes, use `Test-ReportGeneration.ps1 -DownloadOnly`,
 `Test-WorkflowEndpoints.ps1 -ReportsOnly`, and `Test-Workflows.ps1 -ReportsOnly`.
 These modes check direct in-memory responses, removed storage routes, local

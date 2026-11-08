@@ -11,12 +11,14 @@ public class MonitoringModel : PageModel
 {
     private readonly MonitoringService _service;
     private readonly ILogger<MonitoringModel> _logger;
+    private readonly DateTime _openedAt = DateTime.Now;
 
     public MonitoringModel(MonitoringService service, ILogger<MonitoringModel> logger)
         => (_service, _logger) = (service, logger);
 
-    public string DefaultDateFrom => DateTime.Now.AddDays(-30).ToString("yyyy-MM-dd");
-    public string DefaultDateTo => DateTime.Today.ToString("yyyy-MM-dd");
+    public string DefaultDateFrom => _openedAt.AddDays(-30).ToString("yyyy-MM-dd");
+    public string DefaultDateTo => _openedAt.AddDays(1).ToString("yyyy-MM-dd");
+    public string DefaultTime => _openedAt.ToString("HH:mm:ss");
 
     public IActionResult OnGetProcessList(string userType) =>
         new JsonResult(new AjaxResult<List<string>> { Data = _service.GetProcessList(userType) });

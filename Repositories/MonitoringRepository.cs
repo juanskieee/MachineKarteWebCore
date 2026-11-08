@@ -465,7 +465,7 @@ public class MonitoringRepository
 
             WHERE
                 a.TimeOfRequest >= @Range1
-                AND a.TimeOfRequest < DATEADD(DAY,1,@Range2)
+                AND a.TimeOfRequest <= @Range2
                 AND a.PMCategoryID = 1
                 AND d.ProcessName = @Process
                 AND (@Location = 'All' OR a.Location = @Location)
@@ -511,7 +511,7 @@ public class MonitoringRepository
 
             WHERE
                 a.TimeOfRequest >= @Range1
-                AND a.TimeOfRequest < DATEADD(DAY,1,@Range2)
+                AND a.TimeOfRequest <= @Range2
                 AND a.PMCategoryID IN (1,4)
                 AND d.ProcessName = @Process
                 AND (@Location = 'All' OR a.Location = @Location)
@@ -582,7 +582,7 @@ public class MonitoringRepository
             FROM [eMaintenanceSystemDB].[dbo].[{table}] a
             INNER JOIN [eMaintenanceSystemDB].[dbo].[{caseTable}] b ON a.{joinColumn} = b.{joinId}
             WHERE a.TimeOfRequest >= @Range1
-                AND a.TimeOfRequest < DATEADD(DAY,1,@Range2)
+                AND a.TimeOfRequest <= @Range2
                 AND a.Process = @Process
                 AND {category} AND {status}
                 AND a.{joinColumn} <> 0

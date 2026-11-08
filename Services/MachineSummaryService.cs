@@ -68,6 +68,12 @@ namespace MachineKarte.Web.Services
                 }
             }
 
+            // Form11.TotalLabel includes ATC_6 and SING_5 twice in lblTotal_10.
+            // Its process totals and grand total still count each cell once.
+            result.LocationTotals["LSI3-3F"] += result.Rows
+                .Where(row => row.Process is "ATC" or "SING")
+                .Sum(row => row.Cells["LSI3-3F"].Count);
+
             foreach (var row in result.Rows)
             {
                 result.ProcessTotals[row.Process] = row.RowTotal;

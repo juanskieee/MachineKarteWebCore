@@ -365,7 +365,7 @@ follows the active desktop queries in `Form1.LoadMCName`,
 | TE actions | Match BMID alone, including an action saved under another tester number; choose highest Seqno when duplicates exist |
 | PM / CC / EEE / VIS | Original status/turnover filters and category 1; cards join BMCase for PM or Why4/BMWhy for the other modes; actions match BMID and machine |
 | Content / OCAP | Effective accredited content ID retains the original fallback; BMContent text and OCAP count still use the original BMContentID/BMCaseID respectively |
-| Dates | The date-only web range includes the full To day: `>= @Range1 AND < DATEADD(DAY,1,@Range2)` for both headers and cards; SQL datetime parameters; invariant MM/dd/yyyy HH:mm:ss output |
+| Dates | Original inclusive endpoints: `>= @Range1 AND <= @Range2`, equivalent to desktop `BETWEEN`; no extra day in Monitoring, AlertBoard or MCD summaries; SQL datetime parameters; invariant MM/dd/yyyy HH:mm:ss output |
 
 The replaced `CONVERT(...,120)` produced ISO timestamps that the legacy repeat
 and solved-action parsers did not accept. Returning typed dates restores their
@@ -477,10 +477,20 @@ The browser fixture checks zero per-column/page requests, error/retry,
 cancellation, counts, colors, commands, staircase geometry and desktop/mobile
 captures. Local fixture timings are not production benchmarks.
 
-Legacy SQL takes timestamp boundaries with inclusive `BETWEEN`; the web controls
-provide calendar dates. Header and card queries therefore use the same
-half-open range through the end of the selected To day. The legacy parity
-oracle uses that day's final SQL datetime when comparing date-only requests.
+Legacy SQL takes timestamp boundaries with inclusive `BETWEEN`. Monitoring's
+headers/cards, AlertBoard, Analytics and ImportantDeviceQuery now use those same
+inclusive endpoints, without extending To by one day. Date-only values map to
+midnight for direct API calls. The date controls themselves retain their opening
+time and serialize Form1's `hh:mm:ss` without AM/PM, rather than discarding that
+time. This includes the legacy midnight-to-12 formatting. Forms 2/11/12 share
+Form1's current picker values on open/refresh, including seconds; independent
+dialog defaults previously made their ranges differ. The initial To defaults
+to tomorrow as in Form1_Load, without a cap.
+The parity oracle compares identical endpoints instead of widening the legacy
+range to match the former web workaround. ImportantDeviceQuery also retains
+the original BMCase/BMTEUnit join, excluding unmatched cases from Form11 counts.
+Form11's LSI3-3F footer deliberately repeats the ATC/SING terms from the original
+TotalLabel formula; row and grand totals still count each cell once.
 The service orders all columns by actual displayed card count before pagination,
 preserving SQL order for ties; see [staircase ordering](MONITORING.md#staircase-order).
 

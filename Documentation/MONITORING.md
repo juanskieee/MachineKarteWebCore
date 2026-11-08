@@ -6,23 +6,54 @@ vertical scroll content, and both rows move together horizontally.
 
 ## Date filters
 
-The initial and Clear Filters range is 30 days ago through today. The To input
-is required and uses the native date control's `max` constraint to disable
-future dates. Razor renders today's default and maximum; JavaScript uses the
-browser's local calendar date when initializing, resetting, focusing the input,
-and starting a search. Refreshing the maximum on focus/search handles a page
-left open across midnight.
+The initial and Clear Filters range is 30 days ago through tomorrow, matching
+`Form1_Load`. The required To input has no maximum: past dates, today, tomorrow,
+and later dates are valid. Razor renders tomorrow's default; JavaScript uses the
+browser's local calendar when initializing and resetting. Both inputs retain
+the opening clock time in `data-time`, just as the desktop DateTimePickers do
+despite displaying only MM/dd/yyyy. Selecting another date retains that time.
+Focus and search do not introduce a date cap.
 
 `doSearch()` calls the To input's `reportValidity()` before changing search state
-or issuing requests. Typed, URL-supplied, or programmatically assigned future
-dates are rejected as well as empty values. Past dates and today remain valid.
-Summary dialogs retain their own date defaults.
+or issuing requests. Empty values are rejected; typed, URL-supplied, and
+programmatically assigned future dates remain valid. Forms 2/11/12 use the same
+Monitoring dates and times when opened and on refresh. Their queries are not
+restricted to Monitoring's process/location/machine selections.
 
-Header counts and card reads use the same inclusive calendar-day range:
-`TimeOfRequest >= @Range1 AND TimeOfRequest < DATEADD(DAY, 1, @Range2)`.
-This includes records throughout the To date and excludes the next day's
-midnight. Ending the card query at the To date's midnight would hide that day's
-cards while still counting them for column ranking.
+Header counts, card reads, and summary queries use the original inclusive
+endpoints: `TimeOfRequest >= @Range1 AND TimeOfRequest <= @Range2`, equivalent
+to the desktop's `BETWEEN @Range1 AND @Range2`. The browser serializes the picker
+values using the original `MM/dd/yyyy hh:mm:ss` convention, without AM/PM.
+Consequently 21:06:37 becomes 09:06:37, and midnight becomes 12:00:00. Seconds
+must survive every summary request. SQL respects those received endpoints
+without adding a day. Direct API date-only parameters still parse as midnight.
+
+The legacy morning refresh calls `SetDate` only between 08:00 and 08:58 when To
+is not already today. It sets both picker times to midnight and To to today;
+the original 12-hour SQL format then sends noon. Subsequent refreshes with To
+already today retain their current picker values.
+
+| Active legacy path | Web mapping |
+| --- | --- |
+| `Form1_Load`: AddDays(-30)/AddDays(1) on picker values | `resetDates` retains the opening local time |
+| `Form1.btnSearch_Click_1` and `LoadMCName1` date parameters | `monitoringDateRange` and `buildFilter` retain hh:mm:ss |
+| Form2/Form11/Form12 `LoadMCName`: `Form1.dt1`/`Form1.dt2` | `Workflows.open` shares Monitoring's range; refresh reads it again |
+| `Form1.Timer1_Tick` / `SetDate` | `resetMorningDates` applies the same clock/date guard before summary refresh |
+
+## Count parity
+
+Form1's Important Device counters and Form12's Action With MCD cells count
+qualifying BM rows, with unique machine lists used only for drilldowns.
+Form2 counts qualifying repeat-group heads. Keep these rules separate.
+Midnight-only From values can include extra early records that the desktop's
+retained time excludes. Independent dialog ranges can also count different
+records. Preserve the complete parameter flow before comparing row/group counts.
+
+Form11's Need Action With MCD query retains its BMCase/BMTEUnit join. Its
+`TotalLabel` formula for LSI3-3F adds ATC and SING twice; the web preserves this
+legacy footer behavior. Process totals and the grand total count each cell once.
+`Test-MachineSummary.ps1` checks the repeated footer terms with an isolated
+ATC/SING fixture; it does not reproduce the user's live totals.
 
 ## Staircase order
 
@@ -122,14 +153,17 @@ of `52 * 120 = 6240px`, excluding the 104px summary.
 
 Use `Test-MonitoringStaircase.ps1` for the focused offline ordering/date check.
 It executes the production sort statement against synthetic columns, checking
-stable ties, global ordering before pagination, and full-To-day boundaries.
+stable ties, global ordering before pagination, and legacy inclusive endpoints.
 `-Sql` optionally adds synthetic LocalDB date/tie-order checks. Neither mode
 reads application settings or application databases.
 
-For date-only changes, `window.runMonitoringDateChecks()` in the existing
-[browser fixtures](../scripts/WorkflowBrowserChecks.js) checks today's default
-and maximum, past dates, a stale maximum, rejected future/empty searches, and
-date resets. It does not request search data.
+For date-only UI changes, `Test-Workflows.ps1 -DatesOnly` runs
+`window.runMonitoringDateChecks()` in the existing
+[browser fixtures](../scripts/WorkflowBrowserChecks.js). It checks tomorrow's
+default, past/future dates without a maximum, empty-value rejection, retained
+times at midnight/noon/afternoon, URL/drilldown timestamps, shared summary
+dates/seconds, refresh, and the morning-reset guard. AJAX results are fixtures;
+these checks validate requests and behavior, not live database totals.
 
 The same browser fixtures include
 sparse-column, single-column, full-page, and frozen-summary assertions. When

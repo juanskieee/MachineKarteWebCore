@@ -151,6 +151,19 @@ INSERT MachineKarte_ActionCard (BMID,MachineNo) VALUES (30,'ATC-A');
         catch(OperationCanceledException) { }
     }
     Console.WriteLine("PASS: Machine Summary EEE/TE full-grid parity; Analytics Form8/Form12 EEE/TE cell counts, machine order, totals, duplicate actions/MCDs, filters, missing cases, ATC_65 and cancellation.");
+    if(!args.Contains("benchmark")) {
+        await Execute(@"
+INSERT ATCBMMaintenance (BMID,MCNo,Process,Location,TimeOfRequest,PMCategoryID,BMStatusID,BMCaseID,DeviceName)
+VALUES (40,'ATC-NEED','ATC','LSI3-3F','2026-11-01',1,6,1,'DEVICE');
+INSERT SINGBMMaintenance (BMID,MCNo,Process,Location,TimeOfRequest,PMCategoryID,BMStatusID,BMCaseID,DeviceName)
+VALUES (41,'SING-NEED','SING','LSI3-3F','2026-11-01',1,6,1,'DEVICE');
+");
+        var mcd=await new MachineSummaryService(summaries).BuildSummaryAsync(new MachineSummaryQuery{DateFrom="2026-11-01",DateTo="2026-11-01"});
+        Require(mcd.Rows.Sum(row=>row.Cells["LSI3-3F"].Count)==2 && mcd.LocationTotals["LSI3-3F"]==4,
+            "Form11.TotalLabel must include both ATC_6 and SING_5 twice in lblTotal_10");
+        Require(mcd.GrandTotal==mcd.ProcessTotals.Values.Sum(),"The legacy floor total changed the grand total");
+        Console.WriteLine("PASS: Form11's repeated ATC/SING floor-total terms are retained independently of row/grand totals.");
+    }
     if(args.Contains("benchmark")) {
         await Execute(@"
 ;WITH Numbers AS (SELECT TOP (50000) ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) n FROM sys.all_objects a CROSS JOIN sys.all_objects b)
@@ -176,5 +189,7 @@ INSERT MachineKarte_ActionCard_TE (BMID,MachineNo) SELECT BMID,MachineNo FROM Ma
 '@ | Set-Content -Encoding UTF8 (Join-Path $checkDirectory 'Program.cs')
 $runnerArgs = @($LocalDbInstance)
 if ($Benchmark) { $runnerArgs += 'benchmark' }
-& $Dotnet run --project (Join-Path $checkDirectory 'Checks.csproj') --no-launch-profile --verbosity quiet --property:NuGetAudit=false -- @runnerArgs
+& $Dotnet build (Join-Path $checkDirectory 'Checks.csproj') --nologo --verbosity minimal -m:1 --property:UseSharedCompilation=false --property:NuGetAudit=false --output (Join-Path $checkDirectory 'bin')
+if ($LASTEXITCODE -ne 0) { throw 'Machine-summary runner build failed.' }
+& $Dotnet (Join-Path $checkDirectory 'bin/Checks.dll') @runnerArgs
 if ($LASTEXITCODE -ne 0) { throw 'Machine-summary SQL regression check failed.' }

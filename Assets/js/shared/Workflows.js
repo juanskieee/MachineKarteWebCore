@@ -34,22 +34,13 @@ window.Workflows = (() => {
     async function open(name, values = {}) {
         if (!Object.hasOwn(titles, name)) return;
         if (["AlertBoard", "MachineSummary", "BmAnalytics"].includes(name)) {
-            const today = new Date();
-            const day = (offset) => {
-                const date = new Date(
-                    today.getFullYear(),
-                    today.getMonth(),
-                    today.getDate() + offset,
-                );
-                return Karte.formatDate(date);
-            };
             values = {
                 userType:
                     values.userType ||
                     document.getElementById("cbUser").value ||
                     "PM",
-                dateFrom: day(-30),
-                dateTo: day(1),
+                // Forms 2/11/12 query Form1's picker values, including their time.
+                ...monitoringDateRange(),
                 ...(name === "BmAnalytics"
                     ? { legacyForm: values.legacyForm || "8" }
                     : {}),

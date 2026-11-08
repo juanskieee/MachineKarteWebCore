@@ -3,7 +3,8 @@ param(
     [int]$DevToolsPort = 9227,
     [string]$ArtifactDirectory = (Join-Path $env:TEMP 'MachineKarte-Workflow-QA'),
     [switch]$ReportsOnly,
-    [switch]$MonitoringOnly
+    [switch]$MonitoringOnly,
+    [switch]$DatesOnly
 )
 # Run the application and an installed Chromium browser with --remote-debugging-port=9227.
 # Browser fixtures replace only AJAX data; HTML partials and assets come from the real app.
@@ -44,7 +45,24 @@ function Invoke-JavaScript([string]$expression) {
     return $result.result.value
 }
 try {
-    if (!$ReportsOnly -and !$MonitoringOnly) {
+    if ($DatesOnly) {
+        $repo = Split-Path $PSScriptRoot -Parent
+        $form1 = [IO.File]::ReadAllText((Join-Path $repo 'Legacy/Form1.vb.txt'))
+        if (!$form1.Contains('dt1.Value = dt1.Value.AddDays(-30).ToString()') -or
+            !$form1.Contains('dt2.Value = dt2.Value.AddDays(1).ToString()') -or
+            !$form1.Contains('dt2.Value = Date.Now.ToString("MM/dd/yyyy")') -or
+            !$form1.Contains('dt1.Value.ToString("MM/dd/yyyy hh:mm:ss")')) {
+            throw 'Recheck the original Form1 picker initialization/reset/parameter format.'
+        }
+        foreach ($number in @(2,11,12)) {
+            $source = [IO.File]::ReadAllText((Join-Path $repo "Legacy/Form$number.vb.txt"))
+            if (!$source.Contains('Form1.dt1.Value.ToString("MM/dd/yyyy hh:mm:ss")') -or
+                !$source.Contains('Form1.dt2.Value.ToString("MM/dd/yyyy hh:mm:ss")')) {
+                throw "Form$number no longer uses Form1's original date/time parameters."
+            }
+        }
+    }
+    if (!$ReportsOnly -and !$MonitoringOnly -and !$DatesOnly) {
     $monitoringHtml = $client.GetStringAsync("$BaseUrl/Monitoring").GetAwaiter().GetResult()
     $assetPaths = @([regex]::Matches($monitoringHtml, '<(?:link|script)\b[^>]*(?:href|src)="(/[^"]+)"') |
         ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
@@ -88,6 +106,10 @@ try {
     Invoke-Cdp 'Emulation.setDeviceMetricsOverride' @{ width = 1440; height = 1000; deviceScaleFactor = 1; mobile = $false } | Out-Null
     Invoke-Cdp 'Page.navigate' @{ url = "$BaseUrl/Monitoring" } | Out-Null
     $ready = Invoke-JavaScript "new Promise((resolve, reject) => { let attempts = 0; const timer = setInterval(() => { if (window.Workflows && document.readyState === 'complete') { clearInterval(timer); resolve(true); } else if (++attempts > 150) { clearInterval(timer); reject(new Error('Monitoring failed to load')); } }, 100); })"
+    if ($DatesOnly) {
+        Write-Output (Invoke-JavaScript 'window.runMonitoringDateChecks()')
+        return
+    }
     if ($MonitoringOnly) {
         Write-Output (Invoke-JavaScript 'window.runMonitoringChecks()')
         New-Item -ItemType Directory -Path $ArtifactDirectory -Force | Out-Null

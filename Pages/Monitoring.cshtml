@@ -60,8 +60,8 @@
             <div><label for="cbProcess" id="lblProcessLabel">Process</label><select id="cbProcess" onchange="onProcessChanged()"><option value="-Select-">-Select-</option></select></div>
             <div><label for="cbFloor">Location</label><select id="cbFloor" onchange="onFloorChanged()"><option value="-Select-">-Select-</option></select></div>
             <div><label for="cbMachine" id="lblMachineLabel">Machine</label><select id="cbMachine"><option value="">-Select-</option></select></div>
-            <div><label for="dt1">From</label><input type="date" id="dt1" value="@Model.DefaultDateFrom" required /></div>
-            <div><label for="dt2">To</label><input type="date" id="dt2" value="@Model.DefaultDateTo" max="@Model.DefaultDateTo" required /></div>
+            <div><label for="dt1">From</label><input type="date" id="dt1" value="@Model.DefaultDateFrom" data-time="@Model.DefaultTime" required /></div>
+            <div><label for="dt2">To</label><input type="date" id="dt2" value="@Model.DefaultDateTo" data-time="@Model.DefaultTime" required /></div>
             <button id="btnSearch" class="btn-search" type="submit">Search</button>
             <button id="btnClearFilters" class="btn-clear-filters" type="button">Clear Filters</button>
             <div class="pagination-group" aria-label="Machine pages">

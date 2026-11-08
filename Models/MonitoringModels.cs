@@ -14,8 +14,8 @@ namespace MachineKarte.Web.Models
         public string Process { get; set; } = string.Empty;
         public string Floor { get; set; } = string.Empty;
         public string Machine { get; set; } = "All";
-        public string DateFrom { get; set; } = DateTime.Now.AddDays(-30).ToString("MM/dd/yyyy");
-        public string DateTo { get; set; } = DateTime.Now.AddDays(1).ToString("MM/dd/yyyy");
+        public string DateFrom { get; set; } = DateTime.Now.AddDays(-30).ToString("MM/dd/yyyy hh:mm:ss");
+        public string DateTo { get; set; } = DateTime.Now.AddDays(1).ToString("MM/dd/yyyy hh:mm:ss");
         public int Page { get; set; } = 1;
     }
 

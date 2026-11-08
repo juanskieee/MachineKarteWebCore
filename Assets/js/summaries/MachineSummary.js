@@ -8,7 +8,8 @@ Workflows.register("MachineSummary", (root, options, context) => {
     const { escapeHtml } = Karte;
 
     const elSearch = byId("msSearch");
-    const { dateFrom, dateTo, userMode } = options;
+    let { dateFrom, dateTo } = options;
+    const { userMode } = options;
     const elStatus = byId("summaryError");
     const loading = byId("summaryLoading");
     const layout = JSON.parse(byId("msGrid").dataset.layout);
@@ -44,6 +45,7 @@ Workflows.register("MachineSummary", (root, options, context) => {
 
     async function search(background) {
         if (elSearch.disabled) return;
+        ({ dateFrom, dateTo } = monitoringDateRange());
 
         if (!dateFrom || !dateTo) {
             if (!background) setStatus("Please select a date range.", true);

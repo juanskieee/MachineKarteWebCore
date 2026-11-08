@@ -163,34 +163,79 @@
     window.runMonitoringDateChecks = async () => {
         const dateFrom = document.getElementById('dt1');
         const dateTo = document.getElementById('dt2');
-        const previous = [dateFrom.value, dateTo.value, dateTo.max];
+        const previous = [dateFrom.value, dateTo.value, dateTo.max, dateFrom.dataset.time, dateTo.dataset.time];
         try {
             resetDates();
             const now = new Date();
-            const today = formatDate(now);
-            assert(dateTo.value===today && dateTo.max===today, 'Monitoring To default/maximum is not today');
-            assert(dateTo.checkValidity(), 'Today is rejected');
+            const tomorrow = new Date(now); tomorrow.setDate(tomorrow.getDate()+1);
+            assert(dateTo.value===formatDate(tomorrow) && !dateTo.hasAttribute('max'), 'Monitoring To must default to tomorrow without a maximum');
+            assert(dateTo.checkValidity(), 'Tomorrow is rejected');
             const yesterday = new Date(now); yesterday.setDate(yesterday.getDate()-1);
             dateTo.value = formatDate(yesterday);
             assert(dateTo.checkValidity(), 'Past To dates are rejected');
-            dateTo.max = formatDate(yesterday);
             dateTo.dispatchEvent(new Event('focus'));
-            assert(dateTo.max===today, 'Focusing To did not update a stale date limit');
-            const tomorrow = new Date(now); tomorrow.setDate(tomorrow.getDate()+1);
-            dateTo.value = formatDate(tomorrow);
-            assert(dateTo.validity.rangeOverflow, 'A future To date is accepted');
+            assert(!dateTo.hasAttribute('max'), 'Focusing To introduced a date limit');
+            const future = new Date(now); future.setDate(future.getDate()+90);
+            dateTo.value = formatDate(future);
+            assert(dateTo.checkValidity(), 'A future To date is rejected');
             const requestCount = requests.length;
             const searchId = State.searchId;
-            await doSearch(1);
-            assert(requests.length===requestCount && State.searchId===searchId, 'Future To date started a search');
+            const selects = ['cbUser','cbProcess','cbFloor','cbMachine'].map(id=>document.getElementById(id));
+            const selected = selects.map(el=>el.innerHTML);
+            try {
+                ['PM','MP','LSI2-3F','All'].forEach((value,index)=>selects[index].innerHTML=`<option selected>${value}</option>`);
+                await doSearch(1);
+                assert(State.searchId===searchId+1 && requests.length>requestCount && State.lastFilter.dateTo===toApiDate(monitoringDateRange().dateTo), 'Future To date did not reach the search with its retained time');
+                assert(!dateTo.hasAttribute('max'), 'Searching introduced a To-date cap');
+            } finally {
+                selects.forEach((el,index)=>el.innerHTML=selected[index]);
+            }
+            const afterSearch = requests.length;
+            const afterSearchId = State.searchId;
             dateTo.value = '';
             await doSearch(1);
-            assert(dateTo.validity.valueMissing && requests.length===requestCount, 'Empty To date started a search');
+            assert(dateTo.validity.valueMissing && requests.length===afterSearch && State.searchId===afterSearchId, 'Empty To date started a search');
             resetDates();
-            assert(dateTo.value===today && dateTo.max===today, 'Reset did not restore today');
-            return 'PASS: Monitoring To defaults/limits to today, permits past dates, updates on focus, and blocks future/empty searches';
+            assert(dateTo.value===formatDate(tomorrow) && !dateTo.hasAttribute('max'), 'Reset did not restore the unrestricted tomorrow default');
+            // Form1 uses hh:mm:ss without AM/PM, not HH:mm:ss or midnight boundaries.
+            for (const [hour, expected] of [[0,'12'],[12,'12'],[13,'01'],[23,'11']]) {
+                resetDates(new Date(2026,10,8,hour,6,37));
+                const range = monitoringDateRange();
+                assert(range.dateFrom===`2026-10-09T${expected}:06:37` && range.dateTo===`2026-11-09T${expected}:06:37`, 'Default picker time differs from Form1_Load/SQL parameters');
+                dateTo.value='2026-12-20';
+                assert(monitoringDateRange().dateTo===`2026-12-20T${expected}:06:37`, 'Selecting a date lost the picker time');
+            }
+            await applyMonitoringSelection({dateFrom:'2026-10-02T15:07:41',dateTo:'2026-11-15T16:08:42'});
+            assert(buildFilter().dateFrom==='10/02/2026 03:07:41' && buildFilter().dateTo==='11/15/2026 04:08:42', 'URL/drilldown timestamps were discarded');
+            const checkSummaryDates = (name) => {
+                const request = requests.filter(request=>request.path===`/${name}`).at(-1);
+                const filter = request.body ? JSON.parse(request.body) : request.query;
+                const apiDate = value => /^\d{2}\//.test(value) ? value : toApiDate(value.replace(' ','T'));
+                const expected = buildFilter();
+                assert(apiDate(filter.dateFrom)===expected.dateFrom && apiDate(filter.dateTo)===expected.dateTo, `${name} did not use Form1 dates/times/seconds`);
+                assert(!('process' in filter) && !('location' in filter) && !('machine' in filter), `${name} was restricted to Monitoring's process/location/machine`);
+            };
+            for (const name of summaryNames) {
+                await open(name);
+                checkSummaryDates(name);
+                setMonitoringDate('dt2','2026-12-21T23:08:43');
+                window.dispatchEvent(new Event('monitoring:refresh'));
+                await tick();
+                checkSummaryDates(name);
+                Workflows.close();
+            }
+            resetDates(new Date(2026,10,8,21,6,37));
+            resetMorningDates(new Date(2026,10,8,8,30,0));
+            assert(buildFilter().dateFrom==='10/09/2026 12:00:00' && buildFilter().dateTo==='11/08/2026 12:00:00', 'Morning SetDate did not preserve the original midnight-to-12 SQL formatting');
+            dateTo.dataset.time='21:06:37';
+            resetMorningDates(new Date(2026,10,8,8,30,0));
+            assert(dateTo.dataset.time==='21:06:37', 'Morning refresh reset To even though it was already today');
+            return 'PASS: unrestricted To, retained picker time, original 12-hour SQL parameters, shared Form1 dates in all three summaries/refresh/drilldowns, and morning reset';
         } finally {
-            [dateFrom.value, dateTo.value, dateTo.max] = previous;
+            Workflows.close();
+            [dateFrom.value, dateTo.value] = previous;
+            [dateFrom.dataset.time, dateTo.dataset.time] = previous.slice(3);
+            if (previous[2]) dateTo.max=previous[2]; else dateTo.removeAttribute('max');
         }
     };
     window.runMonitoringChecks = async () => {
@@ -401,7 +446,8 @@
         assert([...document.querySelectorAll('#floorSummaryGrid tbody td')].every(cell=>cell.textContent==='0'), 'Clear Filters retained floor totals');
         assert(!document.getElementById('monitoringWelcome').classList.contains('is-hidden') && document.getElementById('loadingSpinner').classList.contains('is-hidden') && document.getElementById('lblMachineLabel').textContent==='Machine', 'Clear Filters did not restore the initial screen');
         const now = new Date();
-        assert(val('dt1')===formatDate(new Date(now.getTime()-30*86400000)) && val('dt2')===formatDate(now), 'Clear Filters did not reset dates');
+        const tomorrow = new Date(now.getFullYear(),now.getMonth(),now.getDate()+1);
+        assert(val('dt1')===formatDate(new Date(now.getTime()-30*86400000)) && val('dt2')===formatDate(tomorrow), 'Clear Filters did not reset dates');
         await applyMonitoringSelection(query);
         assert(errors.length===0, errors.join('; '));
         return `PASS: one grouped search, zero per-column/page requests, ten-column lazy page rendering (${window.__monitoringPageMilliseconds.toFixed(1)} ms/page in browser fixture), frozen headers, shared scrolling without header height, column alignment, staircase, counts/colors, commands, retry, cancellation and stale-search isolation`;
@@ -637,13 +683,8 @@
                 assert(!root.querySelector('select, input:not([type="hidden"])'), `${name} has independent filters`);
                 const request = requests.filter(request => request.path===`/${name}`).at(-1);
                 const filter = request.body ? JSON.parse(request.body) : request.query;
-                const day = offset => {
-                    const now = new Date();
-                    const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
-                    return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
-                };
-                const requestDay = value => /^\d{2}\//.test(value) ? `${value.slice(6,10)}-${value.slice(0,2)}-${value.slice(3,5)}` : value.slice(0,10);
-                assert(requestDay(filter.dateFrom)===day(-30) && requestDay(filter.dateTo)===day(1), `${name} did not use its own default dates`);
+                const apiDate = value => /^\d{2}\//.test(value) ? value : toApiDate(value.replace(' ','T'));
+                assert(apiDate(filter.dateFrom)===buildFilter().dateFrom && apiDate(filter.dateTo)===buildFilter().dateTo, `${name} did not use Monitoring dates/times`);
                 assert(!('process' in filter) && !('location' in filter) && !('machine' in filter), `${name} inherited Monitoring selections`);
                 assert((filter.user || filter.userMode || filter.mode || 'PM')===(name==='AlertBoard'?'PM':'EEE'), `${name} lost its user mode`);
                 assert(!root.querySelector('[data-id="summaryContext"], [data-id="lblStatus"], [data-id="msStatus"], [data-id="boardStatus"]'), `${name} retained context/status labels`);

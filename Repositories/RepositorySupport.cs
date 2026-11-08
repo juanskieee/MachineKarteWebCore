@@ -103,9 +103,11 @@ internal static class ImportantDeviceQuery
         a.Location,
         a.{machine} AS MachineNo
     FROM dbo.{table} a
+    INNER JOIN dbo.{(te ? "BMTEUnit" : "BMCase")} b
+        ON a.{caseId} = b.{(te ? "BMTEUnitID" : "BMCaseID")}
     WHERE
         a.TimeOfRequest >= @Range1
-        AND a.TimeOfRequest < DATEADD(DAY,1,@Range2)
+        AND a.TimeOfRequest <= @Range2
         AND ({filter})
         AND {categoryFilter}
         AND {statusFilter}

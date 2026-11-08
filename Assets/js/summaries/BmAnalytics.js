@@ -13,7 +13,7 @@ Workflows.register("BmAnalytics", (root, options, context) => {
 
     // DOM refs
 
-    const { dateFrom, dateTo } = options;
+    let { dateFrom, dateTo } = options;
     const mode = options.userMode;
     const btnSearch = byId("btnSearch");
     const loading = byId("summaryLoading");
@@ -34,6 +34,7 @@ Workflows.register("BmAnalytics", (root, options, context) => {
 
     function triggerSearch() {
         if (btnSearch.disabled) return;
+        ({ dateFrom, dateTo } = monitoringDateRange());
         const payload = {
             dateFrom: dateFrom.replace("T", " "),
             dateTo: dateTo.replace("T", " "),

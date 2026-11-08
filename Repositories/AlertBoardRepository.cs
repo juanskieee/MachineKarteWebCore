@@ -126,7 +126,7 @@ public class AlertBoardRepository
             FROM dbo.{process}BMMaintenance a
             WHERE
                 a.timeofrequest >= @Range1
-                AND a.timeofrequest < DATEADD(DAY,1,@Range2)
+                AND a.timeofrequest <= @Range2
                 AND a.Pmcategoryid = '1'
                 AND a.bmcaseid <> 0
                 AND (@Location = 'All' OR a.Location = @Location)
@@ -229,7 +229,7 @@ public class AlertBoardRepository
             FROM dbo.TEBMMaintenance a
             WHERE
                 a.Timeofrequest >= @Range1
-                AND a.Timeofrequest < DATEADD(DAY, 1, @Range2)
+                AND a.Timeofrequest <= @Range2
                 AND a.process = '{process}'
                 AND a.Pmcategoryid IN ('1','4')
                 AND a.BMStatusID NOT IN ('30','31','1','2','3','7','17')

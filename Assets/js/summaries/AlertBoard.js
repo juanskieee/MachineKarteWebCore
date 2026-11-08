@@ -6,8 +6,7 @@ Workflows.register("AlertBoard", (root, options, context) => {
     // A modal-local snapshot keeps drilldowns consistent for 1 minute.
     const { byId } = context;
 
-    const dateFrom = options.dateFrom;
-    const dateTo = options.dateTo;
+    let { dateFrom, dateTo } = options;
     const user = options.userType === "PM" ? "" : options.userType;
     const btnSearch = byId("btnSearch");
     const loading = byId("summaryLoading");
@@ -30,6 +29,7 @@ Workflows.register("AlertBoard", (root, options, context) => {
 
     async function loadBoard() {
         if (btnSearch.disabled) return;
+        ({ dateFrom, dateTo } = monitoringDateRange());
         boardSnapshot = null;
         drillRequests.clear();
         setLoading(true);
@@ -72,7 +72,7 @@ Workflows.register("AlertBoard", (root, options, context) => {
             dtLocal.length === 10 ? dtLocal + "T00:00" : dtLocal,
         );
         const pad = (n) => String(n).padStart(2, "0");
-        return `${pad(d.getMonth() + 1)}/${pad(d.getDate())}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:00`;
+        return `${pad(d.getMonth() + 1)}/${pad(d.getDate())}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
     }
 
     function resetBoard() {

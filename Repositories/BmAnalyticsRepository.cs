@@ -35,7 +35,7 @@ FROM dbo.{(te ? "TE" : process)}BMMaintenance a
 INNER JOIN dbo.{(te ? "BMTEUnit" : "BMCase")} b
     ON a.{(te ? "BMUnitID" : "BMCaseID")} = b.{(te ? "BMTEUnitID" : "BMCaseID")}
 WHERE a.TimeOfRequest >= @Range1
-    AND a.TimeOfRequest < DATEADD(DAY,1,@Range2)
+    AND a.TimeOfRequest <= @Range2
     AND a.Location IN ({string.Join(", ", locations.Select((_, i) => $"@Location{i}"))})
     AND a.PMCategoryID {(te ? "IN (1,4)" : "= 1")}
     AND a.BMStatusID NOT IN ({(te ? "30,31,1,2,3,7,17" : "30,31")})
@@ -117,7 +117,7 @@ ORDER BY a.{machine} DESC, a.TimeOfRequest DESC, b.{(te ? "BMTEUnitID" : "BMCase
             FROM dbo.{0}BMMaintenance a
             WHERE
                 a.Timeofrequest >= @Range1
-                AND a.Timeofrequest < DATEADD(DAY,1,@Range2)
+                AND a.Timeofrequest <= @Range2
                 AND a.Pmcategoryid = '1'
                 AND a.BMStatusID NOT IN ('30','31')
                 AND a.bmcaseid <> 0
@@ -236,7 +236,7 @@ ORDER BY a.{machine} DESC, a.TimeOfRequest DESC, b.{(te ? "BMTEUnitID" : "BMCase
             FROM dbo.teBMMaintenance a
             WHERE
                 a.Timeofrequest >= @Range1
-                AND a.Timeofrequest < DATEADD(DAY,1,@Range2)
+                AND a.Timeofrequest <= @Range2
                 AND a.Pmcategoryid IN ('1','4')
                 AND a.BMStatusID NOT IN ('30','31','1','2','3','7','17')
                 AND a.bmunitid <> 0

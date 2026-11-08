@@ -30,9 +30,6 @@ document.addEventListener("DOMContentLoaded", () => {
     document
         .getElementById("btnClearFilters")
         .addEventListener("click", clearFilters);
-    document.getElementById("dt2").addEventListener("focus", (event) => {
-        event.target.max = formatDate(new Date());
-    });
     const legend = document.querySelector('.monitoring-legend');
     const logo = document.querySelector(".ekarte-logo");
     const hideCatGif = () => {
@@ -81,7 +78,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!legend.contains(event.target)) legend.open = false;
     }, { capture: true });
 
-    // Start with the last 30 days, with To capped at today.
+    // Form1 starts 30 days ago through tomorrow, without a To-date cap.
     resetDates();
 
     startRefreshTimer();
@@ -117,8 +114,8 @@ async function applyMonitoringSelection(selection) {
     const dateFrom = query.get("dateFrom");
     const dateTo = query.get("dateTo");
 
-    if (dateFrom) document.getElementById("dt1").value = dateFrom.slice(0, 10);
-    if (dateTo) document.getElementById("dt2").value = dateTo.slice(0, 10);
+    if (dateFrom) setMonitoringDate("dt1", dateFrom);
+    if (dateTo) setMonitoringDate("dt2", dateTo);
 
     if (!process || !floor || !machine) return;
 
@@ -225,13 +222,30 @@ async function onFloorChanged() {
     fillSelect("cbMachine", resp.data.machines, "All");
 }
 
-function resetDates() {
-    const today = new Date();
-    document.getElementById("dt1").value = formatDate(
-        new Date(today.getTime() - 30 * 86400000),
+function setMonitoringDate(id, value) {
+    const input = document.getElementById(id);
+    const [date, time] = value.split(/[T ]/);
+    input.value = date;
+    // Selecting another calendar day in the desktop picker retains its time.
+    if (time) input.dataset.time = time.length === 5 ? `${time}:00` : time;
+}
+
+function resetDates(now = new Date()) {
+    const day = (offset) => formatDate(
+        new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset),
     );
-    const dateTo = document.getElementById("dt2");
-    dateTo.max = dateTo.value = formatDate(today);
+    const time = now.toTimeString().slice(0, 8);
+    setMonitoringDate("dt1", `${day(-30)}T${time}`);
+    setMonitoringDate("dt2", `${day(1)}T${time}`);
+}
+
+function resetMorningDates(now) {
+    // Form1.Timer1_Tick calls SetDate only when To is not already today.
+    if (now.getHours() !== 8 || now.getMinutes() >= 59 || val("dt2") === formatDate(now)) return;
+    setMonitoringDate("dt2", `${formatDate(now)}T00:00:00`);
+    setMonitoringDate("dt1", `${formatDate(new Date(
+        now.getFullYear(), now.getMonth(), now.getDate() - 30,
+    ))}T00:00:00`);
 }
 
 function clearFilters() {
@@ -269,7 +283,6 @@ function clearFilters() {
 
 async function doSearch(page = 1) {
     const dateTo = document.getElementById("dt2");
-    dateTo.max = formatDate(new Date());
     if (!dateTo.reportValidity()) return;
 
     const machine = val("cbMachine");
@@ -368,19 +381,8 @@ function startRefreshTimer() {
 
         if (State.timerCount <= 0) {
             State.timerCount = 600;
+            resetMorningDates(new Date());
             window.dispatchEvent(new Event("monitoring:refresh"));
-
-            // Mirrors: if (TimeOfDay.Hour == 8 && minute < 59) SetDate()
-            const now = new Date();
-            if (now.getHours() === 8 && now.getMinutes() < 59) {
-                const dt2 = document.getElementById("dt2");
-                const dt1 = document.getElementById("dt1");
-                const today = new Date();
-                dt2.value = formatDate(today);
-                dt1.value = formatDate(
-                    new Date(today.getTime() - 30 * 86400000),
-                );
-            }
 
             if (val("cbMachine")) {
                 doSearch(State.page);
@@ -832,13 +834,14 @@ function openSection(section) {
 // HELPERS
 
 function buildFilter() {
+    const range = monitoringDateRange();
     return {
         userType: val("cbUser"),
         process: val("cbProcess"),
         floor: val("cbFloor"),
         machine: val("cbMachine"),
-        dateFrom: toApiDate(document.getElementById("dt1").value),
-        dateTo: toApiDate(document.getElementById("dt2").value),
+        dateFrom: toApiDate(range.dateFrom),
+        dateTo: toApiDate(range.dateTo),
         page: State.page,
     };
 }
@@ -877,10 +880,23 @@ function showToast(msg) {
     }, 4000);
 }
 
-function toApiDate(isoDate) {
-    if (!isoDate) return "";
-    const [y, m, day] = isoDate.split("-");
-    return `${m}/${day}/${y} 00:00:00`;
+function monitoringDateRange() {
+    const endpoint = (id) => {
+        const input = document.getElementById(id);
+        if (!input.value) return "";
+        const time = (input.dataset.time || "00:00:00").split(":");
+        // Form1 passes MM/dd/yyyy hh:mm:ss without AM/PM, including 12 at midnight.
+        time[0] = String(Number(time[0]) % 12 || 12).padStart(2, "0");
+        return `${input.value}T${time.join(":")}`;
+    };
+    return { dateFrom: endpoint("dt1"), dateTo: endpoint("dt2") };
+}
+
+function toApiDate(isoDateTime) {
+    if (!isoDateTime) return "";
+    const [date, time = "00:00:00"] = isoDateTime.split("T");
+    const [y, m, day] = date.split("-");
+    return `${m}/${day}/${y} ${time}`;
 }
 
 async function request(url, { signal, body } = {}) {
