@@ -4,7 +4,8 @@ param(
     [string]$ArtifactDirectory = (Join-Path $env:TEMP 'MachineKarte-Workflow-QA'),
     [switch]$ReportsOnly,
     [switch]$MonitoringOnly,
-    [switch]$DatesOnly
+    [switch]$DatesOnly,
+    [switch]$HeadingOnly
 )
 # Run the application and an installed Chromium browser with --remote-debugging-port=9227.
 # Browser fixtures replace only AJAX data; HTML partials and assets come from the real app.
@@ -62,7 +63,7 @@ try {
             }
         }
     }
-    if (!$ReportsOnly -and !$MonitoringOnly -and !$DatesOnly) {
+    if (!$ReportsOnly -and !$MonitoringOnly -and !$DatesOnly -and !$HeadingOnly) {
     $monitoringHtml = $client.GetStringAsync("$BaseUrl/Monitoring").GetAwaiter().GetResult()
     $assetPaths = @([regex]::Matches($monitoringHtml, '<(?:link|script)\b[^>]*(?:href|src)="(/[^"]+)"') |
         ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
@@ -106,6 +107,21 @@ try {
     Invoke-Cdp 'Emulation.setDeviceMetricsOverride' @{ width = 1440; height = 1000; deviceScaleFactor = 1; mobile = $false } | Out-Null
     Invoke-Cdp 'Page.navigate' @{ url = "$BaseUrl/Monitoring" } | Out-Null
     $ready = Invoke-JavaScript "new Promise((resolve, reject) => { let attempts = 0; const timer = setInterval(() => { if (window.Workflows && document.readyState === 'complete') { clearInterval(timer); resolve(true); } else if (++attempts > 150) { clearInterval(timer); reject(new Error('Monitoring failed to load')); } }, 100); })"
+    if ($HeadingOnly) {
+        Write-Output (Invoke-JavaScript 'window.runHeadingChecks()')
+        New-Item -ItemType Directory -Path $ArtifactDirectory -Force | Out-Null
+        foreach ($viewport in @(@{name='desktop';width=1440;height=1000}, @{name='mobile';width=390;height=844})) {
+            Invoke-Cdp 'Emulation.setDeviceMetricsOverride' @{ width=$viewport.width; height=$viewport.height; deviceScaleFactor=1; mobile=($viewport.name -eq 'mobile') } | Out-Null
+            Invoke-JavaScript 'new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))' | Out-Null
+            $capture=Invoke-Cdp 'Page.captureScreenshot' @{ format='png'; captureBeyondViewport=$false }
+            [IO.File]::WriteAllBytes((Join-Path $ArtifactDirectory ($viewport.name+'-heading.png')), [Convert]::FromBase64String($capture.data))
+        }
+        Write-Output "Heading captures: $ArtifactDirectory"
+        Invoke-JavaScript 'window.__nativeCatExpiry=window.runNativeCatExpiryCheck(); true' | Out-Null
+        Invoke-Cdp 'Emulation.setVirtualTimePolicy' @{ policy='advance'; budget=62000 } | Out-Null
+        Write-Output (Invoke-JavaScript 'window.__nativeCatExpiry')
+        return
+    }
     if ($DatesOnly) {
         Write-Output (Invoke-JavaScript 'window.runMonitoringDateChecks()')
         return

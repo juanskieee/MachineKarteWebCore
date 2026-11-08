@@ -32,18 +32,22 @@ document.addEventListener("DOMContentLoaded", () => {
         .addEventListener("click", clearFilters);
     const legend = document.querySelector('.monitoring-legend');
     const logo = document.querySelector(".ekarte-logo");
+    let catPartyExpiresAt = 0;
+    let catPartyTimer;
     const hideCatGif = () => {
-        const celebration = document.getElementById("catGifCelebration");
-        if (!celebration) return;
-        celebration.classList.add("is-hidden");
+        document.getElementById("catGifCelebration")?.remove();
         document.querySelector(".monitoring-screen").classList.remove("cat-gif-background");
     };
     const showCatGif = () => {
+        if (Date.now() >= catPartyExpiresAt) {
+            disableCatParty();
+            return;
+        }
         let celebration = document.getElementById("catGifCelebration");
         if (!celebration) {
             celebration = document.createElement("div");
             celebration.id = "catGifCelebration";
-            celebration.className = "cat-gif-celebration is-hidden";
+            celebration.className = "cat-gif-celebration";
             celebration.setAttribute("aria-live", "polite");
             celebration.innerHTML = logo.dataset.catGifs.split(" ")
                 .map((src) => `<img alt="Dancing cat" src="${src}">`).join("");
@@ -58,8 +62,26 @@ document.addEventListener("DOMContentLoaded", () => {
             gif.src = "";
             gif.src = src;
         });
-        celebration.classList.remove("is-hidden");
         document.querySelector(".monitoring-screen").classList.add("cat-gif-background");
+    };
+    const disableCatParty = () => {
+        const wasEnabled = catPartyExpiresAt > 0;
+        clearTimeout(catPartyTimer);
+        catPartyExpiresAt = 0;
+        hideCatGif();
+        logo.removeAttribute("role");
+        logo.removeAttribute("tabindex");
+        logo.removeAttribute("aria-label");
+        if (wasEnabled) console.log("Cat celebration expired after 60 seconds. Logo disabled.");
+    };
+    window.enableCatParty = () => {
+        clearTimeout(catPartyTimer);
+        catPartyExpiresAt = Date.now() + 60_000;
+        logo.setAttribute("role", "button");
+        logo.tabIndex = 0;
+        logo.setAttribute("aria-label", "Show dancing cats");
+        catPartyTimer = setTimeout(disableCatParty, 60_000);
+        return "Cat celebration enabled for 60 seconds.";
     };
     logo.addEventListener("click", showCatGif);
     logo.addEventListener("keydown", (event) => {

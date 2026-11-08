@@ -238,13 +238,99 @@
             if (previous[2]) dateTo.max=previous[2]; else dateTo.removeAttribute('max');
         }
     };
+    window.runHeadingChecks = async () => {
+        const clock = document.querySelector('.refresh-clock');
+        const logo = document.querySelector('.ekarte-logo');
+        const visible = () => {
+            const celebration = document.getElementById('catGifCelebration');
+            return celebration && celebration.getClientRects().length>0;
+        };
+        const nativeNow = Date.now, nativeTimeout = window.setTimeout, nativeClear = window.clearTimeout;
+        const nativeInterval = window.setInterval;
+        const count = State.timerCount;
+        const expirations = new Map();
+        let now = nativeNow(), nextId = -1, timerTick;
+        try {
+            assert(clock.hidden && clock.getClientRects().length===0 && clock.querySelector('#lblTimer'), 'Refresh clock is visible or its counter was removed');
+            assert(!logo.hasAttribute('role') && !logo.hasAttribute('tabindex'), 'Locked logo is exposed as a button');
+            logo.click();
+            logo.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter'}));
+            logo.dispatchEvent(new KeyboardEvent('keydown',{key:' '}));
+            assert(!document.getElementById('catGifCelebration'), 'Locked logo created the celebration');
+            Date.now = () => now;
+            window.setTimeout = (callback, delay, ...args) => {
+                if (delay!==60000) return nativeTimeout(callback,delay,...args);
+                const id=nextId--; expirations.set(id,callback); return id;
+            };
+            window.clearTimeout = id => { if (!expirations.delete(id)) nativeClear(id); };
+            enableCatParty();
+            assert(logo.getAttribute('role')==='button' && logo.tabIndex===0 && expirations.size===1, 'Console command did not unlock the logo for one minute');
+            logo.click();
+            assert(visible() && document.querySelectorAll('#catGifCelebration img').length===3, 'Unlocked logo did not show the dancing cats');
+            document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape'}));
+            assert(!visible(), 'Escape did not close the celebration');
+            logo.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter'}));
+            assert(visible(), 'Enter did not activate the unlocked logo');
+            document.getElementById('catGifCelebration').click();
+            logo.dispatchEvent(new KeyboardEvent('keydown',{key:' '}));
+            assert(visible(), 'Space did not activate the unlocked logo');
+            now+=59999; logo.click(); assert(visible(), 'Celebration expired before one minute');
+            now++; logo.click();
+            assert(!visible() && !logo.hasAttribute('role') && !logo.hasAttribute('tabindex'), 'Logo accepted a click at the one-minute deadline');
+            enableCatParty();
+            const previousTimer=[...expirations.keys()][0];
+            enableCatParty();
+            assert(expirations.size===1 && !expirations.has(previousTimer), 'Re-enabling retained the previous expiration timer');
+            logo.click();
+            const [timer,expire]=[...expirations][0]; expirations.delete(timer); expire();
+            assert(!visible() && !document.querySelector('.cat-gif-background') && !logo.hasAttribute('aria-label'), 'Automatic expiry did not close and relock the celebration');
+            logo.click(); logo.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter'}));
+            assert(!visible(), 'Expired logo remained active');
+            window.setInterval = callback => { timerTick=callback; return 0; };
+            startRefreshTimer();
+            window.setInterval = nativeInterval;
+            State.timerCount=2;
+            let refreshes=0;
+            const refreshed=()=>refreshes++;
+            window.addEventListener('monitoring:refresh',refreshed);
+            try {
+                timerTick();
+                assert(State.timerCount===1 && document.getElementById('lblTimer').textContent==='1', 'Hidden countdown stopped updating');
+                timerTick();
+                assert(State.timerCount===600 && refreshes===1 && clock.getClientRects().length===0, 'Hidden countdown did not trigger the shared refresh');
+            } finally { window.removeEventListener('monitoring:refresh',refreshed); }
+            assert(errors.length===0,errors.join('; '));
+            return 'PASS: hidden countdown still refreshes; cat celebration is locked by default, supports click/keyboard after enableCatParty(), expires at 60 seconds, closes automatically, and can be re-enabled';
+        } finally {
+            for (const expire of expirations.values()) expire();
+            Date.now=nativeNow; window.setTimeout=nativeTimeout; window.clearTimeout=nativeClear; window.setInterval=nativeInterval;
+            State.timerCount=count; document.getElementById('lblTimer').textContent=count; startRefreshTimer();
+        }
+    };
+    window.runNativeCatExpiryCheck = () => {
+        const nativeLog=console.log, messages=[];
+        console.log=(...args)=>{ messages.push(args.join(' ')); nativeLog.apply(console,args); };
+        enableCatParty();
+        document.querySelector('.ekarte-logo').click();
+        assert(document.getElementById('catGifCelebration')?.getClientRects().length>0, 'Native expiry check did not open the celebration');
+        return new Promise((resolve,reject)=>setTimeout(()=>{
+            try {
+                const logo=document.querySelector('.ekarte-logo');
+                assert(!document.getElementById('catGifCelebration') && !document.querySelector('.cat-gif-background'), 'Native one-minute timer left the overlay or blur active');
+                assert(!logo.hasAttribute('role') && !logo.hasAttribute('tabindex'), 'Native timer did not disable the logo');
+                logo.click();
+                assert(!document.getElementById('catGifCelebration'), 'Logo reopened the celebration after native expiry');
+                assert(messages.length===1 && messages[0]==='Cat celebration expired after 60 seconds. Logo disabled.', 'Expiry must log exactly once');
+                resolve('PASS: native 60-second timer removes the active overlay and blur, disables the logo, and logs expiry exactly once');
+            } catch(error) { reject(error); }
+            finally { console.log=nativeLog; }
+        },61000));
+    };
     window.runMonitoringChecks = async () => {
         Workflows.close();
         await window.runMonitoringDateChecks();
         const clock = document.querySelector('.refresh-clock');
-        const legend = document.querySelector('.monitoring-legend');
-        assert(!document.getElementById('toolbar').contains(clock) && clock.previousElementSibling===legend, 'Refresh clock is not below the legend');
-        assert(clock.getBoundingClientRect().top>=legend.getBoundingClientRect().bottom, 'Refresh clock shares a row with the legend');
+        assert(clock.hidden && clock.getClientRects().length===0, 'Refresh clock should remain hidden');
         const overviewStyle = getComputedStyle(document.querySelector('.monitoring-overview'));
         assert(overviewStyle.display==='flex' && overviewStyle.alignItems==='center', 'Floor overview is not flex-centered');
         assert(!document.getElementById('btnClearFilters').hasAttribute('onclick'), 'Clear Filters still depends on an inline global handler');

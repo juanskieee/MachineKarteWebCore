@@ -4,6 +4,32 @@ Machine summaries (`.mc-col-header`) stay frozen at the **bottom** of the board.
 BM cards share one vertical scroller above them. Summary height is excluded from
 vertical scroll content, and both rows move together horizontally.
 
+## Heading and optional celebration
+
+The heading's refresh clock is hidden. Its `lblTimer` counter remains in the DOM,
+and the existing 600-second timer, automatic search, morning date reset, and
+shared workflow refresh continue to run.
+
+The E-Karte logo is a static image by default. To temporarily unlock its cat
+celebration, enter this command in the browser developer console:
+
+```javascript
+enableCatParty()
+```
+
+For 60 seconds the logo supports clicks, Enter, and Space. The celebration can
+be dismissed with Escape or a backdrop click. At expiry the overlay is removed,
+the background blur is cleared, and the console logs
+`Cat celebration expired after 60 seconds. Logo disabled.` once. The logo becomes
+static again. Repeating the command starts a new 60-second
+window. Reloading the page leaves the feature locked; no setting is persisted.
+
+Use `Test-Workflows.ps1 -HeadingOnly` for the focused browser check and desktop /
+mobile captures. It verifies the hidden refresh logic and uses Chromium's
+accelerated clock to exercise the native 60-second timer, overlay removal, and
+expiry log without waiting a minute. It does not run database or unrelated
+workflow checks.
+
 ## Date filters
 
 The initial and Clear Filters range is 30 days ago through tomorrow, matching

@@ -5,22 +5,21 @@
 .monitoring-heading { flex: 0 0 210px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
 .monitoring-status { display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .monitoring-heading h1 { margin: 0; font-size: 20px; font-weight: 700; }
-.ekarte-logo {
+.ekarte-logo[role="button"] {
     cursor: pointer;
     transform-origin: center;
     transition: transform 0.2s ease;
 }
 
-.ekarte-logo:hover {
+.ekarte-logo[role="button"]:hover {
     transform: scale(1.1) rotate(-2deg);
 }
 
-.ekarte-logo:active {
+.ekarte-logo[role="button"]:active {
     transform: scale(0.95);
 }
 .monitoring-screen.cat-gif-background { filter: blur(5px); }
 .cat-gif-celebration { position: fixed; inset: 0; z-index: 100; display: grid; grid-template-columns: repeat(3, minmax(0, 320px)); place-items: center; place-content: center; gap: clamp(12px, 3vw, 32px); padding: 24px; overflow: hidden; pointer-events: auto; background: #0003; }
-.cat-gif-celebration.is-hidden { display: none; }
 .cat-gif-celebration::before, .cat-gif-celebration::after { position: absolute; font-size: clamp(24px, 5vw, 52px); pointer-events: none; animation: cat-party 2.4s ease-in-out infinite; }
 .cat-gif-celebration::before { content: "\1F389  \1F63A  \1F389"; top: 16%; left: 8%; transform: rotate(-12deg); }
 .cat-gif-celebration::after { content: "\1F604  \2728  \1F604"; right: 8%; bottom: 16%; animation-delay: -1.2s; transform: rotate(12deg); }
@@ -74,8 +73,6 @@
 .btn-page { background: deepskyblue; padding: 3px 6px; }
 .btn-page svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; }
 .page-number { display: grid; place-items: center; background: powderblue; color: #111; min-width: 60px; padding: 0 4px; font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.refresh-clock { display: flex; gap: 5px; align-items: center; justify-content: center; font-size: 11px; }
-.lbl-timer { color: #a00000; background: lightgray; padding: 1px 7px; font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .floor-summary-panel { flex: 1 1 0; display: flex; align-items: center; overflow-x: auto; min-width: 0; margin-block: 4px; }
 .floor-summary-grid { flex-shrink: 0; width: 100%; min-width: 800px; border-collapse: collapse; table-layout: fixed; background: #fff; color: #111; text-align: center; }
 .floor-summary-grid th, .floor-summary-grid td { border: 2px solid #666; padding: 0; }

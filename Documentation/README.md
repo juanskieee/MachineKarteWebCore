@@ -9,6 +9,38 @@ Related guides: [database and performance](DATABASE.md), [reporting](REPORTS.md)
 [Monitoring filters and board](MONITORING.md), and
 [JavaScript conventions](../Assets/js/README.md).
 
+## Development
+
+Use a .NET SDK that supports the project's `net8.0` target:
+
+```powershell
+dotnet restore MachineKarteWebCore.csproj
+dotnet build MachineKarteWebCore.csproj --no-restore
+dotnet run --project MachineKarteWebCore.csproj --no-build
+```
+
+Configure `ConnectionStrings:MachineDBConnection` and
+`ConnectionStrings:IntranetDBConnection` for the intended environment before
+running the application. Machine is primary; Intranet is the automatic fallback.
+Configurations that provide only the legacy `DBConnection` remain supported.
+Monitoring session tracking and Action Card saves can write to the selected
+database. See [connections and writes](DATABASE.md#connections-and-writes) for
+resolution, timeouts, recovery, and database isolation.
+
+Web configuration does not require `VersionPath` or `AppVersion`. Optional PC
+status tracking records the deployed web assembly version. Deploy a new web
+build to update the application; the desktop updater share is not used.
+
+### Change guidelines
+
+- Review the product README and the relevant guides before investigating or
+  modifying a workflow.
+- Trace the active legacy form, designer, and callers before changing business
+  rules. Preserve documented web interaction changes.
+- Run required checks and the smallest focused validation for the affected
+  behavior. Avoid unrelated suites and repeated passing checks. The
+  [validation index](#validation) describes each script's scope and limitations.
+
 ## Structure
 
 | Location | Responsibility |
@@ -201,7 +233,7 @@ unrelated database, reporting, or full workflow suites:
 | `Test-DataRetrieval.ps1` | Actual repository reads, original Form5 SQL parity, complete AlertBoard batching parity, count/distinct differences, sparse views, report lookups, evidence limits, and cancellation; disposable LocalDB database; optional `-Benchmark` |
 | `Test-Startup.ps1` | Starts its own app with a loopback non-SQL sink; HTML responsiveness and bounded tracking |
 | `Test-WorkflowEndpoints.ps1` | Existing local app: redirects/partials, rejected requests, download streams and inline headers |
-| `Test-Workflows.ps1` | Existing local app and Chromium debugging port: real partials/assets with AJAX fixtures; `-MonitoringOnly` checks grouped loading, cached paging, rendering, cancellation and desktop/mobile captures; default covers all eleven workflows |
+| `Test-Workflows.ps1` | Existing local app and Chromium debugging port: real partials/assets with AJAX fixtures; `-HeadingOnly` checks the hidden refresh clock and timed cat celebration; `-MonitoringOnly` checks grouped loading, cached paging, rendering, cancellation and desktop/mobile captures; default covers all eleven workflows |
 | `Render-ReportPdf.ps1` | Independent Windows PDF rendering; requires an exported PDF and output directory |
 
 Invoke PowerShell tools from the repository root, for example
