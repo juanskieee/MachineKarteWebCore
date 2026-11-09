@@ -1,0 +1,9 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- https://go.microsoft.com/fwlink/?LinkID=208121. -->
+<Project>
+  <PropertyGroup>
+    <_PublishTargetUrl>\\10.27.35.73\wwwroot\EkarteWebSystem</_PublishTargetUrl>
+    <History>True|2026-11-09T00:51:17.5736144Z||;True|2026-11-08T19:33:58.9317631+08:00||;True|2026-11-08T19:28:17.2430557+08:00||;True|2026-11-08T19:23:05.4183243+08:00||;True|2026-11-08T19:20:54.3982941+08:00||;True|2026-11-08T19:05:16.7194125+08:00||;False|2026-11-08T19:04:58.4830158+08:00||;True|2026-11-08T19:04:52.4605678+08:00||;True|2026-11-08T18:57:33.7012845+08:00||;</History>
+    <LastFailureDetails />
+  </PropertyGroup>
+</Project>

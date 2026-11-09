@@ -8,15 +8,19 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Legacy\**" />
     <Compile Remove="Uploads\**" />
+    <Content Remove="Legacy\**" />
     <Content Remove="Uploads\**" />
+    <EmbeddedResource Remove="Legacy\**" />
     <EmbeddedResource Remove="Uploads\**" />
+    <None Remove="Legacy\**" />
     <None Remove="Uploads\**" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="Reporting\LegacyReports.vbproj" />
-    <None Update="Templates/**/*;Assets/images/**/*">
+    <None Update="Templates/**/*;Assets/**/*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </None>

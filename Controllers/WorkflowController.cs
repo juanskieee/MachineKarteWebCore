@@ -18,7 +18,7 @@ public abstract class WorkflowController : Controller
             .SelectMany(item => item.Value.Select(value =>
                 new KeyValuePair<string, string?>(item.Key, value)))
             .Prepend(new KeyValuePair<string, string?>("workflow", RouteData.Values["controller"]?.ToString()));
-        context.Result = Redirect("/Monitoring" + QueryString.Create(query));
+        context.Result = Redirect(Url.Content("~/Monitoring") + QueryString.Create(query));
     }
 
     protected IActionResult WorkflowView(object? model = null)

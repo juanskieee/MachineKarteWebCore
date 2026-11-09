@@ -83,7 +83,7 @@ window.Workflows = (() => {
         const context = {
             signal,
             fetch: (url, options = {}) =>
-                window.fetch(url, { ...options, signal }),
+                window.fetch(Karte.appUrl(url), { ...options, signal }),
             getJson: (url, options = {}) =>
                 Karte.requestJson(url, { ...options, signal }),
             setInterval(callback, delay) {
@@ -238,7 +238,7 @@ window.Workflows = (() => {
         if (name) {
             query.delete("workflow");
             open(name, Object.fromEntries(query));
-            history.replaceState(null, "", "/Monitoring");
+            history.replaceState(null, "", Karte.appUrl("/Monitoring"));
         }
     });
 

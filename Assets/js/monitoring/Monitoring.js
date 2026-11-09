@@ -113,7 +113,7 @@ document.addEventListener("DOMContentLoaded", () => {
 window.addEventListener(
     "load",
     () => {
-        fetch("/Monitoring?handler=TrackSession", {
+        fetch(Karte.appUrl("/Monitoring?handler=TrackSession"), {
             method: "POST",
             headers: { RequestVerificationToken: State.antiForgery },
         }).catch(() => {});
@@ -298,7 +298,7 @@ function clearFilters() {
     document.getElementById("monitoringWelcome").classList.remove("is-hidden");
     renderFloorSummary([]);
     updatePagination();
-    history.replaceState(null, "", "/Monitoring");
+    history.replaceState(null, "", Karte.appUrl("/Monitoring"));
 }
 
 // SEARCH  (btnSearch_Click)

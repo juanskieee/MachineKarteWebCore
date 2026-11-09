@@ -2,6 +2,12 @@
 window.Karte = (() => {
     "use strict";
 
+    function appUrl(path) {
+        return path.startsWith('/') && !path.startsWith('//')
+            ? document.body.dataset.appRoot + path.slice(1)
+            : path;
+    }
+
     function createLookup(root) {
         const elements = new Map();
         return (id) => {
@@ -35,7 +41,7 @@ window.Karte = (() => {
     }
 
     async function requestJson(url, options = {}) {
-        const response = await window.fetch(url, {
+        const response = await window.fetch(appUrl(url), {
             ...options,
             headers: {
                 "X-Requested-With": "XMLHttpRequest",
@@ -143,6 +149,7 @@ window.Karte = (() => {
     }
 
     return {
+        appUrl,
         createLookup,
         escapeHtml,
         formatDate,

@@ -142,7 +142,7 @@ app.MapControllers();
 // Default page
 app.MapGet("/", context =>
 {
-    context.Response.Redirect("/Monitoring");
+    context.Response.Redirect(context.Request.PathBase + "/Monitoring");
     return Task.CompletedTask;
 });
 

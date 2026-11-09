@@ -22,6 +22,9 @@ mode. Keep record-specific state inside that initializer.
   dialog cancellation. POST requests also include the partial's antiforgery token.
 - Use `context.fetch` for HTML or binary responses. Check the response status and
   `context.signal.aborted` after reading the body and before applying the result.
+- Shared request helpers resolve endpoints such as `/Monitoring` under the IIS
+  application path. Use `Karte.appUrl` for direct fetches and browser navigation;
+  Razor renders the application root in the body's `data-app-root` attribute.
 - Use `context.setTimeout`, `context.setInterval`, their matching clear methods,
   and `context.onRefresh` so closing a dialog releases its resources. Handle
   request failures locally; suppress error messages after cancellation.
