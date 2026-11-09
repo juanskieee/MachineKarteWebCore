@@ -281,8 +281,9 @@ unrelated database, reporting, or full workflow suites:
 | --- | --- |
 | `Test-DatabaseConnections.ps1` | Startup discovery, cached lookups, probe-free opens, fallback, background recovery, cancellation, legacy settings and safe logging; offline |
 | `Test-MonitoringQueries.ps1` | Generated SQL/schema references, statuses, designer mappings, scheduling, and Need Action fixtures; no database |
-| `Test-MonitoringStaircase.ps1` | Focused offline Monitoring column order, stable ties, pagination and legacy inclusive date endpoints; optional `-Sql` adds synthetic LocalDB rows; no application settings or application database access |
-| `Test-MonitoringParity.ps1` | Actual Monitoring repository/dashboard reads; `-MachineListOnly` checks dropdown SQL/cache and TE header assignment; `-BoardOnly` focuses on grouped columns versus existing web reads/order in all five modes; full desktop SQL audit uses identical endpoints; disposable LocalDB catalog; optional `-Benchmark` |
+| `Test-MonitoringStaircase.ps1` | Focused original-SQL parity for mixed-type SP-33's nine cards at page 1 column 9, header joins/order, pagination, dates, colors, metadata and TE isolation; disposable LocalDB catalog; no application settings or application database access |
+| `Test-MonitoringColors.ps1` | Actual compiled uc_Test header/action, repeat, solved, capacity and timer rules against in-memory WinForms controls; 362 cases, no SQL or visible windows; writes temporary expectations for `Test-Workflows.ps1 -ColorsOnly` |
+| `Test-MonitoringParity.ps1` | Actual Monitoring repository/dashboard reads; `-StaircaseOnly` runs the focused original-SQL staircase fixture; `-MachineListOnly` checks dropdown SQL/cache and TE header assignment; `-BoardOnly` focuses on grouped columns versus existing web reads/order in all five modes; full desktop SQL audit uses identical endpoints; disposable LocalDB catalog; optional `-Benchmark` |
 | `Test-ActionSummaryParity.ps1` | Form2 counts/colors against compiled original VB routines; no database |
 | `Test-ReportGeneration.ps1` | Real templates, photos, compiled mappings, XLSX/PDF output, and capacity errors; `-EvidenceOnly` covers PM/TE evidence, TE maintenance pages and photo staging; `-PerformanceOnly` targets EXIF orientations, path validation, template clones and staging cleanup; `-PhotoBenchmark` adds 6MP photo comparisons; offline |
 | `Update-LegacyReportMappings.ps1 -Check` | Generated mappings match extraction and audited corrections; offline |
@@ -293,7 +294,7 @@ unrelated database, reporting, or full workflow suites:
 | `Test-DataRetrieval.ps1` | Actual repository reads, original Form5 SQL parity, complete AlertBoard batching parity, count/distinct differences, sparse views, report lookups, evidence limits, and cancellation; disposable LocalDB database; optional `-Benchmark` |
 | `Test-Startup.ps1` | Starts its own app with a loopback non-SQL sink; HTML responsiveness, bounded tracking, redirects, assets and report form paths; `-PublishDirectory` tests deployment output and `-PathBase` exercises an IIS application path |
 | `Test-WorkflowEndpoints.ps1` | Existing local app: redirects/partials, rejected requests, download streams and inline headers |
-| `Test-Workflows.ps1` | Existing local app and Chromium debugging port: real partials/assets with AJAX fixtures; `-HeadingOnly` checks the hidden refresh clock and timed cat celebration; `-MonitoringOnly` checks grouped loading, cached paging, rendering, cancellation and desktop/mobile captures; default covers all eleven workflows |
+| `Test-Workflows.ps1` | Existing local app and Chromium debugging port: real partials/assets with AJAX fixtures; `-ColorsOnly` compares 2,364 rendered BM cards with the compiled uc_Test expectations at both blink states; `-HeadingOnly` checks the hidden refresh clock and timed cat celebration; `-MonitoringOnly` checks grouped loading, cached paging, rendering, cancellation and desktop/mobile captures; default covers all eleven workflows |
 | `Render-ReportPdf.ps1` | Independent Windows PDF rendering; requires an exported PDF and output directory |
 
 Invoke PowerShell tools from the repository root, for example

@@ -122,7 +122,7 @@
 .mc-type { font-size: 14px; }
 .need-action-badge { color: red; font-weight: 700; background: #fce38a; }
 .bm-card-list { flex: 1 0 auto; display: flex; flex-direction: column; justify-content: flex-end; }
-.bm-card { --card-header: salmon; --card-case: mistyrose; --repeat-color: #111; border: 1px solid #777; background: #343434; flex: 0 0 var(--bm-card-height); height: var(--bm-card-height); display: grid; grid-template-rows: 19px 19px 38px 22px 20px; font-size: 12px; cursor: pointer; }
+.bm-card { --card-header: salmon; --card-case: mistyrose; --repeat-color: black; border: 1px solid #777; background: #343434; flex: 0 0 var(--bm-card-height); height: var(--bm-card-height); display: grid; grid-template-rows: 19px 19px 38px 22px 20px; font-size: 12px; cursor: pointer; }
 /* Defer offscreen history layout/paint while preserving the fixed staircase height. */
 .bm-card { content-visibility: visible; contain-intrinsic-block-size: auto var(--bm-card-height); }
 .bm-card.band-sm { --card-header: deepskyblue; --card-case: lightcyan; }
@@ -134,7 +134,7 @@
 .bm-card:hover { outline: 2px solid #111; outline-offset: -2px; }
 .bm-card-time { font-size: 11px; font-variant-numeric: tabular-nums; background: var(--card-header); text-align: center; border-top: 1px solid #777; }
 .bm-card-case { display: grid; place-items: center; font-weight: 700; text-align: center; background: var(--card-case); color: var(--repeat-color); overflow: hidden; padding: 0 3px; }
-.bm-card-content { background: var(--card-header); color: var(--repeat-color); font-size: 10px; overflow: hidden; white-space: nowrap; display: flex; justify-content: space-between; border-block: 1px solid #777; }
+.bm-card-content { background: var(--card-header); color: var(--content-color, var(--repeat-color)); font-size: 10px; overflow: hidden; white-space: nowrap; display: flex; justify-content: space-between; border-block: 1px solid #777; }
 .bm-content-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .bm-card-markers { display: flex; gap: 2px; color: #fff; }
 .bm-marker { padding: 0 4px; font-size: 10px; color: #111; }
@@ -145,11 +145,10 @@
 .bm-card-footer { display: flex; align-items: stretch; justify-content: flex-end; border-top: 1px solid #777; }
 .bm-card-actions { display: flex; gap: 2px; }
 .bm-command { min-height: 18px; padding: 0 12px; font-size: 11px; background: gray; color: #fff; font-weight: 400; border-radius: 0; }
-.badge-mcd, .badge-action { padding: 0 3px; font-size: 10px; color: #111; background: whitesmoke; }
+.badge-mcd, .badge-action { padding: 0 3px; font-size: 10px; color: black; background: whitesmoke; }
 .badge-mcd { flex: 0 0 50px; margin-left: auto; text-align: center; font-size: 12px; font-weight: 700; }
-.badge-action { margin-left: auto; }
+.badge-action { margin-left: auto; color: white; }
 .badge-mcd.needs-mcd-action { color: blue; animation: mcd-blink 2s steps(1, end) infinite; }
-.priority-star .bm-case-text::before { content: '★ '; }
 .badge-action.status-red { background: red; color: #fff; }
 .badge-action.status-darkorange { background: darkorange; }
 .badge-action.status-green { background: green; color: #fff; }

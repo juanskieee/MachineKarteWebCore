@@ -15,6 +15,13 @@ public class MonitoringRepository
     public MonitoringRepository(DatabaseConnectionResolver connections, IMemoryCache? cache = null) =>
         (_connections, _cache) = (connections, cache);
 
+    // SQL machine/location equality ignores case and trailing varchar padding.
+    // Use the same identity when sharing a read across legacy column requests.
+    internal static (string Machine, string Type, string Location) ColumnKey(
+        string machine, string type, string location, bool te) =>
+        (machine.TrimEnd(' ').ToUpperInvariant(), te ? type.TrimEnd(' ').ToUpperInvariant() : string.Empty,
+            location.TrimEnd(' ').ToUpperInvariant());
+
     /// <summary>
     /// Returns the floor list relevant for a given process.
     /// Mirrors strLocation() array population in LoadMCName1().
@@ -147,8 +154,8 @@ public class MonitoringRepository
             var current = cards[start];
             var uncolored = string.Equals(current.FontColor, "None", StringComparison.OrdinalIgnoreCase);
             var lastInMachine = start + 1 == cards.Count ||
-                (current.MachineNo, current.MachineType, current.Location) !=
-                (cards[start + 1].MachineNo, cards[start + 1].MachineType, cards[start + 1].Location);
+                ColumnKey(current.MachineNo, "", current.Location, false) !=
+                ColumnKey(cards[start + 1].MachineNo, "", cards[start + 1].Location, false);
             // Legacy skips already-colored group members, except its final-row branch.
             current.McdNeedsAction = current.IsMCD == "Yes" && current.HaveAction != "Yes" &&
                 (uncolored || lastInMachine);
@@ -192,14 +199,20 @@ public class MonitoringRepository
 
         var caseDepth = MatchingDepth(cards, start, contentDepth, card => card.BMCase);
         if (caseDepth == 0)
+        {
+            // uc_Test's full five-row branch has no MCD fallback for three
+            // matching contents when the next case differs (lines 1955-2028).
+            if (maximumDepth == 5 && start + 5 < cards.Count && contentDepth == 3)
+                cards[start].McdNeedsAction = false;
             return false;
+        }
 
         MarkWithinSevenDays(cards, start, caseDepth, color);
         // uc_Test increments the counter at the detected group head, before moving to the next group.
         var head = cards[start];
         head.NeedsAction = head.FontColor != "None" && color != "Black" &&
             head.HaveAction != "Yes" &&
-            !string.Equals(head.MCStatus, "NO RE-OCCURRENCE AFTER 7 DAYS", StringComparison.OrdinalIgnoreCase);
+            head.ActionColor != "Green";
         if (head.NeedsAction) head.McdNeedsAction = false;
         return true;
     }
@@ -213,11 +226,9 @@ public class MonitoringRepository
         var depth = 0;
         for (var offset = 1; offset <= maximumDepth && start + offset < cards.Count; offset++)
         {
-            if (!string.Equals(cards[start].MachineNo, cards[start + offset].MachineNo,
+            if (!string.Equals(cards[start].MachineNo.TrimEnd(' '), cards[start + offset].MachineNo.TrimEnd(' '),
                     StringComparison.OrdinalIgnoreCase) ||
-                !string.Equals(cards[start].MachineType, cards[start + offset].MachineType,
-                    StringComparison.OrdinalIgnoreCase) ||
-                !string.Equals(cards[start].Location, cards[start + offset].Location,
+                !string.Equals(cards[start].Location.TrimEnd(' '), cards[start + offset].Location.TrimEnd(' '),
                     StringComparison.OrdinalIgnoreCase) ||
                 !string.Equals(valueSelector(cards[start]), valueSelector(cards[start + offset]),
                     StringComparison.Ordinal))
@@ -252,6 +263,12 @@ public class MonitoringRepository
 
             cards[start + offset].FontColor = color;
         }
+
+        // Preserve CheckifSevendays' final iteration: it reads the absolute
+        // row at depth, then writes the last relative member at start + depth.
+        if (depth > 1 && TryParseLegacyDate(cards[depth].TimeOfRequest, out var finalDate) &&
+            (currentDate - finalDate).Days is >= 0 and <= 7)
+            cards[start + depth].FontColor = color;
     }
 
     private static bool TryParseLegacyDate(string value, out DateTime date)
@@ -332,6 +349,8 @@ public class MonitoringRepository
                 BMContentId = reader["BMContentID"].ToString()!,
                 BMContent = optionalColumns.Contains("BMContent")
                                 ? reader["BMContent"].ToString()! : string.Empty,
+                DisplayContent = reader["DisplayContent"].ToString()!,
+                BMStatusId = Convert.ToString(reader["BMStatusID"], CultureInfo.InvariantCulture) ?? string.Empty,
                 Priority = optionalColumns.Contains("Priority")
                                 ? reader["Priority"].ToString()! : string.Empty,
                 MCStatus = optionalColumns.Contains("MCStatus")
@@ -350,7 +369,8 @@ public class MonitoringRepository
         }
         // The shared all-floor read may interleave locations. Color complete
         // columns independently, exactly as the single-column request does.
-        foreach (var group in list.GroupBy(row => (row.MachineNo, row.MachineType, row.Location)))
+        foreach (var group in list.GroupBy(row =>
+            ColumnKey(row.MachineNo, row.MachineType, row.Location, userType == "TE")))
         {
             var column = group.ToList();
             ApplyLegacyActionColors(column);
@@ -362,7 +382,7 @@ public class MonitoringRepository
     private static void ApplyLegacyActionColors(List<BMCardRow> cards)
     {
         foreach (var card in cards)
-            card.ActionColor = card.MCStatus.Trim().ToUpperInvariant() switch
+            card.ActionColor = card.MCStatus switch
             {
                 "RUNNING (ONGOING INVESTIGATION/MONITORING)" => "DarkGray",
                 "RUNNING (UNDER 100% INSPECTION)" => "DarkOrange",
@@ -375,7 +395,7 @@ public class MonitoringRepository
 
         // uc_Test.CheckIfSolve uses the machine's newest BM as its reference,
         // then overrides existing actions in repeated cases after seven days.
-        foreach (var machine in cards.GroupBy(card => (card.MachineNo, card.MachineType, card.Location)))
+        foreach (var machine in cards.GroupBy(card => ColumnKey(card.MachineNo, "", card.Location, false)))
         {
             if (!TryParseLegacyDate(machine.First().TimeOfRequest, out var referenceDate)) continue;
             foreach (var cases in machine.GroupBy(card => card.BMCase).Where(group => group.Count() > 1))
@@ -449,8 +469,8 @@ public class MonitoringRepository
             : "AND a.Mcno = @Mcno";
 
         string counts = $@"
-            SELECT
-                COUNT_BIG(*) AS MACHINENAME,
+            SELECT DISTINCT
+                COUNT_BIG(a.MCNO) AS MACHINENAME,
                 a.MCNO,
                 COALESCE(c.actionline,4) AS actionline,
                 a.MCType
@@ -463,6 +483,9 @@ public class MonitoringRepository
                 ON a.MCType = c.MCType
                AND c.ProcessID = d.ProcessID
 
+            INNER JOIN dbo.BMCase b
+                ON a.BMCaseID = b.BMCaseID
+
             WHERE
                 a.TimeOfRequest >= @Range1
                 AND a.TimeOfRequest <= @Range2
@@ -474,7 +497,7 @@ public class MonitoringRepository
                 AND a.BMCaseID <> 0
             GROUP BY
                 a.MCNO,
-                COALESCE(c.actionline,4),
+                c.actionline,
                 a.MCType";
 
         return BuildPagedSummarySQL(
@@ -494,8 +517,8 @@ public class MonitoringRepository
             : "AND a.TesterNo = @Mcno";
 
         string counts = @"
-            SELECT
-                COUNT_BIG(*) AS MACHINENAME,
+            SELECT DISTINCT
+                COUNT_BIG(a.MCType) AS MACHINENAME,
                 a.MCType,
                 a.TesterNo,
                 COALESCE(c.actionline,4) AS actionline
@@ -521,7 +544,7 @@ public class MonitoringRepository
             GROUP BY
                 a.MCType,
                 a.TesterNo,
-                COALESCE(c.actionline,4)";
+                c.actionline";
 
         return BuildPagedSummarySQL(
             counts,
@@ -530,7 +553,8 @@ public class MonitoringRepository
             top2);
     }
 
-    // Grouped rows are already unique; reuse the aggregation for page and total.
+    // DISTINCT in each aggregate preserves EXCEPT's projected-group deduplication.
+    // Keep NULL/default action-line groups separate before projecting their default.
     private static string BuildPagedSummarySQL(string counts, string order, int top1, int top2) => $@"
         SET NOCOUNT ON;
         ;WITH MachineCounts AS ({counts})
@@ -566,6 +590,8 @@ public class MonitoringRepository
         string actionJoin = te ? string.Empty : "AND la.MachineNo = f.Mcno";
         string priority = te ? ", a.Priority" : string.Empty;
         string priorityResult = te ? ", f.Priority" : string.Empty;
+        string processFilter = te ? "AND a.Process = @Process" : string.Empty;
+        string typeFilter = te ? "AND (@MCType = '' OR a.MCType = @MCType)" : string.Empty;
 
         // Filter before ranking actions or counting OCAP rows. TE actions use BMID alone,
         // as uc_Test does; the other four modes also require the machine number.
@@ -574,7 +600,7 @@ public class MonitoringRepository
         (
             SELECT a.DeviceName, a.Process, a.Location, a.{machineColumn} AS Mcno,
                 a.MCType, a.TimeOfRequest, b.{caseTable} AS BMCase, a.{caseId} AS BMCaseID,
-                a.BMID, a.BMCaseID AS OcapCaseID, a.BMContentID AS OriginalBMContentID,
+                a.BMID, a.BMStatusID, a.BMCaseID AS OcapCaseID, a.BMContentID AS OriginalBMContentID,
                 COALESCE(CASE WHEN a.AcredBMContentID <> a.BMContentID THEN
                     CASE WHEN a.AcredBMContentID IS NULL OR a.AcredBMContentID IN ('','0')
                         THEN a.BMContentID ELSE a.AcredBMContentID END
@@ -583,12 +609,12 @@ public class MonitoringRepository
             INNER JOIN [eMaintenanceSystemDB].[dbo].[{caseTable}] b ON a.{joinColumn} = b.{joinId}
             WHERE a.TimeOfRequest >= @Range1
                 AND a.TimeOfRequest <= @Range2
-                AND a.Process = @Process
+                {processFilter}
                 AND {category} AND {status}
                 AND a.{joinColumn} <> 0
                 AND (@Location = 'All' OR a.Location = @Location)
                 AND (@Mcno = 'All' OR a.{machineColumn} = @Mcno)
-                AND (@MCType = '' OR a.MCType = @MCType)
+                {typeFilter}
         ),
         LatestAction AS
         (
@@ -612,14 +638,17 @@ public class MonitoringRepository
             f.Process, f.Location, f.Mcno, f.MCType, f.TimeOfRequest, f.BMCase, f.BMCaseID, f.BMID,
             COALESCE(o.OCAPCount,0) AS OCAPCount,
             CASE WHEN la.BMID IS NOT NULL THEN 'Yes' ELSE 'No' END AS HaveAction,
-            f.BMContentID, bc.BMContent{priorityResult},
+            f.BMContentID, bc.BMContent, f.BMStatusID,
+            COALESCE(NULLIF(NULLIF(display.BMContent,''),'0'),bc.BMContent) AS DisplayContent{priorityResult},
             la.Action AS Accre, la.Comment AS Sect, la.Comment2 AS Dept, la.Comment3 AS Div,
             la.MCStatus, 'None' AS FontColor
         FROM FilteredBM f
         LEFT JOIN LatestAction la ON la.BMID = f.BMID {actionJoin} AND la.RN = 1
         LEFT JOIN OCAPCounts o ON o.BMCaseID = f.OcapCaseID
         LEFT JOIN [eMaintenanceSystemDB].[dbo].[BMContent] bc
-            ON bc.BMContentID = f.OriginalBMContentID AND bc.Process = f.Process
-        ORDER BY f.Mcno DESC, f.MCType DESC, f.TimeOfRequest DESC, f.BMCase";
+            ON bc.BMContentID = f.OriginalBMContentID AND bc.Process = @Process
+        LEFT JOIN [eMaintenanceSystemDB].[dbo].[BMContent] display
+            ON display.BMContentID = f.BMContentID AND display.Process = @Process
+        ORDER BY f.Mcno DESC, f.TimeOfRequest DESC, f.BMCase";
     }
 }

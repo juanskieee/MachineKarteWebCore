@@ -78,7 +78,7 @@ namespace MachineKarte.Web.Services
             var (summaries, totalPages) = await summariesTask;
             var rows = await rowsTask;
             f.Page = Math.Clamp(f.Page, 1, totalPages);
-            var rowsByFloor = rows.ToLookup(row => row.Location);
+            var rowsByFloor = rows.ToLookup(row => row.Location.TrimEnd(' '), StringComparer.OrdinalIgnoreCase);
             var floors = GetProcessFloors(f.Process).Select(floor =>
             {
                 var floorRows = rowsByFloor[floor].ToList();
@@ -102,19 +102,20 @@ namespace MachineKarte.Web.Services
 
             // Reuse the rows already read for the floor counters. A page change
             // then needs neither another search nor one query per machine.
-            var columnRows = rows.Where(row => string.Equals(row.Location, f.Floor, StringComparison.OrdinalIgnoreCase))
-                .ToLookup(row => (row.MachineNo, row.MachineType));
-            // Match the legacy descending staircase using the cards actually displayed.
-            // Stable ordering retains the legacy SQL tie order; sort before paging.
-            summaries = summaries.OrderByDescending(summary =>
-                columnRows[(summary.MachineNo, summary.MachineType)].Count()).ToList();
+            // uc_Test filters type only for TE; machine histories include older types.
+            bool te = f.UserType == "TE";
+            var columnRows = rows.ToLookup(row =>
+                MonitoringRepository.ColumnKey(row.MachineNo, row.MachineType, row.Location, te));
+            // Keep Form1's aggregate count order, including its machine/type ties.
             var columns = summaries.Select(summary =>
             {
-                var cards = columnRows[(summary.MachineNo, summary.MachineType)].ToList();
+                var cards = columnRows[MonitoringRepository.ColumnKey(
+                    summary.MachineNo, summary.MachineType, f.Floor, te)].ToList();
                 return new MachineCardResult
                 {
                     MachineNo = summary.MachineNo,
                     MachineType = summary.MachineType,
+                    BMCount = summary.BMCount,
                     ActionLine = summary.ActionLine,
                     NeedActionCount = CountNeedActionGroups(cards),
                     BMCards = cards
@@ -142,10 +143,23 @@ namespace MachineKarte.Web.Services
                 f.UserType, f.Process, f.Floor,
                 machineNo, f.DateFrom, f.DateTo, machineType, cancellationToken), cancellationToken);
 
+            // Form1 passes the aggregate header count, which can differ from
+            // the complete non-TE history. Keep the retained single-column API consistent.
+            var headers = await MonitoringQueryBatch.RunAsync(() => _repo.GetPagedMachineSummariesAsync(
+                new MonitoringFilter
+                {
+                    UserType = f.UserType, Process = f.Process, Floor = f.Floor,
+                    Machine = machineNo, DateFrom = f.DateFrom, DateTo = f.DateTo
+                }, cancellationToken, allPages: true), cancellationToken);
+            var header = headers.Machines.FirstOrDefault(summary =>
+                string.Equals(summary.MachineType.TrimEnd(' '), machineType.TrimEnd(' '), StringComparison.OrdinalIgnoreCase) &&
+                summary.ActionLine == actionLine);
+
             return new MachineCardResult
             {
                 MachineNo = machineNo,
                 MachineType = machineType,
+                BMCount = header?.BMCount ?? rows.Count,
                 ActionLine = actionLine,
                 NeedActionCount = CountNeedActionGroups(rows),
                 BMCards = rows

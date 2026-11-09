@@ -87,21 +87,145 @@ The legacy [Form1.LoadMCName](../Legacy/Form1.vb.txt) orders machines by
 `MACHINENAME DESC` (BM count), then places each column at `width * index`.
 Non-TE ties use machine number ascending; TE uses machine type ascending.
 [uc_Test.LoadMCName](../Legacy/uc_Test.vb.txt) docks its 120px cards at the bottom.
-The intended result is the tallest stack on the left, descending toward the
-right, with a shared bottom baseline.
+Columns follow descending header counts and share a bottom baseline.
 
 The repository retains these count-first orders, with additional deterministic
-tie breakers. `MonitoringService.SearchDashboardAsync()` stably orders the
-complete machine list by each column's actual eligible card count before slicing
-pages. This keeps the visible staircase descending even when mode-specific case
-joins make aggregate header counts differ from displayed cards. Equal displayed
-counts retain their existing SQL order. Both `machineCards` and the requested
-page's `machineSummaries` follow that same order.
+tie breakers. `MonitoringService.SearchDashboardAsync()` preserves the query's
+complete order before slicing pages. Both `machineCards` and the requested
+page's `machineSummaries` follow that same order. Do not re-sort by displayed
+card count: Form1 ranks header groups, while uc_Test loads the history using
+different rules.
+
+| Original path | Web behavior |
+| --- | --- |
+| Form1 non-TE header query | Join Process, MCType and BMCase; group by machine, raw action line and type; order by count descending, machine ascending |
+| uc_Test PM column | Join BMCase; select all eligible rows for the machine/location in the process table, including older, blank or unregistered types |
+| uc_Test CC/EEE/VIS column | Join Why4 to BMWhy, retain turnover/status rules; include every type for the machine/location |
+| uc_Test TE column | Retain Process, TesterNo, MCType and Location filters, with the BMTEUnit join |
+| Card order and repeat colors | Newest request first, then case; non-TE type changes do not split a machine's repeat/solved history |
+| Default action-line metadata | Group NULL and explicit 4 separately, then deduplicate their projected default values as the original EXCEPT does |
+
+The former grouped web read split every mode by machine type and applied a type
+filter to individual non-TE columns. A machine with eight current-type BMs and
+one older-type BM therefore displayed eight instead of nine. Sorting by those
+incomplete stacks then changed column positions. The header query also omitted
+the original BMCase join, allowing orphan case IDs to inflate its ranking.
+These restrictions and the displayed-count sort have been removed. Non-TE card
+reads use the selected process table, as the original does, without an extra
+Process-field restriction; content lookup still uses the selected process.
+
+Header counts can legitimately differ from stack sizes: non-TE headers group by
+type, but their histories include all types; CC/EEE/VIS headers join BMCase while
+their cards join BMWhy. Preserve this distinction instead of forcing every
+visible stack into descending order.
 
 `renderCurrentPage()` takes ten consecutive columns from this ordered snapshot;
 `renderMachineCards()` appends headers and card columns in that order. Do not
 sort headers/cards independently or reorder just the current page. CSS bottom
 alignment controls the shared baseline, not machine ranking.
+
+## BM card colors and blinking
+
+The active reference is `uc_Test`, not `uc_BMCase` or Form2's summary coloring.
+The original sequence is: query the column, create labels/action buttons,
+`LoadProcessCapa(ActionLine, Rowcount)`, `CheckIfSolve`, `LoadColor` or
+`LoadColor_TE`, then enable the 1000 ms timer. Each step affects a different
+part of the card. The web retains that separation.
+
+| Original source | Rule and web mapping |
+| --- | --- |
+| `Form1.LoadMCName` → `uc_Test.LoadMain` | Pass the aggregate `MACHINENAME` as `Rowcount`; `MachineCardResult.BMCount` carries this to rendering. It is not the number of loaded cards. |
+| `uc_Test.LoadMCName`, header creation | PM/CC/EEE/VIS show accredited content when present, otherwise original content, in uppercase. Status 15 shows `OCAP BM RESOLVED`, initially white. TE shows Priority. `DisplayContent` and `BMStatusId` retain these rules. |
+| Action-button initialization | Exact stored statuses map to DarkGray, DarkOrange, Red, LightGreen, Green, Violet or Aqua; other values default to Red. All Action text is white. Status matching does not trim or change case. |
+| `CheckIfSolve` → `GetDuplicateRowsByColumn` → `AreOtherRowsSame` | Use the newest loaded BM as the reference and the newest date in each repeated case. An existing action becomes green when that case is at least seven whole days old relative to the reference, or the action row is at least seven whole days older than its case head. Singletons do not become solved. |
+| `LoadColor` | Scan the existing date/case order, comparing consecutive effective content IDs, then cases, up to five following rows. Already-colored members are skipped. Only an eligible head increments Need Action and flashes its content/date backgrounds. |
+| `LoadColor_TE` | Use Priority and case, up to four following rows. Only `QUALITY BM` produces red repeat text and a Need Action head. Equipment BMs follow the original MCD fallback branches. |
+| `CheckifSevendays` | Compare `TimeSpan.Days` between the head and candidate: 0 through 7 inclusive, retaining sub-day truncation. Preserve the terminal multi-row iteration's absolute `dt.Rows(count)` lookup and relative `index + count` write; simplifying it to a normal relative scan changes some member colors. |
+| Non-TE three-content branch | With at least five following rows, three matching content rows and a different next case, the original has no MCD fallback. Its MCD stays steady; a general “no action means blink” rule is incorrect. |
+| `LoadColor` / `LoadColor_TE`, final assignment | Blue/Red/Black apply to both case and content text. Content text stays steady. Blue/Red case text blinks; Black and uncolored case text stay steady. Repeat text can replace the resolved header's initial white. |
+| `Timer1_Tick_1` | Every second, toggle case Blue ↔ Desktop or Red ↔ InactiveCaptionText, alert content/date Red ↔ White, and eligible MCD backgrounds WhiteSmoke ↔ DarkRed. MCD text stays blue. Action badges, capacity case backgrounds and ordinary content text do not blink. |
+
+Non-TE color groups include every type for the machine/location. TE groups keep
+types separate. Shared reads normalize case and trailing varchar spaces for
+machine/type/location keys to match the original SQL comparisons, while retaining
+the original field values in returned cards. A padded or differently cased
+machine number must not lose cards or split a repeat group.
+
+| Process | Blue repeat content ID | Red repeat content ID |
+| --- | --- | --- |
+| DC | 48 | 49 |
+| DB | 18 | 19 |
+| WB | 45 | 46 |
+| MP | 24 | 25 |
+| PL | 42 | 43 |
+| FL / SING / ATC | 1 | 2 |
+| FT | 31 | 33 |
+| TP | 9 | 30 |
+| EDS | 13 | 16 |
+| MEMS | 72 | 74 |
+
+Other non-TE content IDs use Black when they form a repeat. TE uses Priority,
+not these content IDs.
+
+| Exact stored MCStatus | Action background |
+| --- | --- |
+| `RUNNING (ONGOING INVESTIGATION/MONITORING)` | DarkGray |
+| `RUNNING (UNDER 100% INSPECTION)` | DarkOrange |
+| `STOP (ONGOING INVESTIGATION)` | Red |
+| `RUNNING (LOT EVALUATION)` | LightGreen |
+| `NO RE-OCCURRENCE AFTER 7 DAYS` | Green |
+| `STOP (WAITING FOR INSPECTION RESULTS)` | Violet |
+| `STOP (WAITING FOR QC INSTRUCTION)` | Aqua |
+| Other / blank | Red |
+
+The seven-day solved check can override these backgrounds with Green. It does
+not change the stored MCStatus or make the badge blink.
+
+### Capacity colors
+
+Capacity coloring uses the header count, before repeat-head alert backgrounds.
+All cards initially have Salmon content/date backgrounds and MistyRose case
+backgrounds. When `ActionLine < BMCount`, the boundary index is
+`BMCount - 1 - ActionLine`. From that boundary toward index zero, the first two
+cards use SM colors, the next two use DM colors, and the remaining cards use DV
+colors. Cards below the boundary retain their defaults. This includes the
+original boundary overlap and its one-card/two-card edge branches.
+
+| Band | Content/date | Case background |
+| --- | --- | --- |
+| Default | Salmon | MistyRose |
+| SM | DeepSkyBlue | LightCyan |
+| DM | MediumPurple | Lavender |
+| DV | LimeGreen | Honeydew |
+
+For example, with header count 8, nine loaded BMs and ActionLine 4, indices 0–1
+are DM, 2–3 are SM, and 4–8 retain the default. Using nine as the capacity count
+incorrectly makes index 0 DV and shifts the other bands. A Need Action head then
+flashes only its content/date red and white; its case background keeps its band.
+WinForms bottom docking preserves query index zero at the top of the stack and
+the last, oldest row at the bottom; the web keeps that order.
+
+The web starts a shared blink epoch when a search finishes loading, preserving
+the initial colors for the first second. Cached page changes reuse that epoch.
+Starting animations at document time zero can show a freshly loaded alert in
+its alternate color immediately. Reduced-motion preferences retain the initial
+colors without animation.
+
+### Color verification
+
+`Test-MonitoringColors.ps1` compiles the actual original routines and header/action
+initialization against in-memory WinForms controls. It opens no desktop windows
+or database connections. Its 362 cases cover all process content-color maps,
+repeat depths, mixed cases/content, exact statuses, solved actions, equipment and
+quality BMs, MCD branches, date boundaries, padded identities and capacity counts
+that differ from history lengths. It writes temporary `cards.json` expectations.
+
+With the isolated local app and Chromium debugging session described in the
+validation guide, `Test-Workflows.ps1 -ColorsOnly` consumes those expectations.
+It checks real DOM/CSS colors, content text and blink synchronization for 2,364
+cards at initial, 1000 ms and 2000 ms positions, without waiting for real timer
+cycles or running other workflows. These are source-parity fixtures, not a live
+database comparison. No rule is specific to SP-33.
 
 ## Column sizing
 
@@ -147,7 +271,7 @@ space while wider results can scroll horizontally. Individual machine columns
 and card lists do not create scrollbars.
 
 Summaries retain their 104px height. Cards retain their 120px height and
-bottom-aligned staircase, with the newest loaded position shown at the bottom.
+bottom-aligned staircase, with the newest loaded position shown at the top.
 The existing responsive breakpoints continue to size the outer container.
 
 ## Rendering
@@ -177,11 +301,14 @@ and unused slots must remain blank. The summary row must stay below the card
 viewport during vertical scrolling. A long 52-card history has a scroll height
 of `52 * 120 = 6240px`, excluding the 104px summary.
 
-Use `Test-MonitoringStaircase.ps1` for the focused offline ordering/date check.
-It executes the production sort statement against synthetic columns, checking
-stable ties, global ordering before pagination, and legacy inclusive endpoints.
-`-Sql` optionally adds synthetic LocalDB date/tie-order checks. Neither mode
-reads application settings or application databases.
+Use `Test-MonitoringStaircase.ps1` (or `Test-MonitoringParity.ps1 -StaircaseOnly`)
+for the focused SQL check. It compares actual repository/service results with
+the preserved Form1 and uc_Test queries in a disposable LocalDB catalog. Its
+synthetic SP-33 has nine BMs across two types and remains at page 1, column 9.
+It covers PM/CC/EEE/VIS, both pages, specific-machine selection, orphan case
+IDs, repeat/solved-action colors, date/location boundaries, duplicate default action-line
+metadata and TE type isolation. It never reads application settings or
+application databases; the fixture does not establish live SP-33 data or totals.
 
 For date-only UI changes, `Test-Workflows.ps1 -DatesOnly` runs
 `window.runMonitoringDateChecks()` in the existing

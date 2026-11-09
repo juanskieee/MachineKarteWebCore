@@ -18,6 +18,7 @@ const State = {
     toastTimer: null,
     lastFilter: null, // cached last successful MonitoringFilter
     dashboard: null, // matching columns for every page of the current search
+    blinkStartTime: null,
     antiForgery: "",
 };
 
@@ -353,6 +354,7 @@ async function doSearch(page = 1) {
     State.totalPages = resp.data.totalPages;
     filter.page = State.page;
     State.dashboard = resp.data;
+    State.blinkStartTime = document.timeline.currentTime;
     updatePagination();
     renderFloorSummary(resp.data.floorSummaries);
     await renderCurrentPage(controller.signal);
@@ -499,10 +501,10 @@ function renderFloorSummary(summaries) {
 }
 
 function synchronizeBlinkAnimations(root) {
-    // Form1 enables every uc_Test timer after loading. Use one document clock
-    // so cards arriving in separate AJAX responses still share the same phase.
+    // Form1 starts every uc_Test timer after loading: show the initial colors
+    // for a full second, then switch together. Cached pages retain that epoch.
     root.getAnimations({ subtree: true }).forEach((animation) => {
-        animation.startTime = 0;
+        animation.startTime = State.blinkStartTime ??= document.timeline.currentTime;
     });
 }
 
@@ -620,6 +622,7 @@ async function renderMachineCards(columns, filter, signal) {
 
 function renderMachineCard(data, filter, container, header) {
     const { bmCards, actionLine, needActionCount } = data;
+    const rowCount = data.bmCount ?? bmCards.length;
     const needActionBadge = header.querySelector(".need-action-badge");
     if (needActionBadge) {
         needActionBadge.textContent = needActionCount ?? 0;
@@ -639,8 +642,8 @@ function renderMachineCard(data, filter, container, header) {
     bmCards.forEach((card, index) => {
         const element = buildBMCard(card, actionLine, filter.userType);
         // LoadProcessCapa: Salmon at the bottom, then SM/DM/DV tiers overlapping its boundary.
-        const tier = Math.floor((bmCards.length - 1 - actionLine - index) / 2);
-        if (actionLine < bmCards.length && tier >= 0)
+        const tier = Math.floor((rowCount - 1 - actionLine - index) / 2);
+        if (actionLine < rowCount && tier >= 0)
             element.classList.add(
                 ["band-sm", "band-dm", "band-dv"][Math.min(tier, 2)],
             );
@@ -652,9 +655,6 @@ function renderMachineCard(data, filter, container, header) {
 /** Builds one BM card DOM element (mirrors MachineMonitoringCard.ascx HTML) */
 function buildBMCard(card, actionLine, userType) {
     const div = document.createElement("div");
-
-    // Priority star class
-    const priorityClass = card.priority === "1" ? "priority-star" : "";
 
     // Legacy right-docked Major Customer Device stars.
     const mcdBadge =
@@ -690,10 +690,15 @@ function buildBMCard(card, actionLine, userType) {
     ].join("");
 
     div.className =
-        `bm-card bm-card-clickable ${priorityClass} ${card.needsAction ? "needs-action" : ""}`.trim();
+        `bm-card bm-card-clickable ${card.needsAction ? "needs-action" : ""}`.trim();
     const repeatColor = (card.fontColor || "").toLowerCase();
+    const resolved = userType !== 'TE' && card.bmStatusId === '15';
+    const content = userType === 'TE' ? card.priority
+        : resolved ? 'OCAP BM RESOLVED' : (card.displayContent || card.bmContent || '').toUpperCase();
+    if (resolved && !['red', 'blue', 'black'].includes(repeatColor))
+        div.style.setProperty('--content-color', 'white');
     if (
-        ["red", "blue", "black", "green", "darkgreen", "orange"].includes(
+        ["red", "blue", "black"].includes(
             repeatColor,
         )
     ) {
@@ -728,7 +733,7 @@ function buildBMCard(card, actionLine, userType) {
 
     div.innerHTML = `
         <div class="bm-card-markers">${markers}${actionBadge}</div>
-        <div class="bm-card-content"><span class="bm-content-text">${escapeHtml(userType === "TE" ? card.priority : card.bmContent)}</span>${mcdBadge}</div>
+        <div class="bm-card-content"><span class="bm-content-text">${escapeHtml(content)}</span>${mcdBadge}</div>
         <div class="bm-card-case">
             <span class="bm-case-text">${escapeHtml(card.bmCase)}</span>
         </div>

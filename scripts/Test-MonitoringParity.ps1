@@ -1,4 +1,4 @@
-param([string]$Dotnet = 'dotnet', [string]$LocalDbInstance = 'MSSQLLocalDB', [switch]$Benchmark, [switch]$BoardOnly, [switch]$MachineListOnly)
+param([string]$Dotnet = 'dotnet', [string]$LocalDbInstance = 'MSSQLLocalDB', [switch]$Benchmark, [switch]$BoardOnly, [switch]$MachineListOnly, [switch]$StaircaseOnly)
 # Execute the real repository against a disposable LocalDB catalog, with original VB SQL as the oracle.
 # Never loads appsettings or connects to an application database.
 $ErrorActionPreference = 'Stop'
@@ -181,21 +181,19 @@ INSERT TEBMMaintenance VALUES
                 paged.AddRange((await repository.GetPagedMachineSummariesAsync(request)).Machines);
             }
             Require(grouped.CurrentPage==grouped.TotalPages && grouped.MachineSummaries.Count<=10,"Grouped search lost page clamping");
-            var displayedCounts=grouped.MachineCards.ToDictionary(c=>(c.MachineNo,c.MachineType,c.ActionLine),c=>c.BMCards.Count);
-            var staircase=paged.OrderByDescending(c=>displayedCounts[(c.MachineNo,c.MachineType,c.ActionLine)]);
             Require(grouped.MachineCards.Select(c=>(c.MachineNo,c.MachineType,c.ActionLine))
-                .SequenceEqual(staircase.Select(c=>(c.MachineNo,c.MachineType,c.ActionLine))),user+": columns are not descending by displayed cards with stable legacy ties");
+                .SequenceEqual(paged.Select(c=>(c.MachineNo,c.MachineType,c.ActionLine))),user+": columns differ from original header count order");
             foreach(var column in grouped.MachineCards) {
                 var single=await service.GetMachineCardAsync(request,column.MachineNo,column.MachineType,column.ActionLine);
                 Require(JsonSerializer.Serialize(column)==JsonSerializer.Serialize(single),user+": grouped column changed rows, colors, counts or metadata for "+column.MachineNo);
-                Require(column.BMCards.All(c=>c.Location==request.Floor && c.MachineType==column.MachineType),"Grouped rows crossed floors/types");
+                Require(column.BMCards.All(c=>c.Location==request.Floor && (user!="TE" || c.MachineType==column.MachineType)),"Grouped rows crossed floors/tester types");
                 columns++;
             }
         }
         using var boardCancellation=new CancellationTokenSource(); boardCancellation.Cancel();
         try { await service.SearchDashboardAsync(new MonitoringFilter{UserType="TE",Process="FT",Floor="LSI2-3F"},boardCancellation.Token); throw new Exception("Grouped search ignored cancellation"); }
         catch(OperationCanceledException) { }
-        Console.WriteLine($"PASS: {columns} grouped columns match per-column reads in all five modes, ordered by displayed count with stable legacy ties, including duplicate MCD/actions, tester types, interleaved floors, counts/colors, page clamping and cancellation. Two SQL reads per search; no repeated per-column/page reads needed.");
+        Console.WriteLine($"PASS: {columns} grouped columns match per-column reads in all five modes and preserve header count order, including duplicate MCD/actions, tester types, interleaved floors, counts/colors, page clamping and cancellation. Two SQL reads per search; no repeated per-column/page reads needed.");
         return;
     }
     // Use the checked-in uc_Test statements themselves, changing only VB string concatenation and catalog.
@@ -224,6 +222,100 @@ INSERT TEBMMaintenance VALUES
         await using var reader = await command.ExecuteReaderAsync(); var result=new DataTable(); result.Load(reader); return result;
     }
     string Value(DataRow row,string column)=>row[column].ToString()!;
+    var form=File.ReadAllText(Path.Combine(args[0],"Legacy","Form1.vb.txt"));
+    var legacySummaries=Regex.Matches(form,"strQuery2 = \"(.*?)\"\\r?\\n",RegexOptions.Singleline).Select(match=>match.Groups[1].Value).ToArray();
+    Require(legacySummaries.Length==4,"Could not identify original All/specific PM/TE summary queries");
+    string LegacySummary(string user, string process, bool specific) {
+        var values=new Dictionary<string,string>{{"MCProcess",process},{"AddQuery",UserFilter(user)},{"topNum2","1000000"},{"topNum1","0"}};
+        var sql=Regex.Replace(legacySummaries[(user=="TE"?2:0)+(specific?1:0)],"\" & (\\w+) & \"",match=>values[match.Groups[1].Value])
+            .Replace("[eMaintenanceSystemDB].[dbo].","[dbo].");
+        Require(!sql.Contains("eMaintenanceSystemDB",StringComparison.OrdinalIgnoreCase) && !sql.Contains(" & "),"Original summary was not redirected");
+        return sql;
+    }
+    if(args.Contains("staircase-only")) {
+        // Eight higher-count machines, SP-33 with eight current-type BMs plus one
+        // older/unregistered type, and a lower-ranked machine with orphan case IDs.
+        await Execute(@"
+DELETE SINGBMMaintenance;
+INSERT SINGBMMaintenance
+SELECT 1000+m.value*100+n.value,'SP-'+RIGHT('0'+CAST(m.value AS varchar(2)),2),'','TYPE','SING','LSI2-3F',
+ DATEADD(day,-n.value,'2026-11-01'),1,6,1,1,1,1,0,'DEVICEA','','CC',''
+FROM FixtureNumbers m CROSS JOIN FixtureNumbers n WHERE m.value<=8 AND n.value<=18-m.value;
+INSERT SINGBMMaintenance
+SELECT 3000+value,'SP-33','',CASE WHEN value=9 THEN 'OLD-TYPE' ELSE 'TYPE' END,'SING','LSI2-3F',
+ DATEADD(day,-value,'2026-11-01'),1,6,1,1,1,1,0,'DEVICEA','','CC',''
+FROM FixtureNumbers WHERE value<=9;
+INSERT SINGBMMaintenance
+SELECT 4000+value,'SP-34','','TYPE','SING','LSI2-3F',DATEADD(day,-value,'2026-11-01'),1,6,
+ CASE WHEN value>7 THEN 999 ELSE 1 END,1,1,1,0,'DEVICEA','','CC',''
+FROM FixtureNumbers WHERE value<=10;
+INSERT SINGBMMaintenance
+SELECT 5000+m.value*100+n.value,'SP-'+CAST(34+m.value AS varchar(2)),'','TYPE','SING','LSI2-3F',
+ DATEADD(day,-n.value,'2026-11-01'),1,6,1,1,1,1,0,'DEVICEA','','CC',''
+FROM FixtureNumbers m CROSS JOIN FixtureNumbers n WHERE m.value<=2 AND n.value<=7-m.value;
+INSERT SINGBMMaintenance VALUES
+(6000,'SP-33','','TYPE','SING','OTHER','2026-10-25',1,6,1,1,1,1,0,'DEVICEA','','CC',''),
+(6001,'SP-33','','TYPE','SING','LSI2-3F','2026-11-02T00:00:01',1,6,1,1,1,1,0,'DEVICEA','','CC',''),
+(6002,'SP-33'+CHAR(9),'','TAB-TYPE','SING','LSI2-3F','2026-10-25',1,6,1,1,1,1,0,'DEVICEA','','CC','');
+UPDATE SINGBMMaintenance SET Process='',MCNo='sp-33 ',Location='lsi2-3f ' WHERE MCType='OLD-TYPE';
+INSERT BMContent VALUES (1,'SING','ORIGINAL CONTENT'),(2,'SING','APPROVED CONTENT');
+UPDATE SINGBMMaintenance SET AcredBMContentID=2 WHERE BMID=5101;
+");
+        foreach(var user in new[]{"PM","CC","EEE","VIS"}) {
+            await Execute($"UPDATE SINGBMMaintenance SET Turnover='{(user=="EEE"?"PE":user=="VIS"?"VIS":"CC")}'");
+            var actionTable="MachineKarte_ActionCard"+(user=="PM"?"":"_"+user);
+            await Execute($"INSERT {actionTable} VALUES (2,3009,'SP-33','OLD ACTION','','','','RUNNING (LOT EVALUATION)')");
+            var originalHeaders=await Read(LegacySummary(user,"SING",false),"All",process:"SING");
+            var request=new MonitoringFilter{UserType=user,Process="SING",Floor="LSI2-3F",Machine="All",DateFrom="2026-10-01",DateTo="2026-11-02"};
+            var staircaseBoard=await service.SearchDashboardAsync(request);
+            var expected=originalHeaders.Rows.Cast<DataRow>().Select(row=>Value(row,"MCNO")).ToArray();
+            Require(expected[8]=="SP-33" && staircaseBoard.MachineCards.Select(c=>c.MachineNo).SequenceEqual(expected),user+": original column order/page 1 column 9 changed");
+            Require(staircaseBoard.TotalPages==2 && staircaseBoard.MachineSummaries.Select(c=>c.MachineNo).SequenceEqual(expected.Take(10)),"First page no longer follows Form1");
+            foreach(var column in staircaseBoard.MachineCards) {
+                var original=await Read(Legacy(user,"SING"),column.MachineNo,process:"SING");
+                Require(column.BMCards.Select(c=>c.BMId).SequenceEqual(original.Rows.Cast<DataRow>().Select(row=>(int)row["BMID"])),user+"/"+column.MachineNo+": grouped BM IDs/order differ from uc_Test");
+            }
+            var sp33=staircaseBoard.MachineCards[8];
+            var accredited=staircaseBoard.MachineCards.Single(c=>c.MachineNo=="SP-35").BMCards.Single(c=>c.BMId==5101);
+            Require(accredited.BMContent=="ORIGINAL CONTENT" && accredited.DisplayContent=="APPROVED CONTENT" &&
+                accredited.BMContentId=="2" && accredited.BMStatusId=="6",user+": accredited display/status mapping differs");
+            Require(sp33.BMCards.Count==9 && sp33.BMCards.Select(c=>c.MachineType).Distinct().Count()==2,user+": SP-33 lost its ninth BM");
+            var single=await service.GetMachineCardAsync(request,"SP-33","TYPE",4);
+            Require(JsonSerializer.Serialize(sp33)==JsonSerializer.Serialize(single),user+": grouped and single-column colors/counts/rows differ");
+            Require(sp33.NeedActionCount>0 && sp33.BMCards.All(c=>c.FontColor=="Blue"),user+": type changes split repeat groups");
+            Require(sp33.BMCards.Last().HaveAction=="Yes" && sp33.BMCards.Last().ActionColor=="Green",user+": old-type action lost the full-history solved check");
+            request.Page=2;
+            Require((await service.SearchDashboardAsync(request)).MachineSummaries.Select(c=>c.MachineNo).SequenceEqual(expected.Skip(10)),"Second page reordered columns");
+            request.Machine="SP-33";
+            var selected=await service.SearchDashboardAsync(request);
+            Require(selected.MachineCards.Single().BMCards.Count==9 && selected.CurrentPage==1,"Specific-machine filter lost cards or page clamp");
+        }
+        // NULL and explicit 4 are separate legacy groups, then EXCEPT deduplicates
+        // their identical projections. They must not double each BM count.
+        await Execute("INSERT MCType VALUES ('TYPE',8,4); INSERT TesterType VALUES ('TYPE',9,'LSI2-3F',4)");
+        foreach(var user in new[]{"PM","TE"}) {
+            var process=user=="TE"?"FT":"SING";
+            var machine=user=="TE"?"TE-A":"SP-33";
+            var original=await Read(LegacySummary(user,process,true),machine,process:process);
+            var request=new MonitoringFilter{UserType=user,Process=process,Floor="LSI2-3F",Machine=machine,DateFrom="2026-10-01",DateTo="2026-11-02"};
+            var actual=(await repository.GetPagedMachineSummariesAsync(request)).Machines;
+            Require(actual.Count==original.Rows.Count && actual.Single().BMCount==Convert.ToInt32(original.Rows[0]["MACHINENAME"]),user+": default action-line metadata inflated counts");
+        }
+        // TE continues to separate types for the same tester, as the original does.
+        await Execute(@"
+INSERT TesterType VALUES ('SECOND',9,'LSI2-3F',6);
+INSERT TEBMMaintenance VALUES (200,'MC-A','TE-A','SECOND','FT','LSI2-3F','2026-10-20',4,6,1,1,1,64,0,'DEVICEA','QUALITY BM','CC','');
+");
+        var teRequest=new MonitoringFilter{UserType="TE",Process="FT",Floor="LSI2-3F",Machine="TE-A",DateFrom="2026-10-01",DateTo="2026-11-02"};
+        var teBoard=await service.SearchDashboardAsync(teRequest);
+        foreach(var column in teBoard.MachineCards) {
+            var original=await Read(Legacy("TE","FT"),"TE-A",column.MachineType);
+            Require(column.BMCards.All(c=>c.MachineType==column.MachineType) && column.BMCards.Select(c=>c.BMId).SequenceEqual(original.Rows.Cast<DataRow>().Select(row=>(int)row["BMID"])),"TE type isolation changed");
+        }
+        Require(teBoard.MachineCards.Count==2,"TE types were combined");
+        Console.WriteLine("PASS: original Form1/uc_Test SQL parity for SP-33's 9 BMs at page 1 column 9 in PM/CC/EEE/VIS, mixed-type repeats, orphan cases, both pages, specific-machine selection, inclusive dates, default metadata and TE type isolation. Synthetic LocalDB data; no live SP-33 claim.");
+        return;
+    }
     int checks=0;
     foreach (var user in new[]{"TE","PM","CC","EEE","VIS"})
     foreach (var process in user=="TE"?testers:processes) {
@@ -247,17 +339,11 @@ INSERT TEBMMaintenance VALUES
     }
     Console.WriteLine($"PASS: {checks} user/process variants match original uc_Test SQL, including TE/FT/LSI2-3F and date boundaries, filters, fields, order and BMID-only TE actions.");
 
-    var form=File.ReadAllText(Path.Combine(args[0],"Legacy","Form1.vb.txt"));
-    var legacySummaries=Regex.Matches(form,"strQuery2 = \"(.*?)\"\\r?\\n",RegexOptions.Singleline).Select(match=>match.Groups[1].Value).ToArray();
-    Require(legacySummaries.Length==4,"Could not identify original All/specific PM/TE summary queries");
     int summaryChecks=0;
     foreach(var user in new[]{"PM","CC","EEE","VIS","TE"})
     foreach(var process in user=="TE"?testers:processes) {
         foreach(var specific in new[]{false,true}) {
-            var values=new Dictionary<string,string>{{"MCProcess",process},{"AddQuery",UserFilter(user)},{"topNum2","1000000"},{"topNum1","0"}};
-            var sql=Regex.Replace(legacySummaries[(user=="TE"?2:0)+(specific?1:0)],"\" & (\\w+) & \"",match=>values[match.Groups[1].Value])
-                .Replace("[eMaintenanceSystemDB].[dbo].","[dbo].");
-            Require(!sql.Contains("eMaintenanceSystemDB",StringComparison.OrdinalIgnoreCase) && !sql.Contains(" & "),"Original summary was not redirected");
+            var sql=LegacySummary(user,process,specific);
             var machine=specific?(user=="TE"?"TE-A":"MC-A"):"All";
             var original=await Read(sql,machine,process:process);
             var request=new MonitoringFilter{UserType=user,Process=process,Floor="LSI2-3F",Machine=machine,DateFrom="10/01/2026",DateTo="11/02/2026"};
@@ -370,5 +456,6 @@ $runArguments = @((Join-Path $checkDirectory 'bin/Debug/net8.0/win-x64/Checks.dl
 if ($Benchmark) { $runArguments += 'benchmark' }
 if ($BoardOnly) { $runArguments += 'board-only' }
 if ($MachineListOnly) { $runArguments += 'machine-list-only' }
+if ($StaircaseOnly) { $runArguments += 'staircase-only' }
 & $Dotnet @runArguments
 if ($LASTEXITCODE -ne 0) { throw 'Monitoring parity regression checks failed.' }

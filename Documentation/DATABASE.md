@@ -350,7 +350,7 @@ subsequently reported Machine Summary at 1.88s (from 4.72s) and BM Analytics at
 
 The missing `TE / FT / LSI2-3F / All` cards came from the TE card query's
 `a.Process = '{process}'` predicate: doubled C# interpolation braces sent the
-literal `{process}` to SQL Server. Both card branches now bind `@Process`.
+literal `{process}` to SQL Server. The TE card query now binds `@Process`.
 The summary could therefore find testers while their card loads and floor
 counters returned no BMs.
 
@@ -363,8 +363,8 @@ follows the active desktop queries in `Form1.LoadMCName`,
 | TE eligibility | Categories 1 or 4; exclude statuses 30, 31, 1, 2, 3, 7, 17; nonzero BMUnitID joined to BMTEUnit |
 | TE identity | TesterNo for machine selection; MCType for the requested column; Process and Location retained |
 | TE actions | Match BMID alone, including an action saved under another tester number; choose highest Seqno when duplicates exist |
-| PM / CC / EEE / VIS | Original status/turnover filters and category 1; cards join BMCase for PM or Why4/BMWhy for the other modes; actions match BMID and machine |
-| Content / OCAP | Effective accredited content ID retains the original fallback; BMContent text and OCAP count still use the original BMContentID/BMCaseID respectively |
+| PM / CC / EEE / VIS | Original status/turnover filters and category 1; headers join BMCase; cards join BMCase for PM or Why4/BMWhy for the other modes and include all types for the machine/location in the selected process table; actions match BMID and machine |
+| Content / OCAP | Effective accredited content ID retains the original fallback; BMContent retains original text, DisplayContent supplies the original accredited/original header selection, and OCAP count uses original BMCaseID |
 | Dates | Original inclusive endpoints: `>= @Range1 AND <= @Range2`, equivalent to desktop `BETWEEN`; no extra day in Monitoring, AlertBoard or MCD summaries; SQL datetime parameters; invariant MM/dd/yyyy HH:mm:ss output |
 
 The replaced `CONVERT(...,120)` produced ISO timestamps that the legacy repeat
@@ -377,8 +377,9 @@ process/case-specific OCAP aggregation. The shared query builder removes the
 duplicated TE and non-TE SQL bodies and obsolete commented alternatives; the
 original desktop SQL remains in `Legacy/` and is executed by the parity runner.
 
-Paging uses a grouped CTE, preserves the old EXCEPT projection's distinctness,
-and materializes it once in `#MonitoringMachineCounts`. ROW_NUMBER selects the
+Paging uses a grouped CTE, groups raw action lines before projecting their
+default and deduplicating as the old EXCEPT did, and materializes the result
+once in `#MonitoringMachineCounts`. ROW_NUMBER selects the
 page, and a second result set reads the total from the same rows. This replaces
 three copies of the maintenance aggregation. Stable tie breakers prevent tied
 counts from moving between pages. For the web's All-floor option, TesterType
@@ -455,8 +456,15 @@ Monitoring Search returns all matching columns for the selected floor in
 `machineSummaries` property still contains the requested page for compatibility.
 The service reuses the BM rows already loaded for floor counters rather than
 querying each column again. Header and BM reads use separate connections through
-the shared scheduler. Coloring runs independently per machine/type/location so
-interleaved floors cannot split a column's repeat group.
+the shared scheduler. Coloring runs independently per machine/location, with
+separate types for TE, so interleaved floors cannot split a column's repeat group.
+Column identities ignore case and trailing varchar padding like the legacy SQL;
+returned field values are preserved. Header BM counts travel with each column
+for capacity coloring. The retained single-column API also reads its matching
+header metadata; grouped Search still uses two reads and cached page changes
+still make no requests. Card colors and blink eligibility are checked against
+compiled `uc_Test` routines, separately from SQL parity; see
+[BM card colors and blinking](MONITORING.md#bm-card-colors-and-blinking).
 
 The browser keeps this search snapshot and inserts only the active ten columns.
 Next/Previous perform no HTTP or SQL requests. Search, changed filters, the
@@ -491,8 +499,11 @@ range to match the former web workaround. ImportantDeviceQuery also retains
 the original BMCase/BMTEUnit join, excluding unmatched cases from Form11 counts.
 Form11's LSI3-3F footer deliberately repeats the ATC/SING terms from the original
 TotalLabel formula; row and grand totals still count each cell once.
-The service orders all columns by actual displayed card count before pagination,
-preserving SQL order for ties; see [staircase ordering](MONITORING.md#staircase-order).
+The service preserves the original header query's count order before pagination.
+Non-TE histories include all machine types; TE histories remain type-specific.
+The removed displayed-card-count sort could move columns because header counts
+and complete histories intentionally use different rules; see
+[staircase ordering](MONITORING.md#staircase-order).
 
 AlertBoard, MachineSummary, and McdMonitoring reuse the loaded summary's machine
 lists for up to 30 seconds. Snapshots are modal-local and invalidated by a new

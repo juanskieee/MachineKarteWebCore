@@ -50,6 +50,8 @@ namespace MachineKarte.Web.Models
         public string HaveAction { get; set; } = "No";
         public string BMContentId { get; set; } = string.Empty;
         public string BMContent { get; set; } = string.Empty;
+        public string DisplayContent { get; set; } = string.Empty;
+        public string BMStatusId { get; set; } = string.Empty;
         public string Priority { get; set; } = string.Empty;
         public string MCStatus { get; set; } = string.Empty;
         public string ActionColor { get; set; } = "Red";
@@ -119,6 +121,8 @@ namespace MachineKarte.Web.Models
     {
         public string MachineNo { get; set; } = string.Empty;
         public string MachineType { get; set; } = string.Empty;
+        /// <summary>Form1's header count passed to uc_Test.LoadProcessCapa.</summary>
+        public int BMCount { get; set; }
         public int ActionLine { get; set; } = 4;
         public int NeedActionCount { get; set; }
         public List<BMCardRow> BMCards { get; set; } = new();

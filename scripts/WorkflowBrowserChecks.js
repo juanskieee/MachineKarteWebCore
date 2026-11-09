@@ -326,6 +326,68 @@
             finally { console.log=nativeLog; }
         },61000));
     };
+    window.runMonitoringColorChecks = async (fixtures) => {
+        Workflows.close();
+        const probe = document.createElement('span');
+        document.body.append(probe);
+        const colors = new Map();
+        const color = value => {
+            if (!colors.has(value)) {
+                probe.style.color = value;
+                colors.set(value, getComputedStyle(probe).color);
+            }
+            return colors.get(value);
+        };
+        let cardsChecked = 0;
+        try {
+            for (const fixture of fixtures) {
+                State.blinkStartTime = document.timeline.currentTime;
+                await renderMachineCards([fixture], { floor: 'LSI2-3F', userType: fixture.userType });
+                const board = document.getElementById('machineBoard');
+                const animations = board.getAnimations({ subtree: true });
+                assert(animations.every(animation => Math.abs(animation.startTime - State.blinkStartTime) < 0.01), fixture.label + ': blink epochs differ: ' + animations.map(animation => animation.startTime) + ' vs ' + State.blinkStartTime);
+                animations.forEach(animation => { animation.pause(); animation.currentTime = 0; });
+                const cards = [...board.querySelectorAll('.bm-card')];
+                const checkColor = (element, property, expected, message) =>
+                    assert(getComputedStyle(element)[property] === color(expected), `${fixture.label}: ${message}: expected ${color(expected)}, got ${getComputedStyle(element)[property]}`);
+                cards.forEach((card, index) => {
+                    const expected = fixture.expected[index];
+                    checkColor(card.querySelector('.bm-card-content'), 'backgroundColor', expected.header, 'header capacity/alert background row ' + index);
+                    checkColor(card.querySelector('.bm-card-time'), 'backgroundColor', expected.header, 'date capacity/alert background row ' + index);
+                    checkColor(card.querySelector('.bm-card-case'), 'backgroundColor', expected.caseBackground, 'case capacity background row ' + index);
+                    checkColor(card.querySelector('.bm-card-content'), 'color', expected.headerForeground, 'steady content color row ' + index);
+                    checkColor(card.querySelector('.bm-card-case'), 'color', expected.caseForeground, 'initial case color row ' + index);
+                    assert(card.querySelector('.bm-content-text').textContent === expected.headerText, fixture.label + ': original content/accreditation text differs');
+                    const action = card.querySelector('.badge-action');
+                    if (action) {
+                        checkColor(action, 'backgroundColor', expected.actionColor, 'action status/solved color row ' + index);
+                        checkColor(action, 'color', 'white', 'action foreground row ' + index);
+                    }
+                    const mcd = card.querySelector('.badge-mcd');
+                    if (mcd) {
+                        checkColor(mcd, 'color', expected.mcdNeedsAction ? 'blue' : 'black', 'MCD eligibility row ' + index);
+                        checkColor(mcd, 'backgroundColor', 'whitesmoke', 'initial MCD background row ' + index);
+                    }
+                    cardsChecked++;
+                });
+                animations.forEach(animation => { animation.currentTime = 1000; });
+                cards.forEach((card, index) => {
+                    const expected = fixture.tick[index];
+                    checkColor(card.querySelector('.bm-card-content'), 'backgroundColor', expected.header, 'first tick header row ' + index);
+                    checkColor(card.querySelector('.bm-card-time'), 'backgroundColor', expected.header, 'first tick date row ' + index);
+                    checkColor(card.querySelector('.bm-card-case'), 'color', expected.caseForeground, 'first tick case row ' + index);
+                    const mcd = card.querySelector('.badge-mcd');
+                    if (mcd) checkColor(mcd, 'backgroundColor', expected.mcdBackground, 'first tick MCD row ' + index);
+                });
+                animations.forEach(animation => { animation.currentTime = 2000; });
+                cards.forEach((card, index) => {
+                    checkColor(card.querySelector('.bm-card-content'), 'backgroundColor', fixture.expected[index].header, 'second tick header row ' + index);
+                    checkColor(card.querySelector('.bm-card-case'), 'color', fixture.expected[index].caseForeground, 'second tick case row ' + index);
+                });
+            }
+            return `PASS: ${cardsChecked} rendered cards across ${fixtures.length} original uc_Test fixtures match capacity/status/content/repeat/MCD colors at initial, 1000 ms and 2000 ms states`;
+        } finally { probe.remove(); }
+    };
     window.runMonitoringChecks = async () => {
         Workflows.close();
         await window.runMonitoringDateChecks();
@@ -345,7 +407,7 @@
         await nextPaint();
         synchronizeBlinkAnimations(columns[1]);
         const lateBlink = columns[1].querySelector('.needs-action .bm-card-content').getAnimations()[0];
-        assert(earlyBlink.startTime===0 && lateBlink.startTime===0, 'AJAX card arrivals do not share the document blink clock');
+        assert(Math.abs(earlyBlink.startTime-State.blinkStartTime)<0.01 && Math.abs(lateBlink.startTime-State.blinkStartTime)<0.01, 'Card arrivals do not share the loaded board blink clock');
         const rects = columns.map(col => [...col.querySelectorAll('.bm-card')].map(node => node.getBoundingClientRect()));
         assert(rects[0].length===4 && rects[1].length===3 && rects[2].length===1, 'Missing BM cards');
         assert(Math.abs(rects[1][0].top-rects[0][0].top-120)<1 && Math.abs(rects[2][0].top-rects[1][0].top-240)<1, 'Staircase is reversed or top-aligned');
