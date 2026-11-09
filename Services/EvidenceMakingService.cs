@@ -36,7 +36,7 @@ public class EvidenceMakingService
             using var photos = await LegacyReportExport.StagedPhotos.LoadAsync(
                 groups.SelectMany(group => group).Select(row => row.ImageFile),
                 LegacyReportExport.LegacyEvidenceRoot(_config, false), LegacyReportExport.ImageRoot(_env, false),
-                false, LegacyReportExport.SharedEvidenceRoot(_config), cancellationToken);
+                false, LegacyReportExport.SharedEvidenceRoot(_config), cancellationToken, _config);
             await dataTask;
             var header = await headerTask;
             if (header is null) return Fail($"No machine data found for BM ID {request.BmId}");

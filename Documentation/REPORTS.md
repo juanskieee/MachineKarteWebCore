@@ -275,17 +275,40 @@ root or shared archive. TE preserves legacy `~` removal; forward slashes are
 accepted. Traversal, unrelated shares, and basename-only lookup are rejected.
 Missing/invalid photos use the workflow's local `noimage.png`.
 
-Deploy with network reachability and share/NTFS Read access for the account
-running the app. `NetworkShare:UserName` and `NetworkShare:Password` do not
-authenticate the current implementation, and `EvidenceMaking:ImagesRoot` does
-not control uploaded-photo lookup. Keep local templates/static images readable
-and uploaded photos readable. Uploaded photos are embedded during generation;
-they need no public static-file mapping or mapped drive.
+On Windows, PM and TE photo staging use `NetworkShare:UserName` and
+`NetworkShare:Password` to open source photographs with an outbound Windows
+credential token. `NetworkShare:Domain` identifies the account's domain or file
+server computer name; it defaults to `NetworkShare:Server` when omitted.
+`DOMAIN\user` and `user@domain` usernames are also supported. Each export owns
+and disposes its token; only source-file opens are impersonated. Local templates,
+temporary staging, and SQL retain the application's identity. No mapped drives
+or process-wide SMB connections are created.
 
-Validate actual photographs under the deployed app identity. A developer's file
-access or an export containing `noimage.png` does not prove the app can read the
-archive; denied access may appear as a missing file. Check representative PM,
-TE, Teleko, quality-condition, and historical records in both formats.
+For the current file server, `Server=172.26.220.161` and `Domain=TREX` select the
+file server's local account database. Keep the existing share username/password
+in the server's protected configuration (environment keys are
+`NetworkShare__UserName`, `NetworkShare__Password`, and `NetworkShare__Domain`).
+If the account is a domain account, use its actual domain instead. Both the
+share permissions and NTFS permissions on the three source locations above
+must grant that account Read access. Leave both username/password empty to use
+the IIS app pool's existing network identity instead; incomplete credentials
+fail explicitly.
+
+Both website IP addresses use this same server-side configuration. A successful
+ping, TCP 445 check, or share browse as Administrator proves connectivity or that
+login's access, not the IIS application's photo access. Republish the updated app,
+verify its deployed configuration, recycle its dedicated pool, then generate a
+known PM and TE record with real photographs. Check Teleko, quality-condition,
+historical records, and both formats. Missing or invalid paths still use
+`noimage.png`; access-denied and other source I/O errors now fail generation with
+an actionable message instead of silently omitting photographs. Credentials are
+not included in those messages.
+
+`EvidenceMaking:ImagesRoot` does not control uploaded-photo lookup. Uploaded
+photos are embedded during generation; they need no public static-file mapping.
+The offline `Test-ReportGeneration.ps1 -EvidenceOnly` checks credential-token
+scope using local fixture files and verifies permission-error handling. It does
+not authenticate the production SMB account or verify production share ACLs.
 
 ## Outstanding acceptance work
 

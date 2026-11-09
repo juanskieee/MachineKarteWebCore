@@ -1,5 +1,9 @@
 using GemBox.Spreadsheet;
+using Microsoft.Win32.SafeHandles;
 using System.Collections.Concurrent;
+using System.ComponentModel;
+using System.Runtime.InteropServices;
+using System.Security.Principal;
 
 namespace MachineKarte.Web.Services;
 
@@ -78,6 +82,42 @@ public static class LegacyReportExport
         return @"\\" + server;
     }
 
+    private static SafeAccessTokenHandle? ShareToken(IConfiguration? config)
+    {
+        var user = config?["NetworkShare:UserName"]?.Trim();
+        var password = config?["NetworkShare:Password"];
+        if (string.IsNullOrEmpty(user) && string.IsNullOrEmpty(password)) return null;
+        if (string.IsNullOrEmpty(user) || string.IsNullOrEmpty(password))
+            throw new InvalidOperationException("Configure both NetworkShare:UserName and NetworkShare:Password, or leave both empty to use the application identity.");
+        if (!OperatingSystem.IsWindows())
+            throw new PlatformNotSupportedException("NetworkShare credentials require Windows hosting.");
+
+        var domain = config?["NetworkShare:Domain"]?.Trim();
+        if (string.IsNullOrEmpty(domain)) domain = config?["NetworkShare:Server"]?.Trim();
+        var separator = user.IndexOf('\\');
+        if (separator >= 0)
+        {
+            domain = user[..separator];
+            user = user[(separator + 1)..];
+        }
+        else if (user.Contains('@')) domain = null;
+
+        // NEW_CREDENTIALS keeps local permissions and supplies credentials only for outbound access.
+        const int newCredentials = 9, winnt50 = 3;
+        if (!LogonUser(user, domain, password, newCredentials, winnt50, out var token))
+        {
+            var error = Marshal.GetLastWin32Error();
+            token?.Dispose();
+            throw new Win32Exception(error, $"Cannot initialize file-server credentials (Windows error {error}). Check NetworkShare settings and the IIS app pool's impersonation rights.");
+        }
+        return token;
+    }
+
+    [DllImport("advapi32.dll", EntryPoint = "LogonUserW", CharSet = CharSet.Unicode, ExactSpelling = true, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool LogonUser(string user, string? domain, string password,
+        int logonType, int logonProvider, out SafeAccessTokenHandle token);
+
     // Read existing uploads under the workflow's own share or the shared archive.
     // Absolute paths must name one of those roots; never search by filename alone.
     public static string ResolveEvidenceImage(string storedPath, string legacySystemRoot, string imageRoot,
@@ -146,8 +186,10 @@ public static class LegacyReportExport
 
         public static async Task<StagedPhotos> LoadAsync(IEnumerable<string> storedPaths,
             string legacySystemRoot, string imageRoot, bool te, string sharedEvidenceRoot,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default, IConfiguration? networkConfiguration = null)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+            using var shareToken = ShareToken(networkConfiguration);
             var photos = new StagedPhotos();
             try
             {
@@ -163,7 +205,7 @@ public static class LegacyReportExport
                     foreach (var candidate in EvidenceImageCandidates(path, legacySystemRoot, te, sharedEvidenceRoot))
                     {
                         var staged = await copies.GetOrAdd(candidate, source => new Lazy<Task<string?>>(
-                            () => photos.CopyAsync(source, token))).Value;
+                            () => photos.CopyAsync(source, shareToken, token))).Value;
                         if (staged is null) continue;
                         local = staged;
                         break;
@@ -180,18 +222,26 @@ public static class LegacyReportExport
             }
         }
 
-        private async Task<string?> CopyAsync(string path, CancellationToken cancellationToken)
+        private async Task<string?> CopyAsync(string path, SafeAccessTokenHandle? shareToken,
+            CancellationToken cancellationToken)
         {
             FileStream source;
             try
             {
-                source = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read,
+                FileStream Open() => new(path, FileMode.Open, FileAccess.Read, FileShare.Read,
                     81920, FileOptions.Asynchronous | FileOptions.SequentialScan);
+                // Only opening the source uses the share account; local staging and SQL keep the app identity.
+                source = shareToken is not null && OperatingSystem.IsWindows()
+                    ? WindowsIdentity.RunImpersonated(shareToken, Open) : Open();
+            }
+            catch (Exception exception) when (exception is FileNotFoundException or DirectoryNotFoundException)
+            {
+                // A missing file can still resolve under the historical archive, or use noimage.
+                return null;
             }
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
             {
-                // Match File.Exists: unavailable candidates allow the next root or noimage.
-                return null;
+                throw new IOException($"Cannot read evidence photos from the file server (Windows error {exception.HResult & 0xffff}). Check NetworkShare credentials, connectivity, and share/NTFS read permissions.", exception);
             }
             await using (source)
             {

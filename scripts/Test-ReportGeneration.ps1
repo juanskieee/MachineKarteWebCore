@@ -232,6 +232,36 @@ using(var photos=await LegacyReportExport.StagedPhotos.LoadAsync(new[]{@"\Upload
 }
 Require(!File.Exists(stagedPath),"Export photo staging was not cleaned up");
 Console.WriteLine("PASS: independent template clones, invalidation, staged photo bytes, deduplication, root precedence and cleanup.");
+
+// IIS photo reads must use the configured outbound credentials without changing local permissions.
+// NEW_CREDENTIALS does not authenticate until remote access; these fixtures open local files only.
+var credentialConfig=new Microsoft.Extensions.Configuration.ConfigurationBuilder()
+    .AddInMemoryCollection(new Dictionary<string,string?> {
+        ["NetworkShare:Server"]="offline-fixture-server",
+        ["NetworkShare:Domain"]=Environment.MachineName,
+        ["NetworkShare:UserName"]="MachineKarteOfflineFixture",
+        ["NetworkShare:Password"]="Offline-fixture-only-123!"
+    }).Build();
+if(OperatingSystem.IsWindows()) {
+ var identity=System.Security.Principal.WindowsIdentity.GetCurrent().Name;
+ using(var photos=await LegacyReportExport.StagedPhotos.LoadAsync(new[]{pmImage},pmLegacyShare,Images(false),false,sharedArchive,networkConfiguration:credentialConfig))
+  Require(File.ReadAllBytes(photos.Paths[pmImage]).SequenceEqual(File.ReadAllBytes(pmImage)),"Configured share credentials broke source reads or local staging");
+ Require(System.Security.Principal.WindowsIdentity.GetCurrent().Name==identity,"Share reads leaked an impersonated identity");
+ credentialConfig["NetworkShare:UserName"]=Environment.MachineName+@"\MachineKarteOfflineFixture";
+ using(var photos=await LegacyReportExport.StagedPhotos.LoadAsync(new[]{teImage},teLegacyShare,Images(true),true,sharedArchive,networkConfiguration:credentialConfig))
+  Require(File.ReadAllBytes(photos.Paths[teImage]).SequenceEqual(File.ReadAllBytes(teImage)),"Qualified share usernames broke TE staging");
+}
+credentialConfig["NetworkShare:Password"]=null;
+var incompleteRejected=false;
+try { using var photos=await LegacyReportExport.StagedPhotos.LoadAsync(new[]{pmImage},pmLegacyShare,Images(false),false,sharedArchive,networkConfiguration:credentialConfig); }
+catch(InvalidOperationException ex) { incompleteRejected=ex.Message.Contains("Configure both NetworkShare"); }
+Require(incompleteRejected,"Incomplete credentials silently used the IIS identity");
+var unreadablePhoto=Path.Combine(pmUpload,"unreadable.png");Directory.CreateDirectory(unreadablePhoto);
+var accessFailureReported=false;
+try { using var photos=await LegacyReportExport.StagedPhotos.LoadAsync(new[]{unreadablePhoto},pmLegacyShare,Images(false),false,sharedArchive); }
+catch(IOException ex) { accessFailureReported=ex.InnerException is UnauthorizedAccessException && ex.Message.Contains("share/NTFS read permissions"); }
+Require(accessFailureReported,"Access-denied photos silently became noimage placeholders");
+Console.WriteLine("PASS: outbound credential tokens and qualified usernames, local identity restoration, incomplete settings and visible access failures; no SMB server contacted.");
 if(args.Contains("performance-only")) return;
 
 var date=new DateTime(2026,10,1,10,0,0);

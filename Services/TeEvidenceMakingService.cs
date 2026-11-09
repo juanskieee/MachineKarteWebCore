@@ -37,7 +37,7 @@ public class TeEvidenceMakingService
         using var photos = await LegacyReportExport.StagedPhotos.LoadAsync(images.Select(row => row.ImgFile)
                 .Concat(teleko.Select(row => row.TelekoEvidence)).Concat(quality.Select(row => row.ImgFile)),
             LegacyReportExport.LegacyEvidenceRoot(_config, true), LegacyReportExport.ImageRoot(_env, true),
-            true, LegacyReportExport.SharedEvidenceRoot(_config), cancellationToken);
+            true, LegacyReportExport.SharedEvidenceRoot(_config), cancellationToken, _config);
         await dataTask;
         cancellationToken.ThrowIfCancellationRequested();
         var header = await headerTask ?? throw new InvalidDataException($"No TE machine data found for BM ID {id}.");
